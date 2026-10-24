@@ -13,8 +13,8 @@ import { and, eq, gte, inArray, isNotNull, isNull, lte, ne, or } from "drizzle-o
 import { alias } from "drizzle-orm/pg-core";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError } from "../../lib/errors";
-import { type Db, internalCategoryId, internalPayeeId, serverToday } from "../../lib/ledger";
-import { enterDueScheduled, entryDate } from "../../lib/scheduled";
+import { type Db, internalCategoryId, internalPayeeId } from "../../lib/ledger";
+import { enterDueScheduled, entryDate, userToday } from "../../lib/scheduled";
 import type { AuthedEnv } from "../../middleware/require-auth";
 import type { AppEnv } from "../../types";
 import type { listMonthActivity } from "./routes";
@@ -74,12 +74,11 @@ async function categoryIds(
  */
 export const listMonthActivityHandler: RouteHandler<typeof listMonthActivity, Env> = async (c) => {
   const { budgetId, month } = c.req.valid("param");
-  const { today: userToday, ...query } = c.req.valid("query");
-  const today = userToday ?? serverToday();
+  const { today: rawToday, ...query } = c.req.valid("query");
+  const today = userToday(c.var.deps, rawToday);
   const { db } = c.var.deps;
   await loadBudgetAccess(c, budgetId);
-  if (userToday)
-    await enterDueScheduled(db, c.var.deps, budgetId, entryDate(c.var.deps, userToday));
+  if (rawToday) await enterDueScheduled(db, c.var.deps, budgetId, entryDate(c.var.deps, rawToday));
 
   const { ids, cardAccountId, cardCategoryId } = await categoryIds(db, budgetId, query);
   const startingBalance = await internalPayeeId(db, budgetId, "starting_balance");

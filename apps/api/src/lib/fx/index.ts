@@ -1,4 +1,5 @@
-import { newId } from "@strictbudget/db";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { newId, sql } from "@strictbudget/db";
 import { budget, budgetAccount, fxRate, fxRateOverride } from "@strictbudget/db/schema";
 import { type CurrencyCode, crossRate, invertRate, normalizeRate } from "@strictbudget/engine";
 import { and, desc, eq, inArray, lt, ne, or } from "drizzle-orm";
@@ -80,11 +81,14 @@ export async function resolveRate(
 
   const cached = await cachedMarketRate(db, from, to, date);
   if (cached) return { ...cached, date, source: "market" };
+  // A provider asked lately for this date (from any base) answered with an earlier day's rates.
   for (const provider of deps.fxProviders) {
-    const recent = recentFetches.get(provider)?.get(recentKey(date, from));
-    if (recent && Date.now() - recent.at < RECENT_TTL_MS) {
-      const onRateDate = await cachedMarketRate(db, from, to, recent.rateDate);
-      if (onRateDate) return { ...onRateDate, date, source: "market" };
+    for (const [key, recent] of recentFetches.get(provider) ?? []) {
+      if (Date.now() - recent.at >= RECENT_TTL_MS) recentFetches.get(provider)?.delete(key);
+      else if (key.startsWith(`${date}|`)) {
+        const onRateDate = await cachedMarketRate(db, from, to, recent.rateDate);
+        if (onRateDate) return { ...onRateDate, date, source: "market" };
+      }
     }
   }
 
@@ -93,8 +97,10 @@ export async function resolveRate(
   const settled = date <= shiftDay(serverDate, -2);
   for (const provider of deps.fxProviders) {
     const fetched = await fetchOnce(db, provider, date, from, settled);
-    const rate = fetched?.rates[to];
-    if (fetched && rate) return { rate, date, rateDate: fetched.date, source: "market" };
+    if (!fetched) continue;
+    holdShared(fetched.rows);
+    const rate = fetched.rates[to];
+    if (rate) return { rate, date, rateDate: fetched.date, source: "market" };
   }
 
   const fallback = await nearestEarlier(db, budgetId, foreign, from, to, date);
@@ -104,6 +110,66 @@ export async function resolveRate(
     "FX_RATE_UNAVAILABLE",
     `No exchange rate from ${from} to ${to} is available for ${date}`,
   );
+}
+
+export interface PrefetchInput {
+  budgetId: string;
+  /** Currencies the write converts. */
+  currencies?: readonly CurrencyCode[];
+  /** Accounts the write touches: their currencies are converted. */
+  accountIds?: readonly (string | null | undefined)[];
+  /** The dates converted at (none: nothing to fetch). */
+  dates: readonly (string | null | undefined)[];
+  today?: string;
+}
+
+/**
+ * Looks up the rates a write will need before it changes anything: each of these
+ * currencies to and from the budget's, on each date. A provider fetch then happens while the
+ * request's transaction holds no locks, and the write's own lookups find what it fetched (any pair
+ * of these currencies, through a pivot). A rate that can't be had is left for the write's lookup to
+ * report.
+ */
+export async function prefetchRates(db: Db, deps: FxDeps, input: PrefetchInput): Promise<void> {
+  const dates = [...new Set(input.dates.filter((d): d is string => !!d))];
+  const ids = [...new Set(input.accountIds?.filter((id): id is string => !!id))];
+  if (dates.length === 0 || (ids.length === 0 && !input.currencies?.length)) return;
+  const [row] = await db
+    .select({ currency: budget.currency })
+    .from(budget)
+    .where(eq(budget.id, input.budgetId))
+    .limit(1);
+  if (!row) return;
+  const currencies = new Set(input.currencies);
+  if (ids.length > 0) {
+    const accounts = await db
+      .selectDistinct({ currency: budgetAccount.currency })
+      .from(budgetAccount)
+      .where(and(eq(budgetAccount.budgetId, input.budgetId), inArray(budgetAccount.id, ids)));
+    for (const a of accounts) currencies.add(a.currency);
+  }
+  currencies.delete(row.currency);
+  for (const date of dates) {
+    for (const currency of currencies) {
+      // Both ways: a provider may only have one of them (the other is then found as its inverse).
+      for (const [from, to] of [
+        [currency, row.currency],
+        [row.currency, currency],
+      ] as const) {
+        try {
+          await resolveRate(db, deps, {
+            budgetId: input.budgetId,
+            from,
+            to,
+            date,
+            today: input.today,
+          });
+        } catch (error) {
+          if (!(error instanceof AppError) || error.code !== "FX_RATE_UNAVAILABLE") throw error;
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -181,6 +247,10 @@ async function cachedMarketRate(
     })
     .from(fxRate)
     .where(and(eq(fxRate.date, date), or(inArray(fxRate.base, pair), inArray(fxRate.quote, pair))));
+  // Rates this request fetched but hasn't written yet (`deferFxCacheWrites`).
+  for (const r of deferred.getStore() ?? []) {
+    if (r.date === date && (pair.includes(r.base) || pair.includes(r.quote))) rows.push(r);
+  }
   if (rows.length === 0) return null;
 
   const rateOf = new Map(rows.map((r) => [`${r.base}>${r.quote}`, r]));
@@ -204,11 +274,73 @@ async function cachedMarketRate(
   return null;
 }
 
+type FxRateRow = typeof fxRate.$inferInsert & { rateDate: string; rate: string };
+
+/** A write request's fetched rates, held until its transaction ends (`deferFxCacheWrites`). */
+const deferred = new AsyncLocalStorage<FxRateRow[]>();
+
+/**
+ * Runs a write request's transaction (`inRequestTransaction`) with the rates it fetches kept out of
+ * it: they're written to the cache on `db` (the pool, not the transaction) once the
+ * transaction has ended, committed or not. Writing them inside it would hold the new `fx_rate` rows
+ * locked until the request finishes, so another request caching the same rate waits on it, and a
+ * rolled-back request would lose them. Until then, lookups in the request see them.
+ */
+export async function deferFxCacheWrites<T>(db: Db, run: () => Promise<T>): Promise<T> {
+  const rows: FxRateRow[] = [];
+  try {
+    return await deferred.run(rows, run);
+  } finally {
+    if (rows.length > 0) {
+      try {
+        // One statement takes 65,534 parameters at most (7 per row); a long import fetches more.
+        for (let i = 0; i < rows.length; i += 5000) {
+          await db
+            .insert(fxRate)
+            .values(rows.slice(i, i + 5000))
+            .onConflictDoNothing();
+        }
+      } catch (error) {
+        log.warn("Couldn't cache fetched FX rates", { count: rows.length }, error);
+      }
+    }
+  }
+}
+
+/**
+ * A fetch another request started and this one joined: its rows go into this request's deferred
+ * writes too, so its later lookups see them.
+ */
+function holdShared(rows: FxRateRow[]) {
+  const held = deferred.getStore();
+  if (held && rows[0] && !held.includes(rows[0])) held.push(...rows);
+}
+
+/** Stores fetched rates: now, or when the request's transaction ends (`deferFxCacheWrites`). */
+async function cacheRates(db: Db, rows: FxRateRow[]) {
+  const held = deferred.getStore();
+  if (held) held.push(...rows);
+  else await db.insert(fxRate).values(rows).onConflictDoNothing();
+}
+
+/**
+ * A write fetches its rates before it changes anything, so a slow provider doesn't keep rows
+ * locked that other requests wait on. Logs a fetch that comes after one (a
+ * transaction with an id has written or locked rows).
+ */
+async function warnIfHoldingLocks(db: Db, lookup: { base: string; date: string }) {
+  if (!deferred.getStore()) return;
+  const [row] = await db.execute<{ held: boolean }>(
+    sql`select pg_current_xact_id_if_assigned() is not null as held`,
+  );
+  if (row?.held) log.warn("FX rate fetched while the request holds row locks", lookup);
+}
+
 const RECENT_TTL_MS = 60 * 60 * 1000;
 /** Recent (unsettled) dates each provider was asked lately: which day's cached rates answered. */
 const recentFetches = new WeakMap<FxProvider, Map<string, { at: number; rateDate: string }>>();
 /** Fetches in progress, so identical concurrent lookups share one request. */
-const inFlight = new WeakMap<FxProvider, Map<string, Promise<FxRates | null>>>();
+const inFlight = new WeakMap<FxProvider, Map<string, Promise<FetchedRates | null>>>();
 const FAILED_TTL_MS = 10 * 60 * 1000;
 /**
  * When each provider last failed or had nothing for a date and base: reads skip it for a while
@@ -225,6 +357,11 @@ function recentKey(date: string, base: CurrencyCode) {
   return `${date}|${base}`;
 }
 
+interface FetchedRates extends FxRates {
+  /** The cache rows for the answer (`cacheRates`). */
+  rows: FxRateRow[];
+}
+
 /** One provider's rates from `base` on `date`, stored in the cache; null when it has none. */
 function fetchOnce(
   db: Db,
@@ -232,8 +369,8 @@ function fetchOnce(
   date: string,
   base: CurrencyCode,
   settled: boolean,
-): Promise<FxRates | null> {
-  const pending = inFlight.get(provider) ?? new Map<string, Promise<FxRates | null>>();
+): Promise<FetchedRates | null> {
+  const pending = inFlight.get(provider) ?? new Map<string, Promise<FetchedRates | null>>();
   inFlight.set(provider, pending);
   const key = recentKey(date, base);
   const existing = pending.get(key);
@@ -245,8 +382,9 @@ function fetchOnce(
     return Promise.resolve(null);
   }
 
-  const run = (async () => {
+  const run = (async (): Promise<FetchedRates | null> => {
     let fetched: FxRates | null;
+    await warnIfHoldingLocks(db, { base, date });
     try {
       fetched = await provider.fetchRates(date, base, []);
     } catch (error) {
@@ -279,23 +417,19 @@ function fetchOnce(
       recent.set(key, { at: Date.now(), rateDate: fetched.date });
     }
     const rateDate = fetched.date;
-    await db
-      .insert(fxRate)
-      .values(
-        [...dates].flatMap((d) =>
-          quotes.map(([quote, rate]) => ({
-            id: newId(),
-            date: d,
-            rateDate,
-            base,
-            quote,
-            rate,
-            source: provider.name,
-          })),
-        ),
-      )
-      .onConflictDoNothing();
-    return { date: rateDate, rates };
+    const rows = [...dates].flatMap((d) =>
+      quotes.map(([quote, rate]) => ({
+        id: newId(),
+        date: d,
+        rateDate,
+        base,
+        quote,
+        rate,
+        source: provider.name,
+      })),
+    );
+    await cacheRates(db, rows);
+    return { date: rateDate, rates, rows };
   })().finally(() => pending.delete(key));
   pending.set(key, run);
   return run;

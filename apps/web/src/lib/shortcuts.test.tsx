@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { CommandRegistryProvider, useScreenCommands } from "./commands";
 import { preferencesQueryOptions } from "./preferences";
 import { type BoundShortcutId, capLabel, SHORTCUTS, useShortcut } from "./shortcuts";
 
@@ -106,11 +107,45 @@ describe("useShortcut", () => {
   });
 });
 
+describe("useShortcut in the command palette", () => {
+  function Offered() {
+    const commands = useScreenCommands();
+    return <output aria-label="Offered">{commands.map((c) => c.label).join(", ")}</output>;
+  }
+  function Approve({ enabled, onFire }: { enabled: boolean; onFire: () => void }) {
+    useShortcut("approve", onFire, { enabled });
+    useShortcut("moveRows", onFire);
+    return null;
+  }
+
+  it("offers a named shortcut while it's enabled, even with keyboard shortcuts off", () => {
+    const onFire = vi.fn();
+    const wrapper = withPreferences(false);
+    const { rerender } = render(
+      <CommandRegistryProvider>
+        <Approve enabled onFire={onFire} />
+        <Offered />
+      </CommandRegistryProvider>,
+      { wrapper },
+    );
+    // Arrow keys have no command name, so only Approve is offered.
+    expect(screen.getByRole("status", { name: "Offered" })).toHaveTextContent(/^Approve selected$/);
+    rerender(
+      <CommandRegistryProvider>
+        <Approve enabled={false} onFire={onFire} />
+        <Offered />
+      </CommandRegistryProvider>,
+    );
+    expect(screen.getByRole("status", { name: "Offered" })).toHaveTextContent(/^$/);
+  });
+});
+
 describe("SHORTCUTS", () => {
-  it("lists the dialog in its sections", () => {
+  it("lists the dialog in its sections, plus the command palette", () => {
     const sections = new Set(Object.values(SHORTCUTS).map((s) => s.section));
     expect([...sections]).toEqual(["Universal", "Plan Actions", "Account Actions", "Date Picker"]);
-    expect(Object.keys(SHORTCUTS)).toHaveLength(40);
+    expect(Object.keys(SHORTCUTS)).toHaveLength(41);
+    expect(SHORTCUTS.palette.keys).toBe("mod+k");
   });
 
   it("reads mod as ⌘ on a Mac and ctrl elsewhere", () => {

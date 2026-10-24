@@ -27,8 +27,9 @@ export const budgetEventsHandler: RouteHandler<typeof budgetEvents, AppEnv & Aut
   return streamSSE(c, async (stream) => {
     let closed = false;
     let wake: () => void = () => {};
-    // Changes are handled one at a time, in order: a change after a removal waits for the
-    // membership check, so it's never written to a stream that's about to end.
+    // Changes are handled one at a time, in order, and each checks the membership first, so a
+    // change is never written to a stream whose member is already gone, whatever happened to
+    // the removal's own notification.
     let queue = Promise.resolve();
     const unsubscribe = await changes.subscribe(budgetId, (change) => {
       // Never left unhandled: a failed write (the client just left) or check ends the stream.
@@ -40,8 +41,7 @@ export const budgetEventsHandler: RouteHandler<typeof budgetEvents, AppEnv & Aut
         .then(async () => {
           if (closed) return;
           // Removed from the budget, left it, or the budget was deleted: nothing more to hear.
-          const membership = change.table === "budget_member" || change.table === "budget";
-          if (membership && !(await stillMember())) return end();
+          if (!(await stillMember())) return end();
           await stream.writeSSE({
             event: "change",
             data: JSON.stringify({

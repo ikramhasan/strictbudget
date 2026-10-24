@@ -2,6 +2,7 @@ import { type Database, sql } from "@strictbudget/db";
 import type { Context, Next } from "hono";
 import type { AuthedEnv } from "../middleware/require-auth";
 import type { AppEnv } from "../types";
+import { deferFxCacheWrites } from "./fx";
 import type { Db } from "./ledger";
 
 /** Who and what a transaction's changes are logged as (migration 0038's `strictbudget.*` settings). */
@@ -71,7 +72,8 @@ class Rollback extends Error {}
  * Runs a signed-in write request in one database transaction with its audit context set: its
  * changes are logged as the user's (and the agent's, for an agent's request; and the browser tab's `X-Client-Id`), and nothing is kept if
  * it fails. Handlers see the transaction as `c.var.deps.db` (their own `db.transaction` calls
- * become savepoints). Reads run outside one.
+ * become savepoints). Reads run outside one. Exchange rates it fetches are cached after it ends
+ * (`deferFxCacheWrites`).
  */
 export async function inRequestTransaction(c: Context<AppEnv & AuthedEnv>, next: Next) {
   const { method, path } = c.req;
@@ -80,22 +82,24 @@ export async function inRequestTransaction(c: Context<AppEnv & AuthedEnv>, next:
   }
   const deps = c.var.deps;
   try {
-    await deps.db.transaction(async (tx) => {
-      await setAuditContext(tx, {
-        actorId: c.var.user.id,
-        agentId: c.var.agent?.id ?? null,
-        clientId: c.req.header("x-client-id")?.slice(0, 100) ?? null,
-        requestId: c.var.requestId ?? null,
-      });
-      c.set("deps", { ...deps, db: tx as unknown as Database });
-      try {
-        await next();
-      } finally {
-        c.set("deps", deps);
-      }
-      // The error handler already answered; undo whatever the handler wrote first.
-      if (c.error || c.res.status >= 500) throw new Rollback();
-    });
+    await deferFxCacheWrites(deps.db, () =>
+      deps.db.transaction(async (tx) => {
+        await setAuditContext(tx, {
+          actorId: c.var.user.id,
+          agentId: c.var.agent?.id ?? null,
+          clientId: c.req.header("x-client-id")?.slice(0, 100) ?? null,
+          requestId: c.var.requestId ?? null,
+        });
+        c.set("deps", { ...deps, db: tx as unknown as Database });
+        try {
+          await next();
+        } finally {
+          c.set("deps", deps);
+        }
+        // The error handler already answered; undo whatever the handler wrote first.
+        if (c.error || c.res.status >= 500) throw new Rollback();
+      }),
+    );
   } catch (error) {
     if (!(error instanceof Rollback)) throw error;
   }

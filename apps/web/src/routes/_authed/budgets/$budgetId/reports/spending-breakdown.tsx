@@ -34,7 +34,7 @@ function Report() {
   const state = useReportState(search, "this_month");
   const [drill, setDrill] = useState<DrillDown | null>(null);
   const update = (patch: Partial<SpendingBreakdownSearch>) =>
-    void navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true });
+    void navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true, resetScroll: false });
 
   const exportFiles = async () => {
     const base = { budgetId: budget.id, range: state.range, kind: "spending" as const };

@@ -27,6 +27,7 @@
     "cmdk": "catalog:",
     "date-fns": "catalog:",
     "embla-carousel-react": "catalog:",
+    "frimousse": "catalog:",
     "input-otp": "catalog:",
     "lucide-react": "catalog:",
     "radix-ui": "^1.6.7",

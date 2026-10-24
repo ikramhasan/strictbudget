@@ -71,6 +71,7 @@ export function ActivityList({
               userId={event.actor?.userId ?? null}
               userName={event.actor ? (event.actor.name ?? "A deleted user") : null}
               avatarColor={event.actor?.avatarColor ?? null}
+              removed={event.actor?.removed}
               picture={event.actor?.picture}
               agentName={event.actor?.agent?.name}
               currentUserId={session.data?.user.id}

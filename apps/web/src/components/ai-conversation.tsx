@@ -20,7 +20,7 @@ import { Trace, TraceIcon, TraceLine, TraceTitle } from "@strictbudget/ui/compon
 import { fetchServerSentEvents, type UIMessage, useChat } from "@tanstack/ai-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Check, CircleAlert, CircleDashed, Paperclip, Square, X } from "lucide-react";
-import { type DragEvent, type FormEvent, useMemo, useRef, useState } from "react";
+import { type DragEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import { PickedFiles, SentFiles, sentFile, usePickedFiles } from "@/components/ai-attachments";
 import { AiChangePreview } from "@/components/ai-change-preview";
@@ -81,15 +81,17 @@ function activityLabel(name: string, done: boolean): string {
  * One conversation with the budget's assistant (TanStack AI `useChat`). The server keeps the
  * conversation, so opening it again (or reloading) shows it as it was, including any change still
  * waiting for approval. Without `conversationId` it starts a new one, reported through `onStarted`
- * once the first message is sent.
+ * once the first message is sent. A new one can start with `initialMessage` sent as it opens.
  */
 export function AiConversation({
   budgetId,
   conversationId,
+  initialMessage,
   onStarted,
 }: {
   budgetId: string;
   conversationId?: string;
+  initialMessage?: string;
   onStarted?: (id: string) => void;
 }) {
   const queryClient = useQueryClient();
@@ -188,6 +190,14 @@ export function AiConversation({
       onStarted?.(threadId);
     }
   }
+
+  // The question it opened with goes out once, as soon as the chat can take it.
+  const asked = useRef(false);
+  useEffect(() => {
+    if (!initialMessage || asked.current || started.current || busy) return;
+    asked.current = true;
+    send(initialMessage);
+  }, [busy]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();

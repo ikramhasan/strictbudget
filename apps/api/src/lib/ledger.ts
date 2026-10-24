@@ -201,6 +201,28 @@ export async function findOrCreatePayee(db: Db, budgetId: string, name: string) 
   return row.id;
 }
 
+/**
+ * `findOrCreatePayee` for many names at once (a file import's): each name's payee id, keyed by
+ * the name as given. Names that differ only in case share one payee.
+ */
+export async function findOrCreatePayees(db: Db, budgetId: string, names: readonly string[]) {
+  const unique = [...new Set(names)];
+  const ids = new Map<string, string>();
+  if (unique.length === 0) return ids;
+  await db
+    .insert(payee)
+    .values(unique.map((name) => ({ id: newId(), budgetId, name })))
+    .onConflictDoNothing();
+  const rows = await db.execute<{ name: string; id: string }>(sql`
+    select n.name, ${payee.id} as id
+    from unnest(${sql.param(unique)}::text[]) as n(name)
+    join ${payee} on ${payee.budgetId} = ${budgetId} and ${payee.transferAccountId} is null
+      and lower(${payee.name}) = lower(n.name)`);
+  for (const row of rows) ids.set(row.name, row.id);
+  for (const name of unique) if (!ids.has(name)) throw new Error(`Payee ${name} missing`);
+  return ids;
+}
+
 /** The server's calendar date, for requests that weren't given the user's today. */
 export function serverToday() {
   return new Date().toISOString().slice(0, 10);

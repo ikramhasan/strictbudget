@@ -7,6 +7,7 @@ describe("agentSetupPrompt", () => {
     expect(prompt).toContain(
       "claude mcp add --transport http strictbudget https://budget.example/mcp",
     );
+    expect(prompt).toContain("https://budget.example/mcp?tools=compact");
     expect(prompt).toContain("listBudgets");
     expect(prompt).toContain("https://budget.example/.well-known/agent-configuration");
   });

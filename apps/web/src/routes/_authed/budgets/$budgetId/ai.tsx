@@ -16,7 +16,7 @@ import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { useIsMobile } from "@strictbudget/ui/hooks/use-mobile";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { History, SquarePen } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { AiConversation } from "@/components/ai-conversation";
 import { AiHistory } from "@/components/ai-history";
@@ -26,8 +26,12 @@ import { useAiSettings } from "@/lib/ai";
 import { useBudget } from "@/lib/budget-context";
 
 export const Route = createFileRoute("/_authed/budgets/$budgetId/ai")({
-  // The open conversation; none for a new chat.
-  validateSearch: z.object({ c: z.string().optional().catch(undefined) }),
+  validateSearch: z.object({
+    // The open conversation; none for a new chat.
+    c: z.string().optional().catch(undefined),
+    // A question to start a new chat with (the command palette's "Ask AI").
+    ask: z.string().optional().catch(undefined),
+  }),
   component: AiPage,
 });
 
@@ -38,7 +42,7 @@ export const Route = createFileRoute("/_authed/budgets/$budgetId/ai")({
 function AiPage() {
   const { budget, readOnly } = useBudget();
   const settings = useAiSettings(budget.id);
-  const { c: openId } = Route.useSearch();
+  const { c: openId, ask } = Route.useSearch();
   const navigate = Route.useNavigate();
   const phone = useIsMobile();
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -47,8 +51,19 @@ function AiPage() {
   const [startedId, setStartedId] = useState<string | null>(null);
   const chatKey = !openId || openId === startedId ? `new-${newChat}` : openId;
   const enabled = settings.data?.enabled && !readOnly;
+  // A question asked from elsewhere starts a new chat with it; the URL then drops it, so a reload
+  // or Back doesn't ask it again.
+  const [question, setQuestion] = useState<string>();
+  useEffect(() => {
+    if (!ask) return;
+    setQuestion(ask);
+    setStartedId(null);
+    setNewChat((n) => n + 1);
+    void navigate({ search: {}, replace: true });
+  }, [ask, navigate]);
 
   function open(id: string | undefined) {
+    setQuestion(undefined);
     if (!id) {
       setStartedId(null);
       setNewChat((n) => n + 1);
@@ -106,7 +121,9 @@ function AiPage() {
               key={chatKey}
               budgetId={budget.id}
               conversationId={chatKey.startsWith("new-") ? undefined : chatKey}
+              initialMessage={question}
               onStarted={(id) => {
+                setQuestion(undefined);
                 setStartedId(id);
                 void navigate({ search: { c: id }, replace: true });
               }}

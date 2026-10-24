@@ -100,11 +100,9 @@ async function connectMcpClient(
     code_challenge_method: "S256",
     resource: MCP_URL,
   });
-  // Signed out, the person is sent to the web app's sign-in step first.
   const signedOut = await app.request(`/api/auth/oauth2/authorize?${authorize}`);
   expect(signedOut.status).toBe(302);
   expect(signedOut.headers.get("location")).toMatch(`${env.WEB_ORIGIN}/oauth/authorize?`);
-  // Signed in, to the consent page.
   const authorized = await app.request(`/api/auth/oauth2/authorize?${authorize}`, {
     headers: { cookie },
   });
@@ -151,8 +149,8 @@ async function rpc<T>(res: Response): Promise<T> {
 }
 
 let rpcId = 0;
-async function mcp(accessToken: string | null, method: string, params: unknown = {}) {
-  return app.request("/mcp", {
+async function mcp(accessToken: string | null, method: string, params: unknown = {}, query = "") {
+  return app.request(`/mcp${query}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -163,8 +161,8 @@ async function mcp(accessToken: string | null, method: string, params: unknown =
     body: JSON.stringify({ jsonrpc: "2.0", id: ++rpcId, method, params }),
   });
 }
-async function callTool(accessToken: string, name: string, args: unknown) {
-  const res = await mcp(accessToken, "tools/call", { name, arguments: args });
+async function callTool(accessToken: string, name: string, args: unknown, query = "") {
+  const res = await mcp(accessToken, "tools/call", { name, arguments: args }, query);
   expect(res.status).toBe(200);
   const body = await rpc<{ result: ToolResult; error?: unknown }>(res);
   return body.result;
@@ -294,11 +292,9 @@ describe("MCP server", () => {
     expect((await callTool(accessToken, "deleteBudget", { budgetId: madeId })).isError).toBeFalsy();
     expect((await send("GET", `/v1/budgets/${madeId}`, owner.cookie)).status).toBe(404);
 
-    // A missing path parameter is refused before anything runs.
     const blank = await callTool(accessToken, "listAccounts", { budgetId: "" });
     expect(toolJson<{ error: { code: string } }>(blank).error.code).toBe("INVALID_ARGUMENTS");
 
-    // Errors come back as the API's own, as tool errors.
     const missing = await callTool(accessToken, "getBudget", { budgetId: "nope" });
     expect(missing.isError).toBe(true);
     expect(toolJson<{ error: { code: string } }>(missing).error.code).toBeTruthy();
@@ -321,6 +317,100 @@ describe("MCP server", () => {
     expect(toolJson<{ error: { code: string } }>(refused).error.code).toBe("INSUFFICIENT_SCOPE");
   });
 
+  it("offers three tools in compact mode: search, describe and call an operation", async () => {
+    const { owner, budget, account } = await setup();
+    const { accessToken } = await connectMcpClient(owner.cookie);
+    const compact = "?tools=compact";
+    const tools = await rpc<{ result: { tools: { name: string }[] } }>(
+      await mcp(accessToken, "tools/list", {}, compact),
+    );
+    expect(tools.result.tools.map((t) => t.name)).toEqual([
+      "searchOperations",
+      "describeOperation",
+      "callOperation",
+    ]);
+    const full = await rpc<{ result: { tools: unknown[] } }>(await mcp(accessToken, "tools/list"));
+    expect(full.result.tools.length).toBeGreaterThan(50);
+
+    const found = toolJson<{ total: number; operations: { name: string }[] }>(
+      await callTool(accessToken, "searchOperations", { query: "create transaction" }, compact),
+    );
+    expect(found.operations.map((o) => o.name)).toContain("createTransaction");
+    expect(found.operations[0]?.name).toBe("createTransaction");
+    const none = toolJson<{ total: number }>(
+      await callTool(accessToken, "searchOperations", { query: "zzzxqj" }, compact),
+    );
+    expect(none.total).toBe(0);
+    const all = toolJson<{ total: number; operations: unknown[] }>(
+      await callTool(accessToken, "searchOperations", { limit: 5 }, compact),
+    );
+    expect(all.operations).toHaveLength(5);
+    expect(all.total).toBe(full.result.tools.length);
+
+    const described = toolJson<{ inputSchema: { required: string[] }; readOnly: boolean }>(
+      await callTool(accessToken, "describeOperation", { name: "createTransaction" }, compact),
+    );
+    expect(described.readOnly).toBe(false);
+    expect(described.inputSchema.required).toEqual(expect.arrayContaining(["budgetId", "body"]));
+    const unknown = await callTool(accessToken, "describeOperation", { name: "nope" }, compact);
+    expect(unknown.isError).toBe(true);
+
+    const created = await callTool(
+      accessToken,
+      "callOperation",
+      {
+        name: "createTransaction",
+        arguments: {
+          budgetId: budget.id,
+          body: { accountId: account.id, date: TODAY, amount: "-500", categoryId: null },
+        },
+      },
+      compact,
+    );
+    expect(created.isError).toBeFalsy();
+    expect(toolJson<Txn>(created).enteredBy?.agent).toMatchObject({ kind: "mcp" });
+    const bad = await callTool(accessToken, "callOperation", { arguments: {} }, compact);
+    expect(toolJson<{ error: { code: string } }>(bad).error.code).toBe("INVALID_ARGUMENTS");
+    const wrongTool = await callTool(accessToken, "listBudgets", {}, compact);
+    expect(toolJson<{ error: { code: string } }>(wrongTool).error.code).toBe("UNKNOWN_TOOL");
+  });
+
+  it("keeps read-only access read-only in compact mode", async () => {
+    const { owner, budget, account } = await setup();
+    const { accessToken } = await connectMcpClient(owner.cookie, "strictbudget:read");
+    const compact = "?tools=compact";
+    const found = toolJson<{ operations: { name: string }[] }>(
+      await callTool(
+        accessToken,
+        "searchOperations",
+        { query: "transaction", limit: 100 },
+        compact,
+      ),
+    );
+    expect(found.operations.map((o) => o.name)).toContain("listTransactions");
+    expect(found.operations.map((o) => o.name)).not.toContain("createTransaction");
+    const hidden = await callTool(
+      accessToken,
+      "describeOperation",
+      { name: "createTransaction" },
+      compact,
+    );
+    expect(hidden.isError).toBe(true);
+    const refused = await callTool(
+      accessToken,
+      "callOperation",
+      {
+        name: "createTransaction",
+        arguments: {
+          budgetId: budget.id,
+          body: { accountId: account.id, date: TODAY, amount: "-1", categoryId: null },
+        },
+      },
+      compact,
+    );
+    expect(toolJson<{ error: { code: string } }>(refused).error.code).toBe("INSUFFICIENT_SCOPE");
+  });
+
   it("lists connected agents and disconnects one at once", async () => {
     const { owner } = await setup();
     const { accessToken, clientId } = await connectMcpClient(owner.cookie);
@@ -334,7 +424,6 @@ describe("MCP server", () => {
 
     const id = one(listed.agents[0]).id;
     expect((await send("DELETE", `/v1/me/agents/${id}`, owner.cookie)).status).toBe(204);
-    // The access token it still holds is refused from now on.
     expect((await mcp(accessToken, "tools/list")).status).toBe(401);
     expect(
       (await json<{ agents: unknown[] }>(await send("GET", "/v1/me/agents", owner.cookie))).agents,
@@ -408,7 +497,6 @@ describe("Agent Auth", () => {
     }>(registered);
     expect(reg.approval.verification_uri_complete).toContain(`${env.WEB_ORIGIN}/agents/approve?`);
 
-    // The approval page shows what it asks for, given the code.
     const wrong = await send(
       "GET",
       `/v1/me/agent-approvals/${reg.agent_id}?code=AAAA-AAAA`,
@@ -467,7 +555,6 @@ describe("Agent Auth", () => {
     const txn = (await json<{ data: Txn }>(created)).data;
     expect(txn.enteredBy?.agent).toMatchObject({ name: "Budget Bot", kind: "agent_auth" });
 
-    // Not granted: refused by the plugin.
     expect((await execute("deleteBudget", { budgetId: budget.id })).status).toBeGreaterThanOrEqual(
       400,
     );

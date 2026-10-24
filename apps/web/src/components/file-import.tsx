@@ -1,3 +1,4 @@
+import type { components } from "@strictbudget/api-client";
 import {
   applyStatementOptions,
   CSV_DATE_FORMATS,
@@ -27,7 +28,7 @@ import {
 import { Label } from "@strictbudget/ui/components/label";
 import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
 import { cn } from "@strictbudget/ui/lib/utils";
-import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, CircleAlert, FileUp, Info } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -35,7 +36,6 @@ import { toast } from "sonner";
 import { accountsQueryOptions } from "@/lib/accounts";
 import { $api } from "@/lib/api";
 import { useBudget } from "@/lib/budget-context";
-import { categoriesQueryOptions } from "@/lib/categories";
 import { todayIso } from "@/lib/dates";
 import {
   type CsvSetup,
@@ -48,8 +48,7 @@ import {
   initialCsvSetup,
   introHidden,
 } from "@/lib/file-import";
-import { invalidateMonths } from "@/lib/months";
-import { payeesQueryOptions, transactionsQueryPrefix } from "@/lib/transactions";
+import { refreshTransactions } from "@/lib/transactions";
 
 interface LoadedFile {
   name: string;
@@ -57,6 +56,10 @@ interface LoadedFile {
   text: string;
 }
 
+/**
+ * The register's File Import: an explainer (unless turned off),
+ * then the file picker, then Import Transactions for the chosen account.
+ */
 export function FileImportButton({ accountId }: { accountId?: string }) {
   const [introOpen, setIntroOpen] = useState(false);
   const [file, setFile] = useState<LoadedFile | null>(null);
@@ -113,8 +116,8 @@ export function FileImportButton({ accountId }: { accountId?: string }) {
 }
 
 /**
- * A file dropped anywhere in the app imports into the open account's register, or with no account
- * picked.
+ * A File Import starts when a file is dropped anywhere in the app: into the open account's
+ * register, or with no account picked.
  */
 export function FileDropImport() {
   const { accountId } = useParams({ strict: false }) as { accountId?: string };
@@ -210,18 +213,87 @@ function ImportTransactionsDialog(props: {
   );
 }
 
-async function refreshAfterImport(queryClient: QueryClient, budgetId: string) {
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: transactionsQueryPrefix }),
-    queryClient.invalidateQueries({ queryKey: accountsQueryOptions(budgetId).queryKey }),
-    queryClient.invalidateQueries({ queryKey: payeesQueryOptions(budgetId).queryKey }),
-    queryClient.invalidateQueries({ queryKey: categoriesQueryOptions(budgetId).queryKey }),
-    queryClient.invalidateQueries({
-      queryKey: ["get", "/v1/budgets/{budgetId}/accounts/{accountId}/import-context"],
-    }),
-    invalidateMonths(queryClient),
-  ]);
+/**
+ * What both Import Transactions dialogs share: the account choice, its import
+ * context (start date, last reconciliation, remembered settings), the "dated before" cutoff and
+ * the import itself, after which everything the new transactions show up in refetches.
+ */
+function useFileImport(initialAccountId: string | undefined) {
+  const { budget } = useBudget();
+  const queryClient = useQueryClient();
+  const accounts = useQuery(accountsQueryOptions(budget.id));
+  const open = (accounts.data?.accounts ?? []).filter((a) => !a.closed);
+  const [accountId, setAccountId] = useState(initialAccountId ?? "");
+  const account = open.find((a) => a.id === accountId);
+  const context = $api.useQuery(
+    "get",
+    "/v1/budgets/{budgetId}/accounts/{accountId}/import-context",
+    { params: { path: { budgetId: budget.id, accountId } } },
+    { enabled: accountId !== "" },
+  );
+  const submit = $api.useMutation("post", "/v1/budgets/{budgetId}/accounts/{accountId}/import");
+  const [result, setResult] = useState<Result | null>(null);
+  const [includeEarly, setIncludeEarly] = useState(false);
+  const cutoff = laterOf(context.data?.startDate ?? null, context.data?.reconciledThrough ?? null);
+
+  /** The file's rows dated before the cutoff, and the ones to import. */
+  function byCutoff(all: readonly ImportRow[]) {
+    if (!account) return { early: [], rows: [] };
+    const early = cutoff ? all.filter((r) => r.date < cutoff) : [];
+    const rows = includeEarly ? [...all] : all.filter((r) => !cutoff || r.date >= cutoff);
+    return { early, rows };
+  }
+
+  async function run(rows: readonly ImportRow[], settings: ImportSettings) {
+    if (!account) return;
+    try {
+      const done = await submit.mutateAsync({
+        params: {
+          path: { budgetId: budget.id, accountId: account.id },
+          query: { today: todayIso() },
+        },
+        body: {
+          transactions: rows.map((r) => ({ ...r, amount: r.amount.toString() })),
+          ...settings,
+        },
+      });
+      await Promise.all([
+        refreshTransactions(queryClient, budget.id),
+        queryClient.invalidateQueries({
+          queryKey: ["get", "/v1/budgets/{budgetId}/accounts/{accountId}/import-context"],
+        }),
+      ]);
+      setResult(resultMessage(rows.length, done.imported, done.matched));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Import failed");
+    }
+  }
+
+  return {
+    accounts: open,
+    accountId,
+    account,
+    /** Another account brings its own remembered settings and start date. */
+    chooseAccount: (id: string) => {
+      setAccountId(id);
+      setIncludeEarly(false);
+    },
+    context: context.data,
+    /** The start date or last reconciliation, whichever is later: rows before it are skipped. */
+    cutoff,
+    includeEarly,
+    setIncludeEarly,
+    byCutoff,
+    run,
+    pending: submit.isPending,
+    result,
+  };
 }
+
+type ImportSettings = Pick<
+  components["schemas"]["ImportTransactions"],
+  "csvSettings" | "statementSettings"
+>;
 
 function ResultDialog({ result, onClose }: { result: Result; onClose: () => void }) {
   return (
@@ -270,27 +342,15 @@ function CsvImportDialog({
   onClose: () => void;
 }) {
   const { budget, formatAmount, formatDate } = useBudget();
-  const queryClient = useQueryClient();
-  const accounts = useQuery(accountsQueryOptions(budget.id));
-  const open = (accounts.data?.accounts ?? []).filter((a) => !a.closed);
-  const [accountId, setAccountId] = useState(initialAccountId ?? "");
-  const account = open.find((a) => a.id === accountId);
-  const context = $api.useQuery(
-    "get",
-    "/v1/budgets/{budgetId}/accounts/{accountId}/import-context",
-    { params: { path: { budgetId: budget.id, accountId } } },
-    { enabled: accountId !== "" },
-  );
-  const submit = $api.useMutation("post", "/v1/budgets/{budgetId}/accounts/{accountId}/import");
-  const [result, setResult] = useState<Result | null>(null);
+  const fileImport = useFileImport(initialAccountId);
+  const { account, context, cutoff, includeEarly, setIncludeEarly, result } = fileImport;
 
   const table = useMemo(() => (file.kind === "csv" ? parseCsvText(file.text) : []), [file]);
   const [setup, setSetup] = useState<CsvSetup | null>(null);
-  // The account's remembered settings arrive with its context; until then, a guess.
-  const current = setup ?? initialCsvSetup(table, context.data?.csvSettings ?? null);
+  // The account's remembered settings arrive with its context; until then, a guess from the file.
+  const current = setup ?? initialCsvSetup(table, context?.csvSettings ?? null);
   const update = (patch: Partial<CsvSetup>) => setSetup({ ...current, ...patch });
   const [remember, setRemember] = useState(true);
-  const [includeEarly, setIncludeEarly] = useState(false);
   const [skippedOpen, setSkippedOpen] = useState(true);
 
   const columns = csvColumnNames(table, current.noHeaderRow);
@@ -311,36 +371,18 @@ function CsvImportDialog({
       ? csvRows(table, current.mapping, current, account.currency, budget.numberFormat)
       : { rows: [], errors: [] };
 
-  const cutoff = laterOf(context.data?.startDate ?? null, context.data?.reconciledThrough ?? null);
-  const early = cutoff ? read.rows.filter((r) => r.date < cutoff) : [];
-  const rows = includeEarly ? read.rows : read.rows.filter((r) => !cutoff || r.date >= cutoff);
+  const { early, rows } = fileImport.byCutoff(read.rows);
   const skipped = read.rows.length - rows.length;
 
   async function runImport() {
-    if (!account) return;
-    try {
-      const settings = {
-        columns,
-        mapping: current.mapping,
-        noHeaderRow: current.noHeaderRow,
-        swapInflowOutflow: current.swapInflowOutflow,
-        dateFormat: current.dateFormat,
-      };
-      const done = await submit.mutateAsync({
-        params: {
-          path: { budgetId: budget.id, accountId: account.id },
-          query: { today: todayIso() },
-        },
-        body: {
-          transactions: rows.map((r) => ({ ...r, amount: r.amount.toString() })),
-          ...(remember ? { csvSettings: settings } : {}),
-        },
-      });
-      await refreshAfterImport(queryClient, budget.id);
-      setResult(resultMessage(rows.length, done.imported, done.matched));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Import failed");
-    }
+    const settings = {
+      columns,
+      mapping: current.mapping,
+      noHeaderRow: current.noHeaderRow,
+      swapInflowOutflow: current.swapInflowOutflow,
+      dateFormat: current.dateFormat,
+    };
+    await fileImport.run(rows, remember ? { csvSettings: settings } : {});
   }
 
   if (result) return <ResultDialog result={result} onClose={onClose} />;
@@ -364,13 +406,11 @@ function CsvImportDialog({
               <strong>{file.name}</strong> will be imported into
             </p>
             <AccountSelect
-              accounts={open}
-              value={accountId}
+              accounts={fileImport.accounts}
+              value={fileImport.accountId}
               onChange={(id) => {
-                // Another account brings its own remembered settings and start date.
-                setAccountId(id);
+                fileImport.chooseAccount(id);
                 setSetup(null);
-                setIncludeEarly(false);
               }}
             />
           </div>
@@ -535,7 +575,10 @@ function CsvImportDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={runImport} disabled={!account || rows.length === 0 || submit.isPending}>
+          <Button
+            onClick={runImport}
+            disabled={!account || rows.length === 0 || fileImport.pending}
+          >
             Import
           </Button>
         </DialogFooter>
@@ -544,7 +587,13 @@ function CsvImportDialog({
   );
 }
 
-/** OFX/QFX or QIF import. A QIF file's unclear dates are asked about as in a CSV. */
+/**
+ * Import Transactions for an OFX/QFX or QIF file: "N
+ * transactions will be imported from CHECKING: ***2345 into", the skip notice on top, the
+ * preview with unsigned amounts, then Import Memos, Swap Payee and Memo, Swap Inflow and
+ * Outflow and Remember setting for this account. A QIF file's unclear dates are asked about
+ * as in a CSV.
+ */
 function StatementImportDialog({
   file,
   initialAccountId,
@@ -555,25 +604,13 @@ function StatementImportDialog({
   onClose: () => void;
 }) {
   const { budget, formatAmount, formatDate } = useBudget();
-  const queryClient = useQueryClient();
-  const accounts = useQuery(accountsQueryOptions(budget.id));
-  const open = (accounts.data?.accounts ?? []).filter((a) => !a.closed);
-  const [accountId, setAccountId] = useState(initialAccountId ?? "");
-  const account = open.find((a) => a.id === accountId);
+  const fileImport = useFileImport(initialAccountId);
+  const { account, context, includeEarly, setIncludeEarly, result } = fileImport;
   const currency = account?.currency ?? budget.currency;
-  const context = $api.useQuery(
-    "get",
-    "/v1/budgets/{budgetId}/accounts/{accountId}/import-context",
-    { params: { path: { budgetId: budget.id, accountId } } },
-    { enabled: accountId !== "" },
-  );
-  const submit = $api.useMutation("post", "/v1/budgets/{budgetId}/accounts/{accountId}/import");
-  const [result, setResult] = useState<Result | null>(null);
   const [options, setOptions] = useState<StatementOptions | null>(null);
-  const current = options ?? context.data?.statementSettings ?? DEFAULT_STATEMENT_OPTIONS;
+  const current = options ?? context?.statementSettings ?? DEFAULT_STATEMENT_OPTIONS;
   const set = (patch: Partial<StatementOptions>) => setOptions({ ...current, ...patch });
   const [remember, setRemember] = useState(true);
-  const [includeEarly, setIncludeEarly] = useState(false);
   const [qifFormat, setQifFormat] = useState<CsvDateFormat | null>(null);
 
   const read = useMemo(() => {
@@ -599,28 +636,10 @@ function StatementImportDialog({
   if (statement && file.kind === "ofx") parsed = ofxRows(statement);
   else if (statement && dateFormat) parsed = qifRows(statement, dateFormat);
   const all = applyStatementOptions(parsed, current);
-  const cutoff = laterOf(context.data?.startDate ?? null, context.data?.reconciledThrough ?? null);
-  const early = account && cutoff ? all.filter((r) => r.date < cutoff) : [];
-  const rows = !account ? [] : includeEarly ? all : all.filter((r) => !cutoff || r.date >= cutoff);
+  const { early, rows } = fileImport.byCutoff(all);
 
   async function runImport() {
-    if (!account) return;
-    try {
-      const done = await submit.mutateAsync({
-        params: {
-          path: { budgetId: budget.id, accountId: account.id },
-          query: { today: todayIso() },
-        },
-        body: {
-          transactions: rows.map((r) => ({ ...r, amount: r.amount.toString() })),
-          ...(remember ? { statementSettings: current } : {}),
-        },
-      });
-      await refreshAfterImport(queryClient, budget.id);
-      setResult(resultMessage(rows.length, done.imported, done.matched));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Import failed");
-    }
+    await fileImport.run(rows, remember ? { statementSettings: current } : {});
   }
 
   if (result) return <ResultDialog result={result} onClose={onClose} />;
@@ -644,7 +663,11 @@ function StatementImportDialog({
                 {rows.length} {rows.length === 1 ? "transaction" : "transactions"} will be imported
                 from <strong>{statement?.source}</strong> into
               </p>
-              <AccountSelect accounts={open} value={accountId} onChange={setAccountId} />
+              <AccountSelect
+                accounts={fileImport.accounts}
+                value={fileImport.accountId}
+                onChange={fileImport.chooseAccount}
+              />
             </div>
             {early.length > 0 && (
               <div className="grid gap-2 rounded-md bg-amber-50 p-3 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
@@ -744,7 +767,10 @@ function StatementImportDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={runImport} disabled={!account || rows.length === 0 || submit.isPending}>
+          <Button
+            onClick={runImport}
+            disabled={!account || rows.length === 0 || fileImport.pending}
+          >
             Import
           </Button>
         </DialogFooter>
@@ -767,6 +793,7 @@ const FIELD_LABELS = {
   inflow: "Inflow",
 } as const;
 
+/** The "The date format of … is unclear" prompt. */
 function DateFormatPrompt({
   fileName,
   first,
@@ -818,6 +845,10 @@ function laterOf(a: string | null, b: string | null) {
   return a > b ? a : b;
 }
 
+/**
+ * The result dialogs: "Import Matched" when nothing new came in, otherwise "Import
+ * Successful", with how many entered transactions were matched.
+ */
 export function resultMessage(sent: number, imported: number, matched = 0): Result {
   if (imported === 0 && sent > 0) {
     return {

@@ -6,7 +6,7 @@ import { budgetCurrencyOf } from "../../lib/base-amount";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { assertNotFuture, latestTransactionDate } from "../../lib/dates";
 import { AppError } from "../../lib/errors";
-import { resolveRate } from "../../lib/fx";
+import { prefetchRates, resolveRate } from "../../lib/fx";
 import {
   accountBalances,
   insertTransaction,
@@ -34,6 +34,8 @@ export const revalueAccountHandler: RouteHandler<typeof revalueAccount, Env> = a
   const { db } = c.var.deps;
   await loadBudgetAccess(c, budgetId, { transaction: ["create"] });
   assertNotFuture(date, latestTransactionDate(c.var.deps, today));
+  // Before the account is locked.
+  await prefetchRates(db, c.var.deps, { budgetId, accountIds: [accountId], dates: [date], today });
   const posted = await db.transaction(async (tx) => {
     const [account] = await tx
       .select()
@@ -81,7 +83,7 @@ export const revalueAccountHandler: RouteHandler<typeof revalueAccount, Env> = a
     return { id, date, baseAmount: delta.toString(), fxRate: rate };
   });
   return c.json(
-    { transaction: posted, account: await accountJson(db, budgetId, accountId, today) },
+    { transaction: posted, account: await accountJson(db, budgetId, accountId, today, c.var.deps) },
     200,
   );
 };

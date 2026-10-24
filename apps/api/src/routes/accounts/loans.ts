@@ -11,15 +11,9 @@ import { and, eq } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { latestTransactionDate } from "../../lib/dates";
 import { AppError } from "../../lib/errors";
-import {
-  type Db,
-  insertTransaction,
-  internalCategoryId,
-  serverToday,
-  transferPayeeId,
-} from "../../lib/ledger";
+import { type Db, insertTransaction, internalCategoryId, transferPayeeId } from "../../lib/ledger";
 import { type LoanState, loanStates, setLoanCharge } from "../../lib/loans";
-import { scheduledRows, writeSchedule } from "../../lib/scheduled";
+import { scheduledRows, userToday, writeSchedule } from "../../lib/scheduled";
 import type { AuthedEnv } from "../../middleware/require-auth";
 import type { AppEnv } from "../../types";
 import { assertSameCurrency, insertOtherSide } from "../transactions/rules";
@@ -72,7 +66,7 @@ async function originalHistory(db: Db, loan: AccountRow) {
   };
 }
 
-/** The loan page's banners: the simulator one is dismissed plan-wide, the paid-off one per loan. */
+/** The loan page's banners: the simulator one is dismissed budget-wide, the paid-off one per loan. */
 function bannersJson(budget: { loanSimulatorBannerDismissed: boolean }, account: AccountRow) {
   return {
     simulatorDismissed: budget.loanSimulatorBannerDismissed,
@@ -174,7 +168,7 @@ function activityJson(state: LoanState) {
 
 export const getLoanActivityHandler: RouteHandler<typeof getLoanActivity, Env> = async (c) => {
   const { budgetId, accountId } = c.req.valid("param");
-  const { today = serverToday() } = c.req.valid("query");
+  const today = userToday(c.var.deps, c.req.valid("query").today);
   const { db } = c.var.deps;
   const { budget } = await loadBudgetAccess(c, budgetId);
   const account = await findLoan(db, budgetId, accountId);
@@ -210,7 +204,8 @@ export const dismissLoanBannerHandler: RouteHandler<typeof dismissLoanBanner, En
 
 export const setLoanChargeHandler: RouteHandler<typeof setLoanChargeRoute, Env> = async (c) => {
   const { budgetId, accountId } = c.req.valid("param");
-  const { month, kind, amount, today } = c.req.valid("json");
+  const { month, kind, amount, today: rawToday } = c.req.valid("json");
+  const today = userToday(c.var.deps, rawToday);
   const { db } = c.var.deps;
   const { budget } = await loadBudgetAccess(c, budgetId, { transaction: ["update"] });
   const account = await findLoan(db, budgetId, accountId);
@@ -229,7 +224,7 @@ export const recordLoanPaymentHandler: RouteHandler<typeof recordLoanPayment, En
   const { budgetId, accountId } = c.req.valid("param");
   const { fromAccountId, amount, date, memo } = c.req.valid("json");
   const query = c.req.valid("query");
-  const today = query.today ?? serverToday();
+  const today = userToday(c.var.deps, query.today);
   const latest = latestTransactionDate(c.var.deps, query.today);
   const { db } = c.var.deps;
   await loadBudgetAccess(c, budgetId, { transaction: ["create"] });
@@ -285,5 +280,5 @@ export const recordLoanPaymentHandler: RouteHandler<typeof recordLoanPayment, En
     });
   });
   // Balances as of the user's today, not the payment's date (which may be back-dated).
-  return c.json(await accountJson(db, budgetId, accountId, today), 201);
+  return c.json(await accountJson(db, budgetId, accountId, today, c.var.deps), 201);
 };

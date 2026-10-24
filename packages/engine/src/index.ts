@@ -33,6 +33,13 @@ export {
   fundedCardSpending,
 } from "./credit";
 export {
+  CARD_COVERAGE,
+  type CardCoverage,
+  type CardHealth,
+  cardHealth,
+  coverAmount,
+} from "./credit-health";
+export {
   assertCurrencyCode,
   CURRENCY_CODES,
   type CurrencyCode,
@@ -296,6 +303,16 @@ export {
   type ScheduleFrequency,
   zScheduleFrequency,
 } from "./schedule";
+export {
+  addActivity,
+  PACE_STATUSES,
+  type Pace,
+  type PaceDay,
+  type PaceInput,
+  type PaceStatus,
+  paceStatus,
+  spendingPace,
+} from "./spending-pace";
 export {
   averageMonthlySpending,
   comparedToAverage,

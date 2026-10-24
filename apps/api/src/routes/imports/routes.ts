@@ -3,6 +3,7 @@ import { CSV_DATE_FORMATS, zMinorUnits } from "@strictbudget/engine";
 import { IsoDate } from "../../lib/dates";
 import { jsonError } from "../../lib/errors";
 import { authSecurity, requireAuth } from "../../middleware/require-auth";
+import { PayeeRuleSnapshotSchema } from "../payees/routes";
 
 const AccountParams = z.object({
   budgetId: z.string().openapi({ param: { name: "budgetId", in: "path" } }),
@@ -239,11 +240,18 @@ export const dontRenameTransaction = createRoute({
   middleware: [requireAuth] as const,
   summary: "Don't Rename as <payee>: back to the imported payee, without the rule",
   description:
-    "The transaction takes its imported payee name again, and its payee loses the renaming " +
-    'rule "Is <imported name>".',
+    "The transaction takes its imported payee name again (and is approved), and its payee loses " +
+    'the renaming rule "Is <imported name>". `undoDontRenameTransaction` puts both back.',
   request: {
     params: BudgetParams.extend({
       transactionId: z.string().openapi({ param: { name: "transactionId", in: "path" } }),
+    }),
+    query: z.object({
+      expectedVersion: z.coerce
+        .number()
+        .int()
+        .optional()
+        .describe("Refuse (409 STALE_VERSION) unless the transaction is still at this `version`"),
     }),
   },
   responses: {
@@ -251,15 +259,95 @@ export const dontRenameTransaction = createRoute({
       description: "Renamed back",
       content: {
         "application/json": {
-          schema: z.object({ payeeId: z.string() }).openapi("DontRenameResult"),
+          schema: z
+            .object({
+              payeeId: z.string().describe("The payee named as imported"),
+              removedRules: z
+                .array(PayeeRuleSnapshotSchema)
+                .describe('The old payee\'s "Is <imported name>" rules, as they were'),
+              version: z.number().int().describe("The transaction's version now"),
+              previousVersions: z
+                .record(z.string(), z.number().int())
+                .describe("The transaction's version just before this change"),
+            })
+            .openapi("DontRenameResult"),
         },
       },
     },
-    400: jsonError("The transaction wasn't imported"),
+    400: jsonError("The transaction wasn't imported, is matched, or is a transfer"),
     401: jsonError("Not signed in"),
     403: jsonError(
       "The caller's role can't change transactions, or the account's email address isn't confirmed",
     ),
     404: jsonError("No such budget or transaction, or the caller isn't a member"),
+    409: jsonError("The transaction changed since `expectedVersion` (`STALE_VERSION`)"),
+  },
+});
+
+export const undoDontRenameTransaction = createRoute({
+  method: "post",
+  path: "/budgets/{budgetId}/transactions/{transactionId}/dont-rename/undo",
+  operationId: "undoDontRenameTransaction",
+  tags: ["Transactions"],
+  security: authSecurity,
+  middleware: [requireAuth] as const,
+  summary: "Undo Don't Rename: the payee, approval and removed rules as they were",
+  description:
+    "Puts the transaction back on `payeeId` with its approval, and brings back the rules Don't " +
+    "Rename removed with their ids, positions and ages, so the same rule wins the next import.",
+  request: {
+    params: BudgetParams.extend({
+      transactionId: z.string().openapi({ param: { name: "transactionId", in: "path" } }),
+    }),
+    query: z.object({
+      expectedVersion: z.coerce
+        .number()
+        .int()
+        .optional()
+        .describe("Refuse (409 STALE_VERSION) unless the transaction is still at this `version`"),
+    }),
+    body: {
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              payeeId: z.string().describe("The payee the transaction had before Don't Rename"),
+              approved: z.boolean().describe("Its approval before Don't Rename"),
+              rules: z
+                .array(PayeeRuleSnapshotSchema)
+                .max(100)
+                .describe("`removedRules` from Don't Rename"),
+            })
+            .openapi("UndoDontRename"),
+        },
+      },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      description: "Put back",
+      content: {
+        "application/json": {
+          schema: z
+            .object({
+              version: z.number().int().describe("The transaction's version now"),
+              previousVersions: z
+                .record(z.string(), z.number().int())
+                .describe("The transaction's version just before this change"),
+            })
+            .openapi("UndoDontRenameResult"),
+        },
+      },
+    },
+    400: jsonError(
+      "The transaction wasn't imported, is matched or a transfer, or the payee or rules don't fit",
+    ),
+    401: jsonError("Not signed in"),
+    403: jsonError(
+      "The caller's role can't change transactions, or the account's email address isn't confirmed",
+    ),
+    404: jsonError("No such budget, transaction or rule, or the caller isn't a member"),
+    409: jsonError("The transaction changed since `expectedVersion` (`STALE_VERSION`)"),
   },
 });

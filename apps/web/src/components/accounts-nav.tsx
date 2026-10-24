@@ -13,7 +13,6 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@strictbudget/ui/components/sidebar";
@@ -38,10 +37,7 @@ import { inCurrency } from "@/lib/money-input";
 import { pictureSrc } from "@/lib/pictures";
 import { AddAccountDialog } from "./add-account-dialog";
 
-/**
- * The sidebar's account list: sections by type with totals, drag to reorder. A starred account
- * shows twice (Starred and its own group); each group has its own order.
- */
+/** A starred account shows twice (Starred and its own group); each group has its own order. */
 export function AccountsNav({ budget }: { budget: Budget }) {
   const queryClient = useQueryClient();
   const accounts = useQuery(accountsQueryOptions(budget.id));
@@ -62,7 +58,6 @@ export function AccountsNav({ budget }: { budget: Budget }) {
     () => new Map((accounts.data?.accounts ?? []).map((a) => [a.id, a])),
     [accounts.data],
   );
-  /** An amount in `currency` (an account's own), the budget's by default. */
   const format = (minorUnits: bigint, currency?: string) =>
     formatAmount(money(minorUnits, inCurrency(budget, currency).currency), budget);
 
@@ -219,7 +214,6 @@ function AccountItem({
   section: string;
   budgetId: string;
   format: (minorUnits: bigint, currency?: string) => string;
-  /** False for a viewer, who can't reorder. */
   reorderable: boolean;
 }) {
   const { ref, handleRef, isDragSource } = useSortable({
@@ -274,19 +268,23 @@ function AccountItem({
             )}
           </span>
           <AccountLogo name={account.name} logo={account.logo} />
-          <span className="truncate">{account.name}</span>
+          <span className="min-w-0 flex-1 truncate">{account.name}</span>
+          {/*
+           * The balance sits in the row rather than in a SidebarMenuBadge: the badge floats over
+           * a fixed 32px of padding, so a wider balance would run into the name. Here the name
+           * gives way and the balance never shrinks. `!` beats the active-item colour so money
+           * owed always reads red.
+           */}
+          <span
+            className={cn(
+              "shrink-0 text-muted-foreground text-xs font-medium tabular-nums group-hover/menu-button:text-sidebar-accent-foreground group-data-active/menu-button:text-sidebar-accent-foreground [[data-sidebar-narrow]_&]:hidden",
+              working < 0n && "text-destructive!",
+            )}
+          >
+            {format(working, account.currency)}
+          </span>
         </Link>
       </SidebarMenuButton>
-      {/* `!` beats the sidebar's active-item colour so money owed always reads red.
-          Plain text, not the badge's recessed keycap. */}
-      <SidebarMenuBadge
-        className={cn(
-          "bg-none tabular-nums shadow-none dark:bg-none dark:shadow-none [[data-sidebar-narrow]_&]:hidden",
-          working < 0n && "text-destructive!",
-        )}
-      >
-        {format(working, account.currency)}
-      </SidebarMenuBadge>
     </SidebarMenuItem>
   );
 }

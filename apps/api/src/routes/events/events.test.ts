@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   createBudget,
@@ -104,6 +105,31 @@ describe("live updates", () => {
     expect(changes(text).filter((c) => c.table === "month_note")).toEqual([]);
     expect(ended).toBe(true);
     expect(Date.now() - started).toBeLessThan(3000);
+  });
+
+  it("doesn't send a change heard before the removal's own notification", async () => {
+    const owner = await signUp(app, { name: "Owner" });
+    const budget = await createBudget(app, owner.cookie);
+    const pat = await shareBudget(app, owner.cookie, budget.id);
+    const open = await openStream(await send("GET", `/v1/budgets/${budget.id}/events`, pat.cookie));
+    // Remove the member without the audit trigger's notification, then notify a later change:
+    // the stream must end on the change itself.
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`set local session_replication_role = replica`);
+      await tx.execute(
+        sql`delete from budget_member where budget_id = ${budget.id} and user_id = ${pat.userId}`,
+      );
+    });
+    const payload = JSON.stringify({
+      budgetId: budget.id,
+      table: "month_note",
+      actorId: null,
+      clientId: null,
+    });
+    await db.execute(sql`select pg_notify('budget_change', ${payload})`);
+    const { text, ended } = await open.until(() => false, 4000);
+    expect(changes(text)).toEqual([]);
+    expect(ended).toBe(true);
   });
 
   it("ends every member's stream when the budget is deleted", async () => {

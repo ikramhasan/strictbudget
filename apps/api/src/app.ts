@@ -116,7 +116,12 @@ export function createApp(deps: AppDeps) {
     if (!verified.ok) return verified.response;
     const { principal } = verified;
     return mcpServer.fetch(c.req.raw, {
-      authInfo: { token: "", clientId: principal.agent.id, scopes: [], extra: { principal } },
+      authInfo: {
+        token: "",
+        clientId: principal.agent.id,
+        scopes: [],
+        extra: { principal, compact: c.req.query("tools") === "compact" },
+      },
     });
   });
 

@@ -1,6 +1,7 @@
 import type { RouteHandler } from "@hono/zod-openapi";
 import { budgetAccount } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
+import type { Context } from "hono";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { assertNotFuture, latestTransactionDate } from "../../lib/dates";
 import {
@@ -8,8 +9,11 @@ import {
   importCutoff,
   importTransactions as importRows,
   matchTransactions as matchRows,
+  undoDontRename,
   unmatchTransaction as unmatchRow,
 } from "../../lib/file-import";
+import type { Tx } from "../../lib/ledger";
+import { assertTransactionVersions, transactionVersions } from "../../lib/versions";
 import type { AuthedEnv } from "../../middleware/require-auth";
 import type { AppEnv } from "../../types";
 import { assertOpen, findAccount } from "../transactions/rules";
@@ -18,6 +22,7 @@ import type {
   getImportContext,
   importTransactions,
   matchTransactions,
+  undoDontRenameTransaction,
   unmatchTransaction,
 } from "./routes";
 
@@ -102,9 +107,54 @@ export const unmatchTransactionHandler: RouteHandler<typeof unmatchTransaction, 
   return c.json(result, 200);
 };
 
+/** Runs a Don't Rename step, checking `expectedVersion` and reporting the row's versions. */
+async function versioned<T>(
+  c: Context<Env>,
+  budgetId: string,
+  transactionId: string,
+  expectedVersion: number | undefined,
+  write: (tx: Tx) => Promise<T>,
+) {
+  return c.var.deps.db.transaction(async (tx) => {
+    // Undo and redo send the version they expect, as other edits do.
+    if (expectedVersion !== undefined) {
+      const expected = { [transactionId]: expectedVersion };
+      await assertTransactionVersions(tx, budgetId, expected, c.var.user.id);
+    }
+    const previousVersions = await transactionVersions(tx, [transactionId]);
+    const result = await write(tx);
+    const versions = await transactionVersions(tx, [transactionId]);
+    return { result, previousVersions, version: versions[transactionId] as number };
+  });
+}
+
 export const dontRenameHandler: RouteHandler<typeof dontRenameTransaction, Env> = async (c) => {
   const { budgetId, transactionId } = c.req.valid("param");
+  const { expectedVersion } = c.req.valid("query");
   await loadBudgetAccess(c, budgetId, { transaction: ["update"] });
-  const payeeId = await c.var.deps.db.transaction((tx) => dontRename(tx, budgetId, transactionId));
-  return c.json({ payeeId }, 200);
+  const { result, ...versions } = await versioned(
+    c,
+    budgetId,
+    transactionId,
+    expectedVersion,
+    (tx) => dontRename(tx, budgetId, transactionId),
+  );
+  return c.json({ ...result, ...versions }, 200);
+};
+
+export const undoDontRenameHandler: RouteHandler<typeof undoDontRenameTransaction, Env> = async (
+  c,
+) => {
+  const { budgetId, transactionId } = c.req.valid("param");
+  const { expectedVersion } = c.req.valid("query");
+  const body = c.req.valid("json");
+  await loadBudgetAccess(c, budgetId, { transaction: ["update"] });
+  const { previousVersions, version } = await versioned(
+    c,
+    budgetId,
+    transactionId,
+    expectedVersion,
+    (tx) => undoDontRename(tx, budgetId, transactionId, body),
+  );
+  return c.json({ previousVersions, version }, 200);
 };

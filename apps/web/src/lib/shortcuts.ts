@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { type HotkeyCallback, type Options, useHotkeys } from "react-hotkeys-hook";
+import { useCommand } from "./commands";
 import { useShortcutsEnabled } from "./preferences";
 
-/** The sections of the Keyboard Shortcuts dialog, in order. */
 export const SHORTCUT_SECTIONS = [
   "Universal",
   "Plan Actions",
@@ -26,6 +26,11 @@ export interface ShortcutDef {
    * between layouts ("?" and ">").
    */
   useKey?: boolean;
+  /**
+   * The command palette's name for it, offered there while a screen has it enabled; absent for
+   * the ones that only make sense as keys (arrows, select all).
+   */
+  command?: string;
 }
 
 /**
@@ -39,6 +44,13 @@ export const SHORTCUTS = {
     caps: ["?"],
     keys: "?",
     useKey: true,
+    command: "Keyboard shortcuts",
+  },
+  palette: {
+    label: "Open command palette",
+    section: "Universal",
+    caps: ["mod", "K"],
+    keys: "mod+k",
   },
   sidebar: {
     label: "Expand/Collapse Sidebar",
@@ -47,6 +59,7 @@ export const SHORTCUTS = {
     // Shift+. is ">" on most layouts; the typed character is what's matched.
     keys: ">",
     useKey: true,
+    command: "Expand/collapse sidebar",
   },
   selectAll: { label: "Select All", section: "Universal", caps: ["mod", "A"], keys: "mod+a" },
   deselectAll: { label: "Deselect All", section: "Universal", caps: ["escape"], keys: "escape" },
@@ -59,6 +72,7 @@ export const SHORTCUTS = {
     section: "Plan Actions",
     caps: ["shift", "Z"],
     keys: "shift+z",
+    command: "Snooze or wake selected targets",
   },
   collapseGroups: {
     label: "Collapse/expand groups",
@@ -84,20 +98,58 @@ export const SHORTCUTS = {
     section: "Account Actions",
     caps: ["shift", "N"],
     keys: "shift+n",
+    command: "Add transaction",
   },
-  approve: { label: "Approve", section: "Account Actions", caps: ["A"], keys: "a" },
+  approve: {
+    label: "Approve",
+    section: "Account Actions",
+    caps: ["A"],
+    keys: "a",
+    command: "Approve selected",
+  },
   approveAll: {
     label: "Approve all transactions",
     section: "Account Actions",
     caps: ["shift", "L"],
     keys: "shift+l",
+    command: "Approve all transactions",
   },
-  reject: { label: "Reject", section: "Account Actions", caps: ["shift", "R"], keys: "shift+r" },
-  categorize: { label: "Categorize", section: "Account Actions", caps: ["K"], keys: "k" },
-  split: { label: "Split", section: "Account Actions", caps: ["S"], keys: "s" },
-  enterNow: { label: "Enter Now", section: "Account Actions", caps: ["E"], keys: "e" },
-  match: { label: "Match", section: "Account Actions", caps: ["M"], keys: "m" },
-  unmatch: { label: "Unmatch", section: "Account Actions", caps: ["shift", "U"], keys: "shift+u" },
+  reject: {
+    label: "Reject",
+    section: "Account Actions",
+    caps: ["shift", "R"],
+    keys: "shift+r",
+    command: "Reject selected",
+  },
+  categorize: {
+    label: "Categorize",
+    section: "Account Actions",
+    caps: ["K"],
+    keys: "k",
+    command: "Categorize selected",
+  },
+  split: {
+    label: "Split",
+    section: "Account Actions",
+    caps: ["S"],
+    keys: "s",
+    command: "Split transaction",
+  },
+  enterNow: {
+    label: "Enter Now",
+    section: "Account Actions",
+    caps: ["E"],
+    keys: "e",
+    command: "Enter selected now",
+  },
+  match: { label: "Match", section: "Account Actions", caps: ["M"], keys: "m", command: "Match" },
+  unmatch: {
+    label: "Unmatch",
+    section: "Account Actions",
+    caps: ["shift", "U"],
+    keys: "shift+u",
+    command: "Unmatch",
+  },
   toggleCleared: {
     label: "Toggle cleared state",
     section: "Account Actions",
@@ -109,18 +161,21 @@ export const SHORTCUTS = {
     section: "Account Actions",
     caps: ["shift", "D"],
     keys: "shift+d",
+    command: "Duplicate selected",
   },
   flag: {
     label: "Flag",
     section: "Account Actions",
     caps: ["shift", "F", "then", "0‑6"],
     keys: "shift+f",
+    command: "Flag selected",
   },
   makeRepeating: {
     label: "Make repeating",
     section: "Account Actions",
     caps: ["shift", "T"],
     keys: "shift+t",
+    command: "Make repeating",
   },
   // A Mac keyboard's "delete" key is Backspace.
   delete: {
@@ -128,12 +183,14 @@ export const SHORTCUTS = {
     section: "Account Actions",
     caps: ["delete"],
     keys: "delete, backspace",
+    command: "Delete selected",
   },
   reconcile: {
     label: "Reconcile",
     section: "Account Actions",
     caps: ["shift", "E"],
     keys: "shift+e",
+    command: "Reconcile account",
   },
   search: {
     label: "Focus on the search bar",
@@ -220,9 +277,14 @@ export interface ShortcutOptions {
   keepDefault?: boolean;
 }
 
+/** What a palette command hands a shortcut's callback: no key was pressed. */
+const FROM_PALETTE: Parameters<HotkeyCallback>[1] = { hotkey: "", keys: [] };
+
 /**
- * Every shortcut honours the account's "Enable keyboard shortcuts" setting, skips text fields,
- * dialogs and menus, and prevents the browser's default for the key.
+ * Binds a shortcut. Every shortcut honours the account's "Enable keyboard shortcuts"
+ * setting, skips text fields, dialogs and menus, and prevents the browser's default for the key.
+ * One with a `command` name is offered in the command palette too while `enabled` (whatever that
+ * setting says: the palette isn't a shortcut).
  */
 export function useShortcut(
   id: BoundShortcutId,
@@ -256,6 +318,13 @@ export function useShortcut(
   // The latest callback runs without rebinding the listener on every render.
   const latest = useRef(callback);
   latest.current = callback;
+  useCommand({
+    label: def.command ?? "",
+    caps: def.caps,
+    group: def.section === "Universal" ? "general" : "screen",
+    run: () => latest.current(new KeyboardEvent("keydown"), FROM_PALETTE),
+    enabled: enabled && def.command !== undefined,
+  });
   return useHotkeys(def.keys ?? "", (event, hotkey) => latest.current(event, hotkey), options, [
     on,
     enabled,

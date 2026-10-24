@@ -99,6 +99,7 @@ export function CategoryMovesButton({
                     userId={move.userId}
                     userName={move.userName}
                     avatarColor={move.avatarColor}
+                    removed={move.removed}
                     picture={move.picture}
                     currentUserId={context.currentUserId}
                   />

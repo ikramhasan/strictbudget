@@ -30,6 +30,13 @@ import { timestamps } from "./columns";
 export const INTERNAL_CATEGORY_KINDS = ["ready_to_assign", "uncategorized"] as const;
 export type InternalCategoryKind = (typeof INTERNAL_CATEGORY_KINDS)[number];
 
+/**
+ * A category kept in or out of spending pace whatever the automatic rule says (null follows it:
+ * bills and lump sums out, the rest in).
+ */
+export const PACE_SETTINGS = ["include", "exclude"] as const;
+export type PaceSetting = (typeof PACE_SETTINGS)[number];
+
 /** Groups the app manages itself. */
 export const CATEGORY_GROUP_KINDS = ["credit_card_payments"] as const;
 export type CategoryGroupKind = (typeof CATEGORY_GROUP_KINDS)[number];
@@ -82,6 +89,8 @@ export const category = pgTable(
     linkedAccountId: text()
       .unique()
       .references(() => budgetAccount.id, { onDelete: "cascade" }),
+    /** Spending pace: in or out whatever the automatic rule says; null follows it. */
+    pace: text({ enum: PACE_SETTINGS }),
     ...timestamps,
   },
   (t) => [
@@ -123,8 +132,8 @@ export const categoryAssignment = pgTable(
 );
 
 /**
- * Recent Moves: every change to assigned money. From Ready to Assign (its internal
- * category) to a category is "Assigned", back to it "Removed", between two categories "Moved".
+ * "Recent Moves": every change to assigned money. From Ready to Assign (its internal category) to
+ * a category is "Assigned", back to it "Removed", between two categories "Moved".
  */
 export const moneyMove = pgTable(
   "money_move",
@@ -139,19 +148,19 @@ export const moneyMove = pgTable(
     fromCategoryId: text().references(() => category.id, { onDelete: "set null" }),
     toCategoryId: text().references(() => category.id, { onDelete: "set null" }),
     /**
-     * The name of a deleted category on either side (such moves show as "deleted category
-     * <name>"); null while the category exists.
+     * The name of a deleted category on either side (shown as "deleted category <name>"); null
+     * while the category exists.
      */
     fromCategoryName: text(),
     toCategoryName: text(),
     /** Logged by deleting a category (shown with a trash icon, under "Moved"). */
     deletion: boolean().notNull().default(false),
     /**
-     * Shared by the moves of one Auto-Assign (grouped as "N categories"); null for every other
-     * move.
+     * Shared by the moves of one Auto-Assign (grouped under a lightning icon as "N categories");
+     * null for every other move.
      */
     autoAssignBatchId: text(),
-    /** The Auto-Assign option behind the batch. */
+    /** The Auto-Assign option behind the batch ("Method: Assigned Last Month"). */
     autoAssignMethod: text({ enum: AUTO_ASSIGN_OPTIONS }),
     /** First day of the month the money moved in, YYYY-MM-01. */
     month: date({ mode: "string" }).notNull(),
@@ -205,7 +214,8 @@ export const categoryTarget = pgTable(
 );
 
 /**
- * A month note: one per budget and month, not carried to other months.
+ * A month note ("Enter a note…" under the month name): one per budget and month, not carried to
+ * other months.
  */
 export const monthNote = pgTable(
   "month_note",
@@ -223,7 +233,7 @@ export const monthNote = pgTable(
 );
 
 /**
- * Preset views that Manage Views can reorder (All and Overspent stay first and fixed), in their
+ * The preset views Manage Views can reorder (All and Overspent stay first and fixed), in their
  * default order.
  */
 export const PRESET_BUDGET_VIEWS = ["underfunded", "overfunded", "available", "snoozed"] as const;
@@ -233,8 +243,8 @@ export const MAX_CUSTOM_VIEWS = 12;
 
 /**
  * A custom view: a named set of categories, shared by everyone on the budget. `categoryIds` keeps
- * hidden categories (they come back when unhidden); ids of
- * deleted categories are dropped when read. Names are unique per budget, ignoring case.
+ * hidden categories (they come back when unhidden); ids of deleted categories are dropped when
+ * read. Names are unique per budget, ignoring case.
  */
 export const budgetView = pgTable(
   "budget_view",

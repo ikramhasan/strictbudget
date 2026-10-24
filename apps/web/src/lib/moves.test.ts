@@ -18,6 +18,7 @@ const move = (over: Partial<MoneyMove>): MoneyMove => ({
   userName: "ihni7",
   memberRole: "owner",
   avatarColor: 1,
+  removed: false,
   ...over,
 });
 
@@ -36,8 +37,8 @@ describe("Recent Moves member filter", () => {
 
   it("adds someone who left only if they made a move, and Inactive members for deleted users", () => {
     const moves = [
-      move({ userId: "sam", userName: "Sam", memberRole: null, avatarColor: null }),
-      move({ userId: null, userName: null, memberRole: null, avatarColor: null }),
+      move({ userId: "sam", userName: "Sam", memberRole: null, avatarColor: null, removed: true }),
+      move({ userId: null, userName: null, memberRole: null, avatarColor: null, removed: true }),
     ];
     expect(memberFilterOptions(moves, members)).toEqual([
       { value: "owner", label: "ihni7" },

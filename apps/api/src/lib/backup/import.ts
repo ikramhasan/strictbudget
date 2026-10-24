@@ -178,6 +178,7 @@ export async function importBackup(tx: Tx, doc: Backup, budgetId: string): Promi
       sortOrder: c.sortOrder,
       hidden: c.hidden,
       linkedAccountId: accounts.ref(c.linkedAccountId),
+      pace: c.pace ?? null,
     });
   }
   await insertChunks(tx, category, listed);

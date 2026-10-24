@@ -10,6 +10,7 @@ import {
   char,
   date,
   index,
+  integer,
   pgTable,
   primaryKey,
   text,
@@ -96,6 +97,25 @@ export const budgetMember = pgTable(
     uniqueIndex("budget_member_budget_user_idx").on(t.budgetId, t.userId),
     index("budget_member_user_id_idx").on(t.userId),
   ],
+);
+
+/**
+ * The avatar colour (1-6) a member had when they left or were removed, so their past moves and
+ * changes keep it. Deleted with the member's user, and when they rejoin.
+ */
+export const budgetFormerMember = pgTable(
+  "budget_former_member",
+  {
+    budgetId: text()
+      .notNull()
+      .references(() => budget.id, { onDelete: "cascade" }),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    avatarColor: integer().notNull(),
+    removedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.budgetId, t.userId] })],
 );
 
 export const INVITATION_STATUSES = ["pending", "accepted", "canceled"] as const;

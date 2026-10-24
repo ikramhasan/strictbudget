@@ -66,7 +66,8 @@ async function events(
         ? {
             userId: r.actorUserId,
             name: r.actorName,
-            avatarColor: colors.get(r.actorUserId) ?? null,
+            avatarColor: colors.get(r.actorUserId)?.color ?? null,
+            removed: colors.get(r.actorUserId)?.removed ?? true,
             picture: r.actorPicture,
             agent: (r.actorAgentId && agents.get(r.actorAgentId)) || null,
           }

@@ -50,7 +50,11 @@ function Report() {
   const { budget } = useBudget();
   const state = useReportState(search, "last_12_months");
   const update = (patch: Partial<Search>) =>
-    navigate({ search: (prev: Search) => ({ ...prev, ...patch }), replace: true });
+    navigate({
+      search: (prev: Search) => ({ ...prev, ...patch }),
+      replace: true,
+      resetScroll: false,
+    });
   const query = useQuery(
     netWorthOptions({ budgetId: state.budgetId, range: state.range, accounts: search.accounts }),
   );

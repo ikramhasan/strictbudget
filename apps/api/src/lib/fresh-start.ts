@@ -23,8 +23,8 @@ type BudgetRow = typeof budget.$inferSelect;
 
 /**
  * Each payee's Categorization setting, and its auto-categorization default (the transactions it
- * came from stay behind, so the copy carries it). An "Always use my choice" payee keeps its chosen
- * category, mapped to the new budget's category.
+ * came from stay behind, so the copy carries it). An "Always use my choice" payee keeps the
+ * chosen category, mapped to the new budget's category.
  */
 async function copyPayeeCategories(
   tx: Tx,
@@ -71,11 +71,11 @@ async function copyPayeeCategories(
 export const ARCHIVED_STAMP = "(Archived on ";
 
 /**
- * Copies the old budget's setup into the freshly created `newBudgetId`: partners, category groups
- * and categories (order, hidden flags, notes, targets), payees and their renaming rules, flag
- * names, accounts (with their transfer payees), each starting at $0 with a $0 Starting Balance on
- * `date` for the user to update, and scheduled transactions, unchanged (the old budget keeps them
- * too). No transactions come along. Then archives the old budget.
+ * Copies the old budget's setup into the freshly created `newBudgetId`: partners, category
+ * groups and categories (order, hidden flags, notes, targets, spending pace settings), payees
+ * and their renaming rules, flag names, and accounts (with their transfer payees), each starting
+ * at $0 with a $0 Starting Balance on `date` for the user to update, and scheduled transactions,
+ * unchanged. No transactions come along. Then archives the old budget.
  */
 export async function copyIntoFreshStart(
   tx: Tx,
@@ -240,6 +240,7 @@ export async function copyIntoFreshStart(
       sortOrder: c.sortOrder,
       hidden: c.hidden,
       linkedAccountId: c.linkedAccountId ? (accountIds.get(c.linkedAccountId) ?? null) : null,
+      pace: c.pace,
     });
     const target = targets.get(c.id);
     if (target) {
@@ -263,8 +264,7 @@ export async function copyIntoFreshStart(
     }
   }
 
-  // Loans keep their paired category and their current terms (rate, payment and escrow, keyed by
-  // the fresh start's month).
+  // Loans keep their paired category and their current terms, keyed by the fresh start's month.
   for (const a of accounts) {
     const id = accountIds.get(a.id);
     if (!id || accountFamily(a.type) !== "loan") continue;

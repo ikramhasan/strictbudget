@@ -34,7 +34,8 @@ import { and, asc, desc, eq, gt, inArray, lt, or, type SQL } from "drizzle-orm";
 import type { Context } from "hono";
 import { stream } from "hono/streaming";
 import { loadBudgetAccess } from "../../lib/budget-access";
-import { type Db, serverToday } from "../../lib/ledger";
+import type { Db } from "../../lib/ledger";
+import { userToday } from "../../lib/scheduled";
 import type { AuthedEnv } from "../../middleware/require-auth";
 import type { AppEnv } from "../../types";
 import { budgetMonthJson } from "../months/handlers";
@@ -77,7 +78,7 @@ const amountCell = (budget: BudgetRow, amount: bigint, currency: CurrencyCode) =
 
 export const exportPlanHandler: RouteHandler<typeof exportPlan, Env> = async (c) => {
   const { budgetId } = c.req.valid("param");
-  const today = c.req.valid("query").today ?? serverToday();
+  const today = userToday(c.var.deps, c.req.valid("query").today);
   const { db } = c.var.deps;
   const { budget } = await loadBudgetAccess(c, budgetId);
 

@@ -105,7 +105,7 @@ function Report() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const update = (patch: Partial<TrendsSearch>) =>
-    void navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true });
+    void navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true, resetScroll: false });
   const state = useReportState(search, "last_3_months");
   const { budget, formatAmount, formatDate } = useBudget();
   const queryClient = useQueryClient();

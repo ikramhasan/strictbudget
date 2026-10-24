@@ -85,6 +85,7 @@ const readers: { [S in Section]: Reader<S> } = {
           hidden: category.hidden,
           internalKind: category.internalKind,
           linkedAccountId: category.linkedAccountId,
+          pace: category.pace,
         })
         .from(category)
         .where(eq(category.budgetId, budgetId))

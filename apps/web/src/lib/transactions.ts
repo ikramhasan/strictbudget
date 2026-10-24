@@ -10,10 +10,13 @@ import {
   roundRate,
   type ScheduleFrequency,
 } from "@strictbudget/engine";
+import type { QueryClient } from "@tanstack/react-query";
+import { accountsQueryOptions } from "./accounts";
 import { $api } from "./api";
-import type { CategoryList } from "./categories";
+import { type CategoryList, categoriesQueryOptions } from "./categories";
 import type { FlagColor } from "./flags";
 import { inCurrency, type MoneySettings, parseMoneyInput, toMoneyInput } from "./money-input";
+import { invalidateMonths } from "./months";
 
 export type Transaction = components["schemas"]["Transaction"];
 export type SubTransaction = components["schemas"]["SubTransaction"];
@@ -42,6 +45,30 @@ export const REGISTER_PAGE_SIZE = 100;
 
 /** Prefix of every register query (any budget, account, filter or sort). */
 export const transactionsQueryPrefix = ["register"] as const;
+
+/**
+ * Prefix of every Scheduled Transactions query (any budget, account or filter). Kept here, not in
+ * `scheduled.ts`, so `refreshTransactions` needn't import that module, which imports this one.
+ */
+export const scheduledQueryPrefix = ["scheduled"] as const;
+
+/**
+ * Refetches everything a change to transactions shows up in: the registers, scheduled rows,
+ * account balances, payees, categories, months and the selection's count and total.
+ */
+export async function refreshTransactions(queryClient: QueryClient, budgetId: string) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: transactionsQueryPrefix }),
+    queryClient.invalidateQueries({ queryKey: scheduledQueryPrefix }),
+    queryClient.invalidateQueries({ queryKey: accountsQueryOptions(budgetId).queryKey }),
+    queryClient.invalidateQueries({ queryKey: payeesQueryOptions(budgetId).queryKey }),
+    queryClient.invalidateQueries({ queryKey: categoriesQueryOptions(budgetId).queryKey }),
+    invalidateMonths(queryClient),
+    queryClient.invalidateQueries({
+      queryKey: ["post", "/v1/budgets/{budgetId}/transactions/selection"],
+    }),
+  ]);
+}
 
 export const payeesQueryOptions = (budgetId: string) =>
   $api.queryOptions("get", "/v1/budgets/{budgetId}/payees", {
@@ -85,15 +112,16 @@ export function transferLabel(accountName: string) {
 /** Which way money moves for the account being edited; null before an amount is typed. */
 export type TransferDirection = "in" | "out" | null;
 
+/** An account on the other side of a transfer. */
 interface TransferAccount {
   name: string;
   type: AccountType;
 }
 
 /**
- * Whether money moving from `from` to `to` is a payment: into a loan, or into a credit account from
- * a cash or asset account. Money between two cards, into a cash account, or from a liability is a
- * transfer.
+ * Whether money moving from `from` to `to` is called a payment: into a loan, or into a credit
+ * account from a cash or asset account. Money between two
+ * cards, into a cash account, or from a liability is a transfer.
  */
 function isPayment(from: AccountType, to: AccountType) {
   const family = accountFamily(to);
@@ -102,8 +130,9 @@ function isPayment(from: AccountType, to: AccountType) {
 
 /**
  * How the payee list names a transfer to or from `other` while editing in an `own` account:
- * "Payment from Brac" / "Transfer from Card B" for an inflow, "Payment to Card A" / "Transfer to
- * Savings" for an outflow, "To/From X" before an amount is typed. A loan always reads "Payment: X".
+ * "Payment from Brac" / "Transfer from Card B" for an inflow, "Payment to Card A" /
+ * "Transfer to Savings" for an outflow, "To/From X" before an amount is typed. A loan always reads
+ * "Payment: X".
  */
 export function transferChoiceLabel(
   own: AccountType,
@@ -125,8 +154,9 @@ export function directionOf(amount: bigint): TransferDirection {
 }
 
 /**
- * How a register row names its transfer payee: "Payment: X" on both sides of a payment
- * (`isPayment`), "Transfer: X" otherwise. The stored payee stays "Transfer : X".
+ * How a register row names its transfer payee (every register and All Accounts): "Payment: X" on
+ * both sides of a payment (`isPayment`), "Transfer: X" otherwise. The stored payee stays
+ * "Transfer : X".
  */
 export function transferRowLabel(own: AccountType, other: TransferAccount, amount: bigint) {
   const payment = amount > 0n ? isPayment(other.type, own) : isPayment(own, other.type);
@@ -134,8 +164,9 @@ export function transferRowLabel(own: AccountType, other: TransferAccount, amoun
 }
 
 /**
- * A transfer between a credit and a cash account shows the card's payment category on both sides,
- * whichever way the money goes (a payment or a cash advance). Returns the card, or null.
+ * A transfer between a credit and a cash account shows the card's payment category on both
+ * sides, whichever way the money goes (on a payment and on a cash advance). Returns the card, or
+ * null.
  */
 export function paymentCategoryCard<A extends { type: AccountType }>(own: A, other: A): A | null {
   const pair = [own, other];
@@ -176,6 +207,7 @@ export interface Draft {
   feeCategoryId?: string | null;
 }
 
+/** One line of a split, as typed. */
 export interface LineDraft {
   /** Stable React key; new lines get a local one. */
   key: string;
@@ -345,9 +377,9 @@ function sides(amount: bigint, settings: MoneySettings): Pick<LineDraft, "outflo
 }
 
 /**
- * A split whose lines don't add up to its total, for the "Something Doesn't Add Up" prompt: the
- * total, what the lines add up to and what's unassigned (total minus lines), all signed. Null when
- * it adds up or an amount can't be read.
+ * A split whose lines don't add up to its total, for the "Something Doesn't Add Up" prompt:
+ * the total, what the lines add up to and what's unassigned (total minus lines), all signed.
+ * Null when it adds up or an amount can't be read.
  */
 export function splitMismatch(draft: Draft, settings: MoneySettings) {
   if (!draft.lines) return null;

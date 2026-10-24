@@ -75,6 +75,9 @@ async function richBudget() {
   const [groceries, transport] = groups.find((g) => g.name === "Needs")?.categories ?? [];
   if (!rent || !phone || !power || !groceries || !transport) throw new Error("categories missing");
   await send("PATCH", `${base}/categories/${power.id}`, cookie, { hidden: true });
+  await send("PUT", `${base}/reports/spending-pace/categories/${rent.id}`, cookie, {
+    pace: "include",
+  });
   const assign = (categoryId: string, month: string, assigned: string) =>
     ok(
       send("PUT", `${base}/months/${month}/categories/${categoryId}`, cookie, {
@@ -284,7 +287,15 @@ describe("budget backup", () => {
     expect(before.length).toBeGreaterThan(3);
     expect(after).toEqual(remap(before, pairs));
 
-    // Accounts, balances and the register too.
+    const paceSettings = async (b: string) =>
+      (
+        await ok<{ categories: { name: string; setting: string | null }[] }>(
+          send("GET", `${b}/reports/spending-pace?today=${TODAY}`, cookie),
+        )
+      ).categories.map((c) => [c.name, c.setting]);
+    expect(await paceSettings(newBase)).toEqual(await paceSettings(base));
+    expect(await paceSettings(newBase)).toContainEqual(["🏠 Rent/Mortgage", "include"]);
+
     const accounts = async (b: string) =>
       (await ok<{ accounts: unknown[] }>(send("GET", `${b}/accounts?today=${TODAY}`, cookie)))
         .accounts;

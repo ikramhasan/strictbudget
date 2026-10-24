@@ -10,8 +10,7 @@ import {
 import { ageOfMoneyFlows } from "../../lib/age-of-money";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { jsonError } from "../../lib/errors";
-import { serverToday } from "../../lib/ledger";
-import { enterDueScheduled, entryDate } from "../../lib/scheduled";
+import { userToday as clampedToday, enterDueScheduled, entryDate } from "../../lib/scheduled";
 import { type AuthedEnv, authSecurity, requireAuth } from "../../middleware/require-auth";
 import type { AppEnv } from "../../types";
 
@@ -80,7 +79,7 @@ export const getAgeOfMoneyHandler: RouteHandler<typeof getAgeOfMoney, AppEnv & A
   const { today: userToday } = c.req.valid("query");
   const deps = c.var.deps;
   await loadBudgetAccess(c, budgetId);
-  const today = userToday ?? serverToday();
+  const today = clampedToday(deps, userToday);
   if (userToday) await enterDueScheduled(deps.db, deps, budgetId, entryDate(deps, userToday));
   const flows = await ageOfMoneyFlows(deps.db, budgetId, today);
   const ages = outflowAges(flows);

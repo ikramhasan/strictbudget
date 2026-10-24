@@ -32,6 +32,25 @@ import { DebtTargetEditor } from "./debt-target-editor";
 import { DateField } from "./register-fields";
 
 type Format = (minorUnits: string) => string;
+
+/**
+ * Whether a payment category shows its alert in place of a target: while no target applies or
+ * the category is red, outside past months. A viewer's inspector follows the same rule.
+ */
+export function paymentAlertShows({
+  target,
+  need,
+  overpaid,
+  past,
+}: {
+  target: CategoryTarget | null;
+  need: TargetNeed | null;
+  overpaid: boolean;
+  past: boolean;
+}) {
+  return !past && (!target || !need || overpaid);
+}
+/** Formatting, parsing and input text for amounts in one currency. */
 export interface MoneyIO {
   format: Format;
   parse: (text: string) => bigint | string;
@@ -61,6 +80,7 @@ const CADENCES: { value: Cadence; label: string }[] = [
   { value: "custom", label: "Custom" },
 ];
 
+/** Behaviour choices and their help, per cadence. */
 const CHOICES = {
   set_aside: { use: "Use for: bills, subscriptions, saving over time" },
   refill: { use: "Use for: gasoline, fun money, dining out" },
@@ -78,11 +98,13 @@ function choiceLabel(cadence: Cadence, behavior: Behavior, amount: string) {
 }
 
 /**
- * `need` is null before the target's start month (and after a one-time target's due month), which
- * shows the invitation to create one.
+ * The inspector's Target section: what the target asks for this month and how far along it is, or
+ * an invitation to create one. `need` is null before the target's start month (and after a one-time
+ * target's due month), which shows the invitation too.
  *
  * A credit card's payment category (`payment`) takes the two payment targets instead. While none
- * applies, or while the category is red, the payment alert shows in its place.
+ * applies, or while the category is red, the payment alert shows in its place, with "Create a Debt
+ * Payoff Target".
  */
 export function TargetSection({
   name,
@@ -112,7 +134,7 @@ export function TargetSection({
   onDelete: () => Promise<boolean>;
   /** Assigns what's still to go this month; undefined when the month can't take money. */
   onAssign?: (amount: bigint) => Promise<void>;
-  /** Undefined outside the current month: only the current month can be snoozed. */
+  /** Snoozes or wakes the target; undefined outside the current month (only it can be snoozed). */
   onSnooze?: (snoozed: boolean) => Promise<void>;
   /** Outside the current month the snooze switch still shows, disabled. */
   snoozeLocked?: boolean;
@@ -129,7 +151,10 @@ export function TargetSection({
     past: boolean;
     alert: (createTarget: () => void) => ReactNode;
   };
-  /** For a category paired with a loan: the loan's plan (null while it loads) replaces the form. */
+  /**
+   * For a category paired with a loan: the Debt Payment Target takes the place of the usual form,
+   * with the loan's plan (null while it loads).
+   */
   debt?: { plan: LoanPlan | null; unpairedCategoryId?: string };
   /** Spending targets can be in their own currency; without this, the budget's only. */
   currency?: TargetCurrency;
@@ -184,7 +209,7 @@ export function TargetSection({
       />
     );
   }
-  if (payment && !payment.past && (!target || !need || payment.overpaid)) {
+  if (payment && paymentAlertShows({ target, need, ...payment })) {
     return payment.alert(() => setEditing(true));
   }
   if (editing) {
@@ -240,6 +265,49 @@ export function TargetSection({
     );
   }
 
+  return (
+    <TargetSummary
+      title={title}
+      target={target}
+      need={need}
+      format={format}
+      targetFormat={targetFormat}
+      currency={currency}
+      payment={payment}
+      onAssign={onAssign}
+      onEdit={() => setEditing(true)}
+      onSnooze={onSnooze}
+      snoozeLocked={snoozeLocked}
+    />
+  );
+}
+
+/** `onEdit` is left out for a viewer, who gets the summary without Edit, Assign or Snooze. */
+function TargetSummary({
+  title,
+  target,
+  need,
+  format,
+  targetFormat,
+  currency,
+  payment,
+  onAssign,
+  onEdit,
+  onSnooze,
+  snoozeLocked = false,
+}: {
+  title: string;
+  target: CategoryTarget;
+  need: TargetNeed;
+  format: Format;
+  targetFormat: Format;
+  currency?: TargetCurrency;
+  payment?: { month: string; fundedSpending: string; paymentsMade: string };
+  onAssign?: (amount: bigint) => Promise<void>;
+  onEdit?: () => void;
+  onSnooze?: (snoozed: boolean) => Promise<void>;
+  snoozeLocked?: boolean;
+}) {
   const percent = targetPercent({ needed: BigInt(need.needed), funded: BigInt(need.funded) });
   const message = targetMessage(target, need, format, payment?.month);
   const met = BigInt(need.funded) >= BigInt(need.needed);
@@ -268,7 +336,8 @@ export function TargetSection({
       {met ? (
         <MetRing />
       ) : (
-        // Green once this month asks for nothing more (also past the due date), yellow while it does.
+        // Green once this month asks for nothing more (on track, or past its due date), yellow
+        // while it does.
         <ProgressRing percent={percent} green={need.underfunded === "0"} />
       )}
       {message && "text" in message && (
@@ -307,10 +376,12 @@ export function TargetSection({
           />
         ))}
       </dl>
-      <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
-        Edit Target
-      </Button>
-      {(onSnooze || (snoozeLocked && !payment)) && (
+      {onEdit && (
+        <Button size="sm" variant="secondary" onClick={onEdit}>
+          Edit Target
+        </Button>
+      )}
+      {onEdit && (onSnooze || (snoozeLocked && !payment)) && (
         // The target's details stay on show while it's snoozed.
         <div className="flex items-center gap-1">
           <Label
@@ -334,7 +405,56 @@ export function TargetSection({
   );
 }
 
-/** Opens on click. */
+/**
+ * A viewer's target: the same summary as the editable one, with nothing to change.
+ * Nothing at all when the category has no target (there's nothing to invite a viewer to create).
+ */
+export function ReadOnlyTarget({
+  target,
+  need,
+  format,
+  currency,
+  debt = false,
+  payment,
+}: {
+  target: CategoryTarget | null;
+  need: TargetNeed | null;
+  format: Format;
+  currency?: TargetCurrency;
+  debt?: boolean;
+  payment?: { month: string; fundedSpending: string; paymentsMade: string };
+}) {
+  if (!target) return null;
+  const title = debt ? "Debt Payment Target" : "Target";
+  const targetFormat =
+    currency && target.currency !== currency.budgetCurrency
+      ? currency.moneyIn(target.currency).format
+      : format;
+  if (currency?.rateMissing) {
+    return (
+      <Section title={title}>
+        <p className="font-medium text-sm">{targetHeading(target, targetFormat(target.amount))}</p>
+        <p className="text-muted-foreground text-sm">
+          No {target.currency} to {currency.budgetCurrency} exchange rate is available yet, so this
+          target can't say what it needs.
+        </p>
+      </Section>
+    );
+  }
+  if (!need) return null;
+  return (
+    <TargetSummary
+      title={title}
+      target={target}
+      need={need}
+      format={format}
+      targetFormat={targetFormat}
+      currency={currency}
+      payment={payment}
+    />
+  );
+}
+
 function SnoozeHelp() {
   return (
     <Popover>
@@ -420,7 +540,7 @@ function ProgressRing({ percent, green }: { percent: number; green: boolean }) {
   );
 }
 
-/** The default due date for a new dated target. */
+/** The first of next month, the default due date for a new dated target. */
 function firstOfNextMonth() {
   const [y, m] = todayIso().split("-").map(Number) as [number, number];
   return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
@@ -759,9 +879,13 @@ function TargetEditor({
   );
 }
 
-/** YYYY-MM, the default month for a new pay-off target. */
+/** The first of next month as YYYY-MM, the default month for a new pay-off target. */
 const nextMonthValue = () => firstOfNextMonth().slice(0, 7);
 
+/**
+ * The target form on a credit card's payment category: "Pay Off Balance by Date" (the default) with
+ * a month and a year, or "Pay Specific Amount Monthly" with one amount field.
+ */
 function PaymentTargetEditor({
   target,
   parse,
@@ -802,7 +926,8 @@ function PaymentTargetEditor({
       if (parsed <= 0n) return setError("Enter how much you want to pay each month.");
       input = { cadence, amount: parsed.toString() };
     } else {
-      // A pay-off month before today's would be dropped, even when saved from an earlier month.
+      // A pay-off target saved with a month before today's would be dropped, even from an earlier
+      // month, so it's refused.
       if (dueMonth < todayIso().slice(0, 7)) return setError("Choose this month or later.");
       input = { cadence, dueMonth };
     }

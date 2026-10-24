@@ -20,6 +20,7 @@ import { ageOfMoneyOptions, changeLabel, daysLabel } from "@/lib/age-of-money";
 import { useBudget } from "@/lib/budget-context";
 import { chartNumber, monthLabel, UNCATEGORIZED_COLOR } from "@/lib/reports";
 import { averageSpent, savingsRate, useReportsHomeData } from "@/lib/reports-home";
+import { paceCallout, spendingPaceOptions } from "@/lib/spending-pace";
 
 export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/")({
   component: ReportsHome,
@@ -27,13 +28,13 @@ export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/")({
 
 /**
  * The Reports home: key numbers with their change and a 12-month sparkline, a live preview per
- * question, and rule-based observations, each
- * opening the report that shows it.
+ * question, and rule-based observations, each opening the report that shows it.
  */
 function ReportsHome() {
   const { budget, formatAmount } = useBudget();
   const home = useReportsHomeData(budget.id);
   const age = useQuery(ageOfMoneyOptions(budget.id));
+  const pace = useQuery(spendingPaceOptions(budget.id, {})).data;
   const format = (minorUnits: bigint) => formatAmount(money(minorUnits, budget.currency));
   const { month } = home;
   const last = addMonths(month, -1);
@@ -139,6 +140,26 @@ function ReportsHome() {
                   to: "/budgets/$budgetId/reports/income-expense",
                   search: { range: "last_12_months" },
                 }}
+              />
+            )}
+            {pace?.line.safePerDay != null && pace.line.status !== null && (
+              <KeyTile
+                budgetId={budget.id}
+                label="Safe to spend per day"
+                value={format(BigInt(pace.line.safePerDay))}
+                change={{
+                  text: paceCallout(pace.line, pace.finished, format),
+                  up: true,
+                  good: true,
+                  neutral: true,
+                }}
+                spark={{
+                  values: pace.line.points.flatMap((p) =>
+                    p.remaining === null ? [] : [chartNumber(p.remaining, budget.currency)],
+                  ),
+                  label: "Money left to spend this month, day by day",
+                }}
+                target={{ to: "/budgets/$budgetId/reports/spending-pace" }}
               />
             )}
             {age.data?.current != null && (

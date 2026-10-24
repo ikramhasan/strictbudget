@@ -243,10 +243,7 @@ export function searchSettings(query: string, role: BudgetRole | null): Settings
   if (!q) return [];
   const scored: { entry: Entry; score: number; order: number }[] = [];
   SETTINGS.forEach((entry, order) => {
-    if (entry.page === "budget") {
-      if (!role) return;
-      if (entry.minRole && RANK[role] < RANK[entry.minRole]) return;
-    }
+    if (!canSee(entry, role)) return;
     const title = entry.title.toLowerCase();
     const score = title.startsWith(q)
       ? 0
@@ -260,6 +257,23 @@ export function searchSettings(query: string, role: BudgetRole | null): Settings
   return scored
     .sort((a, b) => a.score - b.score || a.order - b.order)
     .map(({ entry }) => ({ ...entry, where: whereLabel(entry) }));
+}
+
+/** Every setting this person can see, in the pages' order (the command palette lists them). */
+export function visibleSettings(role: BudgetRole | null): SettingsMatch[] {
+  return SETTINGS.filter((entry) => canSee(entry, role)).map((entry) => ({
+    ...entry,
+    where: whereLabel(entry),
+  }));
+}
+
+/** The element id of a settings section, which a link names in its hash to scroll to it. */
+export const settingsSectionId = (section: string) => `settings-${section}`;
+
+/** Budget settings need a budget (`role`), and some a role above viewer. */
+function canSee(entry: Entry, role: BudgetRole | null) {
+  if (entry.page === "account") return true;
+  return role !== null && (!entry.minRole || RANK[role] >= RANK[entry.minRole]);
 }
 
 function whereLabel(entry: Entry) {

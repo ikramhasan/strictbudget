@@ -76,7 +76,7 @@ const PayeeRuleSchema = z
   })
   .openapi("PayeeRule");
 
-const PayeeRuleSnapshotSchema = PayeeRuleSchema.extend({
+export const PayeeRuleSnapshotSchema = PayeeRuleSchema.extend({
   text: RuleText,
   position: z.number().int(),
   createdAt: z.iso.datetime({ offset: true }),

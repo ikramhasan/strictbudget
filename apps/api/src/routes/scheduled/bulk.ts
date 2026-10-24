@@ -5,6 +5,7 @@ import { loadBudgetAccess } from "../../lib/budget-access";
 import { type Db, serverToday } from "../../lib/ledger";
 import {
   enterNow,
+  prefetchScheduleRates,
   type ScheduledRowJson,
   type ScheduleInput,
   scheduledRows,
@@ -68,22 +69,28 @@ export const bulkUpdateScheduledTransactionsHandler: RouteHandler<
         : { transaction: ["update"] },
   );
 
+  // The selected rows, each schedule once, in the order given.
+  const pick = (all: ScheduledRowJson[]) => {
+    const byId = new Map(all.map((r) => [r.id, r]));
+    const picked: { row: ScheduledRowJson; own: ScheduledRowJson }[] = [];
+    const seen = new Set<string>();
+    for (const id of ids) {
+      const row = byId.get(id);
+      const own = row && byId.get(row.scheduledTransactionId);
+      if (!row || !own || seen.has(own.id)) continue;
+      if (row.kind === "splitTransfer" && action.type !== "enterNow") continue;
+      seen.add(own.id);
+      picked.push({ row, own });
+    }
+    return picked;
+  };
+  if (action.type === "enterNow") {
+    // Enter Now converts at `today`: look the rates up before any schedule is locked.
+    const own = pick(await scheduledRows(db, budgetId)).map((p) => p.own.id);
+    await prefetchScheduleRates(db, c.var.deps, budgetId, { scheduleIds: own, dates: [today] });
+  }
+
   const result = await db.transaction(async (tx) => {
-    // The selected rows, each schedule once, in the order given.
-    const pick = (all: ScheduledRowJson[]) => {
-      const byId = new Map(all.map((r) => [r.id, r]));
-      const picked: { row: ScheduledRowJson; own: ScheduledRowJson }[] = [];
-      const seen = new Set<string>();
-      for (const id of ids) {
-        const row = byId.get(id);
-        const own = row && byId.get(row.scheduledTransactionId);
-        if (!row || !own || seen.has(own.id)) continue;
-        if (row.kind === "splitTransfer" && action.type !== "enterNow") continue;
-        seen.add(own.id);
-        picked.push({ row, own });
-      }
-      return picked;
-    };
     let picked = pick(await scheduledRows(tx, budgetId));
     if (picked.length > 0) {
       await tx

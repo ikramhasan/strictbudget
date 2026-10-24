@@ -44,7 +44,7 @@ import type { AppDeps } from "../types";
 import { budgetCurrencyOf, type FxDeps, linesToBase, toBase } from "./base-amount";
 import { shiftDay } from "./dates";
 import { AppError } from "./errors";
-import { knownRate, resolveRate } from "./fx";
+import { knownRate, prefetchRates, resolveRate } from "./fx";
 import {
   type Db,
   findOrCreatePayee,
@@ -86,6 +86,49 @@ async function transferAccountOf(db: Db, payeeId: string | null) {
     .from(payee)
     .where(eq(payee.id, payeeId));
   return row?.transferAccountId ?? null;
+}
+
+/**
+ * Looks up the rates entering schedules will need, before the request locks any of them:
+ * the accounts each schedule touches (its own, its transfer's and its split lines'), plus
+ * `accountIds`, on each date.
+ */
+export async function prefetchScheduleRates(
+  db: Db,
+  fx: FxDeps,
+  budgetId: string,
+  input: {
+    scheduleIds?: readonly string[];
+    accountIds?: readonly (string | null | undefined)[];
+    dates: readonly (string | null | undefined)[];
+  },
+) {
+  const ids = input.scheduleIds ?? [];
+  const schedules = ids.length
+    ? await db
+        .select({
+          accountId: scheduledTransaction.accountId,
+          transferAccountId: payee.transferAccountId,
+        })
+        .from(scheduledTransaction)
+        .leftJoin(payee, eq(payee.id, scheduledTransaction.payeeId))
+        .where(
+          and(
+            eq(scheduledTransaction.budgetId, budgetId),
+            inArray(scheduledTransaction.id, [...ids]),
+          ),
+        )
+    : [];
+  const lines = await scheduleLines(db, ids);
+  await prefetchRates(db, fx, {
+    budgetId,
+    accountIds: [
+      ...(input.accountIds ?? []),
+      ...schedules.flatMap((r) => [r.accountId, r.transferAccountId]),
+      ...lines.map((l) => l.transferAccountId),
+    ],
+    dates: input.dates,
+  });
 }
 
 /**
@@ -192,6 +235,11 @@ export function entryDate(deps: Pick<AppDeps, "serverDate">, today: string) {
   const earliest = shiftDay(server, -1);
   const latest = shiftDay(server, 1);
   return today < earliest ? earliest : today > latest ? latest : today;
+}
+
+/** The `today` a read or write uses: the user's, held by `entryDate`, else the server's. */
+export function userToday(deps: Pick<AppDeps, "serverDate">, today?: string) {
+  return today === undefined ? serverToday() : entryDate(deps, today);
 }
 
 /**

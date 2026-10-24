@@ -8,7 +8,11 @@ import { emails } from "../../lib/email/templates";
 import { AppError } from "../../lib/errors";
 import { hashToken, invitationUrl, newInvitationToken as newToken } from "../../lib/invitations";
 import type { Db, Tx } from "../../lib/ledger";
-import { pictureUrlSql } from "../../lib/member-colors";
+import {
+  forgetFormerMemberColor,
+  keepFormerMemberColor,
+  pictureUrlSql,
+} from "../../lib/member-colors";
 import type { AuthedEnv } from "../../middleware/require-auth";
 import type { AppEnv } from "../../types";
 import {
@@ -363,6 +367,7 @@ export const acceptInvitationHandler: RouteHandler<typeof acceptInvitation, Env>
       // it had; a full budget only happens if members were added some other way.
       const people = await headcount(tx, invitation.budgetId);
       if (people.members + people.pending > MAX_BUDGET_PEOPLE) throw FULL();
+      await forgetFormerMemberColor(tx, invitation.budgetId, me.id);
       await tx.insert(budgetMember).values({
         id: newId(),
         budgetId: invitation.budgetId,
@@ -403,6 +408,7 @@ export const removeMemberHandler: RouteHandler<typeof removeMember, Env> = async
         "The owner can't be removed. Transfer ownership first.",
       );
     }
+    await keepFormerMemberColor(tx, budgetId, row.userId);
     await tx.delete(budgetMember).where(eq(budgetMember.id, row.id));
   });
   return c.body(null, 204);
@@ -443,6 +449,7 @@ export const leaveBudgetHandler: RouteHandler<typeof leaveBudget, Env> = async (
         "The owner can't leave a budget. Transfer ownership to someone else first, or delete it.",
       );
     }
+    await keepFormerMemberColor(tx, budgetId, row.userId);
     await tx.delete(budgetMember).where(eq(budgetMember.id, row.id));
   });
   return c.body(null, 204);

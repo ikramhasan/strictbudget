@@ -4,6 +4,7 @@ import {
   FLAG_COLORS,
   INTERNAL_CATEGORY_KINDS,
   INTERNAL_PAYEE_KINDS,
+  PACE_SETTINGS,
 } from "@strictbudget/db/schema";
 import {
   ACCOUNT_TYPES,
@@ -24,7 +25,7 @@ import {
 } from "@strictbudget/engine";
 
 /**
- * The backup file: one budget, every table that belongs to it, as JSON.
+ * strictbudget's own backup file: one budget, every table that belongs to it, as JSON.
  * The layout is versioned and independent of the database's: a later strictbudget reads every
  * version it ever wrote. Ids are only references inside the file; an import gives every row a new
  * id. Money is an integer string of minor units next to its currency, never a number.
@@ -84,6 +85,8 @@ const CategorySchema = z.object({
   hidden: z.boolean(),
   internalKind: z.enum(INTERNAL_CATEGORY_KINDS).nullable(),
   linkedAccountId: Ref,
+  /** Spending pace's setting; backups from before it have none. */
+  pace: z.enum(PACE_SETTINGS).nullish(),
 });
 
 /** A file import's remembered settings, kept as they are (they only steer the import dialog). */

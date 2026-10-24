@@ -8,6 +8,28 @@ describe("committed openapi.json", () => {
     expect(serializeOpenApi(generateOpenApiDocument())).toBe(committed);
   });
 
+  it("writes the currency codes out once, as a named schema every use refers to", () => {
+    const doc = generateOpenApiDocument();
+    const text = JSON.stringify(doc);
+    expect(text.match(/"AED"/g)).toHaveLength(1);
+    const named = (doc.components?.schemas ?? {}) as Record<string, { enum?: string[] }>;
+    expect(named.CurrencyCode?.enum).toContain("USD");
+    expect(text).toContain('"$ref":"#/components/schemas/CurrencyCode"');
+  });
+
+  it("keeps null on a nullable currency field", () => {
+    const doc = generateOpenApiDocument();
+    type Prop = { allOf?: unknown; anyOf?: unknown };
+    const schemas = (doc.components?.schemas ?? {}) as unknown as {
+      BudgetBackup: { properties: { budget: { properties: { expectedIncomeCurrency: Prop } } } };
+      Preferences: { properties: { displayCurrency: Prop } };
+    };
+    const field = schemas.BudgetBackup.properties.budget.properties.expectedIncomeCurrency;
+    expect(field.allOf).toBeUndefined();
+    expect(field.anyOf).toEqual([{ $ref: "#/components/schemas/CurrencyCode" }, { type: "null" }]);
+    expect(schemas.Preferences.properties.displayCurrency.anyOf).toContainEqual({ type: "null" });
+  });
+
   it("documents every route with an operationId", () => {
     const doc = generateOpenApiDocument();
     for (const [path, item] of Object.entries(doc.paths ?? {})) {

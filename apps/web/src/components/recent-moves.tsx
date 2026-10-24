@@ -332,6 +332,7 @@ function EntryCard({
         userId={m.userId}
         userName={m.userName}
         avatarColor={m.avatarColor}
+        removed={m.removed}
         picture={m.picture}
         currentUserId={currentUserId}
       />

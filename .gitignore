@@ -18,3 +18,6 @@ coverage
 
 # Attachments stored on local disk in development (STORAGE_DIR)
 .storage
+
+# TanStack Router generator temp files
+.tanstack

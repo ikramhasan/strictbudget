@@ -46,7 +46,7 @@ function Report() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const update = (patch: Partial<z.infer<typeof searchSchema>>) =>
-    void navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true });
+    void navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true, resetScroll: false });
   const { budget, formatAmount } = useBudget();
   const state = useReportState(search, "last_3_months");
   const { budgetId, range } = state;

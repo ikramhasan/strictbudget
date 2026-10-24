@@ -28,6 +28,7 @@
     "canvas-confetti": "catalog:",
     "date-fns": "catalog:",
     "dayjs": "catalog:",
+    "emojibase-data": "catalog:",
     "fflate": "catalog:",
     "lucide-react": "catalog:",
     "modern-screenshot": "catalog:",
@@ -61,6 +62,7 @@
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
+    "vite-plugin-static-copy": "catalog:",
     "vitest": "catalog:"
   }
 }

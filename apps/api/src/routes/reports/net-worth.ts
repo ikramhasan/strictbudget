@@ -2,6 +2,7 @@ import { createRoute, type RouteHandler, z } from "@hono/zod-openapi";
 import {
   BUDGET_MONTH_PATTERN,
   type BudgetMonth,
+  monthsBetween,
   zAccountType,
   zCurrencyCode,
   zMinorUnits,
@@ -10,7 +11,7 @@ import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError, jsonError } from "../../lib/errors";
 import { zFxRate } from "../../lib/fx/rate-schema";
 import { serverToday } from "../../lib/ledger";
-import { type NetWorthBalance, netWorthReport } from "../../lib/net-worth";
+import { NET_WORTH_MAX_MONTHS, type NetWorthBalance, netWorthReport } from "../../lib/net-worth";
 import { enterDueScheduled, entryDate } from "../../lib/scheduled";
 import type { AuthedEnv } from "../../middleware/require-auth";
 import { authSecurity, requireAuth } from "../../middleware/require-auth";
@@ -95,7 +96,9 @@ const NetWorthSchema = z
           rateDate: z.iso.date().nullable(),
         }),
       )
-      .describe("The month-end rate of each foreign currency, for each month of the range"),
+      .describe(
+        "The month-end rate of each foreign currency, for each month of the range from its accounts' first transaction on",
+      ),
   })
   .openapi("NetWorthReport");
 
@@ -117,8 +120,10 @@ export const getNetWorthReport = createRoute({
       budgetId: z.string().openapi({ param: { name: "budgetId", in: "path" } }),
     }),
     query: z.object({
-      from: Month.describe("First month, YYYY-MM"),
-      to: Month.describe("Last month, YYYY-MM (inclusive)"),
+      from: Month.describe("First month, YYYY-MM (0001-01 or later)"),
+      to: Month.describe(
+        `Last month, YYYY-MM (inclusive); at most ${NET_WORTH_MAX_MONTHS} months after \`from\``,
+      ),
       accountIds: z
         .string()
         .transform((v) => v.split(",").filter(Boolean))
@@ -128,7 +133,8 @@ export const getNetWorthReport = createRoute({
         .date()
         .optional()
         .describe(
-          "The user's today; later transactions don't count. Defaults to the server's UTC date.",
+          "The user's today, held within a day of the server's UTC date (the default); later " +
+            "transactions don't count.",
         ),
     }),
   },
@@ -137,7 +143,9 @@ export const getNetWorthReport = createRoute({
       description: "The report",
       content: { "application/json": { schema: NetWorthSchema } },
     },
-    400: jsonError("Invalid query, or `from` after `to`"),
+    400: jsonError(
+      `Invalid query, \`from\` after \`to\` or before 0001-01, or a range over ${NET_WORTH_MAX_MONTHS} months`,
+    ),
     401: jsonError("Not signed in"),
     403: jsonError("The account's email address isn't confirmed"),
     404: jsonError("No such budget, or the caller isn't a member"),
@@ -158,10 +166,19 @@ export const getNetWorthReportHandler: RouteHandler<
   const { db } = c.var.deps;
   const { budget } = await loadBudgetAccess(c, budgetId);
   if (query.from > query.to) throw new AppError(400, "BAD_REQUEST", "`from` is after `to`");
-  const today = query.today ?? serverToday();
-  if (query.today) {
-    await enterDueScheduled(db, c.var.deps, budgetId, entryDate(c.var.deps, query.today));
+  // The month before `from` opens the report, so it has to be a month too.
+  if (query.from < "0001-01") throw new AppError(400, "BAD_REQUEST", "`from` is before 0001-01");
+  if (monthsBetween(query.from, query.to) >= NET_WORTH_MAX_MONTHS) {
+    throw new AppError(
+      400,
+      "BAD_REQUEST",
+      `The range is over ${NET_WORTH_MAX_MONTHS} months; ask for a shorter one`,
+    );
   }
+  // Held within a day of the server's date, like entering schedules: `today` sets how far a
+  // loan's month-by-month charges run, so a made-up one mustn't walk thousands of years.
+  const today = query.today ? entryDate(c.var.deps, query.today) : serverToday();
+  if (query.today) await enterDueScheduled(db, c.var.deps, budgetId, today);
   const report = await netWorthReport(db, c.var.deps, {
     budgetId,
     budgetCurrency: budget.currency,

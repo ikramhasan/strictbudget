@@ -21,6 +21,7 @@ export function authorizeUrl(search: string): string {
   return `${apiBaseUrl}/api/auth/oauth2/authorize?${params}`;
 }
 
+/** Sends a signed-out person to sign in first, then back to this page (query included). */
 export async function requireSignIn(queryClient: QueryClient, href: string) {
   const session = await queryClient.ensureQueryData(sessionQueryOptions);
   if (!session) throw redirect({ to: "/sign-in", search: { redirect: href } });
@@ -65,6 +66,7 @@ export function agentSetupPrompt(origin: string = apiBaseUrl): string {
     `1. Add strictbudget as a remote MCP server (Streamable HTTP, OAuth sign-in) named "strictbudget" at ${mcp}`,
     `   - Claude Code: run \`claude mcp add --transport http strictbudget ${mcp}\`, then open /mcp and authenticate.`,
     "   - Other clients: add it to your MCP settings as a remote/HTTP server with that URL.",
+    `   - If your client limits how many tools a server may have (Cursor warns past about 40), use ${mcp}?tools=compact instead: three tools to search, describe and call strictbudget's operations.`,
     "2. When a browser opens, I'll sign in to strictbudget and choose whether you can make changes.",
     "3. Then call listBudgets and tell me which budgets you can see.",
     "",

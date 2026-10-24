@@ -1,3 +1,4 @@
+import type { components } from "@strictbudget/api-client";
 import { money, usesCategory } from "@strictbudget/engine";
 import {
   AlertDialog,
@@ -84,7 +85,7 @@ import { todayIso } from "@/lib/dates";
 import { exportSelected } from "@/lib/exports";
 import { FLAG_CLASS, type Flag, type FlagColor, flagLabel, flagsQueryOptions } from "@/lib/flags";
 import { inCurrency } from "@/lib/money-input";
-import { currentMonth, invalidateMonths, monthQueryOptions } from "@/lib/months";
+import { currentMonth, monthQueryOptions } from "@/lib/months";
 import { useShortcutsEnabled } from "@/lib/preferences";
 import {
   deleteWarning,
@@ -136,6 +137,7 @@ import {
   payeesQueryOptions,
   paymentCategoryCard,
   REGISTER_PAGE_SIZE,
+  refreshTransactions,
   type SubTransaction,
   startSplit,
   type Transaction,
@@ -217,11 +219,12 @@ interface EditingCell {
   column: CellColumn;
 }
 
+/** A register row: a transaction, or one line of a split under it. */
 type Item =
   | { kind: "transaction"; key: string; t: Transaction }
   | { kind: "line"; key: string; t: Transaction; line: SubTransaction };
 
-/** Splits are edited all at once. */
+/** The whole-transaction editor open on an existing row (splits are edited all at once). */
 interface EditingSplit {
   id: string;
   draft: Draft;
@@ -229,7 +232,16 @@ interface EditingSplit {
   fromKey?: boolean;
 }
 
+/**
+ * An account's register, or all accounts' (`accountId` left out), newest first unless sorted.
+ * New transactions get a full row; existing ones are edited a cell at a time.
+ * The server filters, sorts and pages (`search`, kept in the address by the page); more pages
+ * load as you scroll, and rows are virtualized so long histories stay fast. `focusId` scrolls to
+ * that transaction and highlights it (the other side of a transfer, when jumping to it).
+ */
 /** A saved transaction's version, and its transfer's other side's, by id. */
+type PayeeRuleSnapshot = components["schemas"]["PayeeRuleSnapshot"];
+
 function versionsOf(row: Transaction): Record<string, number> {
   return {
     [row.id]: row.version,
@@ -250,7 +262,7 @@ export function Register({
   focusId?: string;
   search: RegisterSearch;
   onSearchChange: (patch: Partial<RegisterSearch>, replace?: boolean) => void;
-  /** A credit card's Record Payment: the new row it opens. */
+  /** A credit card's Record Payment: the new row it opens (the toolbar button). */
   recordPayment?: () => Draft;
   /** Open Record Payment's row now (the payment inspector's button). */
   openRecordPayment?: boolean;
@@ -296,6 +308,7 @@ export function Register({
     // Keeps the old rows on screen while a new search or filter loads.
     placeholderData: keepPreviousData,
   });
+  // The Scheduled Transactions section: the same search and date range, by next date.
   const scheduledFilter = {
     ...(accountId ? { accountId } : {}),
     ...(query.q ? { q: query.q } : {}),
@@ -358,6 +371,10 @@ export function Register({
     "post",
     "/v1/budgets/{budgetId}/transactions/{transactionId}/dont-rename",
   );
+  const undoDontRenameTx = $api.useMutation(
+    "post",
+    "/v1/budgets/{budgetId}/transactions/{transactionId}/dont-rename/undo",
+  );
   const unmatchTx = $api.useMutation(
     "post",
     "/v1/budgets/{budgetId}/transactions/{transactionId}/unmatch",
@@ -367,14 +384,17 @@ export function Register({
   const aiEnabled = useAiSettings(budget.id).data?.enabled ?? false;
   const newAttachment = useMemo(() => ({ budgetId: budget.id, aiEnabled }), [budget.id, aiEnabled]);
   const [attaching, setAttaching] = useState(false);
+  // What the new-transaction row starts with: empty, or Make Repeating's copy.
   const [addingDraft, setAddingDraft] = useState<Draft | null>(null);
   // Make Repeating opens the date picker on its row; Record Payment doesn't.
   const [addingPicker, setAddingPicker] = useState(false);
   const [addingKey, setAddingKey] = useState(0);
   const [newError, setNewError] = useState<string | null>(null);
+  /** The transaction whose History dialog is open. */
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const session = useQuery(sessionQueryOptions);
   const [editing, setEditing] = useState<EditingCell | null>(null);
+  // The row whose Matched Transactions popover is open.
   const [matchFor, setMatchFor] = useState<string | null>(null);
   // The info column also shows while a matched row is edited: its link icon.
   const reviewing =
@@ -448,6 +468,7 @@ export function Register({
   /** An amount in `currency` (a row's, or its account's): the budget's by default. */
   const show = (amount: bigint, currency?: string) =>
     formatAmount(money(amount, inCurrency(budget, currency).currency));
+  /** The budget's number format with account `id`'s currency, for its amounts. */
   const settingsOf = (id: string | undefined) =>
     inCurrency(budget, id ? accountById.get(id)?.currency : undefined);
   /** A transfer to an account in another currency: the money settings in that one's currency. */
@@ -461,8 +482,8 @@ export function Register({
       : undefined;
   };
   /**
-   * A foreign-currency amount with what the plan counts under it, in the budget's currency, and
-   * its rate on hover.
+   * A foreign-currency amount with what the plan counts under it, in the budget's currency,
+   * and its rate on hover.
    */
   const withBase = (
     native: string,
@@ -484,6 +505,7 @@ export function Register({
       </span>
     );
   };
+  /** The currency of the register's own account (the budget's for all accounts). */
   const registerSettings = settingsOf(accountId);
   /** A new transaction in `id`, starting cleared in a cash account. */
   const newDraft = (id: string, date: string) => emptyDraft(id, date, accountById.get(id)?.type);
@@ -546,6 +568,7 @@ export function Register({
   });
   const items = virtualizer.getVirtualItems();
 
+  // Loads the next page as the last loaded rows scroll into view.
   const lastIndex = items.at(-1)?.index ?? -1;
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = transactions;
   useEffect(() => {
@@ -559,7 +582,8 @@ export function Register({
   useEffect(() => {
     if (!focusId || focused.current === focusId) return;
     // A scheduled row (from an Activity popover's upcoming list) is selected; it's at the top,
-    // so there's nothing to load. Until the scheduled rows are in, the id could be either.
+    // so there's nothing to load. Until the
+    // scheduled rows are in, the id could be either.
     if (scheduled.isPending) return;
     if (scheduledRows.some((row) => row.id === focusId)) {
       focused.current = focusId;
@@ -648,8 +672,8 @@ export function Register({
     setScheduledSelection(NO_ROWS);
   }
   /**
-   * Match: one imported transaction that isn't matched yet and one entered transaction in the
-   * same account. Null when the selection isn't such a pair.
+   * Match: one imported transaction that isn't matched yet and
+   * one entered transaction in the same account. Null when the selection isn't such a pair.
    */
   const pickedRows =
     selection.mode === "some" && scheduledSelection.size === 0
@@ -681,13 +705,40 @@ export function Register({
   }
 
   /**
-   * Bank Import Details' "Don't Rename as …": back to the imported payee, and the payee's rule
-   * for that name goes.
+   * Bank Import Details' "Don't Rename as …": back to the imported payee, and
+   * the payee's rule for that name goes. Undo puts back the payee, its approval and the same rule
+   * (so it keeps its precedence); undo and redo check the row's version.
    */
   async function dontRename(t: Transaction) {
+    const payeeId = t.payeeId;
+    if (!payeeId) return;
+    let removedRules: PayeeRuleSnapshot[] = [];
+    /** The version this command last left the row at; the tab's own steps lead on from it. */
+    let left = t.version;
+    const path = { budgetId: budget.id, transactionId: t.id };
+    const run = async (expectedVersion?: number) => {
+      const done = await dontRenameTx.mutateAsync({ params: { path, query: { expectedVersion } } });
+      history.noteSave(done.previousVersions, { [t.id]: done.version });
+      removedRules = done.removedRules;
+      left = done.version;
+    };
     try {
-      await dontRenameTx.mutateAsync({
-        params: { path: { budgetId: budget.id, transactionId: t.id } },
+      await run();
+      history.record({
+        label: "Don't Rename",
+        undo: async () => {
+          const done = await undoDontRenameTx.mutateAsync({
+            params: { path, query: { expectedVersion: history.expectedVersion(t.id, left) } },
+            body: { payeeId, approved: t.approved, rules: removedRules },
+          });
+          history.noteSave(done.previousVersions, { [t.id]: done.version });
+          left = done.version;
+          await refresh();
+        },
+        redo: async () => {
+          await run(history.expectedVersion(t.id, left));
+          await refresh();
+        },
       });
       setEditing(null);
       await refresh();
@@ -941,17 +992,7 @@ export function Register({
     lastEnd === undefined ? 0 : virtualizer.getTotalSize() + scheduledHeight - lastEnd;
 
   async function refresh() {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: transactionsQueryPrefix }),
-      queryClient.invalidateQueries({ queryKey: scheduledQueryPrefix }),
-      queryClient.invalidateQueries({ queryKey: accountsQueryOptions(budget.id).queryKey }),
-      queryClient.invalidateQueries({ queryKey: payeesQueryOptions(budget.id).queryKey }),
-      queryClient.invalidateQueries({ queryKey: categoriesQueryOptions(budget.id).queryKey }),
-      invalidateMonths(queryClient),
-      queryClient.invalidateQueries({
-        queryKey: ["post", "/v1/budgets/{budgetId}/transactions/selection"],
-      }),
-    ]);
+    await refreshTransactions(queryClient, budget.id);
   }
 
   /** Undo for a bulk action on transactions, from their state before it. */
@@ -963,6 +1004,7 @@ export function Register({
     let current = before;
     /** The version this command last left each row at; undo and redo follow the tab's steps. */
     let left = after;
+    // Reject deletes the unapproved rows, so it's undone like a delete.
     const deletes = action.type === "delete" || action.type === "reject";
     return {
       undo: async () => {
@@ -1081,7 +1123,7 @@ export function Register({
     return group && category ? `${group.name}: ${category.name}` : "";
   }
 
-  /** Not in tracking accounts, nor on in-budget transfers. */
+  /** Whether `t` has a category: not in tracking accounts, nor on in-budget transfers. */
   function hasCategory(t: Transaction) {
     const type = accountById.get(t.accountId)?.type ?? "checking";
     const transferType = t.transferAccountId ? accountById.get(t.transferAccountId)?.type : null;
@@ -1120,6 +1162,7 @@ export function Register({
     );
   }
 
+  /** Splits open as a whole, as do transactions being split from the category cell. */
   function openSplit(t: Transaction, split = false, fromKey = false) {
     const draft = draftFrom(t, inCurrency(budget, t.currency));
     setEditing(null);
@@ -1176,6 +1219,7 @@ export function Register({
     });
   }
 
+  /** Opens the new-transaction row: empty, or with a draft (Make Repeating's, Record Payment's). */
   function startAdding(draft: Draft | null = null, openPicker = draft !== null) {
     setEditing(null);
     setEditingSplit(null);
@@ -1187,7 +1231,8 @@ export function Register({
   }
 
   /**
-   * Make Repeating: a new scheduled row prefilled from `t`, a month later and repeating monthly; saving it creates the schedule and leaves `t` as it is.
+   * Make Repeating: a new scheduled row prefilled from `t`, a month later and repeating
+   * monthly; saving it creates the schedule and leaves `t` as it is.
    */
   function makeRepeating(t: Transaction) {
     clearSelection();
@@ -1258,6 +1303,7 @@ export function Register({
     }
   }
 
+  /** A new transaction's attachment, uploaded once the transaction exists. */
   async function attachToNew(transactionId: string, file: File) {
     setAttaching(true);
     try {
@@ -1284,8 +1330,8 @@ export function Register({
   }
 
   /**
-   * A new transaction that repeats or is dated ahead is a scheduled one. A past date with a
-   * repeat enters that one transaction and starts the schedule after today.
+   * A new transaction that repeats or is dated ahead is a scheduled one. A past date with
+   * a repeat enters that one transaction and starts the schedule after today.
    */
   async function saveNewScheduled(draft: Draft, another = false) {
     const result = scheduleCreateBody(draft, settingsOf(draft.accountId), today);
@@ -1334,8 +1380,8 @@ export function Register({
   }
 
   /**
-   * Moving a transaction's date into the future makes it a scheduled transaction, its transfer's
-   * other side included. Undo brings the transaction back.
+   * Moving a transaction's date into the future makes it a scheduled transaction, its
+   * transfer's other side included. Undo brings the transaction back.
    */
   async function reschedule(t: Transaction, draft: Draft) {
     const result = rescheduleBody(t, draft, settingsOf(draft.accountId), today);
@@ -1513,7 +1559,7 @@ export function Register({
     }
   }
 
-  /** Undone as an edit (a transfer's other side follows). */
+  /** Approve on one row; undone as an edit (a transfer's other side follows). */
   async function approveRow(t: Transaction) {
     try {
       const after = await update.mutateAsync({
@@ -1536,7 +1582,7 @@ export function Register({
     else void deleteRow(t);
   }
 
-  /** Delete, or Reject (which deletes an unapproved transaction that wasn't imported). */
+  /** Delete, or Reject (which deletes an unapproved transaction it didn't import). */
   async function deleteRow(t: Transaction, reject = false) {
     try {
       await remove.mutateAsync({
@@ -1593,7 +1639,7 @@ export function Register({
     // biome-ignore lint/correctness/useExhaustiveDependencies: startAdding is a plain function
   }, [openRecordPayment, startPayment, onRecordPaymentOpened]);
 
-  // The selection bar binds the shortcuts that act on a selection.
+  // The register's shortcuts; the selection bar binds the ones on a selection.
   const rootRef = useRef<HTMLDivElement>(null);
   const idle = !adding && editing === null && editingSplit === null;
   function stepRows(direction: 1 | -1, extend: boolean) {
@@ -1856,6 +1902,7 @@ export function Register({
             userId={t.enteredBy.userId}
             userName={t.enteredBy.name}
             avatarColor={t.enteredBy.avatarColor}
+            removed={t.enteredBy.removed}
             picture={t.enteredBy.picture}
             currentUserId={session.data?.user.id}
             agentName={t.enteredBy.agent?.name}
@@ -1945,6 +1992,7 @@ export function Register({
     }
   }
 
+  /** A split line, indented under its transaction. */
   function lineDisplay(t: Transaction, line: SubTransaction, id: ColumnId) {
     const amount = BigInt(line.amount);
     switch (id) {
@@ -2454,6 +2502,7 @@ export function Register({
         </ScrollArea>
       )}
       {phone && defaultAccountId && (
+        // A phone adds and edits in a full-height drawer.
         <Drawer
           open={adding || editingSplit !== null}
           onOpenChange={(open) => {
@@ -2587,8 +2636,8 @@ export function Register({
 }
 
 /**
- * The running balance is always in date order. Sorted by anything else, the column stays and
- * explains: clicking it goes back to the default order.
+ * The running balance is always in date order. Sorted by anything else, the column stays
+ * and explains: clicking it goes back to the default order.
  */
 function BalanceHeader({ sorted, onResetSort }: { sorted: boolean; onResetSort: () => void }) {
   return (
@@ -2623,8 +2672,8 @@ function editorAccounts(accounts: readonly Account[], current: string) {
 }
 
 /**
- * Dragged to widen or narrow its column (Memo, which takes what's left, gives or takes the
- * difference). Arrow keys move it 8px.
+ * A header cell's right edge, dragged to widen or narrow its column (Memo,
+ * which takes what's left, gives or takes the difference). Arrow keys move it 8px.
  * Hand-rolled: the register is a plain table with a colgroup, not a table library's columns.
  */
 function ColumnResizer({
@@ -2633,6 +2682,7 @@ function ColumnResizer({
   onWidth,
 }: {
   label: string;
+  /** The column's width in pixels, for screen readers. */
   width: number;
   onWidth: (px: number) => void;
 }) {
@@ -2672,7 +2722,11 @@ function ColumnResizer({
   );
 }
 
-/** Each transaction a card, a thumb's height or more; a tap opens it in the drawer. */
+/**
+ * A phone's register: each transaction a card, a thumb's height or more, with its payee and
+ * amount on top and its category, date and memo under them. A tap opens it in the drawer; the checkbox selects it for the selection bar.
+ * Upcoming scheduled transactions come first, as on the wide register.
+ */
 function PhoneTransactions({
   rows,
   scheduled,

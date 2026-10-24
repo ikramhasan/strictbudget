@@ -73,14 +73,15 @@ import { type AnyPgColumn, alias } from "drizzle-orm/pg-core";
 import { adjustAssigned, assignedAmount, assignmentRow, logMove } from "../../lib/assignments";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError } from "../../lib/errors";
-import { resolveRate } from "../../lib/fx";
-import { accountBalances, type Db, internalCategoryId, serverToday } from "../../lib/ledger";
+import { prefetchRates, resolveRate } from "../../lib/fx";
+import { accountBalances, type Db, internalCategoryId } from "../../lib/ledger";
 import { memberAvatarColors, pictureUrlSql } from "../../lib/member-colors";
 import {
   type CategoryUpcoming,
   enterDueScheduled,
   entryDate,
   upcomingByCategory,
+  userToday,
 } from "../../lib/scheduled";
 import { lastAssignedBy, staleVersion } from "../../lib/versions";
 import type { AuthedEnv } from "../../middleware/require-auth";
@@ -103,7 +104,7 @@ const monthKey = (date: AnyPgColumn) => sql<string>`to_char(${date}, 'YYYY-MM')`
 const total = (amount: AnyPgColumn) => sql<string>`sum(${amount})`;
 const CREDIT_TYPES = ACCOUNT_TYPES.filter((t) => accountFamily(t) === "credit");
 const CASH_TYPES = ACCOUNT_TYPES.filter((t) => accountFamily(t) === "cash");
-/** The part of `amount`'s sum on credit accounts (Credit Spending). */
+/** The part of `amount`'s sum on credit accounts (credit spending). */
 const creditTotal = (amount: AnyPgColumn) =>
   sql<string>`coalesce(sum(${amount}) filter (where ${inArray(budgetAccount.type, CREDIT_TYPES)}), 0)`;
 
@@ -181,7 +182,7 @@ async function categoryHistory(db: Db, budgetId: string, cutoff: string) {
  * Every category's history up to `cutoff`, payment categories' Funded Spending included (the
  * funded part of card spending moves into the card's payment category).
  */
-async function budgetHistory(db: Db, budgetId: string, cutoff: string) {
+export async function budgetHistory(db: Db, budgetId: string, cutoff: string) {
   const history = await categoryHistory(db, budgetId, cutoff);
   const rows = await db
     .select({
@@ -403,8 +404,7 @@ function applyCardLedger(
   const credit = new Map<string, Map<BudgetMonth, CardActivity[]>>();
   // A sending card's line id → what it paid from above zero.
   const paidFromCash = new Map<string, bigint>();
-  // month → what the cards' balances above zero added to Ready to Assign ("Inflow from Debt
-  // Account").
+  // month → what the cards' balances above zero added to Ready to Assign.
   const debt = new Map<BudgetMonth, bigint>();
   const received: PlacedCardLine[] = [];
   for (const [accountId, own] of byAccount) {
@@ -541,7 +541,8 @@ const totalsJson = (n: CategoryMonth) => ({
   creditOverspent: n.creditOverspent.toString(),
 });
 
-async function monthRange(db: Db, budgetId: string, today: string) {
+/** The months the budget shows, as of the user's `today`. */
+export async function monthRange(db: Db, budgetId: string, today: string) {
   const [earliest] = await db
     .select({ date: min(transaction.date) })
     .from(transaction)
@@ -557,6 +558,7 @@ async function monthRange(db: Db, budgetId: string, today: string) {
   });
 }
 
+/** Refuses months the budget doesn't show. */
 async function assertMonthInRange(db: Db, budgetId: string, month: BudgetMonth, today: string) {
   const { first, last } = await monthRange(db, budgetId, today);
   if (month < first || month > last) {
@@ -622,10 +624,68 @@ async function targetRates(
 }
 
 /**
+ * Looks up today's rates for targets in other currencies before a write, so the month it answers
+ * with doesn't fetch them while its changes hold locks.
+ */
+async function prefetchTargetRates(db: Db, deps: FxDeps, budgetId: string, today: string) {
+  const rows = await db
+    .selectDistinct({ currency: categoryTarget.currency })
+    .from(categoryTarget)
+    .where(eq(categoryTarget.budgetId, budgetId));
+  const currencies = rows.map((r) => r.currency);
+  await prefetchRates(db, deps, { budgetId, currencies, dates: [today], today });
+}
+
+/**
+ * Every category's target in the budget's currency. A target in its own currency asks in the
+ * budget's: its amount converted at today's rate, rounded up, before any target math. Without a
+ * rate its need is unknown, so it's left out (`rateMissing`).
+ */
+export async function loadTargets(
+  db: Db,
+  deps: FxDeps,
+  budget: { id: string; currency: CurrencyCode },
+  today: string,
+) {
+  const targetRows = await db
+    .select()
+    .from(categoryTarget)
+    .where(eq(categoryTarget.budgetId, budget.id));
+  const rates = await targetRates(
+    db,
+    deps,
+    budget,
+    targetRows.map((t) => t.currency),
+    today,
+  );
+  const targets = new Map<string, CategoryTarget>();
+  const conversions = new Map<string, TargetConversion>();
+  const rateMissing = new Set<string>();
+  for (const t of targetRows) {
+    const rate = t.currency === budget.currency ? "1" : rates.get(t.currency);
+    if (!rate) {
+      rateMissing.add(t.categoryId);
+      continue;
+    }
+    const inBase = targetInBase(t, rate, budget.currency);
+    targets.set(t.categoryId, { ...inBase, startMonth: monthOf(t.startMonth) });
+    if (t.currency !== budget.currency) {
+      conversions.set(t.categoryId, {
+        currency: t.currency,
+        amount: t.amount,
+        amountInBase: inBase.amount,
+        rate,
+      });
+    }
+  }
+  return { targetRows, targets, conversions, rateMissing };
+}
+
+/**
  * Everything the budget screen shows for `month`, as of the user's `today`: each category's
  * numbers, target and Auto-Assign amounts, and the month's totals.
  */
-async function monthState(
+export async function monthState(
   db: Db,
   deps: FxDeps,
   budget: { id: string; currency: CurrencyCode; createdAt?: Date },
@@ -663,39 +723,13 @@ async function monthState(
     .where(eq(category.budgetId, budgetId))
     .orderBy(categoryGroup.sortOrder, category.sortOrder, category.id);
 
-  const targetRows = await db
-    .select()
-    .from(categoryTarget)
-    .where(eq(categoryTarget.budgetId, budgetId));
-  // A target in its own currency asks in the budget's: its amount converted at today's rate,
-  // rounded up, before any target math. Without a rate its need is unknown, so it's left out.
-  const rates = await targetRates(
+  const { targetRows, targets, conversions, rateMissing } = await loadTargets(
     db,
     deps,
     budget,
-    targetRows.map((t) => t.currency),
     today,
   );
-  const targets = new Map<string, CategoryTarget>();
-  const conversions = new Map<string, TargetConversion>();
-  const rateMissing = new Set<string>();
-  for (const t of targetRows) {
-    const rate = t.currency === budget.currency ? "1" : rates.get(t.currency);
-    if (!rate) {
-      rateMissing.add(t.categoryId);
-      continue;
-    }
-    const inBase = targetInBase(t, rate, budget.currency);
-    targets.set(t.categoryId, { ...inBase, startMonth: monthOf(t.startMonth) });
-    if (t.currency !== budget.currency) {
-      conversions.set(t.categoryId, {
-        currency: t.currency,
-        amount: t.amount,
-        amountInBase: inBase.amount,
-        rate,
-      });
-    }
-  }
+  // A snooze lasts for the month it was set in.
   const snoozedNow = new Set(
     targetRows
       .filter((t) => t.snoozedMonth && monthOf(t.snoozedMonth) === month)
@@ -745,7 +779,8 @@ async function monthState(
     const balance = balances.get(accountId)?.working ?? 0n;
     const owed = balance < 0n ? -balance : 0n;
     // What's underfunded is the debt Available doesn't reach. A negative Available (overpayment,
-    // red cash overspending) adds to it while the card still owes, not once it's paid off.
+    // red cash overspending) adds to it while the card still owes: owing $90.00 at −$10.00 is
+    // $100.00 underfunded.
     const setAside = owed > 0n || figures.available > 0n ? figures.available : 0n;
     const underfunded = owed > setAside ? owed - setAside : 0n;
     const overspentNow = creditOverspent.get(accountId)?.get(month) ?? 0n;
@@ -789,7 +824,7 @@ async function monthState(
   const nextMonth = addMonths(month, 1);
   const monthTargets = { month: 0n, nextMonth: 0n };
   // Each later month the panel lists (money assigned there, and always next month): how much its
-  // targets need and how much of that is funded.
+  // targets need and how much of that is funded, for the pie or check by the month.
   const futureTargets = new Map<BudgetMonth, { needed: bigint; funded: bigint }>([
     [nextMonth, { needed: 0n, funded: 0n }],
   ]);
@@ -892,7 +927,8 @@ async function monthState(
   const groupRows = await db
     .select({ id: categoryGroup.id })
     .from(categoryGroup)
-    .where(and(eq(categoryGroup.budgetId, budgetId), eq(categoryGroup.internal, false)));
+    .where(and(eq(categoryGroup.budgetId, budgetId), eq(categoryGroup.internal, false)))
+    .orderBy(categoryGroup.sortOrder, categoryGroup.id);
 
   const rta = readyToAssign({ month, income, assigned, overspent });
   const debtIncome = [...debt].map(([m, amount]) => ({ month: m, amount }));
@@ -922,8 +958,8 @@ async function monthState(
 }
 
 /**
- * The first later month whose Ready to Assign is negative (only the first is named). Later months
- * have no transactions yet, so only months with money assigned can go negative.
+ * The first later month whose Ready to Assign is negative (only the first is named when several
+ * are). Later months have no transactions yet, so only months with money assigned can go negative.
  */
 function futureShortfall(
   state: Pick<Awaited<ReturnType<typeof monthState>>, "income" | "assigned" | "overspent">,
@@ -936,12 +972,14 @@ function futureShortfall(
   return null;
 }
 
+/** A later month's targets for the panel, or null when it has none. */
 function futureTargetsJson(sums: { needed: bigint; funded: bigint } | undefined) {
   return sums && sums.needed > 0n
     ? { needed: sums.needed.toString(), funded: sums.funded.toString() }
     : null;
 }
 
+/** The budget screen's numbers for `month`, as of the user's `today`. */
 export async function budgetMonthJson(
   db: Db,
   deps: FxDeps,
@@ -1078,7 +1116,7 @@ export async function budgetMonthJson(
 export const getBudgetMonthHandler: RouteHandler<typeof getBudgetMonth, Env> = async (c) => {
   const { budgetId, month } = c.req.valid("param");
   const query = c.req.valid("query");
-  const today = query.today ?? serverToday();
+  const today = userToday(c.var.deps, query.today);
   const { budget } = await loadBudgetAccess(c, budgetId);
   if (query.today)
     await enterDueScheduled(
@@ -1114,13 +1152,15 @@ export const setMonthNoteHandler: RouteHandler<typeof setMonthNote, Env> = async
 
 export const assignCategoryHandler: RouteHandler<typeof assignCategory, Env> = async (c) => {
   const { budgetId, month, categoryId } = c.req.valid("param");
-  const { assigned, expectedAssigned, today = serverToday() } = c.req.valid("json");
+  const { assigned, expectedAssigned, today: rawToday } = c.req.valid("json");
   const { db } = c.var.deps;
+  const today = userToday(c.var.deps, rawToday);
   const { budget } = await loadBudgetAccess(c, budgetId, { budget: ["assign"] });
 
   const target = await moneyCategory(db, budgetId, categoryId);
   if (target.readyToAssign) throw new AppError(404, "NOT_FOUND", "Category not found");
   await assertMonthInRange(db, budgetId, month, today);
+  await prefetchTargetRates(db, c.var.deps, budgetId, today);
 
   await db.transaction(async (tx) => {
     const current = await assignedAmount(tx, categoryId, month, { lock: true });
@@ -1151,9 +1191,10 @@ export const moveMoneyHandler: RouteHandler<typeof moveMoney, Env> = async (c) =
     toCategoryId,
     amount,
     fromMonth = month,
-    today = serverToday(),
+    today: rawToday,
   } = c.req.valid("json");
   const { db } = c.var.deps;
+  const today = userToday(c.var.deps, rawToday);
   const { budget } = await loadBudgetAccess(c, budgetId, { budget: ["assign"] });
 
   const from = await moneyCategory(db, budgetId, fromCategoryId);
@@ -1165,6 +1206,7 @@ export const moveMoneyHandler: RouteHandler<typeof moveMoney, Env> = async (c) =
   if (value <= 0n) throw new AppError(400, "BAD_REQUEST", "Move a positive amount");
   await assertMonthInRange(db, budgetId, month, today);
   if (fromMonth !== month) await assertMonthInRange(db, budgetId, fromMonth, today);
+  await prefetchTargetRates(db, c.var.deps, budgetId, today);
 
   // Moving money changes what each side has assigned; Ready to Assign follows from that. Covering
   // from a later month takes it off that month's Assigned.
@@ -1201,20 +1243,22 @@ export const moveMoneyHandler: RouteHandler<typeof moveMoney, Env> = async (c) =
 
 export const autoAssignHandler: RouteHandler<typeof autoAssign, Env> = async (c) => {
   const { budgetId, month } = c.req.valid("param");
-  const { option, categoryIds, scope, today = serverToday() } = c.req.valid("json");
+  const { option, categoryIds, scope, today: rawToday } = c.req.valid("json");
   const { db } = c.var.deps;
+  const today = userToday(c.var.deps, rawToday);
   const { budget } = await loadBudgetAccess(c, budgetId, { budget: ["assign"] });
   await assertMonthInRange(db, budgetId, month, today);
 
   const state = await monthState(db, c.var.deps, budget, month, today);
+  // The listed categories asked for, or every one that isn't hidden.
   const wanted = categoryIds && new Set(categoryIds);
   const covered = state.listed.filter((l) => (wanted ? wanted.has(l.categoryId) : !l.hidden));
   if (wanted && covered.length !== wanted.size) {
     throw new AppError(404, "NOT_FOUND", "Category not found");
   }
 
-  // What each category's Assigned becomes. Underfunded over the whole plan or a view funds in
-  // `fundUnderfunded`'s order until Ready to Assign runs out; on a selection it funds every category in full.
+  // What each category's Assigned becomes. Underfunded over the whole plan or a view funds until
+  // Ready to Assign runs out (`fundUnderfunded`); on a selection it funds every category in full.
   const goal = new Map(covered.map((l) => [l.categoryId, l.auto[option]]));
   if (option === "underfunded" && (!wanted || scope === "view")) {
     const given = fundUnderfunded(
@@ -1316,7 +1360,8 @@ async function movesJson(
       userId: m.userId,
       userName: m.userName,
       memberRole: m.memberRole,
-      avatarColor: (m.userId && colors.get(m.userId)) || null,
+      avatarColor: (m.userId && colors.get(m.userId)?.color) || null,
+      removed: !m.memberRole,
       picture: m.userPicture,
     };
   });
@@ -1337,7 +1382,7 @@ export const listMonthMovesHandler: RouteHandler<typeof listMonthMoves, Env> = a
   return c.json({ moves: await movesJson(db, budgetId, { month }) }, 200);
 };
 
-/** Recent Moves: "Previous 34 days of assigning and moving money". */
+/** Recent Moves covers the previous 34 days of assigning and moving money. */
 const RECENT_MOVES_DAYS = 34;
 
 export const setExpectedIncomeHandler: RouteHandler<typeof setExpectedIncome, Env> = async (c) => {

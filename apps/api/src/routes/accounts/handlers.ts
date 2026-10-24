@@ -31,6 +31,7 @@ import {
 import { budgetCurrencyOf, type FxDeps } from "../../lib/base-amount";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError } from "../../lib/errors";
+import { prefetchRates } from "../../lib/fx";
 import {
   type AccountBalances,
   accountBalances,
@@ -59,9 +60,9 @@ import {
 import { reorder, writeOrder } from "../../lib/ordering";
 import { type Unrealized, unrealizedGains } from "../../lib/revaluation";
 import { transactionsToReview } from "../../lib/review";
-import { enterDueScheduled, entryDate } from "../../lib/scheduled";
+import { enterDueScheduled, entryDate, userToday } from "../../lib/scheduled";
 import type { AuthedEnv } from "../../middleware/require-auth";
-import type { AppEnv } from "../../types";
+import type { AppDeps, AppEnv } from "../../types";
 import { accountLogoUrls } from "../pictures/handlers";
 import type {
   closeAccount,
@@ -245,9 +246,13 @@ export async function accountJson(
   db: Db,
   budgetId: string,
   accountId: string,
-  today = serverToday(),
+  today: string | undefined,
+  deps: Pick<AppDeps, "serverDate">,
 ) {
-  const found = (await listAccountJson(db, budgetId, today)).find((a) => a.id === accountId);
+  // Held near the server's date: `today` can come straight from a client.
+  const found = (await listAccountJson(db, budgetId, userToday(deps, today))).find(
+    (a) => a.id === accountId,
+  );
   if (!found) throw new AppError(404, "NOT_FOUND", "Account not found");
   return found;
 }
@@ -352,7 +357,7 @@ const optionalBigInt = (v: string | null | undefined) =>
 export const listAccountsHandler: RouteHandler<typeof listAccounts, Env> = async (c) => {
   const { budgetId } = c.req.valid("param");
   const query = c.req.valid("query");
-  const today = query.today ?? serverToday();
+  const today = userToday(c.var.deps, query.today);
   await loadBudgetAccess(c, budgetId);
   if (query.today)
     await enterDueScheduled(
@@ -383,6 +388,10 @@ async function insertAccount(
   currency: AccountRow["currency"],
   body: NewAccount,
 ) {
+  // The Starting Balance's rate, before anything is written.
+  if (BigInt(body.balance) !== 0n) {
+    await prefetchRates(tx, fx, { budgetId, currencies: [currency], dates: [body.date] });
+  }
   const accountId = newId();
   const [last] = await tx
     .select({ value: max(budgetAccount.sortOrder) })
@@ -438,7 +447,7 @@ export const createAccountHandler: RouteHandler<typeof createAccount, Env> = asy
   const accountId = await db.transaction((tx) =>
     insertAccount(tx, c.var.deps, budgetId, currency, body),
   );
-  return c.json(await accountJson(db, budgetId, accountId, body.date), 201);
+  return c.json(await accountJson(db, budgetId, accountId, body.date, c.var.deps), 201);
 };
 
 /**
@@ -532,8 +541,8 @@ export const updateToLoanAccountHandler: RouteHandler<typeof updateToLoanAccount
     return loanId;
   });
   const [loan, original] = await Promise.all([
-    accountJson(db, budgetId, loanId, body.date),
-    accountJson(db, budgetId, accountId, body.date),
+    accountJson(db, budgetId, loanId, body.date, c.var.deps),
+    accountJson(db, budgetId, accountId, body.date, c.var.deps),
   ]);
   return c.json({ loan, original }, 201);
 };
@@ -543,7 +552,7 @@ export const updateAccountHandler: RouteHandler<typeof updateAccount, Env> = asy
   const { today } = c.req.valid("query");
   const { workingBalance, date = today ?? serverToday(), starred, ...body } = c.req.valid("json");
   const { db } = c.var.deps;
-  await loadBudgetAccess(
+  const { budget } = await loadBudgetAccess(
     c,
     budgetId,
     workingBalance === undefined
@@ -584,6 +593,14 @@ export const updateAccountHandler: RouteHandler<typeof updateAccount, Env> = asy
       optionalBigInt(body.minimumPayment) !== account.minimumPayment) ||
     (escrowAmount !== undefined && escrowAmount !== account.escrowAmount);
 
+  // The adjustment's rate, before the transaction locks anything; an account in
+  // the budget's currency needs none.
+  if (workingBalance !== undefined && account.currency !== budget.currency) {
+    const working = (await accountBalances(db, budgetId, date)).get(accountId)?.working ?? 0n;
+    if (BigInt(workingBalance) !== working) {
+      await prefetchRates(db, c.var.deps, { budgetId, accountIds: [accountId], dates: [date] });
+    }
+  }
   await db.transaction(async (tx) => {
     const fields = {
       name: body.name,
@@ -639,7 +656,7 @@ export const updateAccountHandler: RouteHandler<typeof updateAccount, Env> = asy
       }
     }
   });
-  return c.json(await accountJson(db, budgetId, accountId, today ?? date), 200);
+  return c.json(await accountJson(db, budgetId, accountId, today ?? date, c.var.deps), 200);
 };
 
 /** A balance adjustment in `account`; budget accounts take it from Ready to Assign. */
@@ -729,7 +746,18 @@ export const reconcileAccountHandler: RouteHandler<typeof reconcileAccount, Env>
   const body = c.req.valid("json");
   const { date } = body;
   const { db } = c.var.deps;
-  await loadBudgetAccess(c, budgetId, { transaction: ["create", "update"] });
+  const { budget } = await loadBudgetAccess(c, budgetId, {
+    transaction: ["create", "update"],
+  });
+  // The adjustment's rate, before the transaction locks the account; an account
+  // in the budget's currency needs none.
+  const planning = await findAccount(db, budgetId, accountId);
+  if (planning.currency !== budget.currency) {
+    const planned = await planReconcile(db, planning, body);
+    if (planned.adjustment !== 0n) {
+      await prefetchRates(db, c.var.deps, { budgetId, accountIds: [accountId], dates: [date] });
+    }
+  }
   await db.transaction(async (tx) => {
     const [account] = await tx
       .select()
@@ -770,7 +798,7 @@ export const reconcileAccountHandler: RouteHandler<typeof reconcileAccount, Env>
       .set({ lastReconciledAt: sql`now()` })
       .where(eq(budgetAccount.id, accountId));
   });
-  return c.json(await accountJson(db, budgetId, accountId, date), 200);
+  return c.json(await accountJson(db, budgetId, accountId, date, c.var.deps), 200);
 };
 
 /** Stars an account at the end of the Starred group, or unstars it. */
@@ -794,8 +822,8 @@ async function setStarred(tx: Db, account: AccountRow, starred: boolean) {
 export const moveAccountHandler: RouteHandler<typeof moveAccount, Env> = async (c) => {
   const { budgetId, accountId } = c.req.valid("param");
   const { beforeAccountId, starred } = c.req.valid("json");
-  const { today = serverToday() } = c.req.valid("query");
   const { db } = c.var.deps;
+  const today = userToday(c.var.deps, c.req.valid("query").today);
   await loadBudgetAccess(c, budgetId, { account: ["update"] });
   await db.transaction(async (tx) => {
     const account = await findAccount(tx, budgetId, accountId);
@@ -885,7 +913,7 @@ export const closeAccountHandler: RouteHandler<typeof closeAccount, Env> = async
       .set({ closed: true, pairedCategoryId: null, starredSortOrder: null })
       .where(eq(budgetAccount.id, accountId));
   });
-  return c.json(await accountJson(db, budgetId, accountId, date), 200);
+  return c.json(await accountJson(db, budgetId, accountId, date, c.var.deps), 200);
 };
 
 export const reopenAccountHandler: RouteHandler<typeof reopenAccount, Env> = async (c) => {
@@ -900,7 +928,7 @@ export const reopenAccountHandler: RouteHandler<typeof reopenAccount, Env> = asy
     .update(budgetAccount)
     .set({ closed: false, migratedToAccountId: null })
     .where(eq(budgetAccount.id, accountId));
-  return c.json(await accountJson(db, budgetId, accountId, today), 200);
+  return c.json(await accountJson(db, budgetId, accountId, today, c.var.deps), 200);
 };
 
 export const deleteAccountHandler: RouteHandler<typeof deleteAccount, Env> = async (c) => {

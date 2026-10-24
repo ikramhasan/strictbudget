@@ -47,6 +47,7 @@ function move(over: Partial<MoneyMove>): MoneyMove {
     userName: "ihni7",
     memberRole: "owner",
     avatarColor: 1,
+    removed: false,
     ...over,
   };
 }
@@ -128,7 +129,7 @@ describe("Recent Moves", () => {
     expect(screen.getByText("No moves yet.")).toBeInTheDocument();
   });
 
-  it("marks a member who left as removed, and a deleted user as inactive", () => {
+  it("keeps the colour of a member who left, marked removed, and a deleted user as inactive", () => {
     renderList([
       move({
         toCategoryId: "a",
@@ -136,12 +137,22 @@ describe("Recent Moves", () => {
         userName: "Pat",
         userId: "pat",
         memberRole: null,
-        avatarColor: null,
+        avatarColor: 3,
+        removed: true,
       }),
-      move({ toCategoryId: "b", amount: "200", userName: null, userId: null, avatarColor: null }),
+      move({
+        toCategoryId: "b",
+        amount: "200",
+        userName: null,
+        userId: null,
+        avatarColor: null,
+        removed: true,
+      }),
     ]);
     expect(screen.getByText("Pat assigned")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Pat (removed)" })).toHaveTextContent("P");
+    // Their own colour (avatar-three), not the grey inactive one.
+    expect(screen.getByRole("img", { name: "Pat (removed)" })).toHaveClass("bg-[#41D298]");
     expect(screen.getByRole("img", { name: "Inactive Member" })).toHaveTextContent("");
   });
 

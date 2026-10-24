@@ -2,13 +2,20 @@ import type { components } from "@strictbudget/api-client";
 import { addMonths, format, parseISO } from "date-fns";
 import type { MoneySettings } from "./money-input";
 import { toMoneyInput } from "./money-input";
-import { createBody, type Draft, draftFrom, emptyLine, type Transaction } from "./transactions";
+import {
+  createBody,
+  type Draft,
+  draftFrom,
+  emptyLine,
+  scheduledQueryPrefix,
+  type Transaction,
+} from "./transactions";
 
 export type ScheduledTransaction = components["schemas"]["ScheduledTransaction"];
 type CreateBody = components["schemas"]["CreateScheduledTransaction"];
 type UpdateBody = components["schemas"]["UpdateScheduledTransaction"];
 
-export const scheduledQueryPrefix = ["scheduled"] as const;
+export { scheduledQueryPrefix };
 
 type Result<T> = { ok: true; body: T } | { ok: false; error: string };
 
@@ -18,8 +25,9 @@ export function isScheduled(draft: Pick<Draft, "date" | "frequency">, today: str
 }
 
 /**
- * The selected scheduled splits, for bulk Categorize's un-split warning. A split's other sides
- * (`splitTransfer` rows) aren't the split: bulk actions skip them.
+ * The selected scheduled splits, for bulk Categorize's un-split warning (counted with the
+ * transactions). A split's other sides (`splitTransfer` rows) aren't the split:
+ * bulk actions skip them.
  */
 export function scheduledSplits(rows: readonly ScheduledTransaction[]) {
   const splits = rows.filter((row) => row.kind === "schedule" && row.subtransactions.length > 0);
@@ -176,8 +184,8 @@ export function rescheduleBody(
 }
 
 /**
- * Make Repeating: a new scheduled row prefilled from `t`, a month after its date (the last day of a
- * shorter month), repeating monthly. The transaction itself stays as it is.
+ * Make Repeating: a new scheduled row prefilled from `t`, a month after its date (the
+ * last day of a shorter month), repeating monthly. The transaction itself stays as it is.
  */
 export function makeRepeatingDraft(t: Transaction, settings: MoneySettings): Draft {
   const draft = draftFrom(t, settings);

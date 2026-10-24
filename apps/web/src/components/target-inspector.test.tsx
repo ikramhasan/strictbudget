@@ -4,7 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { inCurrency, type MoneySettings, parseMoneyInput, toMoneyInput } from "@/lib/money-input";
 import type { CategoryTarget, TargetNeed } from "@/lib/targets";
-import { type MoneyIO, type TargetCurrency, TargetSection } from "./target-inspector";
+import {
+  type MoneyIO,
+  paymentAlertShows,
+  ReadOnlyTarget,
+  type TargetCurrency,
+  TargetSection,
+} from "./target-inspector";
 
 const usd: MoneySettings = {
   currency: "USD",
@@ -128,5 +134,60 @@ describe("TargetSection with a target in its own currency", () => {
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({ amount: "150000", currency: "EUR" }),
     );
+  });
+});
+
+describe("ReadOnlyTarget for a viewer", () => {
+  const usdIO = moneyIn("USD");
+  const usdTarget: CategoryTarget = { ...eurTarget, currency: "USD", amount: "15000" };
+
+  it("shows the target's details with nothing to change", () => {
+    render(<ReadOnlyTarget target={usdTarget} need={need} format={usdIO.format} />);
+    expect(screen.getByRole("region", { name: "Target" })).toBeInTheDocument();
+    expect(screen.getByText("Set Aside Another $150.00 Each Month")).toBeInTheDocument();
+    expect(screen.getByText("Amount to Assign This Month").nextSibling).toHaveTextContent(
+      "$1,626.30",
+    );
+    for (const name of ["Edit Target", "Create Target", "Assign"]) {
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    }
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+  });
+
+  it("shows nothing for a category without a target", () => {
+    const { container } = render(
+      <ReadOnlyTarget target={null} need={null} format={usdIO.format} />,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("titles a debt payment target", () => {
+    render(<ReadOnlyTarget target={usdTarget} need={need} format={usdIO.format} debt />);
+    expect(screen.getByRole("region", { name: "Debt Payment Target" })).toBeInTheDocument();
+  });
+
+  it("says when no rate is known, without an Edit button", () => {
+    render(
+      <ReadOnlyTarget
+        target={eurTarget}
+        need={null}
+        format={usdIO.format}
+        currency={{ budgetCurrency: "USD", moneyIn, conversion: null, rateMissing: true }}
+      />,
+    );
+    expect(screen.getByText("Set Aside Another €1,500.00 Each Month")).toBeInTheDocument();
+    expect(screen.getByText(/No EUR to USD exchange rate is available yet/)).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+});
+
+describe("paymentAlertShows", () => {
+  const base = { target: eurTarget, need, overpaid: false, past: false };
+  it("shows the alert while no target applies, or when overpaid, but not in a past month", () => {
+    expect(paymentAlertShows({ ...base, target: null })).toBe(true);
+    expect(paymentAlertShows({ ...base, need: null })).toBe(true);
+    expect(paymentAlertShows({ ...base, overpaid: true })).toBe(true);
+    expect(paymentAlertShows(base)).toBe(false);
+    expect(paymentAlertShows({ ...base, target: null, past: true })).toBe(false);
   });
 });

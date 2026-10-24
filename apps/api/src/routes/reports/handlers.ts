@@ -4,9 +4,8 @@ import { type BudgetMonth, monthBounds } from "@strictbudget/engine";
 import { eq, inArray, sql } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError } from "../../lib/errors";
-import { serverToday } from "../../lib/ledger";
 import { type ReportFilter, type ReportKind, reportLines, reportSums } from "../../lib/reports";
-import { enterDueScheduled, entryDate } from "../../lib/scheduled";
+import { enterDueScheduled, entryDate, userToday } from "../../lib/scheduled";
 import type { AuthedEnv } from "../../middleware/require-auth";
 import type { AppDeps, AppEnv } from "../../types";
 import type { getReportActivity, listReportTransactions } from "./routes";
@@ -37,7 +36,7 @@ async function reportFilter(
   query: ReportQuery,
 ): Promise<ReportFilter> {
   if (query.from > query.to) throw new AppError(400, "BAD_REQUEST", "`from` is after `to`");
-  const today = query.today ?? serverToday();
+  const today = userToday(deps, query.today);
   if (query.today) {
     await enterDueScheduled(deps.db, deps, budgetId, entryDate(deps, query.today));
   }

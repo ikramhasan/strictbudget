@@ -3,16 +3,18 @@ import {
   budgetAccount,
   type ClearedState,
   type FlagColor,
+  payee,
   subTransaction,
   transaction,
 } from "@strictbudget/db/schema";
 import { normalizeRate } from "@strictbudget/engine";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { type FxDeps, oppositeSides, rebase, syncBases } from "../../lib/base-amount";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { assertNotFuture, latestTransactionDate } from "../../lib/dates";
 import { AppError } from "../../lib/errors";
 import { rememberRename } from "../../lib/file-import";
+import { prefetchRates } from "../../lib/fx";
 import { type Db, findOrCreatePayee, insertTransaction, transferPayeeId } from "../../lib/ledger";
 import { notePayeeCategorizations } from "../../lib/payee-categories";
 import { assertRevaluationEditable, isRevaluationPayee } from "../../lib/revaluation";
@@ -106,9 +108,9 @@ export const createTransactionHandler: RouteHandler<typeof createTransaction, En
   const { today } = c.req.valid("query");
   const { db } = c.var.deps;
   await loadBudgetAccess(c, budgetId, { transaction: ["create"] });
-  // Future-dated entries are scheduled transactions. An undo restore brings a row back as it was,
-  // so one dated ahead (older data, or the server's UTC + 1) isn't refused, as an edit that keeps
-  // its date isn't.
+  // Future-dated entries are scheduled transactions. An undo restore brings a row
+  // back as it was, so one dated ahead (older data, or the server's UTC + 1) isn't refused, as an
+  // edit that keeps its date isn't.
   if (!body.restore) assertNotFuture(body.date, latestTransactionDate(c.var.deps, today));
   const { id, feeId } = await db.transaction((tx) => insertWithFee(tx, c.var.deps, budgetId, body));
   const row = await transactionJson(db, budgetId, body.accountId, id);
@@ -131,7 +133,8 @@ export interface CreateBody {
   /** A restored transfer's other side, as it was. */
   transferSide?: TransferSideInput;
   /**
-   * An undo bringing back a deleted transaction: its accounts may have been closed since.
+   * An undo bringing back a deleted transaction: its accounts may have been closed since. A
+   * transfer into an account closed from elsewhere is restored too.
    */
   restore?: boolean;
   /** In a foreign-currency account: the rate typed by hand (otherwise the date's). */
@@ -183,6 +186,13 @@ export async function insertWithFee(tx: Db, fx: FxDeps, budgetId: string, body: 
     assertSplitAllowed(account);
     assertLinesAddUp(split, amount);
   }
+  // Rates are looked up before anything is written; zero converts without a rate.
+  await prefetchRates(tx, fx, {
+    budgetId,
+    currencies: amount !== 0n || split ? [account.currency] : [],
+    accountIds: [transferTo?.id, ...(split ?? []).map((l) => l.transferAccountId)],
+    dates: [body.date],
+  });
   const payeeId = transferTo
     ? await transferPayeeId(tx, transferTo)
     : body.payeeName
@@ -297,6 +307,7 @@ export const updateTransactionHandler: RouteHandler<typeof updateTransaction, En
   const latest = latestTransactionDate(c.var.deps, today);
   const { expectedVersion, ...changes } = body;
   let previousVersions: Record<string, number> = {};
+  await prefetchUpdateRates(db, c.var.deps, budgetId, transactionId, changes);
   const accountId = await db.transaction(async (tx) => {
     if (expectedVersion !== undefined) {
       const expected = { [transactionId]: expectedVersion };
@@ -310,8 +321,9 @@ export const updateTransactionHandler: RouteHandler<typeof updateTransaction, En
 };
 
 /**
- * Any change but a flag approves an unapproved transaction (as saving it or clicking its cleared
- * state does), unless `approved` is given (an undo restoring it unapproved).
+ * Saving an unapproved transaction's editor or clicking its cleared state approves it; setting
+ * its flag doesn't. So any change but a flag approves, unless `approved` is given (an undo
+ * restoring it unapproved).
  */
 function withApproval(body: UpdateBody): UpdateBody {
   if (body.approved !== undefined) return body;
@@ -344,6 +356,56 @@ export interface UpdateBody {
   transferAmount?: string | null;
 }
 
+/**
+ * Looks up the rates an edit that converts again may need, before `applyUpdate` locks the row:
+ * the accounts it touches, at its date. A memo, flag or cleared edit needs none.
+ */
+export async function prefetchUpdateRates(
+  db: Db,
+  fx: FxDeps,
+  budgetId: string,
+  transactionId: string,
+  body: UpdateBody,
+) {
+  const { accountId, date, amount, transferAccountId, subtransactions, fxRate } = body;
+  const converts = [accountId, date, amount, transferAccountId, subtransactions, fxRate];
+  if (converts.every((v) => v === undefined) && !body.transferAmount) return;
+  const [existing] = await db
+    .select({
+      accountId: transaction.accountId,
+      date: transaction.date,
+      transferTransactionId: transaction.transferTransactionId,
+    })
+    .from(transaction)
+    .where(and(eq(transaction.id, transactionId), eq(transaction.budgetId, budgetId)));
+  if (!existing) return;
+  const [other] = existing.transferTransactionId
+    ? await db
+        .select({ accountId: transaction.accountId })
+        .from(transaction)
+        .where(eq(transaction.id, existing.transferTransactionId))
+    : [];
+  // A split edited without new lines converts its current ones again.
+  const currentLines = subtransactions
+    ? []
+    : await db
+        .select({ accountId: payee.transferAccountId })
+        .from(subTransaction)
+        .innerJoin(payee, eq(payee.id, subTransaction.payeeId))
+        .where(eq(subTransaction.transactionId, transactionId));
+  await prefetchRates(db, fx, {
+    budgetId,
+    accountIds: [
+      accountId ?? existing.accountId,
+      transferAccountId,
+      other?.accountId,
+      ...(subtransactions ?? []).map((l) => l.transferAccountId),
+      ...currentLines.map((l) => l.accountId),
+    ],
+    dates: [date ?? existing.date],
+  });
+}
+
 /** One transaction's edit (as `updateTransaction` describes it); returns its account. */
 export async function applyUpdate(
   tx: Db,
@@ -356,7 +418,7 @@ export async function applyUpdate(
 ) {
   const existing = await lockTransaction(tx, budgetId, transactionId);
   if (!existing) throw new AppError(404, "NOT_FOUND", "Transaction not found");
-  // Only a new date is checked, so a row already dated ahead can still be edited.
+  // Only a new date is checked, so a row already dated ahead (older data) can still be edited.
   if (body.date !== undefined && body.date !== existing.date)
     assertNotFuture(body.date, latestDate);
   if (existing.cleared === "reconciled" && body.cleared !== undefined) reconciledStays();
@@ -395,7 +457,7 @@ export async function applyUpdate(
   if (body.transferAmount === null && !transferTo) {
     throw new AppError(400, "BAD_REQUEST", "`transferAmount` is for transfers only");
   }
-  // A reconciled other side follows the edit and stays reconciled; the warning before saving is
+  // A reconciled other side follows the edit and stays reconciled: the warning before saving is
   // the client's.
 
   // A split stays one until it gets a category (or becomes a transfer); see `syncLines`.

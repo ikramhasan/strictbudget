@@ -2,7 +2,10 @@ import { z } from "zod";
 import { CURRENCY_CODES, type CurrencyCode } from "./currency";
 import { type Money, money } from "./money";
 
-export const zCurrencyCode = z.enum(CURRENCY_CODES).describe("ISO 4217 currency code");
+export const zCurrencyCode = z
+  .enum(CURRENCY_CODES)
+  .describe("ISO 4217 currency code")
+  .meta({ id: "CurrencyCode" });
 
 /** Integer amount in minor units, as a string (JSON numbers cannot hold every bigint). */
 export const zMinorUnits = z

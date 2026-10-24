@@ -13,6 +13,7 @@ import { alias } from "drizzle-orm/pg-core";
 import type { FxDeps } from "../../lib/base-amount";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError } from "../../lib/errors";
+import { prefetchRates } from "../../lib/fx";
 import { type Db, transferPayeeId } from "../../lib/ledger";
 import { notePayeeCategorizations } from "../../lib/payee-categories";
 import { isRevaluationPayee } from "../../lib/revaluation";
@@ -183,6 +184,29 @@ export const bulkUpdateTransactionsHandler: RouteHandler<
     budget,
     await checkFilterAccount(db, budgetId, selection),
   );
+
+  // A duplicate converts afresh: look the rates up before the rows are locked. A move can't miss
+  // the cache: it stays in a currency and keeps each row's rate (`rebase`).
+  if (action.type === "duplicate") {
+    const ids = await db
+      .select({ id: transaction.id })
+      .from(transaction)
+      .where(selectedWhere(db, budgetId, selection, settings));
+    const rows = await queryRegisterRows(
+      db,
+      budgetId,
+      ids.map((r) => r.id),
+    );
+    await prefetchRates(db, c.var.deps, {
+      budgetId,
+      accountIds: rows.flatMap((r) => [
+        r.accountId,
+        r.transferAccountId,
+        ...r.subtransactions.map((l) => l.transferAccountId),
+      ]),
+      dates: rows.map((r) => r.date),
+    });
+  }
 
   const result = await db.transaction(async (tx) => {
     // Lock the selection before reading what the actions below check.

@@ -12,7 +12,8 @@ export type ReportTarget = {
     | "/budgets/$budgetId/reports/spending-trends"
     | "/budgets/$budgetId/reports/net-worth"
     | "/budgets/$budgetId/reports/income-expense"
-    | "/budgets/$budgetId/reports/age-of-money";
+    | "/budgets/$budgetId/reports/age-of-money"
+    | "/budgets/$budgetId/reports/spending-pace";
   search?: ReportSearch;
 };
 

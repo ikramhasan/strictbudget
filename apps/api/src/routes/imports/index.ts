@@ -4,6 +4,7 @@ import {
   getImportContextHandler,
   importTransactionsHandler,
   matchTransactionsHandler,
+  undoDontRenameHandler,
   unmatchTransactionHandler,
 } from "./handlers";
 import {
@@ -11,6 +12,7 @@ import {
   getImportContext,
   importTransactions,
   matchTransactions,
+  undoDontRenameTransaction,
   unmatchTransaction,
 } from "./routes";
 
@@ -19,4 +21,5 @@ export const importsRouter = createRouter()
   .openapi(importTransactions, importTransactionsHandler)
   .openapi(matchTransactions, matchTransactionsHandler)
   .openapi(unmatchTransaction, unmatchTransactionHandler)
-  .openapi(dontRenameTransaction, dontRenameHandler);
+  .openapi(dontRenameTransaction, dontRenameHandler)
+  .openapi(undoDontRenameTransaction, undoDontRenameHandler);

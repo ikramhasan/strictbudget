@@ -653,8 +653,9 @@ const MoneyMoveSchema = z
     avatarColor: zAvatarColor
       .nullable()
       .describe(
-        "The mover's avatar colour (1–6: the owner is 1, the others 2–6 by when they joined); null once they've left the budget",
+        "The mover's avatar colour (1–6: the owner is 1, the others 2–6 by when they joined), kept after they leave; null if their user was deleted",
       ),
+    removed: z.boolean().describe("True once the mover has left the budget"),
     picture: zPicture.describe("The mover's profile picture URL; null without one"),
   })
   .openapi("MoneyMove");

@@ -5,7 +5,6 @@ import { PageHeader } from "@/components/page-header";
 import { PageTitle } from "@/components/page-title";
 import { useBudget } from "@/lib/budget-context";
 
-/** The five main reports, in tab order. */
 export const PARITY_REPORTS = [
   { to: "/budgets/$budgetId/reports/spending-breakdown", label: "Spending Breakdown" },
   { to: "/budgets/$budgetId/reports/spending-trends", label: "Spending Trends" },
@@ -14,6 +13,13 @@ export const PARITY_REPORTS = [
   { to: "/budgets/$budgetId/reports/age-of-money", label: "Age of Money" },
 ] as const;
 
+export const EXTRA_REPORTS = [
+  { to: "/budgets/$budgetId/reports/budget-vs-actual", label: "Budget vs Actual" },
+  { to: "/budgets/$budgetId/reports/spending-pace", label: "Spending Pace" },
+  { to: "/budgets/$budgetId/reports/credit-card-health", label: "Credit Card Health" },
+] as const;
+
+/** Every report's tab, kept reachable from every report. */
 export function ReportsNav() {
   const { budget } = useBudget();
   return (
@@ -35,7 +41,7 @@ export function ReportsNav() {
             Overview
           </Link>
         </li>
-        {PARITY_REPORTS.map((r) => (
+        {[...PARITY_REPORTS, ...EXTRA_REPORTS].map((r) => (
           <li key={r.to}>
             <Link
               to={r.to}
@@ -52,6 +58,7 @@ export function ReportsNav() {
   );
 }
 
+/** A report's frame: the tabs, its title with actions (Export) and filters, then its content. */
 export function ReportPage({
   title,
   actions,
@@ -66,7 +73,8 @@ export function ReportPage({
   className?: string;
 }) {
   return (
-    // The app shell already pads the page; this only spaces the report.
+    // The app shell already pads the page; this only spaces the report. Full width, like the
+    // budget and account pages.
     <div className={cn("grid w-full content-start gap-4", className)}>
       <PageTitle name={title} />
       <PageHeader title={title} actions={actions} />

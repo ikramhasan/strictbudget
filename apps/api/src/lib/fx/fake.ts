@@ -12,6 +12,7 @@ export class FakeFxProvider implements FxProvider {
   /** When set, every call throws (a provider that's down). */
   failing = false;
   private readonly table = new Map<string, Map<string, Partial<Record<CurrencyCode, string>>>>();
+  private gate: Promise<void> | null = null;
 
   constructor(readonly name: FxRateSource = "frankfurter") {}
 
@@ -20,8 +21,21 @@ export class FakeFxProvider implements FxProvider {
     this.table.clear();
     this.calls.length = 0;
     this.failing = false;
+    this.gate = null;
     forgetFxFailures(this);
     return this;
+  }
+
+  /** Makes calls wait until the returned function is called (a slow provider). */
+  hold(): () => void {
+    let release = () => {};
+    this.gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    return () => {
+      this.gate = null;
+      release();
+    };
   }
 
   /** "1 base = rates[quote] quote" on `date`. */
@@ -34,6 +48,7 @@ export class FakeFxProvider implements FxProvider {
 
   async fetchRates(date: string, base: CurrencyCode, quotes: CurrencyCode[]) {
     this.calls.push({ date, base, quotes });
+    if (this.gate) await this.gate;
     if (this.failing) throw new Error(`${this.name} is down`);
     const byBase = this.table.get(base);
     if (!byBase) return null;
