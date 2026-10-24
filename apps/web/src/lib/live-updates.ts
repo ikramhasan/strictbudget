@@ -21,10 +21,9 @@ export function isBudgetQuery(query: Pick<Query, "queryKey">, budgetId: string):
 }
 
 /**
- * Live updates (EVERYCENT-90, an everycent extra; YNAB re-syncs every 3 minutes): listens to the
- * budget's event stream and refetches what's on screen when someone else changes the budget.
- * Changes this tab made are skipped (it already refreshes after its own). EventSource reconnects
- * by itself; a reconnect refetches too, in case something was missed while offline.
+ * Listens to the budget's event stream and refetches what's on screen when someone else changes
+ * the budget. Changes this tab made are skipped (it already refreshes after its own). EventSource
+ * reconnects by itself; a reconnect refetches too, in case something was missed while offline.
  */
 export function useBudgetEvents(budgetId: string, baseUrl: string) {
   const queryClient = useQueryClient();

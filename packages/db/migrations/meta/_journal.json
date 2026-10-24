@@ -393,6 +393,13 @@
       "when": 1792346591105,
       "tag": "0055_chemical_ozymandias",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1792883137762,
+      "tag": "0056_strictbudget_rename",
+      "breakpoints": true
     }
   ]
 }

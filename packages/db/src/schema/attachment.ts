@@ -5,8 +5,8 @@ import { budget } from "./budget";
 import { timestamps } from "./columns";
 
 /**
- * A transaction's attachment (YNAB's transaction photo, plus PDFs; EVERYCENT-31): one per
- * transaction, and one per transfer, shared by its two sides (it hangs off the side it was added
+ * A transaction's attachment (a photo or PDF): one per transaction, and one per transfer, shared
+ * by its two sides (it hangs off the side it was added
  * on). The file itself is in object storage under `storageKey`.
  */
 export const transactionAttachment = pgTable(
@@ -41,8 +41,8 @@ export const storageDeletion = pgTable("storage_deletion", {
 });
 
 /**
- * An account's logo (an everycent extra, EVERYCENT-229): a square image shown before the account's
- * name. Replaced by deleting the row and adding another, so the old file is queued for deletion.
+ * An account's logo: a square image shown before the account's name. Replaced by deleting the row
+ * and adding another, so the old file is queued for deletion.
  * `id` names the version, for cache-safe URLs.
  */
 export const accountLogo = pgTable("account_logo", {
@@ -61,7 +61,7 @@ export const accountLogo = pgTable("account_logo", {
 });
 
 /**
- * A user's profile picture (EVERYCENT-229): a square image shown as a circle. Its URL is also kept
+ * A user's profile picture: a square image shown as a circle. Its URL is also kept
  * in Better Auth's `user.image`, so the session carries it.
  */
 export const userAvatar = pgTable("user_avatar", {

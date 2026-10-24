@@ -1,5 +1,5 @@
-import { budgetMember } from "@everycent/db/schema";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { budgetMember } from "@strictbudget/db/schema";
 import { and, eq } from "drizzle-orm";
 import { streamSSE } from "hono/streaming";
 import { loadBudgetAccess } from "../../lib/budget-access";

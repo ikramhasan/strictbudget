@@ -1,4 +1,4 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -7,19 +7,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@everycent/ui/components/dialog";
-import { Field, FieldDescription, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
+} from "@strictbudget/ui/components/dialog";
+import { Field, FieldDescription, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
 import { type FormEvent, useId, useState } from "react";
 
-/**
- * YNAB's Make a Fresh Start dialog: the new budget needs a name ("New Plan Name", empty to start
- * with; Continue stays disabled until it has one), then what comes along and what stays behind.
- */
 export function FreshStartDialog({
   onContinue,
 }: {
-  /** Makes the fresh start; resolves once done (or failed, having said so). */
+  /** Resolves once done, or once it failed and said so. */
   onContinue: (name: string) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);

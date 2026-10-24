@@ -7,7 +7,7 @@ import {
   PAYEE_CATEGORIZATIONS,
   PAYEE_RULE_OPERATORS,
   SCHEDULE_FREQUENCIES,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
@@ -29,8 +29,7 @@ import { budget } from "./budget";
 import { category } from "./category";
 import { timestamps } from "./columns";
 
-// Named `account` in YNAB, but Better Auth owns the `account` table (logins), so the table is
-// `budget_account`.
+// Better Auth owns the `account` table (logins), so this one is `budget_account`.
 export const budgetAccount = pgTable(
   "budget_account",
   {
@@ -46,8 +45,7 @@ export const budgetAccount = pgTable(
     closed: boolean().notNull().default(false),
     /**
      * Position in the sidebar's Starred group (ascending); null when not starred. Shared by
-     * everyone on the budget, like YNAB's web `is_favorite` / `sortable_favorite_index`. Closing
-     * the account clears it.
+     * everyone on the budget. Closing the account clears it.
      */
     starredSortOrder: integer(),
     /** Currency of every native amount in this account; loans are always in the budget's. */
@@ -58,28 +56,23 @@ export const budgetAccount = pgTable(
     minimumPayment: bigint({ mode: "bigint" }),
     /** Loan accounts: monthly escrow, in `currency` minor units. */
     escrowAmount: bigint({ mode: "bigint" }),
-    /** When the account was last reconciled (YNAB's "Reconciled 9 days ago"); null if never. */
     lastReconciledAt: timestamp({ withTimezone: true }),
     /**
-     * Loan accounts: the plan category paired with it (YNAB's "Paired Plan Category"), which its
-     * payments come out of. One loan per category; deleting the category unpairs it.
+     * Loan accounts: the paired category its payments come out of. One loan per category;
+     * deleting the category unpairs it.
      */
     pairedCategoryId: text().references((): AnyPgColumn => category.id, { onDelete: "set null" }),
-    /**
-     * Loan accounts: "Another debt bites the dust" was dismissed (YNAB's plan setting
-     * `loan_payoff_celebration_completed_for_account_ids`, per loan, checked 2026-10-14).
-     */
     paidOffBannerDismissed: boolean().notNull().default(false),
     /**
-     * The CSV import's "Remember setting for this account" (EVERYCENT-66): the column mapping,
-     * options and date format, for files with these column names.
+     * The CSV import's "Remember setting for this account": the column mapping, options and date
+     * format, for files with these column names.
      */
     csvImportSettings: jsonb().$type<CsvImportSettings>(),
-    /** The same for OFX/QFX and QIF files (EVERYCENT-67): their three options. */
+    /** The same for OFX/QFX and QIF files: their three options. */
     statementImportSettings: jsonb().$type<StatementImportSettings>(),
     /**
-     * A tracking liability updated to a loan account (YNAB's "Update to a Loan Account"): the new
-     * loan. The original stays closed with its history, which the loan's page shows.
+     * A tracking liability updated to a loan account: the new loan. The original stays closed
+     * with its history, which the loan's page shows.
      */
     migratedToAccountId: text().references((): AnyPgColumn => budgetAccount.id, {
       onDelete: "set null",
@@ -93,8 +86,8 @@ export const budgetAccount = pgTable(
 );
 
 /**
- * A loan's interest rate, minimum payment and escrow from `month` on, as YNAB keeps them per month
- * (a change applies "for October and going forward"). The account's own columns hold the latest.
+ * A loan's interest rate, minimum payment and escrow from `month` on (a change applies to that
+ * month and later). The account's own columns hold the latest.
  */
 export const loanTerms = pgTable(
   "loan_terms",
@@ -115,8 +108,8 @@ export const loanTerms = pgTable(
 );
 
 /**
- * A loan month's interest or escrow set by hand (YNAB's "Edited on October 13") or fixed by
- * Update Balance ("Reconciled"). Months without a row are estimated from the loan's terms.
+ * A loan month's interest or escrow set by hand or fixed by Update Balance. Months without a row
+ * are estimated from the loan's terms.
  */
 export const loanCharge = pgTable(
   "loan_charge",
@@ -137,12 +130,12 @@ export const loanCharge = pgTable(
   (t) => [uniqueIndex("loan_charge_account_month_kind_idx").on(t.accountId, t.month, t.kind)],
 );
 
-/** Payees YNAB creates itself and people can't rename or merge. */
+/** Payees the app creates itself; people can't rename or merge them. */
 export const INTERNAL_PAYEE_KINDS = [
   "starting_balance",
   "manual_balance_adjustment",
   "reconciliation_balance_adjustment",
-  /** A foreign-currency account's revaluation (EVERYCENT-56): base amount only, native zero. */
+  /** A foreign-currency account's revaluation: base amount only, native zero. */
   "fx_revaluation",
 ] as const;
 export type InternalPayeeKind = (typeof INTERNAL_PAYEE_KINDS)[number];
@@ -163,7 +156,7 @@ export const payee = pgTable(
     transferAccountId: text().references(() => budgetAccount.id, { onDelete: "cascade" }),
     /** Hidden payees aren't suggested in the payee field, but typing the exact name still uses them. */
     hidden: boolean().notNull().default(false),
-    /** Manage Payees' Categorization: how a new transaction for this payee gets its category. */
+    /** How a new transaction for this payee gets its category. */
     categorization: text({ enum: PAYEE_CATEGORIZATIONS }).notNull().default("auto"),
     /** The "Always use my choice" category. */
     defaultCategoryId: text().references(() => category.id, { onDelete: "set null" }),
@@ -173,10 +166,10 @@ export const payee = pgTable(
      */
     carriedCategoryId: text().references(() => category.id, { onDelete: "set null" }),
     /**
-     * The auto-categorization default as stored state: YNAB updates it when one of the payee's
-     * transactions is added or edited and leaves it alone on a delete (EVERYCENT-182). Only read
-     * once `autoCategorySaved`; until a payee's first add or edit after this column arrived, the
-     * default is replayed from its history (with `carriedCategoryId`), as before.
+     * The auto-categorization default as stored state: updated when one of the payee's
+     * transactions is added or edited, left alone on a delete. Only read once
+     * `autoCategorySaved`; until then the default is replayed from the payee's history (with
+     * `carriedCategoryId`).
      */
     autoCategoryId: text().references(() => category.id, { onDelete: "set null" }),
     autoCategorySaved: boolean().notNull().default(false),
@@ -184,7 +177,7 @@ export const payee = pgTable(
   },
   (t) => [
     index("payee_budget_id_idx").on(t.budgetId),
-    // YNAB treats "Costco" and "costco" as the same payee.
+    // Payee names are case-insensitive: "Costco" and "costco" are the same payee.
     uniqueIndex("payee_name_per_budget_idx")
       .on(t.budgetId, sql`lower(${t.name})`)
       .where(sql`${t.transferAccountId} is null`),
@@ -196,8 +189,8 @@ export const payee = pgTable(
 );
 
 /**
- * A renaming rule: an imported payee whose name meets it is renamed to `payeeId` (YNAB's Manage
- * Payees "Renaming" card). Transfer payees take rules too. `position` orders a payee's rules on
+ * A renaming rule: an imported payee whose name meets it is renamed to `payeeId`. Transfer payees
+ * take rules too. `position` orders a payee's rules on
  * screen (a combine appends the merged payees' rules after the target's); `createdAt` decides which
  * rule wins when several payees' rules match (the newest).
  */
@@ -225,13 +218,13 @@ export const payeeRule = pgTable(
 export const CLEARED_STATES = ["uncleared", "cleared", "reconciled"] as const;
 export type ClearedState = (typeof CLEARED_STATES)[number];
 
-/** YNAB's six flag colors; each budget can name them (see `flagName`). */
+/** Each budget can name these (see `flagName`). */
 export const FLAG_COLORS = ["red", "orange", "yellow", "green", "blue", "purple"] as const;
 export type FlagColor = (typeof FLAG_COLORS)[number];
 
 /**
- * A budget's name for a flag color (e.g. red = "Reimbursable"), shared by everyone on the budget
- * as in YNAB. Colors without a row have no name.
+ * A budget's name for a flag color (e.g. red = "Reimbursable"), shared by everyone on the budget.
+ * Colors without a row have no name.
  */
 export const flagName = pgTable(
   "flag_name",
@@ -300,7 +293,7 @@ export const transaction = pgTable(
       onDelete: "set null",
     }),
     /**
-     * Who entered it and who changed it last (EVERYCENT-89), set by the `everycent_stamp_row`
+     * Who entered it and who changed it last, set by the `strictbudget_stamp_row`
      * trigger from the request's actor; null when no one did (a scheduled occurrence entered on
      * read) or once their user is deleted. Not foreign keys, like `audit_event`'s ids.
      */
@@ -315,14 +308,14 @@ export const transaction = pgTable(
     /** Bumped by the trigger on every real change: undo sends it to detect a partner's edit. */
     version: integer().notNull().default(1),
     /**
-     * From a file import (EVERYCENT-66): its import id (`EC:<amount>:<date>:<n>`) and the payee as
-     * the file named it, before renaming rules.
+     * From a file import: its import id (`EC:<amount>:<date>:<n>`) and the payee as the file named
+     * it, before renaming rules.
      */
     importId: text(),
     importedPayee: text(),
     /**
-     * A matched transaction (EVERYCENT-68): the imported row folded into this one, and what this
-     * one was before, so Unmatch can split them again as YNAB does.
+     * A matched transaction: the imported row folded into this one, and what this one was before,
+     * so Unmatch can split them again.
      */
     matchedImport: jsonb().$type<MatchedImport>(),
     ...timestamps,
@@ -351,7 +344,6 @@ export const subTransaction = pgTable(
     transactionId: text()
       .notNull()
       .references(() => transaction.id, { onDelete: "cascade" }),
-    /** Order within the split (ascending). */
     sortOrder: integer().notNull(),
     /** Minor units; negative is an outflow. */
     amount: bigint({ mode: "bigint" }).notNull(),
@@ -375,8 +367,8 @@ export const subTransaction = pgTable(
 );
 
 /**
- * A scheduled transaction: a future one-off (frequency "never") or a repeating one. YNAB keeps one
- * row per schedule showing its next occurrence; due occurrences become transactions (see
+ * A scheduled transaction: a future one-off (frequency "never") or a repeating one. One row per
+ * schedule, showing its next occurrence; due occurrences become transactions (see
  * `enterDueScheduled` in the API). A transfer's payee is the other account's transfer payee, as on
  * transactions; there's no second row, the other account shows this one with the amount negated.
  */
@@ -473,7 +465,7 @@ export interface StatementImportSettings {
 }
 
 /**
- * Every import id an account has taken in (EVERYCENT-66/67). A file row with one of these is
+ * Every import id an account has taken in. A file row with one of these is
  * skipped, so re-importing a file adds nothing, and a deleted imported transaction never comes
  * back.
  */

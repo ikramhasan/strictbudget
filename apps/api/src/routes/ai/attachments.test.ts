@@ -5,7 +5,7 @@ import {
   storageDeletion,
   transaction,
   transactionAttachment,
-} from "@everycent/db/schema";
+} from "@strictbudget/db/schema";
 import { fakeText } from "@tanstack/ai/testing";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
@@ -117,7 +117,7 @@ async function chat(
 
 const pointer = (a: Uploaded, type = "image") => ({
   type,
-  source: { type: "url", value: `everycent-attachment:${a.id}`, mimeType: a.contentType },
+  source: { type: "url", value: `strictbudget-attachment:${a.id}`, mimeType: a.contentType },
   metadata: { attachmentId: a.id, fileName: a.fileName },
 });
 
@@ -232,8 +232,7 @@ describe("AI attachments", () => {
       .where(eq(aiChatThread.threadId, threadId));
     const text = JSON.stringify(stored?.messages);
     expect(text).not.toContain(PNG_BASE64);
-    expect(text).toContain(`everycent-attachment:${photo.id}`);
-    // A reload shows the files.
+    expect(text).toContain(`strictbudget-attachment:${photo.id}`);
     const state = await json<{ messages: { role: string; parts: { type: string }[] }[] }>(
       await send("GET", `${ai}/chat?threadId=${threadId}`, owner.cookie),
     );

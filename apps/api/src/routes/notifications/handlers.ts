@@ -1,12 +1,12 @@
-import { sql } from "@everycent/db";
+import type { RouteConfig, RouteHandler } from "@hono/zod-openapi";
+import { sql } from "@strictbudget/db";
 import {
   budget,
   budgetEmailPreference,
   budgetMember,
   user,
   userPreference,
-} from "@everycent/db/schema";
-import type { RouteConfig, RouteHandler } from "@hono/zod-openapi";
+} from "@strictbudget/db/schema";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { aiSettings } from "../../lib/ai/settings";
 import { AppError } from "../../lib/errors";

@@ -13,7 +13,7 @@ const usd = {
 const show = (amount: bigint) =>
   `${amount < 0n ? "−" : ""}$${(Number(amount < 0n ? -amount : amount) / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 
-/** YNAB's x-126-Mort (2026-10-14): −$99,498.75 at 6% with $150.00 escrow. */
+/** −$99,498.75 at 6% with $150.00 escrow. */
 const mortgage = {
   id: "loan",
   name: "x-126-Mort",
@@ -78,7 +78,7 @@ describe("UpdateBalanceDialog's interest rate / escrow check", () => {
       escrowAmount: { amount: "15000", keepGoingForward: true },
     };
     expect(onPreview).toHaveBeenCalledWith(-9940000n, loanTerms);
-    // The API's adjustment, with October re-estimated at 7% (YNAB: $181.88).
+    // The API's adjustment, with October re-estimated at 7%.
     expect(screen.getByText("$181.88")).toBeVisible();
     expect(screen.getByText("+$181.88")).toBeVisible();
     expect(

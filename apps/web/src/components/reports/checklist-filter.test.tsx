@@ -57,7 +57,7 @@ describe("ChecklistFilter", () => {
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
-  it("names an empty selection as YNAB does", () => {
+  it("names an empty selection", () => {
     setup([]);
     expect(screen.getByRole("button", { name: /No Categories Selected/ })).toBeInTheDocument();
   });

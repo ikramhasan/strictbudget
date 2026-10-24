@@ -1,5 +1,5 @@
-import { CSV_DATE_FORMATS, zMinorUnits } from "@everycent/engine";
 import { createRoute, z } from "@hono/zod-openapi";
+import { CSV_DATE_FORMATS, zMinorUnits } from "@strictbudget/engine";
 import { IsoDate } from "../../lib/dates";
 import { jsonError } from "../../lib/errors";
 import { authSecurity, requireAuth } from "../../middleware/require-auth";
@@ -146,7 +146,7 @@ export const matchTransactions = createRoute({
   tags: ["Transactions"],
   security: authSecurity,
   middleware: [requireAuth] as const,
-  summary: "Match an imported transaction to an entered one (YNAB's Match)",
+  summary: "Match an imported transaction to an entered one",
   description:
     "The two become one: the entered transaction keeps its date, payee, memo and category, " +
     "takes the imported amount, and is cleared and approved. Unmatch splits them again.",
@@ -237,7 +237,7 @@ export const dontRenameTransaction = createRoute({
   tags: ["Transactions"],
   security: authSecurity,
   middleware: [requireAuth] as const,
-  summary: "YNAB's \"Don't Rename as <payee>\": back to the imported payee, without the rule",
+  summary: "Don't Rename as <payee>: back to the imported payee, without the rule",
   description:
     "The transaction takes its imported payee name again, and its payee loses the renaming " +
     'rule "Is <imported name>".',

@@ -1,6 +1,6 @@
-import { newId } from "@everycent/db";
-import { budget, type ClearedState, subTransaction, transaction } from "@everycent/db/schema";
-import { normalizeRate } from "@everycent/engine";
+import { newId } from "@strictbudget/db";
+import { budget, type ClearedState, subTransaction, transaction } from "@strictbudget/db/schema";
+import { normalizeRate } from "@strictbudget/engine";
 import { asc, eq, inArray } from "drizzle-orm";
 import {
   type FxDeps,
@@ -23,7 +23,6 @@ import {
   usesCategory,
 } from "./rules";
 
-/** A split line as the API receives it. */
 export interface LineInput {
   /** An existing line of this split, to keep its transfer's other side. New lines leave it out. */
   id?: string;
@@ -101,7 +100,7 @@ async function lockCounterparts(db: Db, lineIds: readonly string[]) {
  * Brings a split's lines in line with `input` (matched by id; missing ones are removed, so `[]`
  * un-splits), or, without `input`, keeps them and re-syncs their transfers after the parent's
  * date or account changed. Transfer lines keep a transaction in the other account with the
- * opposite amount and the parent's date, following the 5b rules.
+ * opposite amount and the parent's date.
  */
 export async function syncLines(
   tx: Db,
@@ -116,7 +115,6 @@ export async function syncLines(
     counterpart?: { cleared: (account: AccountRow) => ClearedState; approved: boolean };
     /** An undo bringing back a deleted split: its transfer lines may reach closed accounts. */
     restore?: boolean;
-    /** To convert a transfer line between currencies (EVERYCENT-55). */
     fx?: FxDeps;
   },
   input?: readonly LineInput[],
@@ -176,7 +174,7 @@ export async function syncLines(
       assertTransferPair(account, transferTo);
     }
     const retargeted = (transferTo?.id ?? null) !== (other?.accountId ?? null);
-    // Entering a scheduled split still reaches a closed account, as YNAB does.
+    // Entering a scheduled split still reaches a closed account.
     if (transferTo && retargeted && !ctx.counterpart && !ctx.restore) assertOpen(transferTo);
     if (spec.transferSide && !transferTo) {
       throw new AppError(400, "BAD_REQUEST", "A line's `transferSide` needs `transferAccountId`");
@@ -245,7 +243,7 @@ export async function syncLines(
             moved || retargeted
               ? await resolveCategory(tx, budgetId, transferTo, account, keep)
               : undefined,
-          // A line's memo is its other side's too (YNAB, 2026-10-15, EVERYCENT-158).
+          // A line's memo is its other side's too.
           memo: spec.memo !== undefined && spec.memo !== old?.memo ? spec.memo : undefined,
         })
         .where(eq(transaction.id, other.id));
@@ -300,7 +298,7 @@ async function parentBases(tx: Db, parentId: string, amounts: readonly bigint[])
 
 /**
  * A transfer line's other side's amount: the opposite amount in one currency. Between currencies
- * (EVERYCENT-55) the split's rate decides the line's base amount, so a side in the budget's
+ * the split's rate decides the line's base amount, so a side in the budget's
  * currency takes that; another currency takes `transferAmount`, or keeps its own amount on an
  * edit, or gets the line's base amount at the date's rate.
  */
@@ -314,7 +312,6 @@ async function lineOtherAmount(
     account: AccountRow;
     transferTo: AccountRow;
     other: { amount: bigint; currency: AccountRow["currency"] } | undefined;
-    /** The line's base amount. */
     base: bigint;
     budgetCurrency: AccountRow["currency"];
   },

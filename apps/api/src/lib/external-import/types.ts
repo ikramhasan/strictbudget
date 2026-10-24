@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 
-// The parts of YNAB's API (https://api.ynab.com/v1, GET /budgets/{id}) the importer reads, checked
+// The parts of the source's API (GET /budgets/{id}) the importer reads, checked
 // before use. Amounts are milliunits (1000 = 1.00 of the currency).
 
 const Milli = z.number().int();
@@ -10,14 +10,14 @@ const Flag = z.enum(["red", "orange", "yellow", "green", "blue", "purple", ""]).
 /** Loan values by month: { "2026-10-01": 7000 }. */
 const PerMonth = z.record(z.string(), z.number().int()).nullable();
 
-export const YnabPlanSummarySchema = z.object({
+export const ExternalPlanSummarySchema = z.object({
   id: Id,
   name: z.string(),
   last_modified_on: z.string().nullable().optional(),
   first_month: z.string().nullable().optional(),
   last_month: z.string().nullable().optional(),
 });
-export type YnabPlanSummary = z.infer<typeof YnabPlanSummarySchema>;
+export type ExternalPlanSummary = z.infer<typeof ExternalPlanSummarySchema>;
 
 const Account = z.object({
   id: Id,
@@ -133,7 +133,7 @@ const ScheduledSub = z.object({
   deleted: z.boolean(),
 });
 
-export const YnabPlanSchema = z.object({
+export const ExternalPlanSchema = z.object({
   id: Id,
   name: z.string(),
   first_month: z.string().nullable().optional(),
@@ -159,5 +159,5 @@ export const YnabPlanSchema = z.object({
   scheduled_transactions: z.array(Scheduled),
   scheduled_subtransactions: z.array(ScheduledSub),
 });
-export type YnabPlan = z.infer<typeof YnabPlanSchema>;
-export type YnabCategory = z.infer<typeof Category>;
+export type ExternalPlan = z.infer<typeof ExternalPlanSchema>;
+export type ExternalCategory = z.infer<typeof Category>;

@@ -189,8 +189,8 @@ describe("BudgetFilterBar with custom views", () => {
   });
 });
 
-// YNAB, 2026-10-15 (EVERYCENT-164): views past the window's breakpoints move into the Views Menu,
-// except the selected one. everycent's bar also stops at four views; the rest are under "More".
+// Views past the window's breakpoints move into the Views Menu, except the selected one. The bar
+// also stops at four views; the rest are under "More".
 describe("BudgetFilterBar overflow", () => {
   it("moves the views past the first four into More, keeping the selected one", async () => {
     const onChange = vi.fn();

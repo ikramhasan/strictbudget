@@ -47,7 +47,6 @@ export function useActivityLookups(): ActivityLookups {
   }, [accounts.data, categories.data, payees.data, members.data, formatAmount, formatDate, budget]);
 }
 
-/** Changes as lines: who, what, and each field before → after. */
 export function ActivityList({
   events,
   dateOf,

@@ -8,7 +8,7 @@ import {
 } from "./net-worth";
 
 describe("netWorthTotals", () => {
-  it("splits by each account's sign, not its type (YNAB, 2026-10-17)", () => {
+  it("splits by each account's sign, not its type", () => {
     // An asset account at −$6 counts in debts, a liability at +$19 in assets.
     expect(netWorthTotals([1_138_500n, -600n, 1_900n, -10_100n, 0n])).toEqual({
       assets: 1_140_400n,

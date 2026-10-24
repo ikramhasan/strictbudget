@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "everycent API",
+    "title": "strictbudget API",
     "version": "0.1.0",
     "description": "Zero-based budgeting API. Money amounts are integer strings in the currency's minor units.\n\n**Authentication:** create a personal API key in the web app (Account settings → API Keys) and send it as `Authorization: Bearer ec_…`. Choose it under *Authentication* to try requests here."
   },
@@ -75,7 +75,7 @@
               "self-hosted",
               "cloud"
             ],
-            "description": "`cloud` is the hosted everycent; anything else is a self-hosted server"
+            "description": "`cloud` is the hosted strictbudget; anything else is a self-hosted server"
           },
           "email": {
             "type": "boolean",
@@ -293,7 +293,7 @@
         "properties": {
           "openLastBudget": {
             "type": "boolean",
-            "description": "Open the last used budget at start (else the budget list), as YNAB's option"
+            "description": "Open the last used budget at start (else the budget list)"
           },
           "keyboardShortcuts": {
             "type": "boolean",
@@ -478,7 +478,7 @@
         "properties": {
           "openLastBudget": {
             "type": "boolean",
-            "description": "Open the last used budget at start (else the budget list), as YNAB's option"
+            "description": "Open the last used budget at start (else the budget list)"
           },
           "keyboardShortcuts": {
             "type": "boolean",
@@ -1022,7 +1022,7 @@
           "url"
         ]
       },
-      "YnabPlanList": {
+      "ExternalPlanList": {
         "type": "object",
         "properties": {
           "plans": {
@@ -1055,7 +1055,7 @@
           "plans"
         ]
       },
-      "YnabToken": {
+      "ExternalToken": {
         "type": "object",
         "properties": {
           "token": {
@@ -1069,7 +1069,7 @@
           "token"
         ]
       },
-      "YnabImportReport": {
+      "ExternalImportReport": {
         "type": "object",
         "properties": {
           "budget": {
@@ -1357,7 +1357,7 @@
           "updatedAt"
         ]
       },
-      "ImportYnabPlan": {
+      "ImportExternalPlan": {
         "type": "object",
         "properties": {
           "token": {
@@ -1386,7 +1386,7 @@
           "planId"
         ]
       },
-      "YnabFilesPreview": {
+      "ExternalFilesPreview": {
         "type": "object",
         "properties": {
           "accounts": {
@@ -1414,7 +1414,7 @@
                     "asset",
                     "liability"
                   ],
-                  "description": "YNAB account type"
+                  "description": "Account type"
                 },
                 "guessed": {
                   "type": "boolean"
@@ -1432,7 +1432,7 @@
           "accounts"
         ]
       },
-      "ImportYnabFiles": {
+      "ImportExternalFiles": {
         "type": "object",
         "properties": {
           "plan": {
@@ -1665,7 +1665,7 @@
                 "asset",
                 "liability"
               ],
-              "description": "YNAB account type"
+              "description": "Account type"
             },
             "description": "Each account's type by name; the files don't say, so ones left out are guessed"
           },
@@ -1693,6 +1693,7 @@
           "format": {
             "type": "string",
             "enum": [
+              "strictbudget-backup",
               "everycent-backup"
             ]
           },
@@ -5415,7 +5416,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 100,
-            "description": "The new budget's name (YNAB's \"New Plan Name\")"
+            "description": "The new budget's name"
           }
         },
         "required": [
@@ -5478,7 +5479,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 6,
-            "description": "YNAB's member avatar colour, 1–6: the owner is 1, the others 2–6 in the order they joined"
+            "description": "The member's avatar colour, 1–6: the owner is 1, the others 2–6 in the order they joined"
           },
           "picture": {
             "type": [
@@ -5591,7 +5592,7 @@
               "viewer"
             ],
             "default": "editor",
-            "description": "`editor` (YNAB's only role: can change everything but sharing) or `viewer` (an everycent extra: can see the budget but not change it)"
+            "description": "`editor` (can change everything but sharing) or `viewer` (can see the budget but not change it)"
           },
           "sendEmail": {
             "type": "boolean",
@@ -5727,7 +5728,7 @@
               "credit_card_payments",
               null
             ],
-            "description": "credit_card_payments: managed by YNAB rules, listed first"
+            "description": "credit_card_payments: managed by the app, listed first"
           },
           "categories": {
             "type": "array",
@@ -5824,7 +5825,7 @@
               "refill",
               "balance"
             ],
-            "description": "set_aside: the full amount each period (YNAB's 'Set aside another'); refill: only what brings the category back up to the amount ('Refill up to', custom 'Fill up to'); balance: reach the amount, by a month or eventually ('Have a balance of', custom only). Payment targets: set_aside for payment_monthly and debt_monthly, balance for payoff_by_date"
+            "description": "set_aside: the full amount each period ('Set aside another'); refill: only what brings the category back up to the amount ('Refill up to', custom 'Fill up to'); balance: reach the amount, by a month or eventually ('Have a balance of', custom only). Payment targets: set_aside for payment_monthly and debt_monthly, balance for payoff_by_date"
           },
           "amount": {
             "type": "string",
@@ -7047,7 +7048,7 @@
               "string",
               "null"
             ],
-            "description": "Its logo's URL (an API path; EVERYCENT-229), shown before its name; null without one"
+            "description": "Its logo's URL (an API path), shown before its name; null without one"
           },
           "type": {
             "type": "string",
@@ -7066,7 +7067,7 @@
               "asset",
               "liability"
             ],
-            "description": "YNAB account type"
+            "description": "Account type"
           },
           "note": {
             "type": "string"
@@ -7326,7 +7327,7 @@
           },
           "toReview": {
             "type": "integer",
-            "description": "Transactions that are unapproved or need a category (YNAB's \"N new transactions to approve or categorize\" and the dot by the account in the sidebar)"
+            "description": "Transactions that are unapproved or need a category (the review banner's count and the dot by the account in the sidebar)"
           },
           "unrealizedGain": {
             "type": [
@@ -7596,7 +7597,7 @@
               "asset",
               "liability"
             ],
-            "description": "YNAB account type"
+            "description": "Account type"
           },
           "currency": {
             "type": "string",
@@ -8303,7 +8304,7 @@
                 "payingRowId"
               ]
             },
-            "description": "This month's scheduled payments still to come, every occurrence of a repeating one, newest first (YNAB's \"N Upcoming Transactions\"); not in the balances"
+            "description": "This month's scheduled payments still to come, every occurrence of a repeating one, newest first; not in the balances"
           },
           "terms": {
             "type": "array",
@@ -8388,7 +8389,7 @@
               "accountId",
               "months"
             ],
-            "description": "A loan made by updating a tracking liability: the original account's month-end balances (YNAB's \"Original Tracking Account History\")"
+            "description": "A loan made by updating a tracking liability: the original account's month-end balances"
           }
         },
         "required": [
@@ -8452,7 +8453,7 @@
           "simulatorDismissed",
           "paidOffDismissed"
         ],
-        "description": "YNAB keeps these as plan settings, so they follow the plan to every device and member"
+        "description": "Kept as budget settings, so they follow the budget to every device and member"
       },
       "SetLoanCharge": {
         "type": "object",
@@ -8814,7 +8815,7 @@
               "purple",
               null
             ],
-            "description": "One of YNAB's six flag colors; null clears it"
+            "description": "One of the six flag colors; null clears it"
           },
           "approved": {
             "type": "boolean",
@@ -8822,11 +8823,11 @@
           },
           "needsCategory": {
             "type": "boolean",
-            "description": "Left Uncategorized (YNAB's \"This needs a category\" icon); transfers within the budget, tracking accounts and splits have no category (a split's lines have their own `needsCategory`)"
+            "description": "Left Uncategorized (\"This needs a category\" icon); transfers within the budget, tracking accounts and splits have no category (a split's lines have their own `needsCategory`)"
           },
           "imported": {
             "type": "boolean",
-            "description": "From a file import (or matched to one, EVERYCENT-66/68)"
+            "description": "From a file import (or matched to one)"
           },
           "importedPayee": {
             "type": [
@@ -8862,7 +8863,7 @@
               "payee",
               "memo"
             ],
-            "description": "Matched to an import (YNAB's Matched Transactions): the imported side"
+            "description": "Matched to an import (Matched Transactions): the imported side"
           },
           "transferAccountId": {
             "type": [
@@ -8884,7 +8885,7 @@
           },
           "transferReconciled": {
             "type": "boolean",
-            "description": "Transfers: the other side is reconciled (it follows changes to date, amount and account, and stays reconciled; YNAB warns before an amount or account change)"
+            "description": "Transfers: the other side is reconciled (it follows changes to date, amount and account, and stays reconciled; the app warns before an amount or account change)"
           },
           "transferSide": {
             "$ref": "#/components/schemas/TransferSide"
@@ -9006,7 +9007,7 @@
               "purple",
               null
             ],
-            "description": "One of YNAB's six flag colors; null clears it"
+            "description": "One of the six flag colors; null clears it"
           },
           "approved": {
             "type": "boolean"
@@ -9247,7 +9248,7 @@
           "byteSize",
           "createdAt"
         ],
-        "description": "Its photo or PDF (YNAB's transaction photo), shared by a transfer's two sides; a split has one for the whole split"
+        "description": "Its photo or PDF, shared by a transfer's two sides; a split has one for the whole split"
       },
       "SubTransaction": {
         "type": "object",
@@ -9291,7 +9292,7 @@
           },
           "needsCategory": {
             "type": "boolean",
-            "description": "Left Uncategorized (YNAB's \"This needs a category\" on the line); the split then counts as needing a category in the review banner and search"
+            "description": "Left Uncategorized (\"This needs a category\" on the line); the split then counts as needing a category in the review banner and search"
           },
           "memo": {
             "type": "string"
@@ -9384,7 +9385,7 @@
           "picture",
           "agent"
         ],
-        "description": "Who entered it (EVERYCENT-89); null when nobody did (a scheduled occurrence entered on its date) or for transactions from before this was recorded"
+        "description": "Who entered it; null when nobody did (a scheduled occurrence entered on its date) or for transactions from before this was recorded"
       },
       "AgentRef": {
         "type": [
@@ -9693,7 +9694,7 @@
           "q": {
             "type": "string",
             "maxLength": 500,
-            "description": "YNAB's search: comma-separated terms that must all match, each free text (payee, category, memo or account name, or an exact amount) or one of `Payee:`, `Category:` (`Category: Split` for splits), `Memo:`, `Account:`, `Flag:` (a color, its name or None), `Is:` (Uncleared, Cleared, Reconciled, Unreconciled, Cleared or Reconciled, Approved, Unapproved, Needs Category, Unapproved or Needs Category), `Outflow:`/`Inflow:` (`25`, `>=25`, `<=25`), `On:`/`Before:`/`After:` (a date in the budget's format, or part of one completed from today: `5` is May 1st in MM/DD/YYYY; before and after include the day), `Income:` (a month name, full or three letters, with an optional year, e.g. `Income: October 2026`: what's in Ready to Assign that month, including Starting Balances of budget accounts; no year means this year). Split lines are matched one by one. Amounts are read in each row's own account's currency (with all accounts, a row in euros matches `12` as €12.00 and one in yen as ¥12)."
+            "description": "Search: comma-separated terms that must all match, each free text (payee, category, memo or account name, or an exact amount) or one of `Payee:`, `Category:` (`Category: Split` for splits), `Memo:`, `Account:`, `Flag:` (a color, its name or None), `Is:` (Uncleared, Cleared, Reconciled, Unreconciled, Cleared or Reconciled, Approved, Unapproved, Needs Category, Unapproved or Needs Category), `Outflow:`/`Inflow:` (`25`, `>=25`, `<=25`), `On:`/`Before:`/`After:` (a date in the budget's format, or part of one completed from today: `5` is May 1st in MM/DD/YYYY; before and after include the day), `Income:` (a month name, full or three letters, with an optional year, e.g. `Income: October 2026`: what's in Ready to Assign that month, including Starting Balances of budget accounts; no year means this year). Split lines are matched one by one. Amounts are read in each row's own account's currency (with all accounts, a row in euros matches `12` as €12.00 and one in yen as ¥12)."
           },
           "from": {
             "type": "string",
@@ -9815,7 +9816,7 @@
                   "purple",
                   null
                 ],
-                "description": "One of YNAB's six flag colors; null clears it"
+                "description": "One of the six flag colors; null clears it"
               }
             },
             "required": [
@@ -10056,7 +10057,7 @@
               null
             ],
             "default": null,
-            "description": "One of YNAB's six flag colors; null clears it"
+            "description": "One of the six flag colors; null clears it"
           },
           "approved": {
             "type": "boolean",
@@ -10067,7 +10068,7 @@
           },
           "restore": {
             "type": "boolean",
-            "description": "An undo bringing back a deleted transaction: its accounts (and its transfers' accounts) may have been closed since, as YNAB's Undo allows"
+            "description": "An undo bringing back a deleted transaction: its accounts (and its transfers' accounts) may have been closed since, which Undo allows"
           },
           "baseAmount": {
             "type": "string",
@@ -10186,7 +10187,7 @@
               "purple",
               null
             ],
-            "description": "One of YNAB's six flag colors; null clears it"
+            "description": "One of the six flag colors; null clears it"
           },
           "approved": {
             "type": "boolean"
@@ -10310,7 +10311,7 @@
               "purple",
               null
             ],
-            "description": "One of YNAB's six flag colors; null clears it"
+            "description": "One of the six flag colors; null clears it"
           },
           "subtransactions": {
             "type": "array",
@@ -10325,7 +10326,7 @@
           },
           "approved": {
             "type": "boolean",
-            "description": "Approve it (or un-approve it, as an undo does); a transfer's other side follows. Left out, any change but a flag approves an unapproved transaction, as saving it or clicking its cleared state does in YNAB"
+            "description": "Approve it (or un-approve it, as an undo does); a transfer's other side follows. Left out, any change but a flag approves an unapproved transaction, as saving it or clicking its cleared state does"
           }
         },
         "additionalProperties": false
@@ -10720,7 +10721,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200,
-            "description": "Kept as typed, surrounding spaces included (YNAB does the same)"
+            "description": "Kept as typed, surrounding spaces included"
           }
         }
       },
@@ -10895,7 +10896,7 @@
                 "type": "string",
                 "minLength": 1,
                 "maxLength": 200,
-                "description": "Kept as typed, surrounding spaces included (YNAB does the same)"
+                "description": "Kept as typed, surrounding spaces included"
               },
               "position": {
                 "type": "integer"
@@ -10982,7 +10983,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200,
-            "description": "Kept as typed, surrounding spaces included (YNAB does the same)"
+            "description": "Kept as typed, surrounding spaces included"
           },
           "position": {
             "type": "integer",
@@ -11304,7 +11305,7 @@
               "purple",
               null
             ],
-            "description": "One of YNAB's six flag colors, or null"
+            "description": "One of the six flag colors, or null"
           },
           "transferAccountId": {
             "type": [
@@ -11515,7 +11516,7 @@
                   "purple",
                   null
                 ],
-                "description": "One of YNAB's six flag colors, or null"
+                "description": "One of the six flag colors, or null"
               }
             },
             "required": [
@@ -11654,7 +11655,7 @@
               "everyOtherYear"
             ],
             "default": "never",
-            "description": "YNAB's \"Repeat:\" options; `never` is a one-off. Month-based repeats fall on the first date's day (or a shorter month's last day) and count from `dateFirst`; yearly ones step from the previous date; twice a month pairs the day with the day 15 later."
+            "description": "The \"Repeat:\" options; `never` is a one-off. Month-based repeats fall on the first date's day (or a shorter month's last day) and count from `dateFirst`; yearly ones step from the previous date; twice a month pairs the day with the day 15 later."
           },
           "date": {
             "type": "string",
@@ -11711,7 +11712,7 @@
               null
             ],
             "default": null,
-            "description": "One of YNAB's six flag colors, or null"
+            "description": "One of the six flag colors, or null"
           },
           "subtransactions": {
             "type": "array",
@@ -11730,7 +11731,7 @@
           },
           "restore": {
             "type": "boolean",
-            "description": "An undo putting a schedule back as it was: its accounts may have been closed since, as YNAB's Undo allows"
+            "description": "An undo putting a schedule back as it was: its accounts may have been closed since, which Undo allows"
           }
         },
         "required": [
@@ -11801,7 +11802,7 @@
               "yearly",
               "everyOtherYear"
             ],
-            "description": "YNAB's \"Repeat:\" options; `never` is a one-off. Month-based repeats fall on the first date's day (or a shorter month's last day) and count from `dateFirst`; yearly ones step from the previous date; twice a month pairs the day with the day 15 later."
+            "description": "The \"Repeat:\" options; `never` is a one-off. Month-based repeats fall on the first date's day (or a shorter month's last day) and count from `dateFirst`; yearly ones step from the previous date; twice a month pairs the day with the day 15 later."
           },
           "date": {
             "type": "string",
@@ -11854,7 +11855,7 @@
               "purple",
               null
             ],
-            "description": "One of YNAB's six flag colors, or null"
+            "description": "One of the six flag colors, or null"
           },
           "subtransactions": {
             "type": "array",
@@ -11870,7 +11871,7 @@
           },
           "restore": {
             "type": "boolean",
-            "description": "An undo putting a schedule back as it was: its accounts may have been closed since, as YNAB's Undo allows"
+            "description": "An undo putting a schedule back as it was: its accounts may have been closed since, which Undo allows"
           }
         },
         "additionalProperties": false
@@ -11926,7 +11927,7 @@
             "items": {
               "$ref": "#/components/schemas/Flag"
             },
-            "description": "All six colors, in YNAB's order"
+            "description": "All six colors, in display order"
           }
         },
         "required": [
@@ -12942,7 +12943,7 @@
           },
           "overdraft": {
             "type": "boolean",
-            "description": "A negative Ready to Assign that taking back every category's cash wouldn't cover (YNAB's \"Overdraft?\"); false when categories could cover it (\"You assigned more than you have\", Fix This) and when Ready to Assign isn't negative"
+            "description": "A negative Ready to Assign that taking back every category's cash wouldn't cover (\"Overdraft?\"); false when categories could cover it (\"You assigned more than you have\", Fix This) and when Ready to Assign isn't negative"
           },
           "assignedInFuture": {
             "type": "string",
@@ -12997,7 +12998,7 @@
               "assignedInFuture",
               "total"
             ],
-            "description": "YNAB's Ready to Assign Breakdown, line by line"
+            "description": "The Ready to Assign Breakdown, line by line"
           },
           "futureMonths": {
             "type": "array",
@@ -13035,7 +13036,7 @@
                     "needed",
                     "funded"
                   ],
-                  "description": "A later month's targets for YNAB's pie or check; null when it has none"
+                  "description": "A later month's targets for the pie or check; null when it has none"
                 }
               },
               "required": [
@@ -13071,7 +13072,7 @@
           },
           "note": {
             "type": "string",
-            "description": "The month's note (YNAB's \"Enter a note…\"); empty for none"
+            "description": "The month's note (\"Enter a note…\"); empty for none"
           },
           "futureShortfall": {
             "type": [
@@ -13134,12 +13135,12 @@
               "cashActivity": {
                 "type": "string",
                 "pattern": "^(0|-?[1-9]\\d*)$",
-                "description": "The part of activity in cash accounts, refunds included (YNAB's Cash Spending)"
+                "description": "The part of activity in cash accounts, refunds included (Cash Spending)"
               },
               "creditActivity": {
                 "type": "string",
                 "pattern": "^(0|-?[1-9]\\d*)$",
-                "description": "The part of activity in credit accounts, refunds included (YNAB's Credit Spending)"
+                "description": "The part of activity in credit accounts, refunds included (Credit Spending)"
               },
               "available": {
                 "type": "string",
@@ -13464,7 +13465,7 @@
           "underfunded": {
             "type": "string",
             "pattern": "^(0|-?[1-9]\\d*)$",
-            "description": "What's owed beyond what's set aside (YNAB's Total Underfunded); 0 when Available covers it"
+            "description": "What's owed beyond what's set aside (Total Underfunded); 0 when Available covers it"
           },
           "overspentCategories": {
             "type": "string",
@@ -13479,7 +13480,7 @@
           "fundedSpending": {
             "type": "string",
             "pattern": "^(0|-?[1-9]\\d*)$",
-            "description": "Money moved in this month for funded card spending, less returns (YNAB's Funded Spending)"
+            "description": "Money moved in this month for funded card spending, less returns (Funded Spending)"
           },
           "paymentsMade": {
             "type": "string",
@@ -13685,7 +13686,7 @@
           "tone",
           "sections"
         ],
-        "description": "YNAB's progress bar under the category; null for payment categories"
+        "description": "The progress bar under the category; null for payment categories"
       },
       "FundingPart": {
         "type": "object",
@@ -13773,7 +13774,7 @@
           "amount",
           "transactions"
         ],
-        "description": "Scheduled transactions still to come in the month (YNAB's \"Upcoming Transactions\"): after the user's today, none in past months; null when there are none"
+        "description": "Scheduled transactions still to come in the month (\"Upcoming Transactions\"): after the user's today, none in past months; null when there are none"
       },
       "MonthTotals": {
         "type": "object",
@@ -13791,12 +13792,12 @@
           "cashActivity": {
             "type": "string",
             "pattern": "^(0|-?[1-9]\\d*)$",
-            "description": "The part of activity in cash accounts, refunds included (YNAB's Cash Spending)"
+            "description": "The part of activity in cash accounts, refunds included (Cash Spending)"
           },
           "creditActivity": {
             "type": "string",
             "pattern": "^(0|-?[1-9]\\d*)$",
-            "description": "The part of activity in credit accounts, refunds included (YNAB's Credit Spending)"
+            "description": "The part of activity in credit accounts, refunds included (Credit Spending)"
           },
           "available": {
             "type": "string",
@@ -13848,7 +13849,7 @@
           "month": {
             "type": "string",
             "pattern": "^(0|-?[1-9]\\d*)$",
-            "description": "What the targets of the categories that aren't hidden ask of this month (YNAB's \"October's Targets\"): each month's amount, or this month's share of a dated target"
+            "description": "What the targets of the categories that aren't hidden ask of this month (\"October's Targets\"): each month's amount, or this month's share of a dated target"
           },
           "nextMonth": {
             "type": "string",
@@ -13861,7 +13862,7 @@
               "null"
             ],
             "pattern": "^(0|-?[1-9]\\d*)$",
-            "description": "The budget's expected monthly income (YNAB's \"Expected Income\" under Cost to Be Me), the same in every month; null until entered"
+            "description": "The budget's expected monthly income (\"Expected Income\" under Cost to Be Me), the same in every month; null until entered"
           }
         },
         "required": [
@@ -14267,7 +14268,7 @@
               "moved",
               "removed"
             ],
-            "description": "assigned: from Ready to Assign; removed: back to it; moved: between categories (and, for a deletion, from Ready to Assign to the deleted category, as YNAB words it)"
+            "description": "assigned: from Ready to Assign; removed: back to it; moved: between categories (and, for a deletion, from Ready to Assign to the deleted category)"
           },
           "fromCategoryId": {
             "type": [
@@ -14344,7 +14345,7 @@
               "batchId",
               "method"
             ],
-            "description": "Set on the moves of an Auto-Assign, which YNAB lists together as one entry; null otherwise"
+            "description": "Set on the moves of an Auto-Assign, listed together as one entry; null otherwise"
           },
           "userId": {
             "type": [
@@ -16420,7 +16421,7 @@
               "asset",
               "liability"
             ],
-            "description": "YNAB account type"
+            "description": "Account type"
           },
           "onBudget": {
             "type": "boolean"
@@ -17104,7 +17105,7 @@
           "Users"
         ],
         "summary": "Turn off two-step verification with a code from the verification app",
-        "description": "As YNAB's \"Turn Off\" asks: the current 6-digit code (`INVALID_CODE` when wrong). Attempts share the password-check limit (`RATE_LIMITED`).",
+        "description": "Confirmed with the current 6-digit code (`INVALID_CODE` when wrong). Attempts share the password-check limit (`RATE_LIMITED`).",
         "security": [
           {
             "cookieAuth": []
@@ -17173,7 +17174,7 @@
         "tags": [
           "Users"
         ],
-        "summary": "The account's options (YNAB's Account Settings → Options)",
+        "summary": "The account's options (Account Settings → Options)",
         "security": [
           {
             "cookieAuth": []
@@ -17284,7 +17285,7 @@
           "Users"
         ],
         "summary": "Permanently delete the account and its data",
-        "description": "As YNAB does: confirmed with the password (`INVALID_PASSWORD`; attempts share the password-check limit), it deletes every budget the account owns, shared ones included, and removes the account from budgets others shared with it. Logins, sessions, options and two-step verification go too. Can't be undone.",
+        "description": "Confirmed with the password (`INVALID_PASSWORD`; attempts share the password-check limit), it deletes every budget the account owns, shared ones included, and removes the account from budgets others shared with it. Logins, sessions, options and two-step verification go too. Can't be undone.",
         "security": [
           {
             "cookieAuth": []
@@ -18384,9 +18385,9 @@
         }
       }
     },
-    "/v1/budgets/import/ynab/plans": {
+    "/v1/budgets/import/external/plans": {
       "post": {
-        "operationId": "listYnabPlans",
+        "operationId": "listExternalPlans",
         "tags": [
           "Budgets"
         ],
@@ -18402,7 +18403,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/YnabToken"
+                "$ref": "#/components/schemas/ExternalToken"
               }
             }
           }
@@ -18413,13 +18414,13 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/YnabPlanList"
+                  "$ref": "#/components/schemas/ExternalPlanList"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid input, or YNAB refused the token (YNAB_TOKEN_INVALID) or the files aren't YNAB's (YNAB_FILE_INVALID)",
+            "description": "Invalid input, or YNAB refused the token (EXTERNAL_TOKEN_INVALID) or the files aren't YNAB's (EXTERNAL_FILE_INVALID)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18449,7 +18450,7 @@
             }
           },
           "404": {
-            "description": "YNAB has no such plan (YNAB_PLAN_NOT_FOUND)",
+            "description": "YNAB has no such plan (EXTERNAL_PLAN_NOT_FOUND)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18459,7 +18460,7 @@
             }
           },
           "422": {
-            "description": "The plan can't be converted exactly: a currency everycent doesn't have (YNAB_CURRENCY_UNSUPPORTED) or a fraction of the currency's smallest unit (YNAB_AMOUNT_INEXACT)",
+            "description": "The plan can't be converted exactly: a currency strictbudget doesn't have (EXTERNAL_CURRENCY_UNSUPPORTED) or a fraction of the currency's smallest unit (EXTERNAL_AMOUNT_INEXACT)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18469,7 +18470,7 @@
             }
           },
           "429": {
-            "description": "YNAB's hourly request limit was reached (YNAB_RATE_LIMITED)",
+            "description": "YNAB's hourly request limit was reached (EXTERNAL_RATE_LIMITED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18479,7 +18480,7 @@
             }
           },
           "502": {
-            "description": "YNAB couldn't be reached or answered unexpectedly (YNAB_UNAVAILABLE, YNAB_UNEXPECTED)",
+            "description": "YNAB couldn't be reached or answered unexpectedly (EXTERNAL_UNAVAILABLE, EXTERNAL_UNEXPECTED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18491,9 +18492,9 @@
         }
       }
     },
-    "/v1/budgets/import/ynab": {
+    "/v1/budgets/import/external": {
       "post": {
-        "operationId": "importYnabPlan",
+        "operationId": "importExternalPlan",
         "tags": [
           "Budgets"
         ],
@@ -18503,13 +18504,13 @@
           }
         ],
         "summary": "Import a YNAB plan through YNAB's API, as a new budget",
-        "description": "An everycent extra (EVERYCENT-69). Reads the whole plan with the caller's personal access token and makes a new budget of it: accounts (with loan rates, minimum payments and escrow), category groups and categories (hidden ones, notes, targets), credit card payment categories, payees, every month's assigned amounts and notes, transactions (transfers, splits, flags, cleared, reconciled and approved states) and scheduled transactions. Milliunits convert exactly to the currency's minor units. Importing the same plan again returns the budget the first import made (`reused`); `replace` imports it afresh and deletes that one.",
+        "description": "Reads the whole plan with the caller's personal access token and makes a new budget of it: accounts (with loan rates, minimum payments and escrow), category groups and categories (hidden ones, notes, targets), credit card payment categories, payees, every month's assigned amounts and notes, transactions (transfers, splits, flags, cleared, reconciled and approved states) and scheduled transactions. Milliunits convert exactly to the currency's minor units. Importing the same plan again returns the budget the first import made (`reused`); `replace` imports it afresh and deletes that one.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ImportYnabPlan"
+                "$ref": "#/components/schemas/ImportExternalPlan"
               }
             }
           }
@@ -18520,7 +18521,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/YnabImportReport"
+                  "$ref": "#/components/schemas/ExternalImportReport"
                 }
               }
             }
@@ -18530,13 +18531,13 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/YnabImportReport"
+                  "$ref": "#/components/schemas/ExternalImportReport"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid input, or YNAB refused the token (YNAB_TOKEN_INVALID) or the files aren't YNAB's (YNAB_FILE_INVALID)",
+            "description": "Invalid input, or YNAB refused the token (EXTERNAL_TOKEN_INVALID) or the files aren't YNAB's (EXTERNAL_FILE_INVALID)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18566,7 +18567,7 @@
             }
           },
           "404": {
-            "description": "YNAB has no such plan (YNAB_PLAN_NOT_FOUND)",
+            "description": "YNAB has no such plan (EXTERNAL_PLAN_NOT_FOUND)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18576,7 +18577,7 @@
             }
           },
           "422": {
-            "description": "The plan can't be converted exactly: a currency everycent doesn't have (YNAB_CURRENCY_UNSUPPORTED) or a fraction of the currency's smallest unit (YNAB_AMOUNT_INEXACT)",
+            "description": "The plan can't be converted exactly: a currency strictbudget doesn't have (EXTERNAL_CURRENCY_UNSUPPORTED) or a fraction of the currency's smallest unit (EXTERNAL_AMOUNT_INEXACT)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18586,7 +18587,7 @@
             }
           },
           "429": {
-            "description": "YNAB's hourly request limit was reached (YNAB_RATE_LIMITED)",
+            "description": "YNAB's hourly request limit was reached (EXTERNAL_RATE_LIMITED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18596,7 +18597,7 @@
             }
           },
           "502": {
-            "description": "YNAB couldn't be reached or answered unexpectedly (YNAB_UNAVAILABLE, YNAB_UNEXPECTED)",
+            "description": "YNAB couldn't be reached or answered unexpectedly (EXTERNAL_UNAVAILABLE, EXTERNAL_UNEXPECTED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18608,9 +18609,9 @@
         }
       }
     },
-    "/v1/budgets/import/ynab-files": {
+    "/v1/budgets/import/external-files": {
       "post": {
-        "operationId": "importYnabFiles",
+        "operationId": "importExternalFiles",
         "tags": [
           "Budgets"
         ],
@@ -18626,7 +18627,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ImportYnabFiles"
+                "$ref": "#/components/schemas/ImportExternalFiles"
               }
             }
           }
@@ -18639,10 +18640,10 @@
                 "schema": {
                   "anyOf": [
                     {
-                      "$ref": "#/components/schemas/YnabFilesPreview"
+                      "$ref": "#/components/schemas/ExternalFilesPreview"
                     },
                     {
-                      "$ref": "#/components/schemas/YnabImportReport"
+                      "$ref": "#/components/schemas/ExternalImportReport"
                     }
                   ]
                 }
@@ -18654,13 +18655,13 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/YnabImportReport"
+                  "$ref": "#/components/schemas/ExternalImportReport"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid input, or YNAB refused the token (YNAB_TOKEN_INVALID) or the files aren't YNAB's (YNAB_FILE_INVALID)",
+            "description": "Invalid input, or YNAB refused the token (EXTERNAL_TOKEN_INVALID) or the files aren't YNAB's (EXTERNAL_FILE_INVALID)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18690,7 +18691,7 @@
             }
           },
           "404": {
-            "description": "YNAB has no such plan (YNAB_PLAN_NOT_FOUND)",
+            "description": "YNAB has no such plan (EXTERNAL_PLAN_NOT_FOUND)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18700,7 +18701,7 @@
             }
           },
           "422": {
-            "description": "The plan can't be converted exactly: a currency everycent doesn't have (YNAB_CURRENCY_UNSUPPORTED) or a fraction of the currency's smallest unit (YNAB_AMOUNT_INEXACT)",
+            "description": "The plan can't be converted exactly: a currency strictbudget doesn't have (EXTERNAL_CURRENCY_UNSUPPORTED) or a fraction of the currency's smallest unit (EXTERNAL_AMOUNT_INEXACT)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18710,7 +18711,7 @@
             }
           },
           "429": {
-            "description": "YNAB's hourly request limit was reached (YNAB_RATE_LIMITED)",
+            "description": "YNAB's hourly request limit was reached (EXTERNAL_RATE_LIMITED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18720,7 +18721,7 @@
             }
           },
           "502": {
-            "description": "YNAB couldn't be reached or answered unexpectedly (YNAB_UNAVAILABLE, YNAB_UNEXPECTED)",
+            "description": "YNAB couldn't be reached or answered unexpectedly (EXTERNAL_UNAVAILABLE, EXTERNAL_UNEXPECTED)",
             "content": {
               "application/json": {
                 "schema": {
@@ -18746,8 +18747,8 @@
             "apiKeyAuth": []
           }
         ],
-        "summary": "The whole budget as everycent's versioned JSON backup (streamed)",
-        "description": "An everycent extra (EVERYCENT-71). Every table that belongs to the budget, in the `BudgetBackup` layout: ids are only references inside the file, money is an integer string of minor units next to its currency. Members, invitations and the change history aren't included. Import it with `importBackup`.",
+        "summary": "The whole budget as strictbudget's versioned JSON backup (streamed)",
+        "description": "Every table that belongs to the budget, in the `BudgetBackup` layout: ids are only references inside the file, money is an integer string of minor units next to its currency. Members, invitations and the change history aren't included. Import it with `importBackup`.",
         "parameters": [
           {
             "schema": {
@@ -19221,7 +19222,7 @@
           }
         ],
         "summary": "Fresh start: archive this budget and continue in a copy without transactions",
-        "description": "Owner only. The new budget is named `name` and keeps the settings, partners, categories (with their notes), payees, flag names, custom views, accounts (each starting at $0 on `date`, as YNAB starts unlinked accounts; starred ones stay starred) and scheduled transactions. The old one gets ' (Archived on <date>)' added to its name. An archived budget can make a fresh start again, as in YNAB.",
+        "description": "Owner only. The new budget is named `name` and keeps the settings, partners, categories (with their notes), payees, flag names, custom views, accounts (each starting at $0 on `date`; starred ones stay starred) and scheduled transactions. The old one gets ' (Archived on <date>)' added to its name. An archived budget can make a fresh start again.",
         "parameters": [
           {
             "schema": {
@@ -19945,7 +19946,7 @@
           }
         ],
         "summary": "Make someone an editor or a viewer (owner only)",
-        "description": "A viewer (an everycent extra, EVERYCENT-88) sees everything but can't change anything. The owner's own role changes only by transferring ownership (`CANNOT_CHANGE_OWNER`).",
+        "description": "A viewer sees everything but can't change anything. The owner's own role changes only by transferring ownership (`CANNOT_CHANGE_OWNER`).",
         "parameters": [
           {
             "schema": {
@@ -20120,7 +20121,7 @@
           }
         ],
         "summary": "Make someone else the budget's owner (owner only)",
-        "description": "The new owner must already share the budget. The old owner keeps access as a member, as YNAB's plan owner does after \"Transfer Plan\".",
+        "description": "The new owner must already share the budget. The old owner keeps access as a member.",
         "parameters": [
           {
             "schema": {
@@ -21102,7 +21103,7 @@
           }
         ],
         "summary": "Create or replace a category's target",
-        "description": "A category has one target at a time, the same in every month from its start. A new or changed target starts in `month` (the month it's saved from), so earlier months show none; saving it unchanged from an earlier month moves the start back. Credit card payment categories take only payment_monthly and payoff_by_date targets, and only they take them; a category paired with a loan takes only debt_monthly (YNAB's Monthly Debt Payment), and only it does.",
+        "description": "A category has one target at a time, the same in every month from its start. A new or changed target starts in `month` (the month it's saved from), so earlier months show none; saving it unchanged from an earlier month moves the start back. Credit card payment categories take only payment_monthly and payoff_by_date targets, and only they take them; a category paired with a loan takes only debt_monthly (Monthly Debt Payment), and only it does.",
         "parameters": [
           {
             "schema": {
@@ -21411,7 +21412,7 @@
           }
         ],
         "summary": "Snooze a category's target for this month, or wake it",
-        "description": "A snoozed target asks for nothing more in the month it's snoozed for; the next month it asks again. Only the user's current month can be snoozed, and never a credit card payment target (YNAB).",
+        "description": "A snoozed target asks for nothing more in the month it's snoozed for; the next month it asks again. Only the user's current month can be snoozed, and never a credit card payment target.",
         "parameters": [
           {
             "schema": {
@@ -21518,7 +21519,7 @@
             "apiKeyAuth": []
           }
         ],
-        "summary": "YNAB's category template gallery, with amounts in the budget's currency",
+        "summary": "The category template gallery, with amounts in the budget's currency",
         "parameters": [
           {
             "schema": {
@@ -21587,7 +21588,7 @@
             "apiKeyAuth": []
           }
         ],
-        "summary": "Add a template's picked categories to the budget (YNAB's Import Category Template)",
+        "summary": "Add a template's picked categories to the budget",
         "description": "Nothing already there changes: a group the budget has (by name) takes the categories it's missing at its top; the rest become new groups at the bottom. Categories the group already has (by name) are skipped. Each new category with an example amount gets a 'Have a balance of' target, due eventually, from `month` on.",
         "parameters": [
           {
@@ -22033,7 +22034,7 @@
           }
         ],
         "summary": "Rename an account, edit its note, type or loan details, or set its working balance",
-        "description": "A `workingBalance` different from the account's adds a Manual Balance Adjustment for the difference, dated `date` and cleared (as YNAB's Edit Account does; budget accounts take it from Ready to Assign). Not for closed accounts. A loan's interest rate, minimum payment and escrow apply from `date`'s month on.",
+        "description": "A `workingBalance` different from the account's adds a Manual Balance Adjustment for the difference, dated `date` and cleared (budget accounts take it from Ready to Assign). Not for closed accounts. A loan's interest rate, minimum payment and escrow apply from `date`'s month on.",
         "parameters": [
           {
             "schema": {
@@ -22416,7 +22417,7 @@
           }
         ],
         "summary": "Reconcile an account against the bank's balance",
-        "description": "Locks every cleared transaction dated up to `date` (they become reconciled, for good) and records when. If `balance` differs from the cleared balance, a Reconciliation Balance Adjustment for the difference comes first, dated `date` (budget accounts take it from Ready to Assign; tracking accounts have no category). A loan (YNAB's Update Balance) is compared with its working balance, every transaction up to `date` is reconciled, and each month's interest and escrow are fixed at what's applied. A loan's `loanTerms` (Update Balance's interest rate / escrow check) change its terms from `date`'s month first; the adjustment then makes up the difference to the balance with this month re-estimated on the new terms, while the months are fixed at what they had (YNAB, 2026-10-14).",
+        "description": "Locks every cleared transaction dated up to `date` (they become reconciled, for good) and records when. If `balance` differs from the cleared balance, a Reconciliation Balance Adjustment for the difference comes first, dated `date` (budget accounts take it from Ready to Assign; tracking accounts have no category). A loan (Update Balance) is compared with its working balance, every transaction up to `date` is reconciled, and each month's interest and escrow are fixed at what's applied. A loan's `loanTerms` (Update Balance's interest rate / escrow check) change its terms from `date`'s month first; the adjustment then makes up the difference to the balance with this month re-estimated on the new terms, while the months are fixed at what they had.",
         "parameters": [
           {
             "schema": {
@@ -22612,7 +22613,7 @@
           }
         ],
         "summary": "Reopen a closed account (and show its payment category again)",
-        "description": "Reopening a tracking account that was updated to a loan account erases the link: the loan no longer shows its history, and the account can be updated to a loan again (YNAB's \"Erase & Re-open\").",
+        "description": "Reopening a tracking account that was updated to a loan account erases the link: the loan no longer shows its history, and the account can be updated to a loan again.",
         "parameters": [
           {
             "schema": {
@@ -22808,7 +22809,7 @@
             "apiKeyAuth": []
           }
         ],
-        "summary": "Update a tracking liability to a new loan account (YNAB's Update to a Loan Account)",
+        "summary": "Update a tracking liability to a new loan account",
         "description": "Adds a loan account with a Starting Balance of `balance` dated `date` (cleared), its terms and the paired category. The original account keeps its transactions and is closed: a cleared Manual Balance Adjustment (memo \"Closed Account\") zeroes its working balance, \" (Original)\" is added to its name, and its scheduled transactions (and those transferring to it) are deleted. Only open tracking liabilities that weren't updated before.",
         "parameters": [
           {
@@ -23016,7 +23017,7 @@
           }
         ],
         "summary": "Set a loan month's total interest or escrow",
-        "description": "Replaces the month's estimate (or earlier amount) and applies in full, payments or not, as YNAB's Edit Interest, Edit Escrow and Add Interest do; zero is YNAB's Delete Interest. Months run from the loan's first through today's.",
+        "description": "Replaces the month's estimate (or earlier amount) and applies in full, payments or not, as Edit Interest, Edit Escrow and Add Interest do; zero is Delete Interest. Months run from the loan's first through today's.",
         "parameters": [
           {
             "schema": {
@@ -23113,7 +23114,7 @@
             "apiKeyAuth": []
           }
         ],
-        "summary": "Record a loan payment (YNAB's Record Payment)",
+        "summary": "Record a loan payment",
         "description": "A transfer from `fromAccountId` into the loan: the paying side is uncleared and comes out of the loan's paired category (Uncategorized when it has none); the loan's side is cleared. A date after the user's `today` makes a one-time scheduled transfer instead.",
         "parameters": [
           {
@@ -23223,7 +23224,7 @@
           }
         ],
         "summary": "Dismiss a loan page banner for the whole plan",
-        "description": "`simulator` hides the payoff simulator banner on every loan; `paidOff` hides this loan's \"Another debt bites the dust\". Kept on the plan, as YNAB keeps them (checked 2026-10-14).",
+        "description": "`simulator` hides the payoff simulator banner on every loan; `paidOff` hides this loan's \"Another debt bites the dust\". Kept on the budget.",
         "parameters": [
           {
             "schema": {
@@ -23345,10 +23346,10 @@
             "schema": {
               "type": "string",
               "maxLength": 500,
-              "description": "YNAB's search: comma-separated terms that must all match, each free text (payee, category, memo or account name, or an exact amount) or one of `Payee:`, `Category:` (`Category: Split` for splits), `Memo:`, `Account:`, `Flag:` (a color, its name or None), `Is:` (Uncleared, Cleared, Reconciled, Unreconciled, Cleared or Reconciled, Approved, Unapproved, Needs Category, Unapproved or Needs Category), `Outflow:`/`Inflow:` (`25`, `>=25`, `<=25`), `On:`/`Before:`/`After:` (a date in the budget's format, or part of one completed from today: `5` is May 1st in MM/DD/YYYY; before and after include the day), `Income:` (a month name, full or three letters, with an optional year, e.g. `Income: October 2026`: what's in Ready to Assign that month, including Starting Balances of budget accounts; no year means this year). Split lines are matched one by one. Amounts are read in each row's own account's currency (with all accounts, a row in euros matches `12` as €12.00 and one in yen as ¥12)."
+              "description": "Search: comma-separated terms that must all match, each free text (payee, category, memo or account name, or an exact amount) or one of `Payee:`, `Category:` (`Category: Split` for splits), `Memo:`, `Account:`, `Flag:` (a color, its name or None), `Is:` (Uncleared, Cleared, Reconciled, Unreconciled, Cleared or Reconciled, Approved, Unapproved, Needs Category, Unapproved or Needs Category), `Outflow:`/`Inflow:` (`25`, `>=25`, `<=25`), `On:`/`Before:`/`After:` (a date in the budget's format, or part of one completed from today: `5` is May 1st in MM/DD/YYYY; before and after include the day), `Income:` (a month name, full or three letters, with an optional year, e.g. `Income: October 2026`: what's in Ready to Assign that month, including Starting Balances of budget accounts; no year means this year). Split lines are matched one by one. Amounts are read in each row's own account's currency (with all accounts, a row in euros matches `12` as €12.00 and one in yen as ¥12)."
             },
             "required": false,
-            "description": "YNAB's search: comma-separated terms that must all match, each free text (payee, category, memo or account name, or an exact amount) or one of `Payee:`, `Category:` (`Category: Split` for splits), `Memo:`, `Account:`, `Flag:` (a color, its name or None), `Is:` (Uncleared, Cleared, Reconciled, Unreconciled, Cleared or Reconciled, Approved, Unapproved, Needs Category, Unapproved or Needs Category), `Outflow:`/`Inflow:` (`25`, `>=25`, `<=25`), `On:`/`Before:`/`After:` (a date in the budget's format, or part of one completed from today: `5` is May 1st in MM/DD/YYYY; before and after include the day), `Income:` (a month name, full or three letters, with an optional year, e.g. `Income: October 2026`: what's in Ready to Assign that month, including Starting Balances of budget accounts; no year means this year). Split lines are matched one by one. Amounts are read in each row's own account's currency (with all accounts, a row in euros matches `12` as €12.00 and one in yen as ¥12).",
+            "description": "Search: comma-separated terms that must all match, each free text (payee, category, memo or account name, or an exact amount) or one of `Payee:`, `Category:` (`Category: Split` for splits), `Memo:`, `Account:`, `Flag:` (a color, its name or None), `Is:` (Uncleared, Cleared, Reconciled, Unreconciled, Cleared or Reconciled, Approved, Unapproved, Needs Category, Unapproved or Needs Category), `Outflow:`/`Inflow:` (`25`, `>=25`, `<=25`), `On:`/`Before:`/`After:` (a date in the budget's format, or part of one completed from today: `5` is May 1st in MM/DD/YYYY; before and after include the day), `Income:` (a month name, full or three letters, with an optional year, e.g. `Income: October 2026`: what's in Ready to Assign that month, including Starting Balances of budget accounts; no year means this year). Split lines are matched one by one. Amounts are read in each row's own account's currency (with all accounts, a row in euros matches `12` as €12.00 and one in yen as ¥12).",
             "name": "q",
             "in": "query"
           },
@@ -23389,10 +23390,10 @@
               "type": "string",
               "pattern": "^(date|account|payee|category|memo|outflow|inflow|flag|cleared):(asc|desc)(,(date|account|payee|category|memo|outflow|inflow|flag|cleared):(asc|desc))*$",
               "default": "date:desc",
-              "description": "YNAB's stacked sort: comma-separated `column:asc|desc` fields, first field first (e.g. `payee:desc,date:asc`). Columns: date, account, payee, category, memo, outflow, inflow, flag, cleared. Outflow and inflow each count the other side's rows as zero; flag ascending is none, red, orange, yellow, green, blue, purple; cleared ascending is reconciled, cleared, uncleared. Ties end by date, newest first, a day's largest outflow on top."
+              "description": "Stacked sort: comma-separated `column:asc|desc` fields, first field first (e.g. `payee:desc,date:asc`). Columns: date, account, payee, category, memo, outflow, inflow, flag, cleared. Outflow and inflow each count the other side's rows as zero; flag ascending is none, red, orange, yellow, green, blue, purple; cleared ascending is reconciled, cleared, uncleared. Ties end by date, newest first, a day's largest outflow on top."
             },
             "required": false,
-            "description": "YNAB's stacked sort: comma-separated `column:asc|desc` fields, first field first (e.g. `payee:desc,date:asc`). Columns: date, account, payee, category, memo, outflow, inflow, flag, cleared. Outflow and inflow each count the other side's rows as zero; flag ascending is none, red, orange, yellow, green, blue, purple; cleared ascending is reconciled, cleared, uncleared. Ties end by date, newest first, a day's largest outflow on top.",
+            "description": "Stacked sort: comma-separated `column:asc|desc` fields, first field first (e.g. `payee:desc,date:asc`). Columns: date, account, payee, category, memo, outflow, inflow, flag, cleared. Outflow and inflow each count the other side's rows as zero; flag ascending is none, red, orange, yellow, green, blue, purple; cleared ascending is reconciled, cleared, uncleared. Ties end by date, newest first, a day's largest outflow on top.",
             "name": "sort",
             "in": "query"
           },
@@ -23702,7 +23703,7 @@
           }
         ],
         "summary": "Apply one action to every selected transaction it applies to",
-        "description": "Follows YNAB's action bar: rows an action doesn't apply to are skipped, and `updated` counts the rest. `cleared` skips reconciled rows. `categorize` skips transfers within the budget and tracking-account rows; it un-splits splits, except splits with a transfer line, which stay split with every other line given the category. `memo` replaces the memo (a split's own, not its lines'; on the selected side of a transfer only, as YNAB's Edit Memo does). `move` moves rows to another account like a single edit (a transfer keeps its other side, which then points at the new account) and skips rows already there, transfers into their own other account and splits with a transfer line to it. `delete` deletes transfers' other sides too and skips the other sides of splits' transfer lines (they go with the split). `approve` approves the unapproved rows (and their transfers' other sides); `reject` deletes the unapproved rows (as `delete` does) and skips the rest; `cleared` and `categorize` approve the rows they change, as in YNAB. `duplicate` copies each row as YNAB does: same date and fields, cleared state kept (reconciled becomes cleared), approved, a transfer with a new other side; a split's transfer side copies its whole split, and a transfer selected from both sides is copied once. Rows in (or transferring to) closed accounts are skipped. All of it happens in one database transaction.",
+        "description": "Follows the action bar: rows an action doesn't apply to are skipped, and `updated` counts the rest. `cleared` skips reconciled rows. `categorize` skips transfers within the budget and tracking-account rows; it un-splits splits, except splits with a transfer line, which stay split with every other line given the category. `memo` replaces the memo (a split's own, not its lines'; on the selected side of a transfer only, as Edit Memo does). `move` moves rows to another account like a single edit (a transfer keeps its other side, which then points at the new account) and skips rows already there, transfers into their own other account and splits with a transfer line to it. `delete` deletes transfers' other sides too and skips the other sides of splits' transfer lines (they go with the split). `approve` approves the unapproved rows (and their transfers' other sides); `reject` deletes the unapproved rows (as `delete` does) and skips the rest; `cleared` and `categorize` approve the rows they change. `duplicate` copies each row with the same date and fields, cleared state kept (reconciled becomes cleared), approved, a transfer with a new other side; a split's transfer side copies its whole split, and a transfer selected from both sides is copied once. Rows in (or transferring to) closed accounts are skipped. All of it happens in one database transaction.",
         "parameters": [
           {
             "schema": {
@@ -24042,7 +24043,7 @@
           }
         ],
         "summary": "Attach a photo or PDF to a transaction",
-        "description": "One per transaction, as YNAB's transaction photo: delete it before adding another (`ATTACHMENT_EXISTS`). A transfer's two sides share it. The type is read from the file (image/jpeg, image/png, image/webp, image/avif, image/gif, image/svg+xml, image/heic, image/heif, application/pdf); at most 15 MB.",
+        "description": "One per transaction: delete it before adding another (`ATTACHMENT_EXISTS`). A transfer's two sides share it. The type is read from the file (image/jpeg, image/png, image/webp, image/avif, image/gif, image/svg+xml, image/heic, image/heif, application/pdf); at most 15 MB.",
         "parameters": [
           {
             "schema": {
@@ -25156,7 +25157,7 @@
         ],
         "operationId": "createPayeeRule",
         "summary": "Add a renaming rule to a payee (a transfer payee too)",
-        "description": "Added after the payee's other rules. The same rule twice is allowed, as in YNAB. Built-in payees like Starting Balance take no rules (`PAYEE_LOCKED`).",
+        "description": "Added after the payee's other rules. The same rule twice is allowed. Built-in payees like Starting Balance take no rules (`PAYEE_LOCKED`).",
         "parameters": [
           {
             "schema": {
@@ -25264,7 +25265,7 @@
         ],
         "operationId": "updatePayee",
         "summary": "Rename, hide or unhide a payee, or change how it categorizes",
-        "description": "Another payee can't have the same name (case aside: `PAYEE_NAME_TAKEN`). Transfer and built-in payees can't be changed (`PAYEE_LOCKED`). `categorization` \"always\" needs a `defaultCategoryId` (`CATEGORY_REQUIRED`): one of the budget's categories other than Uncategorized and credit card payment ones (`INVALID_CATEGORY`). Switching to \"auto\" or \"never\" forgets the chosen category, as YNAB does.",
+        "description": "Another payee can't have the same name (case aside: `PAYEE_NAME_TAKEN`). Transfer and built-in payees can't be changed (`PAYEE_LOCKED`). `categorization` \"always\" needs a `defaultCategoryId` (`CATEGORY_REQUIRED`): one of the budget's categories other than Uncategorized and credit card payment ones (`INVALID_CATEGORY`). Switching to \"auto\" or \"never\" forgets the chosen category.",
         "parameters": [
           {
             "schema": {
@@ -25494,7 +25495,7 @@
           }
         ],
         "summary": "Schedule a transaction (a future one-off or a repeating one)",
-        "description": "Same rules as transactions: on-budget accounts fall back to Uncategorized, tracking accounts and transfers between budget accounts take no category, payment categories can't be used, and a split's lines (two or more) add up to its amount. A transfer's one category is its budget side's, even when that's the other account. A `date` on or before `today` is entered right away (unapproved), and the schedule starts at its first date after today, as YNAB does when a past date is saved. `fromTransactionId` replaces that transaction (and its transfer's other side) with the schedule, as YNAB does when a transaction's date is moved into the future.",
+        "description": "Same rules as transactions: on-budget accounts fall back to Uncategorized, tracking accounts and transfers between budget accounts take no category, payment categories can't be used, and a split's lines (two or more) add up to its amount. A transfer's one category is its budget side's, even when that's the other account. A `date` on or before `today` is entered right away (unapproved), and the schedule starts at its first date after today, not before. `fromTransactionId` replaces that transaction (and its transfer's other side) with the schedule, as when a transaction's date is moved into the future.",
         "parameters": [
           {
             "schema": {
@@ -25604,7 +25605,7 @@
           }
         ],
         "summary": "Apply one action to every selected scheduled row it applies to",
-        "description": "The register's action bar on scheduled rows (by row `id`; a transfer's other side acts on its schedule, once). `enterNow` enters each as Enter Now does (a split's transfer line enters its split). `duplicate` copies each schedule, starting at its next date. `flag`, `memo`, `categorize`, `move` and `delete` work as on transactions. A scheduled split's transfer line in the other account is skipped by everything but `enterNow`, as YNAB does. One database transaction.",
+        "description": "The register's action bar on scheduled rows (by row `id`; a transfer's other side acts on its schedule, once). `enterNow` enters each as Enter Now does (a split's transfer line enters its split). `duplicate` copies each schedule, starting at its next date. `flag`, `memo`, `categorize`, `move` and `delete` work as on transactions. A scheduled split's transfer line in the other account is skipped by everything but `enterNow`. One database transaction.",
         "parameters": [
           {
             "schema": {
@@ -25694,7 +25695,7 @@
           }
         ],
         "summary": "Edit a scheduled transaction (it and all of its future occurrences)",
-        "description": "Same rules as transactions: on-budget accounts fall back to Uncategorized, tracking accounts and transfers between budget accounts take no category, payment categories can't be used, and a split's lines (two or more) add up to its amount. A transfer's one category is its budget side's, even when that's the other account. A `date` on or before `today` is entered right away (unapproved), and the schedule starts at its first date after today, as YNAB does when a past date is saved. A new `date` restarts the repeats there (YNAB resets the first date); a new `frequency` counts from the date shown. Setting `payeeName` turns a transfer into a normal one, `subtransactions` replace a split's lines and a `categoryId` un-splits it.",
+        "description": "Same rules as transactions: on-budget accounts fall back to Uncategorized, tracking accounts and transfers between budget accounts take no category, payment categories can't be used, and a split's lines (two or more) add up to its amount. A transfer's one category is its budget side's, even when that's the other account. A `date` on or before `today` is entered right away (unapproved), and the schedule starts at its first date after today, not before. A new `date` restarts the repeats there (the first date is reset); a new `frequency` counts from the date shown. Setting `payeeName` turns a transfer into a normal one, `subtransactions` replace a split's lines and a `categoryId` un-splits it.",
         "parameters": [
           {
             "schema": {
@@ -25870,7 +25871,7 @@
           }
         ],
         "summary": "Enter Now: the next occurrence, dated today",
-        "description": "As YNAB's Enter Now: the transaction is dated `today` and approved (uncleared, or cleared in a cash account), and the schedule moves to its following date; a one-off is done. Works in a closed account too.",
+        "description": "Enter Now: the transaction is dated `today` and approved (uncleared, or cleared in a cash account), and the schedule moves to its following date; a one-off is done. Works in a closed account too.",
         "parameters": [
           {
             "schema": {
@@ -26642,7 +26643,7 @@
           }
         ],
         "summary": "Upload a file to send to the AI assistant",
-        "description": "Kept in object storage, private to the caller. Send it by putting a pointer to it in a chat message: an image or document part whose source is `{ type: \"url\", value: \"everycent-attachment:<id>\" }`. A file that isn't sent within a day is deleted.",
+        "description": "Kept in object storage, private to the caller. Send it by putting a pointer to it in a chat message: an image or document part whose source is `{ type: \"url\", value: \"strictbudget-attachment:<id>\" }`. A file that isn't sent within a day is deleted.",
         "parameters": [
           {
             "schema": {
@@ -27291,7 +27292,7 @@
             "apiKeyAuth": []
           }
         ],
-        "summary": "Match an imported transaction to an entered one (YNAB's Match)",
+        "summary": "Match an imported transaction to an entered one",
         "description": "The two become one: the entered transaction keeps its date, payee, memo and category, takes the imported amount, and is cleared and approved. Unmatch splits them again.",
         "parameters": [
           {
@@ -27479,7 +27480,7 @@
             "apiKeyAuth": []
           }
         ],
-        "summary": "YNAB's \"Don't Rename as <payee>\": back to the imported payee, without the rule",
+        "summary": "Don't Rename as <payee>: back to the imported payee, without the rule",
         "description": "The transaction takes its imported payee name again, and its payee loses the renaming rule \"Is <imported name>\".",
         "parameters": [
           {
@@ -28219,7 +28220,7 @@
           }
         ],
         "summary": "Set the month's note",
-        "description": "YNAB's note under the month name: one per month, not carried to other months. An empty note removes it.",
+        "description": "The note under the month name: one per month, not carried to other months. An empty note removes it.",
         "parameters": [
           {
             "schema": {
@@ -28419,7 +28420,7 @@
           }
         ],
         "summary": "Every change to assigned money in a month, newest first",
-        "description": "Behind YNAB's per-category history (\"Changes to your assigned amount this month\"): all of the month's moves, however old.",
+        "description": "Behind the per-category history (\"Changes to your assigned amount this month\"): all of the month's moves, however old.",
         "parameters": [
           {
             "schema": {
@@ -28499,7 +28500,7 @@
             "apiKeyAuth": []
           }
         ],
-        "summary": "Set categories' Assigned from one of YNAB's Auto-Assign options",
+        "summary": "Set categories' Assigned from one of the Auto-Assign options",
         "description": "Sets each category's Assigned to the option's amount (`autoAssign` in the month). Without `categoryIds` it covers every category that isn't hidden. Each change is a move in Recent Moves. Underfunded funds selected categories in full; over the whole plan or a view (`scope: view`) it funds `underfundedParts` in order and stops when Ready to Assign runs out.",
         "parameters": [
           {
@@ -28727,7 +28728,7 @@
           }
         ],
         "summary": "Recent changes to assigned money, newest first",
-        "description": "Every change of the last 34 days, as YNAB's Recent Moves (\"Previous 34 days of assigning and moving money\").",
+        "description": "Every change of the last 34 days, as Recent Moves (\"Previous 34 days of assigning and moving money\").",
         "parameters": [
           {
             "schema": {
@@ -28797,7 +28798,7 @@
           }
         ],
         "summary": "Set the budget's expected monthly income",
-        "description": "YNAB's \"Enter your expected income\" under Cost to Be Me: entered once, it stays from month to month. It must be positive; like YNAB, it can be changed but not cleared.",
+        "description": "\"Enter your expected income\" under Cost to Be Me: entered once, it stays from month to month. It must be positive; it can be changed but not cleared.",
         "parameters": [
           {
             "schema": {
@@ -29562,7 +29563,7 @@
           }
         ],
         "summary": "The budget's change history, newest first",
-        "description": "Every insert, update and delete of the budget's data, who made it and when, with the row before and after (EVERYCENT-108). Changes to bookkeeping columns alone aren't listed.",
+        "description": "Every insert, update and delete of the budget's data, who made it and when, with the row before and after. Changes to bookkeeping columns alone aren't listed.",
         "parameters": [
           {
             "schema": {
@@ -30315,7 +30316,7 @@
           }
         ],
         "summary": "Age of Money now, 30 days ago, and at each month's end",
-        "description": "YNAB's Age of Money: the average age in days of the last ten outflows from cash accounts (credit card payments and transfers to loan or tracking accounts included), each outflow's money taken oldest first. Null when there have been fewer than ten outflows.",
+        "description": "Age of Money: the average age in days of the last ten outflows from cash accounts (credit card payments and transfers to loan or tracking accounts included), each outflow's money taken oldest first. Null when there have been fewer than ten outflows.",
         "parameters": [
           {
             "schema": {
@@ -30396,7 +30397,7 @@
           }
         ],
         "summary": "Live changes to the budget (server-sent events)",
-        "description": "An everycent extra (EVERYCENT-90; YNAB's web app re-syncs every 3 minutes). A `text/event-stream` that sends a `change` event, data `{ table, actorId, agentId, clientId }` (`agentId`: the connected agent that made it for the actor, or null), after every committed change to the budget's data (a request's identical changes once), so a client can refetch what it shows; `clientId` is the `X-Client-Id` of the tab that made it. A `ping` comment every 25 seconds keeps the connection open. The stream ends when the caller is no longer a member.",
+        "description": "A `text/event-stream` that sends a `change` event, data `{ table, actorId, agentId, clientId }` (`agentId`: the connected agent that made it for the actor, or null), after every committed change to the budget's data (a request's identical changes once), so a client can refetch what it shows; `clientId` is the `X-Client-Id` of the tab that made it. A `ping` comment every 25 seconds keeps the connection open. The stream ends when the caller is no longer a member.",
         "parameters": [
           {
             "schema": {
@@ -30465,8 +30466,8 @@
             "apiKeyAuth": []
           }
         ],
-        "summary": "The plan file of YNAB's Export Plan: every category's month, from the first month on",
-        "description": "Columns: Month, Category Group/Category, Category Group, Category, Assigned, Activity, Available; one row per category and month, visible categories first, then hidden ones (group \"Hidden Categories\"). Starts with a UTF-8 byte-order mark. Comma-separated, or tab-separated when the budget's number format uses a comma as its decimal mark (YNAB). Text cells are quoted; amounts are bare, in the budget's number format with no group separator. Lines end with CRLF. Streamed.",
+        "summary": "The plan file: every category's month, from the first month on",
+        "description": "Columns: Month, Category Group/Category, Category Group, Category, Assigned, Activity, Available; one row per category and month, visible categories first, then hidden ones (group \"Hidden Categories\"). Starts with a UTF-8 byte-order mark. Comma-separated, or tab-separated when the budget's number format uses a comma as its decimal mark. Text cells are quoted; amounts are bare, in the budget's number format with no group separator. Lines end with CRLF. Streamed.",
         "parameters": [
           {
             "schema": {
@@ -30561,8 +30562,8 @@
             "apiKeyAuth": []
           }
         ],
-        "summary": "The register file of YNAB's Export Plan: every transaction, newest first",
-        "description": "Columns: Account, Flag, Date, Payee, Category Group/Category, Category Group, Category, Memo, Outflow, Inflow, Cleared, plus Currency, FX Rate, Base Outflow and Base Inflow when the budget has an account in another currency. A split is one row per line, memo \"Split (i/n) …\". Starts with a UTF-8 byte-order mark. Comma-separated, or tab-separated when the budget's number format uses a comma as its decimal mark (YNAB). Text cells are quoted; amounts are bare, in the budget's number format with no group separator. Lines end with CRLF. Streamed.",
+        "summary": "The register file: every transaction, newest first",
+        "description": "Columns: Account, Flag, Date, Payee, Category Group/Category, Category Group, Category, Memo, Outflow, Inflow, Cleared, plus Currency, FX Rate, Base Outflow and Base Inflow when the budget has an account in another currency. A split is one row per line, memo \"Split (i/n) …\". Starts with a UTF-8 byte-order mark. Comma-separated, or tab-separated when the budget's number format uses a comma as its decimal mark. Text cells are quoted; amounts are bare, in the budget's number format with no group separator. Lines end with CRLF. Streamed.",
         "parameters": [
           {
             "schema": {
@@ -30636,8 +30637,8 @@
             "apiKeyAuth": []
           }
         ],
-        "summary": "YNAB's \"Export # Transactions\": the register file for the selected transactions",
-        "description": "The register file's layout for a selection, with no byte-order mark. Comma-separated, or tab-separated when the budget's number format uses a comma as its decimal mark (YNAB). Text cells are quoted; amounts are bare, in the budget's number format with no group separator. Lines end with CRLF. Streamed.",
+        "summary": "Export # Transactions: the register file for the selected transactions",
+        "description": "The register file's layout for a selection, with no byte-order mark. Comma-separated, or tab-separated when the budget's number format uses a comma as its decimal mark. Text cells are quoted; amounts are bare, in the budget's number format with no group separator. Lines end with CRLF. Streamed.",
         "parameters": [
           {
             "schema": {

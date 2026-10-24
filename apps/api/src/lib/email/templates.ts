@@ -32,18 +32,16 @@ const richText = (parts: Rich) => parts.map((p) => (typeof p === "string" ? p : 
 
 const FOOTERS = {
   security:
-    "You're getting this because of activity on the everycent account for this address. We never ask for your password by email.",
-  sharing: "You're getting this because someone invited this address to an everycent budget.",
+    "You're getting this because of activity on the strictbudget account for this address. We never ask for your password by email.",
+  sharing: "You're getting this because someone invited this address to a strictbudget budget.",
 };
 
 interface Content {
   subject: string;
-  /** The heading inside the email. */
   title: string;
   /** `/email/icon-<icon>.png`. */
   icon: "mail" | "key" | "shield" | "alert" | "users" | "signin";
   intro: Rich;
-  /** A second paragraph before the button. */
   notice?: string;
   action: { label: string; url: string };
   /** A notice rather than a request: the button looks secondary. */
@@ -94,7 +92,7 @@ function render(kind: EmailKind, to: string, webOrigin: string, c: Content) {
       webOrigin,
       subject: c.subject,
       sections: [section(body, { first: true, top: 4 })],
-      footer: [html`${FOOTERS[c.footer]}`, html`Sent to ${to}`, html`everycent`],
+      footer: [html`${FOOTERS[c.footer]}`, html`Sent to ${to}`, html`strictbudget`],
     }),
   } satisfies EmailMessage;
 }
@@ -112,7 +110,7 @@ export const emails = {
       subject: "Confirm your email address",
       title: "Confirm your email",
       icon: "mail",
-      intro: ["Confirm this email address to finish setting up your everycent account."],
+      intro: ["Confirm this email address to finish setting up your strictbudget account."],
       action: { label: "Confirm email", url: link(webOrigin, "/verify-email", { token }) },
       facts: [HOUR],
       outro: IGNORE,
@@ -126,7 +124,7 @@ export const emails = {
       title: "Approve your email change",
       icon: "alert",
       intro: [
-        "Someone signed in to your everycent account asked to change its email address to ",
+        "Someone signed in to your strictbudget account asked to change its email address to ",
         { strong: newEmail },
         ". Approve the change and we'll send a confirmation link to that address.",
       ],
@@ -147,7 +145,7 @@ export const emails = {
       title: "Confirm your new email",
       icon: "mail",
       intro: [
-        "Confirm this address to make it the email for your everycent account. Open the link in a browser where you're signed in to everycent.",
+        "Confirm this address to make it the email for your strictbudget account. Open the link in a browser where you're signed in to strictbudget.",
       ],
       action: {
         label: "Confirm new email",
@@ -163,7 +161,7 @@ export const emails = {
       subject: "Reset your password",
       title: "Reset your password",
       icon: "key",
-      intro: ["Someone asked to reset the password for your everycent account."],
+      intro: ["Someone asked to reset the password for your strictbudget account."],
       action: {
         label: "Choose a new password",
         url: link(webOrigin, "/reset-password", { token }),
@@ -176,11 +174,11 @@ export const emails = {
   /** Someone tried to sign up with an address that already has an account. */
   existingAccount: (to: string, webOrigin: string) =>
     render("existing-account", to, webOrigin, {
-      subject: "You already have an everycent account",
+      subject: "You already have a strictbudget account",
       title: "You already have an account",
       icon: "signin",
       intro: [
-        "Someone tried to create an everycent account with this email address, but it already has one. If that was you, sign in instead, or reset your password if you've forgotten it.",
+        "Someone tried to create a strictbudget account with this email address, but it already has one. If that was you, sign in instead, or reset your password if you've forgotten it.",
       ],
       action: { label: "Sign in", url: `${webOrigin}/sign-in` },
       secondary: { label: "Reset password", url: `${webOrigin}/forgot-password` },
@@ -193,7 +191,7 @@ export const emails = {
       subject: "Your password was changed",
       title: "Your password was changed",
       icon: "shield",
-      intro: ["The password for your everycent account was just changed."],
+      intro: ["The password for your strictbudget account was just changed."],
       notice: "If this was you, there's nothing to do. If it wasn't, reset your password now.",
       action: { label: "Reset your password", url: `${webOrigin}/forgot-password` },
       quiet: true,
@@ -206,12 +204,12 @@ export const emails = {
    */
   budgetInvitation: (to: string, inviterEmail: string, webOrigin: string, token: string) =>
     render("budget-invitation", to, webOrigin, {
-      subject: "You're invited to share a budget on everycent",
+      subject: "You're invited to share a budget on strictbudget",
       title: "You're invited to share a budget",
       icon: "users",
       intro: [
         { strong: inviterEmail },
-        " invited you to share a budget on everycent. You'll be able to see and edit its accounts, transactions and plan.",
+        " invited you to share a budget on strictbudget. You'll be able to see and edit its accounts, transactions and plan.",
       ],
       action: { label: "View invitation", url: link(webOrigin, "/invitation", { token }) },
       facts: ["Expires in 14 days"],
@@ -219,15 +217,15 @@ export const emails = {
       footer: "sharing",
     }),
 
-  /** Three days before a pending invitation expires (EVERYCENT-125). Replaces the earlier link. */
+  /** Three days before a pending invitation expires. Replaces the earlier link. */
   invitationReminder: (to: string, inviterEmail: string, webOrigin: string, token: string) =>
     render("budget-invitation-reminder", to, webOrigin, {
-      subject: "Your everycent invitation expires soon",
+      subject: "Your strictbudget invitation expires soon",
       title: "Your invitation expires in 3 days",
       icon: "users",
       intro: [
         { strong: inviterEmail },
-        " invited you to share a budget on everycent. The invitation expires in 3 days.",
+        " invited you to share a budget on strictbudget. The invitation expires in 3 days.",
       ],
       action: { label: "View invitation", url: link(webOrigin, "/invitation", { token }) },
       facts: ["Expires in 3 days", "replaces the earlier link"],

@@ -54,7 +54,6 @@ const sum = (categoryId: string, net: number, count = 1, month?: string): Report
 
 const names = { categories, payees: [], accounts: [], flags: [] };
 
-// A small copy of the test plan's October 2026 (cents).
 const october = [
   sum("unc", -283200, 21),
   sum("o13", -13000, 1),
@@ -121,7 +120,7 @@ describe("spending breakdown rows", () => {
 });
 
 describe("spending breakdown stats", () => {
-  it("matches YNAB's October 2026 header ($3,601.00, $116.16 a day)", () => {
+  it("matches the October 2026 header ($3,601.00, $116.16 a day)", () => {
     const rows: BreakdownRow[] = [
       { key: "unc", name: "Uncategorized", color: "", net: -283200n, count: 21 },
       { key: "rest", name: "Rest", color: "", net: -82100n, count: 60 },
@@ -194,7 +193,7 @@ describe("spending breakdown export", () => {
     ]);
   });
 
-  it("writes the transactions in YNAB's columns", () => {
+  it("writes the transactions in the export columns", () => {
     const line = (over: Partial<ReportTransaction>): ReportTransaction => ({
       id: "t",
       transactionId: "t",
@@ -259,11 +258,11 @@ describe("spending breakdown export", () => {
     expect(rows[2]?.slice(8)).toEqual([{ raw: "$0" }, { raw: "$300" }, "Reconciled"]);
   });
 
-  it("names the files with everycent's prefix", () => {
+  it("names the files with strictbudget's prefix", () => {
     expect(exportNames("2026-10-17")).toEqual({
-      summary: "everycent-spending-breakdown-2026-10-17.csv",
-      transactions: "everycent-spending-breakdown-2026-10-17-transactions.csv",
-      zip: "everycent-spending-breakdown-2026-10-17.zip",
+      summary: "strictbudget-spending-breakdown-2026-10-17.csv",
+      transactions: "strictbudget-spending-breakdown-2026-10-17-transactions.csv",
+      zip: "strictbudget-spending-breakdown-2026-10-17.zip",
     });
   });
 });

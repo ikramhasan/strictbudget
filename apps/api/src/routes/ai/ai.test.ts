@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { connectedAgent, transaction, user } from "@everycent/db/schema";
+import { connectedAgent, transaction, user } from "@strictbudget/db/schema";
 import { fakeText } from "@tanstack/ai/testing";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
@@ -67,7 +67,6 @@ describe("AI settings", () => {
     });
     expect(on.status).toBe(200);
     expect(await json<Settings>(on)).toMatchObject({ enabled: true, assistantButton: true });
-    // Budget specific: the other budget stays off.
     const otherSettings = await send(withAi.app, "GET", `/v1/budgets/${other.id}/ai`, owner.cookie);
     expect(await json<Settings>(otherSettings)).toMatchObject({ enabled: false });
 
@@ -116,7 +115,6 @@ describe("AI settings", () => {
     expect((await patch(editor.cookie)).status).toBe(200);
     expect((await patch(viewer.cookie)).status).toBe(403);
     expect((await patch(stranger.cookie)).status).toBe(404);
-    // Everyone on the budget can see the settings.
     expect((await send(withAi.app, "GET", path, viewer.cookie)).status).toBe(200);
   });
 });
@@ -333,7 +331,7 @@ describe("AI chat", () => {
     const skipped = await run(withAi.app, owner.cookie, budget.id, { threadId, content: "hi" });
     expect(skipped.events.some((e) => e.type === "RUN_ERROR")).toBe(true);
 
-    // Approved: it runs, attributed to everycent AI on the person's behalf.
+    // Approved: it runs, attributed to strictbudget AI on the person's behalf.
     model.setResponses([{ text: "Added your lunch." }]);
     const pausedRun = finished(paused.events) as { runId?: string };
     const approved = await run(withAi.app, owner.cookie, budget.id, {
@@ -352,7 +350,7 @@ describe("AI chat", () => {
       .from(transaction)
       .innerJoin(connectedAgent, eq(connectedAgent.id, transaction.createdByAgentId))
       .where(and(eq(transaction.accountId, accounts.id), eq(transaction.amount, -1200n)));
-    expect(row).toEqual({ agent: "everycent AI", kind: "in_app" });
+    expect(row).toEqual({ agent: "strictbudget AI", kind: "in_app" });
   });
 
   it("makes an approved change once, even when the run fails after it and is retried", async () => {

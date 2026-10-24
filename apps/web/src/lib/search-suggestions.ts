@@ -9,13 +9,13 @@ import {
   incomeTerm,
   money,
   parseAmount,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { todayIso } from "./dates";
 import { type Flag, flagLabel } from "./flags";
 
 /**
- * One suggestion under the register's search box, as YNAB lists them: what it searches
- * (`label`, e.g. "Payee:"), how it reads (`text`) and the term it writes into the box.
+ * One suggestion under the register's search box: what it searches (`label`, e.g. "Payee:"), how it
+ * reads (`text`) and the term it writes into the box.
  */
 export interface Suggestion {
   label: string;
@@ -23,7 +23,6 @@ export interface Suggestion {
   term: string;
   /** For icons: a flag's color, or the cleared state. */
   flag?: Flag["color"] | "none";
-  /** `Income:` shows a calendar. */
   calendar?: true;
 }
 
@@ -37,9 +36,9 @@ export interface SuggestionSources {
 }
 
 /**
- * YNAB offers `Income:` for a start of "income" with nothing after it ("i", "inco", "Income: ")
- * or anything starting with a digit ("5", "2026", "10/02/2026"), and anything read as a date
- * ("Card 5"; see `searchSuggestions`); not for "oct" or "income: o" (2026-10-15/16).
+ * `Income:` is offered for a start of "income" with nothing after it ("i", "inco", "Income: ") or
+ * anything starting with a digit ("5", "2026", "10/02/2026"), and anything read as a date ("Card 5";
+ * see `searchSuggestions`); not for "oct" or "income: o".
  */
 function offersIncome(typed: string) {
   if (/^\d/.test(typed)) return true;
@@ -69,9 +68,9 @@ function startsWithLabel(fragment: string, word: string) {
 }
 
 /**
- * YNAB's suggestions for what's being typed: dates and amounts when it reads as one (with
- * `Income:` between them), matching `Is:` states, flags, categories and accounts, then "Find …
- * in any field / the Payee / the Category / the Memo". Typing a label ("is", "flag", "outflow") lists all of its options.
+ * Suggestions for what's being typed: dates and amounts when it reads as one (with `Income:` between
+ * them), matching `Is:` states, flags, categories and accounts, then "Find … in any field / the
+ * Payee / the Category / the Memo". Typing a label ("is", "flag", "outflow") lists all its options.
  */
 export function searchSuggestions(fragment: string, sources: SuggestionSources): Suggestion[] {
   const typed = fragment.trim();
@@ -133,7 +132,7 @@ export function searchSuggestions(fragment: string, sources: SuggestionSources):
   } else {
     const amount = amountOf(typed);
     const today = sources.today ?? todayIso();
-    // YNAB completes partial dates ("5" is On 05/01/2026) and writes the full date it read.
+    // Partial dates are completed ("5" is On 05/01/2026) and the full date read is written.
     const date = completeDate(typed, settings.dateFormat, today);
     const shown = date && formatDate(date, settings.dateFormat);
     // `Income:` is the date's month, unless what's typed is an amount ("5/" May, "5" this month).

@@ -4,7 +4,7 @@ export const InstanceSchema = z
   .object({
     deployment: z
       .enum(["self-hosted", "cloud"])
-      .describe("`cloud` is the hosted everycent; anything else is a self-hosted server"),
+      .describe("`cloud` is the hosted strictbudget; anything else is a self-hosted server"),
     email: z
       .boolean()
       .describe(

@@ -1,6 +1,6 @@
-import { Button } from "@everycent/ui/components/button";
-import { FieldError } from "@everycent/ui/components/field";
-import { Spinner } from "@everycent/ui/components/spinner";
+import { Button } from "@strictbudget/ui/components/button";
+import { FieldError } from "@strictbudget/ui/components/field";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { createFileRoute } from "@tanstack/react-router";
 import { Eye, PencilLine } from "lucide-react";
 import { useState } from "react";

@@ -1,7 +1,7 @@
-import { accountFamily, type BudgetMonth } from "@everycent/engine";
-import { Alert, AlertDescription } from "@everycent/ui/components/alert";
-import { Button } from "@everycent/ui/components/button";
-import { Checkbox } from "@everycent/ui/components/checkbox";
+import { accountFamily, type BudgetMonth } from "@strictbudget/engine";
+import { Alert, AlertDescription } from "@strictbudget/ui/components/alert";
+import { Button } from "@strictbudget/ui/components/button";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -9,12 +9,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { Label } from "@everycent/ui/components/label";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { RadioGroup, RadioGroupItem } from "@everycent/ui/components/radio-group";
+} from "@strictbudget/ui/components/dialog";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { Label } from "@strictbudget/ui/components/label";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { RadioGroup, RadioGroupItem } from "@strictbudget/ui/components/radio-group";
 import { type FormEvent, type ReactNode, useId, useState } from "react";
 import type { Account } from "@/lib/accounts";
 import type { CategoryList } from "@/lib/categories";
@@ -37,7 +37,6 @@ interface Settings extends MoneySettings {
   dateFormat: Parameters<typeof DateField>[0]["format"];
 }
 
-/** A dialog with YNAB's loan-dialog layout: intro text, an optional info box, fields, buttons. */
 function LoanDialog({
   open,
   onOpenChange,
@@ -59,7 +58,7 @@ function LoanDialog({
   info?: ReactNode;
   error: string | null;
   pending: boolean;
-  /** Greys Save out; YNAB does that, with no message, for a credit or charge dated after today. */
+  /** Greys Save out, with no message (a credit or charge dated after today). */
   saveDisabled?: boolean;
   onSubmit: () => void;
   onDelete?: () => void;
@@ -195,10 +194,10 @@ export interface PaymentInput {
 }
 
 /**
- * Where Record Payment's From Account starts. YNAB (2026-10-14, "L7 Loans FS"): on the account of
- * the payment into this loan entered last (`lastFromAccountId`, from the API; Record Payment or a
- * register transfer, even back-dated), and on a loan with none, on the first account in the list
- * (cash accounts, then credit accounts, in sidebar order). A closed account falls back the same way.
+ * Where Record Payment's From Account starts: the account of the payment into this loan entered
+ * last (Record Payment or a register transfer, even back-dated), else the first account in the
+ * list (cash accounts, then credit accounts, in sidebar order). A closed account falls back the
+ * same way.
  */
 export function defaultPaymentSource(
   accounts: readonly Account[],
@@ -210,11 +209,6 @@ export function defaultPaymentSource(
   return (list.find((a) => a.id === lastFromAccountId) ?? list[0])?.id ?? "";
 }
 
-/**
- * YNAB's Record Payment (2026-10-13): Payment Amount, From Account (cash accounts, then credit
- * accounts), Date, Memo; with "You have $X available for payment in <category>." when the loan is
- * paired.
- */
 export function RecordPaymentDialog({
   open,
   onOpenChange,
@@ -236,7 +230,6 @@ export function RecordPaymentDialog({
   paired: { name: string; available: bigint } | null;
   initialAmount?: bigint;
   fromInspector?: boolean;
-  /** The loan's `lastPaymentFromAccountId`. */
   lastFromAccountId?: string | null;
   onSave: (input: PaymentInput) => Promise<string | null>;
 }) {
@@ -286,7 +279,7 @@ export function RecordPaymentDialog({
         label="Payment Amount"
         value={amount}
         onChange={setAmount}
-        description="Enter the total amount you are paying. everycent will estimate the portion of each payment that is principal and interest."
+        description="Enter the total amount you are paying. strictbudget will estimate the portion of each payment that is principal and interest."
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field>
@@ -347,7 +340,7 @@ const ACTIVITY_COPY: Record<
     add: "Balance Adjustment",
     edit: "Edit Balance Adjustment",
     intro:
-      "everycent made this adjustment during a balance update. After editing, make sure you update your balance again to make sure your account balance in everycent still matches your financial institution.",
+      "strictbudget made this adjustment during a balance update. After editing, make sure you update your balance again to make sure your account balance in strictbudget still matches your financial institution.",
     remove: "Delete Adjustment",
     amount: "Balance Adjustment Amount",
   },
@@ -360,11 +353,7 @@ export interface ActivityInput {
   memo: string;
 }
 
-/**
- * YNAB's Add Credit / Add Fee or Charge dialogs, and the edit dialogs behind a loan's Other
- * Activity lines (Edit Credit or Refund, Edit Charge, Edit Balance Adjustment), 2026-10-13.
- * Credits and charges take a positive amount; an adjustment's is signed.
- */
+/** Credits and charges take a positive amount; a balance adjustment's is signed. */
 export function LoanActivityDialog({
   open,
   onOpenChange,
@@ -377,7 +366,6 @@ export function LoanActivityDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   kind: ActivityKind;
-  /** The line being edited; a new one without. */
   initial?: ActivityInput;
   settings: Settings;
   onSave: (input: ActivityInput) => Promise<string | null>;
@@ -409,8 +397,6 @@ export function LoanActivityDialog({
       info={copy.info}
       error={error}
       pending={pending}
-      // YNAB greys Save out for a date after today: Record Credit or Refund, Record New Charge,
-      // Edit Credit or Refund (2026-10-16) and Edit Balance Adjustment (2026-10-17).
       saveDisabled={date > todayIso()}
       onDelete={onDelete && (() => void run(onDelete))}
       deleteLabel={copy.remove}
@@ -438,10 +424,7 @@ export function LoanActivityDialog({
   );
 }
 
-/**
- * YNAB's Edit Interest / Edit Escrow (2026-10-13): sets the month's total, which replaces the
- * estimate; Delete stores zero.
- */
+/** Sets the month's total, which replaces the estimate; Delete stores zero. */
 export function EditChargeDialog({
   open,
   onOpenChange,
@@ -489,11 +472,7 @@ export function EditChargeDialog({
   );
 }
 
-/**
- * YNAB's Add Interest ("Record Interest", 2026-10-13): adds to the chosen month's interest, from the
- * loan's first month through this one, with "After saving, the Oct 2026 interest charge will be
- * $430.25".
- */
+/** Adds to the chosen month's interest, from the loan's first month through this one. */
 export function RecordInterestDialog({
   open,
   onOpenChange,
@@ -575,12 +554,9 @@ type UpdateStep = "confirm" | "enter" | "check" | "difference" | "done";
 const RATE = /^\d{1,3}(\.\d{1,3})?$/;
 
 /**
- * YNAB's loan Update Balance (2026-10-13/14): "Is your current balance at your lender …?" Yes
- * reconciles; No asks for the lender's balance. If it differs, a check step shows the Difference
- * and the loan's interest rate (and a mortgage's monthly escrow), each with "Keep this new …
- * going forward"; then the Changes step lists the Balance Adjustment (worked out by the API with
- * this month re-estimated on any new terms) and the term changes. Nothing is saved before its
- * Next.
+ * Yes reconciles; No asks for the lender's balance. If it differs, a check step shows the
+ * Difference and the loan's terms, then the Changes step lists the Balance Adjustment (worked out
+ * by the API with this month re-estimated on any new terms). Nothing is saved before its Next.
  */
 export function UpdateBalanceDialog({
   open,
@@ -631,7 +607,6 @@ export function UpdateBalanceDialog({
     else setStep("done");
   }
 
-  /** The check step's Next: the new terms, and the adjustment they lead to. */
   async function check(event: FormEvent) {
     event.preventDefault();
     const newRate = rate.trim().replace(/%$/, "").replace(",", ".");
@@ -695,7 +670,7 @@ export function UpdateBalanceDialog({
             <div className="flex items-baseline justify-between gap-2 border-b pb-3 text-sm">
               <div>
                 <p className="font-medium">{account.name}</p>
-                <p className="text-muted-foreground text-xs">Current balance in everycent</p>
+                <p className="text-muted-foreground text-xs">Current balance in strictbudget</p>
               </div>
               <span className="tabular-nums">{format(working)}</span>
             </div>
@@ -721,8 +696,8 @@ export function UpdateBalanceDialog({
           <form className="grid gap-4" onSubmit={(event) => void check(event)}>
             <Difference amount={balance - working} format={format} />
             <p className="text-sm">
-              The balance recorded in everycent doesn't match your account. First of all, let's make
-              sure the information we have is correct.
+              The balance recorded in strictbudget doesn't match your account. First of all, let's
+              make sure the information we have is correct.
             </p>
             <Field>
               <FieldLabel htmlFor={rateId}>Interest rate</FieldLabel>
@@ -768,7 +743,7 @@ export function UpdateBalanceDialog({
             <Difference amount={adjustment} format={format} />
             <p className="text-sm">
               Since it looks like there is still a difference between your account balance in
-              everycent and at your lender, we'll create a balance adjustment to get you back on
+              strictbudget and at your lender, we'll create a balance adjustment to get you back on
               track.
             </p>
             <div className="grid gap-1 text-sm">
@@ -819,7 +794,6 @@ export function UpdateBalanceDialog({
   );
 }
 
-/** Update Balance's grey "Difference" box. */
 function Difference({ amount, format }: { amount: bigint; format: Format }) {
   return (
     <div className="rounded-md bg-muted p-3 text-center">
@@ -852,7 +826,7 @@ function KeepGoingForward({
 
 export type PairChoice = { categoryId: string } | { name: string; groupId: string } | null;
 
-/** The plan categories a loan can pair with (YNAB lists every plan category but the card ones). */
+/** Every plan category but the credit card payment ones. */
 export function pairableGroups(list: CategoryList) {
   return list.groups
     .filter((g) => !g.kind)
@@ -860,11 +834,6 @@ export function pairableGroups(list: CategoryList) {
     .filter((g) => g.categories.length > 0);
 }
 
-/**
- * YNAB's "Pair your loan with a plan category" (Add Account's optional step, Edit Account's "Pair
- * with a Plan Category", and the loan page's Get Started), 2026-10-13: an existing category or a
- * new one with a name and group.
- */
 export function PairCategoryFields({
   list,
   value,
@@ -874,10 +843,7 @@ export function PairCategoryFields({
   list: CategoryList;
   value: PairChoice;
   onChange: (choice: PairChoice) => void;
-  /**
-   * The new category's starting name (Update to a Loan Account prefills the account's, YNAB
-   * 2026-10-14).
-   */
+  /** The new category's starting name (Update to a Loan Account prefills the account's). */
   newName?: string;
 }) {
   const [mode, setMode] = useState<"existing" | "new">(
@@ -949,7 +915,7 @@ export function PairCategoryFields({
               const target = groups
                 .flatMap((g) => g.categories)
                 .find((c) => c.id === current.categoryId)?.target;
-              // YNAB, 2026-10-14: pairing drops any other target (a debt target stays).
+              // Pairing drops any other target (a debt target stays).
               return target && target.cadence !== "debt_monthly" ? (
                 <FieldDescription>
                   Pairing this category will remove the current goal. Don't worry though, we'll take
@@ -1001,14 +967,12 @@ export function PairCategoryFields({
   );
 }
 
-/** Whether a pairing choice is complete enough to save. */
 export const pairChoiceReady = (choice: PairChoice) =>
   choice !== null &&
   ("categoryId" in choice
     ? choice.categoryId !== ""
     : choice.name.trim() !== "" && choice.groupId !== "");
 
-/** The pairing dialog behind the loan page's Get Started and Edit Account's button. */
 export function PairCategoryDialog({
   open,
   onOpenChange,

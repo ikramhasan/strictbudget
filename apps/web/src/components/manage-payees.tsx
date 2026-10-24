@@ -1,7 +1,7 @@
-import type { components } from "@everycent/api-client";
-import { type CurrencyCode, money } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { Checkbox } from "@everycent/ui/components/checkbox";
+import type { components } from "@strictbudget/api-client";
+import { type CurrencyCode, money } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +9,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Input } from "@everycent/ui/components/input";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dialog";
+import { Input } from "@strictbudget/ui/components/input";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Ghost, Redo2, Search, Undo2 } from "lucide-react";
 import {
@@ -49,7 +49,7 @@ type Snapshot = components["schemas"]["PayeeSnapshot"];
 
 const ManagePayeesContext = createContext<(() => void) | null>(null);
 
-/** Opens YNAB's Manage Payees dialog from anywhere in a budget (plan menu, payee field). */
+/** Opens the Manage Payees dialog from anywhere in a budget (plan menu, payee field). */
 export function useManagePayees() {
   return useContext(ManagePayeesContext);
 }
@@ -72,10 +72,7 @@ const HIDDEN_HELP =
 
 type GroupId = "payees" | "transfers" | "hidden";
 
-/**
- * YNAB's Manage Payees: rename, combine, hide and delete payees, with its own undo and redo.
- * Transfer payees are listed but can't be changed.
- */
+/** Transfer payees are listed but can't be changed. */
 function ManagePayeesDialog({ onClose }: { onClose: () => void }) {
   const { budget } = useBudget();
   const queryClient = useQueryClient();
@@ -435,7 +432,7 @@ function ManagePayeesDialog({ onClose }: { onClose: () => void }) {
                 )}
                 <p className="rounded-md bg-primary/10 p-3 text-sm">
                   Transfer payees are used to move money between accounts, including credit card
-                  payments. everycent creates these for you, so they can't be edited or deleted.
+                  payments. strictbudget creates these for you, so they can't be edited or deleted.
                 </p>
               </div>
             ) : picked.length === 0 ? (
@@ -524,9 +521,7 @@ function PayeeEditor({
   payees: readonly Payee[];
   busy: boolean;
   error: string | null;
-  /** Whether any picked payee has renaming rules. */
   anyRules: boolean;
-  /** The single picked payee's "Renaming" card. */
   renaming: ReactNode;
   onError: (message: string | null) => void;
   onRename: (payee: Payee, name: string) => Promise<void>;
@@ -544,7 +539,7 @@ function PayeeEditor({
   const uses = picked.reduce((sum, p) => sum + p.useCount, 0);
   const allHidden = picked.every((p) => p.hidden);
   const ids = new Set(picked.map((p) => p.id));
-  // YNAB offers the other payees that are in use, hidden ones included.
+  // Offers the other payees that are in use, hidden ones included.
   const replacements = payees.filter((p) => !ids.has(p.id) && p.useCount > 0);
 
   function commitName() {

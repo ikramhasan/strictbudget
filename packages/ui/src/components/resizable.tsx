@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import * as ResizablePrimitive from "react-resizable-panels";
 
 function ResizablePanelGroup({ className, ...props }: ResizablePrimitive.GroupProps) {
@@ -46,7 +46,7 @@ function ResizableHandle({
   );
 }
 
-// everycent: re-exported so apps save layouts without depending on the library themselves.
+// strictbudget: re-exported so apps save layouts without depending on the library themselves.
 const { useDefaultLayout } = ResizablePrimitive;
 
 export { ResizableHandle, ResizablePanel, ResizablePanelGroup, useDefaultLayout };

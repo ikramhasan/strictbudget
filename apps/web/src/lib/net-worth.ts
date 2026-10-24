@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import {
   type AccountType,
   type BudgetMonth,
@@ -9,7 +9,7 @@ import {
   type NumberFormat,
   plainAmount,
   toDelimited,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { $api } from "./api";
 import { todayIso } from "./dates";
 import { type ExportFile, monthLabel } from "./reports";
@@ -18,7 +18,6 @@ export type NetWorthReport = components["schemas"]["NetWorthReport"];
 export type NetWorthMonth = components["schemas"]["NetWorthMonth"];
 export type NetWorthAccount = components["schemas"]["NetWorthAccount"];
 
-/** Month-end balances and net worth (`GET /reports/net-worth`). */
 export const netWorthOptions = (r: { budgetId: string; range: MonthRange; accounts?: string }) =>
   $api.queryOptions("get", "/v1/budgets/{budgetId}/reports/net-worth", {
     params: {
@@ -33,8 +32,8 @@ export const netWorthOptions = (r: { budgetId: string; range: MonthRange; accoun
   });
 
 /**
- * A change as a percent of |base| with one decimal, as YNAB's Net Worth writes it ("-5.2%",
- * "-16,132,587.0%"): exact tenths, rounded half up; null when the base is zero.
+ * A change as a percent of |base| with one decimal ("-5.2%", "-16,132,587.0%"): exact tenths,
+ * rounded half up; null when the base is zero.
  */
 export function percentLabel(change: bigint, base: bigint): string | null {
   if (base === 0n) return null;
@@ -56,7 +55,7 @@ export interface MonthRow {
   allTimeHigh: boolean;
 }
 
-/** YNAB's table (Month, Net Worth, Monthly Change), newest first. */
+/** The table (Month, Net Worth, Monthly Change), newest first. */
 export function monthRows(report: Pick<NetWorthReport, "opening" | "months">): MonthRow[] {
   let previous = BigInt(report.opening.netWorth);
   const rows = report.months.map((m) => {
@@ -81,10 +80,10 @@ export interface Headline {
   netWorth: bigint;
   assets: bigint;
   debts: bigint;
-  /** YNAB's Change in Net Worth: the last month's net worth less the first month's. */
+  /** Change in Net Worth: the last month's net worth less the first month's. */
   rangeChange: bigint;
   rangePercent: string | null;
-  /** The last month against the one before (an everycent extra). */
+  /** The last month against the one before. */
   monthChange: bigint;
   monthPercent: string | null;
 }
@@ -108,7 +107,7 @@ export function headline(report: Pick<NetWorthReport, "opening" | "months">): He
   };
 }
 
-/** The composition chart's account kinds (an everycent extra), assets first. */
+/** The composition chart's account kinds, assets first. */
 export const COMPOSITION_KINDS = [
   "cash",
   "savings",
@@ -280,10 +279,10 @@ export function shownAccounts(report: Pick<NetWorthReport, "accounts">) {
 }
 
 /**
- * YNAB's Net Worth export (2026-10-17): "Account" then a column per month, one row per account
- * (every account, in the order they were made) with its month-end balance, then "Net Worth".
- * Plain amounts in the budget's currency; no byte-order mark, unlike the spending exports. A
- * balance with no rate is an empty cell.
+ * The Net Worth export: "Account" then a column per month, one row per account (every account, in
+ * the order they were made) with its month-end balance, then "Net Worth". Plain amounts in the
+ * budget's currency; no byte-order mark, unlike the spending exports. A balance with no rate is an
+ * empty cell.
  */
 export function exportRows(
   report: Pick<NetWorthReport, "accounts" | "months">,
@@ -306,8 +305,7 @@ export function exportFile(
   delimiter: "," | "\t",
   today: string,
 ): ExportFile {
-  // YNAB's Net Worth file has no byte-order mark (checked byte by byte, 2026-10-17).
-  // toDelimited always starts with one.
+  // The Net Worth file has no byte-order mark; toDelimited always starts with one.
   const text = toDelimited(exportRows(report, exponent, numberFormat), delimiter).slice(1);
   return { name: `net-worth-${today}.${delimiter === "\t" ? "tsv" : "csv"}`, text };
 }

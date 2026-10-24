@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_authed/budgets/$budgetId/accounts/")({
   component: AllAccountsPage,
 });
 
-/** YNAB's "All Accounts": every account's transactions in one register. */
+/** "All Accounts": every account's transactions in one register. */
 function AllAccountsPage() {
   const search = Route.useSearch();
   const { budget } = useBudget();

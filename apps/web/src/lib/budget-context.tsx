@@ -1,16 +1,14 @@
-import { formatAmount, formatDate, type Money } from "@everycent/engine";
+import { formatAmount, formatDate, type Money } from "@strictbudget/engine";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
 import type { Budget } from "./budgets";
 
 interface BudgetContextValue {
   budget: Budget;
-  /** Formats with this budget's number format and symbol position. */
   formatAmount: (m: Money) => string;
-  /** Formats a YYYY-MM-DD date with this budget's date format. */
   formatDate: (isoDate: string) => string;
   /**
-   * The user is a viewer (EVERYCENT-88, an everycent extra): the budget shows without anything
-   * that changes it. The API refuses their writes anyway (READ_ONLY).
+   * The user is a viewer: the budget shows without anything that changes it. The API refuses their
+   * writes anyway (READ_ONLY).
    */
   readOnly: boolean;
 }
@@ -30,14 +28,12 @@ export function BudgetProvider({ budget, children }: { budget: Budget; children:
   return <BudgetContext.Provider value={value}>{children}</BudgetContext.Provider>;
 }
 
-/** The budget of the current `/budgets/$budgetId` route. */
 export function useBudget(): BudgetContextValue {
   const value = useContext(BudgetContext);
   if (!value) throw new Error("useBudget must be used inside a budget route");
   return value;
 }
 
-/** The current budget, or null outside a budget route (e.g. a component rendered on its own). */
 export function useOptionalBudget(): BudgetContextValue | null {
   return useContext(BudgetContext);
 }

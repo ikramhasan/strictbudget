@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import type { Database } from "@everycent/db";
-import { throttle } from "@everycent/db/schema";
+import type { Database } from "@strictbudget/db";
+import { throttle } from "@strictbudget/db/schema";
 import { RateLimiterDrizzle, RateLimiterRes } from "rate-limiter-flexible";
 import { Resend } from "resend";
 import type { Env } from "../../env";
@@ -127,7 +127,7 @@ export class ThrottledEmailSender implements EmailSender {
 
 /** `FROM_EMAIL` as a sender: an address or display form as is, a bare domain as no-reply@. */
 export function fromAddress(fromEmail: string): string {
-  return fromEmail.includes("@") ? fromEmail : `everycent <no-reply@${fromEmail}>`;
+  return fromEmail.includes("@") ? fromEmail : `strictbudget <no-reply@${fromEmail}>`;
 }
 
 /**

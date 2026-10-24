@@ -65,10 +65,7 @@ async function setup() {
   return { checking, savings, post, patch, bulkMemo, find, memo };
 }
 
-// YNAB (2026-10-15, x-c11-158-A/B): a memo edited on either side of a transfer shows on both,
-// and a split's transfer line shares its memo with its other side both ways; the bulk Memo
-// action changes only the side selected.
-describe("a transfer's memo (EVERYCENT-158)", () => {
+describe("a transfer's memo", () => {
   it("is shared by single edits on either side", async () => {
     const { savings, post, patch, memo } = await setup();
     const out = await post({ amount: "-5000", transferAccountId: savings, memo: "first" });

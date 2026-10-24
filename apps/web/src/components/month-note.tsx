@@ -1,15 +1,11 @@
-import { Button } from "@everycent/ui/components/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { Textarea } from "@everycent/ui/components/textarea";
-import { cn } from "@everycent/ui/lib/utils";
+import { Button } from "@strictbudget/ui/components/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { Textarea } from "@strictbudget/ui/components/textarea";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { type FormEvent, useState } from "react";
 import { useOptionalBudget } from "@/lib/budget-context";
 
-/**
- * YNAB's month note under the month name (checked 2026-10-12, "C5 First FS"): "Enter a note…" until
- * there is one, then the note on one line, cut short; clicking it opens a text box with OK. An empty
- * note removes it. Each month has its own.
- */
+/** An empty note removes it. Each month has its own. */
 export function MonthNote({
   note,
   onSave,
@@ -27,7 +23,7 @@ export function MonthNote({
     if (text.trim() !== note.trim()) await onSave(text.trim());
   }
 
-  // A viewer (EVERYCENT-88) reads the note but can't change it.
+  // A viewer reads the note but can't change it.
   if (readOnly) {
     return note ? <p className="max-w-48 truncate text-xs">{note}</p> : null;
   }

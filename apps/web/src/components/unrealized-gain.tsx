@@ -1,4 +1,4 @@
-import { isOnBudget } from "@everycent/engine";
+import { isOnBudget } from "@strictbudget/engine";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,9 +8,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Button } from "@everycent/ui/components/button";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Button } from "@strictbudget/ui/components/button";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useState } from "react";
 import type { Account } from "@/lib/accounts";
 import { rateLabel } from "@/lib/fx-rates";
@@ -21,9 +21,8 @@ export function signedAmount(amount: bigint, format: (minorUnits: bigint) => str
 }
 
 /**
- * A foreign-currency account's unrealized FX gain or loss at today's known rate, with Revalue,
- * which posts the difference to Ready to Assign (EVERYCENT-56). Nothing when the account is in
- * the budget's currency or no rate is known yet.
+ * At today's known rate; Revalue posts the difference to Ready to Assign. Nothing when the account
+ * is in the budget's currency or no rate is known yet.
  */
 export function UnrealizedGain({
   account,
@@ -34,7 +33,6 @@ export function UnrealizedGain({
 }: {
   account: Pick<Account, "currency" | "closed" | "type" | "unrealizedGain" | "rate">;
   budgetCurrency: string;
-  /** Formats budget-currency minor units. */
   format: (minorUnits: bigint) => string;
   pending: boolean;
   onRevalue: () => Promise<void>;

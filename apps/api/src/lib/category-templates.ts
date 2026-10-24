@@ -1,6 +1,6 @@
-import { newId, sql } from "@everycent/db";
-import { category, categoryGroup, categoryTarget } from "@everycent/db/schema";
-import { type CurrencyCode, currencyExponent } from "@everycent/engine";
+import { newId, sql } from "@strictbudget/db";
+import { category, categoryGroup, categoryTarget } from "@strictbudget/db/schema";
+import { type CurrencyCode, currencyExponent } from "@strictbudget/engine";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { CATEGORY_TEMPLATE_DATA } from "./category-template-data";
 import { templateCategoryNote } from "./category-template-notes";
@@ -9,12 +9,11 @@ import type { Db } from "./ledger";
 import { writeOrder } from "./ordering";
 
 /**
- * One of YNAB's ready-made category sets (its template gallery, ynab.com/templates). Amounts are
- * whole units of the budget's currency: YNAB keeps them in milliunits, so $1,000.00 in a dollar
- * plan is ¥1,000 in a yen one.
+ * A ready-made category set from the template gallery. Amounts are whole units of the budget's
+ * currency, so $1,000.00 in a dollar budget is ¥1,000 in a yen one.
  */
 export interface CategoryTemplate {
-  /** The template's slug in YNAB's gallery. */
+  /** The template's slug in the gallery. */
   id: string;
   name: string;
   description: string;
@@ -44,19 +43,17 @@ export const templateAmount = (amount: bigint, currency: CurrencyCode) =>
 const key = (name: string) => name.trim().toLowerCase();
 
 /**
- * YNAB's "Import Category Template" (checked 2026-10-16 in plan "x-c12-153 Tpl"): adds the
- * picked categories without changing anything already there.
- * - A group the plan already has (by name) takes the template's categories it's missing, at its
+ * Import Category Template: adds the picked categories without changing anything already there.
+ * - A group the budget already has (by name) takes the template's categories it's missing, at its
  *   top in the template's order; the others become new groups at the bottom, in order.
  * - A category the group already has (by name, ignoring case) is skipped and keeps its target. One
  *   with the same name in another group doesn't count: the template's is added too.
  * - Each new category with an example amount gets a "Have a balance of" target for it, due
- *   eventually, from `month` on (YNAB's API: goal_type TB). Nothing is assigned.
- * - A new category gets the template's note for it, if there is one (ours, see
+ *   eventually, from `month` on. Nothing is assigned.
+ * - A new category gets the template's note for it, if there is one (see
  *   `category-template-notes.ts`; every "About This Template" has one).
  *
- * Group names match ignoring case, where YNAB's import fails outright (see "Design notes").
- * Returns how many categories were added.
+ * Group names match ignoring case. Returns how many categories were added.
  */
 export async function importCategoryTemplate(
   tx: Db,
@@ -65,7 +62,6 @@ export async function importCategoryTemplate(
     currency: CurrencyCode;
     template: CategoryTemplate;
     categoryIds: readonly string[];
-    /** The first month the new targets apply to, YYYY-MM. */
     month: string;
   },
 ): Promise<number> {
@@ -141,7 +137,7 @@ export async function importCategoryTemplate(
       amount: c.amount,
     }));
     await tx.insert(category).values(rows.map(({ amount: _, ...row }) => row));
-    // New ones go first in an existing group (YNAB puts them at its top).
+    // New ones go at the top of an existing group.
     if (group) {
       await writeOrder(tx, category, [...rows.map((r) => r.id), ...inGroup.map((c) => c.id)]);
     }

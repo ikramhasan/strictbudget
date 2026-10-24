@@ -1,5 +1,5 @@
-import type { FxRateSource } from "@everycent/db/schema";
-import { type CurrencyCode, isCurrencyCode, parseJsonRates } from "@everycent/engine";
+import type { FxRateSource } from "@strictbudget/db/schema";
+import { type CurrencyCode, isCurrencyCode, parseJsonRates } from "@strictbudget/engine";
 
 /** One provider answer: "1 base = rates[quote] quote", as 12-decimal strings. */
 export interface FxRates {

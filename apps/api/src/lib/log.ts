@@ -22,7 +22,7 @@ function write(level: Level, message: string, attributes: Attributes = {}, error
     fields["exception.message"] = error instanceof Error ? error.message : String(error);
     if (error instanceof Error && error.stack) fields["exception.stacktrace"] = error.stack;
   }
-  logs.getLogger("everycent").emit({
+  logs.getLogger("strictbudget").emit({
     severityNumber: SEVERITY[level],
     severityText: level.toUpperCase(),
     body: message,

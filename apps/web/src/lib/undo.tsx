@@ -18,11 +18,11 @@ export interface UndoCommand {
 
 interface UndoState {
   /**
-   * Records this tab's own version steps (EVERYCENT-36): a save's response says each row's
-   * version just before it (`previousVersions`) and after it. Undo and redo follow these steps
-   * from the version their command left, so a chain of the user's own edits on a row replays,
-   * while a partner's change anywhere in between (a step this tab didn't make) leaves the
-   * command at an older version, which the API refuses as stale.
+   * Records this tab's own version steps: a save's response says each row's version just before it
+   * (`previousVersions`) and after it. Undo and redo follow these steps from the version their
+   * command left, so a chain of the user's own edits on a row replays, while a partner's change
+   * anywhere in between (a step this tab didn't make) leaves the command at an older version, which
+   * the API refuses as stale.
    */
   noteSave: (before: Record<string, number>, after: Record<string, number>) => void;
   /** The version to expect for `id`, following this tab's own steps from `from`. */
@@ -38,9 +38,9 @@ interface UndoState {
 const UndoContext = createContext<UndoState | null>(null);
 
 /**
- * The API refused an undo or redo because a partner changed the row since (EVERYCENT-36). The
- * command can never apply again, so it leaves the history; the error still reaches the caller,
- * whose toast shows the API's message ("Pat changed this transaction since…").
+ * The API refused an undo or redo because a partner changed the row since. The command can never
+ * apply again, so it leaves the history; the error still reaches the caller, whose toast shows the
+ * API's message ("Pat changed this transaction since…").
  */
 export function isStaleVersion(error: unknown): boolean {
   return (

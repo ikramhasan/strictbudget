@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { categoryNotNeeded } from "./category-cell";
 
-// YNAB's saved rows (2026-10-16, "ihni7's Plan", accounts x-c12-171 Track/Card/Card2/Sav).
 describe("categoryNotNeeded", () => {
   const row = (
     accountType: Parameters<typeof categoryNotNeeded>[0]["accountType"],

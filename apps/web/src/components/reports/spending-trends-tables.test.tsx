@@ -1,5 +1,5 @@
-import { averageMonthlySpending, trendMonths } from "@everycent/engine";
-import { TooltipProvider } from "@everycent/ui/components/tooltip";
+import { averageMonthlySpending, trendMonths } from "@strictbudget/engine";
+import { TooltipProvider } from "@strictbudget/ui/components/tooltip";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { BudgetProvider } from "@/lib/budget-context";
@@ -17,7 +17,6 @@ const budget = {
   role: "owner",
 } as Budget;
 
-// YNAB's test plan, Aug–Oct 2026 (2026-10-17).
 const months = trendMonths(
   [
     { month: "2026-08", key: "a", net: -300n },
@@ -38,7 +37,7 @@ const data: TrendChartData = {
 };
 
 describe("Spending Trends table", () => {
-  it("lists months newest first, compared with the average as YNAB does", () => {
+  it("lists months newest first, compared with the average", () => {
     render(
       <BudgetProvider budget={budget}>
         <TooltipProvider>

@@ -1,4 +1,4 @@
-import { category } from "@everycent/db/schema";
+import { category } from "@strictbudget/db/schema";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
@@ -44,10 +44,9 @@ function send(method: string, path: string, cookie: string, body?: unknown) {
 const json = async <T>(res: Response) => (await res.json()) as T;
 
 /**
- * A plan shaped like YNAB's test plan cases (2026-10-17): card and cash spending, a split, a
- * refund that leaves a category positive, transfers between budget accounts (which drop out), an
- * uncategorized transfer to a tracking account (which counts as Uncategorized), income and
- * starting balances (which aren't income).
+ * Card and cash spending, a split, a refund that leaves a category positive, transfers between
+ * budget accounts (which drop out), an uncategorized transfer to a tracking account (which counts
+ * as Uncategorized), income and starting balances (which aren't income).
  */
 async function setup() {
   const { cookie } = await signUp(app);
@@ -144,7 +143,7 @@ const netBy = (rows: Sum[], key: keyof Sum) =>
   Object.fromEntries(rows.map((r) => [String(r[key]), r.net]));
 
 describe("report activity", () => {
-  it("sums spending per category as YNAB's reports do", async () => {
+  it("sums spending per category", async () => {
     const t = await setup();
     const { rows, currency, firstMonth } = await t.sums({
       from: "2026-10",

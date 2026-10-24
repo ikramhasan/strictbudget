@@ -1,8 +1,7 @@
-import { Button } from "@everycent/ui/components/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
+import { Button } from "@strictbudget/ui/components/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { Info, Link2 } from "lucide-react";
 
-/** A side of a match as the Matched Transactions popover lists it, formatted. */
 export interface MatchedRow {
   date: string;
   payee: string;
@@ -11,11 +10,8 @@ export interface MatchedRow {
 }
 
 /**
- * YNAB's info column (2026-10-16): a blue icon on an unapproved transaction (also when it needs a
- * category) that offers Approve Transaction and Reject Transaction, and a yellow one on an
- * approved transaction that needs a category, which opens its category. While a matched
- * transaction is edited, a grey link icon opens its Matched Transactions (2026-10-17,
- * EVERYCENT-68).
+ * Blue on an unapproved transaction (also when it needs a category); yellow on an approved one that
+ * needs a category. While a matched transaction is edited, a grey link icon opens its match.
  */
 export function ReviewCell({
   approved,
@@ -93,10 +89,6 @@ export function ReviewCell({
   return null;
 }
 
-/**
- * YNAB's "Matched Transactions" popover (2026-10-17): the entered and the imported transaction,
- * each with its date, payee, memo and amount, and Unmatch.
- */
 function MatchedTransactions({
   rows,
   onUnmatch,
@@ -164,7 +156,6 @@ function MatchedTransactions({
   );
 }
 
-/** YNAB's yellow "This needs a category" pill in the category cell. */
 export function NeedsCategoryPill() {
   return (
     <span className="rounded-full bg-yellow-200 px-2 py-0.5 font-medium text-xs text-yellow-950 dark:bg-yellow-400/20 dark:text-yellow-200">

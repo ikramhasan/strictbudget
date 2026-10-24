@@ -5,8 +5,8 @@ import {
   budgetMonthlySummary,
   user,
   userPreference,
-} from "@everycent/db/schema";
-import { addMonths, monthBounds, monthOf } from "@everycent/engine";
+} from "@strictbudget/db/schema";
+import { addMonths, monthBounds, monthOf } from "@strictbudget/engine";
 import { and, eq, isNull, lt, notExists, sql } from "drizzle-orm";
 import { anthropicAdapter } from "../ai/assistant";
 import { aiSettings } from "../ai/settings";
@@ -20,7 +20,7 @@ import { monthlySummaryEmail } from "./email";
 import { unsubscribeToken } from "./unsubscribe";
 
 /**
- * The `summaries.monthly` job (EVERYCENT-241), on the 1st: one `summaries.budget` job for each
+ * The `summaries.monthly` job, on the 1st: one `summaries.budget` job for each
  * budget that existed before the month just ended and hasn't had its summary. A fresh start's old
  * budget (archived) gets none.
  */

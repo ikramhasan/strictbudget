@@ -9,7 +9,7 @@ import {
 } from "./loan-planner";
 import type { LoanActivity } from "./loans";
 
-describe("formatDuration (YNAB's simulator, 2026-10-13)", () => {
+describe("formatDuration", () => {
   it.each([
     [0, "0 months"],
     [1, "1 month"],
@@ -63,7 +63,7 @@ const month = (
     : [],
 });
 
-// YNAB's G7 Loan: $10,000.00 at 6%, $200.00 minimum, $250.00 paid in October.
+// $10,000.00 at 6%, $200.00 minimum, $250.00 paid in October.
 const g7: LoanActivity = {
   months: [month("2026-10", "0", "-980000", "25000", "5000", "-1000000")],
   upcoming: [],

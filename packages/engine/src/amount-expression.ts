@@ -14,7 +14,7 @@ interface Rational {
 const OPERATOR = /[+\-*/()]/;
 
 /**
- * Evaluates what someone typed into an amount field, as YNAB allows: "230+30", "12.50*3",
+ * Evaluates what someone typed into an amount field: "230+30", "12.50*3",
  * "(100-20)/4". Numbers use the budget's number format. The math is exact (fractions of
  * bigints) and the result is rounded once, half away from zero, to the currency's minor units.
  * A plain number goes through `parseAmount`, so too many decimals is still an error there.
@@ -30,7 +30,7 @@ export function evaluateAmount(
   numberFormat: NumberFormat,
 ): Money {
   const spec = NUMBER_FORMAT_SPECS[numberFormat];
-  // YNAB's help center lists "+ - x /"; its calculator's × and ÷ read the same.
+  // "x", "×" and "÷" read as "*" and "/".
   let normalized = input
     .replace(spec.groupInput, "")
     .replace(/\s/g, "")

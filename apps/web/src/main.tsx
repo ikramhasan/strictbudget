@@ -1,15 +1,17 @@
-import { Toaster } from "@everycent/ui/components/sonner";
-import { TooltipProvider } from "@everycent/ui/components/tooltip";
-import { ThemeProvider } from "@everycent/ui/lib/theme";
+import { Toaster } from "@strictbudget/ui/components/sonner";
+import { TooltipProvider } from "@strictbudget/ui/components/tooltip";
+import { ThemeProvider } from "@strictbudget/ui/lib/theme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { startErrorReporting } from "./lib/error-reporting";
+import { migrateLegacyStorage } from "./lib/legacy-storage";
 import { createAppRouter } from "./router";
 import "./styles.css";
 
 startErrorReporting();
+migrateLegacyStorage();
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },

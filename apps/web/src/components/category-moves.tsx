@@ -1,7 +1,7 @@
-import { Button } from "@everycent/ui/components/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@everycent/ui/components/tooltip";
-import { cn } from "@everycent/ui/lib/utils";
+import { Button } from "@strictbudget/ui/components/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@strictbudget/ui/components/tooltip";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { format as formatDay } from "date-fns";
 import { History } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -9,7 +9,6 @@ import { categoryMoveLines, type MoneyMove } from "@/lib/moves";
 import { autoAssignMethodLabel } from "./auto-assign";
 import { MemberAvatar } from "./member-avatar";
 
-/** What the budget screen hands each row's history button. */
 export interface CategoryMovesContext {
   /** The month's moves, every category's. */
   moves: readonly MoneyMove[];
@@ -22,10 +21,10 @@ export interface CategoryMovesContext {
 }
 
 /**
- * YNAB's per-category history (checked 2026-10-14): a clock icon right of Assigned ("Changes to
- * your assigned amount this month") on a category with moves that month, shown while Assigned is
- * hovered or the row is selected. It opens "Moves": the date, the move, the amount from the
- * category's side and who made it, newest first.
+ * A category's history: a clock icon right of Assigned ("Changes to your assigned amount this
+ * month") on a category with moves that month, shown while Assigned is hovered or the row is
+ * selected. It opens "Moves": the date, the move, the amount from the category's side and who
+ * made it, newest first.
  */
 export function CategoryMovesButton({
   categoryId,

@@ -1,5 +1,5 @@
 {
-  "name": "@everycent/engine",
+  "name": "@strictbudget/engine",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -18,7 +18,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@everycent/tsconfig": "workspace:*",
+    "@strictbudget/tsconfig": "workspace:*",
     "@types/papaparse": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

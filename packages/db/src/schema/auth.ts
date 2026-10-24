@@ -109,7 +109,7 @@ export const twoFactor = pgTable(
 );
 
 /**
- * The api-key plugin's keys (personal API keys, EVERYCENT-230). `key` is the SHA-256 hash; the key
+ * The api-key plugin's keys (personal API keys). `key` is the SHA-256 hash; the key
  * itself is shown once, on creation. `start` is its first characters, so a list can tell keys
  * apart. `permissions` (JSON) holds the key's scope, written and read by `lib/api-keys.ts`.
  * Better Auth's per-key rate limit is off (`rateLimitEnabled` false): ours is in `lib/throttle.ts`.

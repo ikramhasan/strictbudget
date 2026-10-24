@@ -1,4 +1,4 @@
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 
 // Eight spokes, each a step brighter clockwise. The whole mark turns in
 // eight steps, so the bright spoke ticks forward and the rest trail it.

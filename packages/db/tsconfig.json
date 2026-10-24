@@ -1,4 +1,4 @@
 {
-  "extends": "@everycent/tsconfig/node.json",
+  "extends": "@strictbudget/tsconfig/node.json",
   "include": ["src", "drizzle.config.ts"]
 }

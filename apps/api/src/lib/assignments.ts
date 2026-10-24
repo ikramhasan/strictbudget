@@ -1,6 +1,6 @@
-import { newId, sql } from "@everycent/db";
-import { categoryAssignment, moneyMove } from "@everycent/db/schema";
-import type { AutoAssignOption, BudgetMonth, CurrencyCode } from "@everycent/engine";
+import { newId, sql } from "@strictbudget/db";
+import { categoryAssignment, moneyMove } from "@strictbudget/db/schema";
+import type { AutoAssignOption, BudgetMonth, CurrencyCode } from "@strictbudget/engine";
 import { and, eq } from "drizzle-orm";
 import type { Db } from "./ledger";
 
@@ -29,7 +29,6 @@ export async function assignedAmount(
   return row?.amount ?? 0n;
 }
 
-/** The category's assignment row for the month, if one exists. */
 export async function assignmentRow(db: Db, categoryId: string, month: BudgetMonth) {
   const [row] = await db
     .select({ id: categoryAssignment.id })
@@ -44,8 +43,8 @@ export async function assignmentRow(db: Db, categoryId: string, month: BudgetMon
 }
 
 /**
- * Adds `delta` to a category's Assigned amount in a month. The row stays at zero too: YNAB keeps a
- * month open once money was assigned in it.
+ * Adds `delta` to a category's Assigned amount in a month. The row stays at zero too: a month
+ * stays open once money was assigned in it.
  */
 export async function adjustAssigned(
   db: Db,

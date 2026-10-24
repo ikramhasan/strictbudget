@@ -1,4 +1,4 @@
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Popover as PopoverPrimitive } from "radix-ui";
 import * as React from "react";
 

@@ -30,8 +30,8 @@ const AGENT_EXCLUDED = new Set([
   "listConnectedAgents",
   "revokeConnectedAgent",
   "getAgentApproval",
-  // everycent's own AI assistant: an agent driving it would spend the server's model key, approve
-  // its changes itself and have them recorded as "everycent AI" instead of as itself.
+  // strictbudget's own AI assistant: an agent driving it would spend the server's model key, approve
+  // its changes itself and have them recorded as "strictbudget AI" instead of as itself.
   "getAiSettings",
   "updateAiSettings",
   "listAiConversations",
@@ -49,14 +49,12 @@ const READ_ONLY_POSTS = new Set([
   "summarizeSelection",
   "previewReconcileAccount",
   "exportSelectedTransactions",
-  "listYnabPlans",
+  "listExternalPlans",
   "viewInvitation",
 ]);
 
 export interface FileArgument {
-  /** The file name to upload as (e.g. "receipt.jpg"). */
   fileName: string;
-  /** The file's bytes, base64-encoded. */
   base64: string;
   /** The MIME type; the server reads the real type from the bytes either way. */
   contentType?: string;
@@ -66,13 +64,11 @@ export interface AgentOperation {
   /** The OpenAPI operationId: the MCP tool name and the Agent Auth capability name. */
   name: string;
   method: string;
-  /** The path template, e.g. `/v1/budgets/{budgetId}/accounts`. */
   path: string;
   title: string;
   description: string;
   /** Changes nothing: allowed with read access alone. */
   readOnly: boolean;
-  /** Deletes or removes something. */
   destructive: boolean;
   /** JSON Schema of the arguments: path and query parameters, plus `body`. */
   inputSchema: Json & { type: "object" };
@@ -219,7 +215,6 @@ function operationFrom(
   };
 }
 
-/** The operations agents may run, in the document's order. */
 export function agentOperations(doc: OpenApiDocument): AgentOperation[] {
   const components = doc.components?.schemas ?? {};
   const ops: AgentOperation[] = [];

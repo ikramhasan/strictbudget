@@ -70,7 +70,6 @@ beforeEach(() => {
   api.calls = [];
 });
 
-// YNAB, 2026-10-15 (EVERYCENT-149).
 describe("StarButton", () => {
   it("isn't offered on tracking, loan or closed accounts", () => {
     renderStar(account("t", "asset", null), []);

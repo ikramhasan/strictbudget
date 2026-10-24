@@ -4,8 +4,8 @@ import {
   InputGroupButton,
   InputGroupInput,
   InputGroupTextarea,
-} from "@everycent/ui/components/input-group";
-import { Label } from "@everycent/ui/components/label";
+} from "@strictbudget/ui/components/input-group";
+import { Label } from "@strictbudget/ui/components/label";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -54,7 +54,6 @@ function CopyField({
   );
 }
 
-/** Copies text to the clipboard; `copied` is true for a moment after. */
 function useCopy() {
   const [copied, setCopied] = useState(false);
   const copy = (text: string) => {

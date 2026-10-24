@@ -1,11 +1,11 @@
-import type { components } from "@everycent/api-client";
-import type { AutoAssignOption, BudgetMonth } from "@everycent/engine";
+import type { components } from "@strictbudget/api-client";
+import type { AutoAssignOption, BudgetMonth } from "@strictbudget/engine";
 import type { QueryClient } from "@tanstack/react-query";
 import { $api } from "./api";
 
 export type MoneyMove = components["schemas"]["MoneyMove"];
 
-/** YNAB's Recent Moves: the last 34 days of the budget's moves. */
+/** Recent Moves: the last 34 days of the budget's moves. */
 export const movesQueryOptions = (budgetId: string) =>
   $api.queryOptions("get", "/v1/budgets/{budgetId}/moves", { params: { path: { budgetId } } });
 
@@ -29,7 +29,7 @@ export function invalidateMoves(queryClient: QueryClient) {
 const assignedDelta = (m: MoneyMove) =>
   m.kind === "assigned" ? BigInt(m.amount) : m.kind === "removed" ? -BigInt(m.amount) : 0n;
 
-/** One line of Recent Moves: a move, or every move of one Auto-Assign (YNAB's lightning). */
+/** One line of Recent Moves: a move, or every move of one Auto-Assign. */
 export type MoveEntry =
   | { type: "move"; move: MoneyMove }
   | {
@@ -42,14 +42,14 @@ export type MoveEntry =
       verb: "auto-assigned" | "removed";
       /** The batch's net, as a positive amount. */
       total: bigint;
-      /** Each category's part, negative when it went against the batch (YNAB's "-$5.00"). */
+      /** Each category's part, negative when it went against the batch. */
       parts: { move: MoneyMove; amount: bigint }[];
     };
 
 /**
- * Folds each Auto-Assign's moves into one entry where its newest move was, as YNAB lists them
- * (checked 2026-10-14 on x-142 A–C): "auto-assigned $60.00 to 3 categories" with the net amount,
- * or "removed" when the net is negative; a part that went the other way shows negative.
+ * Folds each Auto-Assign's moves into one entry where its newest move was: "auto-assigned $60.00 to
+ * 3 categories" with the net amount, or "removed" when the net is negative; a part that went the
+ * other way shows negative.
  */
 export function moveEntries(moves: readonly MoneyMove[]): MoveEntry[] {
   const batches = new Map<string, MoneyMove[]>();
@@ -82,10 +82,10 @@ export function moveEntries(moves: readonly MoneyMove[]): MoveEntry[] {
   return entries;
 }
 
-/** A move as one category's history lists it (YNAB's "Moves" popover). */
+/** A move as one category's history lists it (the "Moves" popover). */
 export interface CategoryMoveLine {
   move: MoneyMove;
-  /** "Assigned", "Removed", "Moved from x-142 C", "Moved to x-142 A", "Auto-Assigned". */
+  /** "Assigned", "Removed", "Moved from Rent", "Moved to Groceries", "Auto-Assigned". */
   label: string;
   /** The Auto-Assign option, shown small after "Auto-Assigned". */
   method: AutoAssignOption | null;
@@ -94,9 +94,8 @@ export interface CategoryMoveLine {
 }
 
 /**
- * One category's moves in a month, worded and signed as YNAB's per-category history (checked
- * 2026-10-14): "Assigned $20.00", "Removed -$5.00", "Moved from x-142 C $5.00", "Moved to x-142 A
- * -$5.00", "Auto-Assigned Assigned Last Month $10.00".
+ * One category's moves in a month, worded and signed: "Assigned $20.00", "Removed -$5.00", "Moved
+ * from Rent $5.00", "Moved to Groceries -$5.00", "Auto-Assigned Assigned Last Month $10.00".
  */
 export function categoryMoveLines(
   moves: readonly MoneyMove[],
@@ -132,13 +131,10 @@ export function categoriesWithMoves(moves: readonly MoneyMove[]) {
   return ids;
 }
 
-/**
- * The months with a category history: YNAB's help center offers it "in the current and future
- * months, or up to three months in the past".
- */
+/** Category history is offered in the current and future months, or up to three months in the past. */
 export const HISTORY_MONTHS_BACK = 3;
 
-/** The member filter's value for moves with no mover left (YNAB's "Inactive members"). */
+/** The member filter's value for moves with no mover left ("Inactive members"). */
 export const INACTIVE_MEMBERS = "inactive";
 
 export interface MemberFilterOption {
@@ -147,10 +143,9 @@ export interface MemberFilterOption {
 }
 
 /**
- * YNAB's Recent Moves member filter (checked 2026-10-16, EVERYCENT-166), after "Everyone": each
- * member by name; someone who left the budget only if they made one of the moves, as "Name
- * (removed)"; "Inactive members" when a move's user is gone. YNAB shows the filter only with two or
- * more of these.
+ * The Recent Moves member filter, after "Everyone": each member by name; someone who left the budget
+ * only if they made one of the moves, as "Name (removed)"; "Inactive members" when a move's user is
+ * gone. The filter shows only with two or more of these.
  */
 export function memberFilterOptions(
   moves: readonly MoneyMove[],
@@ -170,7 +165,6 @@ export function memberFilterOptions(
   return options;
 }
 
-/** Whether a move passes the member filter ("" is Everyone). */
 export function matchesMember(move: MoneyMove, member: string): boolean {
   if (!member) return true;
   if (member === INACTIVE_MEMBERS) return !move.userId || !move.userName;

@@ -1,6 +1,6 @@
-import { CLEARED_STATES, FLAG_COLORS } from "@everycent/db/schema";
-import { zCurrencyCode, zMinorUnits } from "@everycent/engine";
 import { createRoute, z } from "@hono/zod-openapi";
+import { CLEARED_STATES, FLAG_COLORS } from "@strictbudget/db/schema";
+import { zCurrencyCode, zMinorUnits } from "@strictbudget/engine";
 import { IsoDate } from "../../lib/dates";
 import { jsonError } from "../../lib/errors";
 import { zFxRate } from "../../lib/fx/rate-schema";
@@ -20,7 +20,7 @@ const SearchText = z
   .string()
   .max(500)
   .describe(
-    "YNAB's search: comma-separated terms that must all match, each free text (payee, " +
+    "Search: comma-separated terms that must all match, each free text (payee, " +
       "category, memo or account name, or an exact amount) or one of `Payee:`, `Category:` " +
       "(`Category: Split` for splits), `Memo:`, `Account:`, `Flag:` (a color, its name or " +
       "None), `Is:` (Uncleared, Cleared, Reconciled, Unreconciled, Cleared or Reconciled, Approved, Unapproved, Needs Category, Unapproved or Needs Category), " +
@@ -38,10 +38,7 @@ const Memo = z.string().max(500);
 const SettableCleared = z.enum(["uncleared", "cleared"]);
 /** A new transaction can start reconciled (restoring a deleted one, as an undo does). */
 const NewCleared = z.enum(CLEARED_STATES);
-const Flag = z
-  .enum(FLAG_COLORS)
-  .nullable()
-  .describe("One of YNAB's six flag colors; null clears it");
+const Flag = z.enum(FLAG_COLORS).nullable().describe("One of the six flag colors; null clears it");
 
 const TransferSideSchema = z
   .object({
@@ -81,7 +78,7 @@ const SubTransactionSchema = z
     needsCategory: z
       .boolean()
       .describe(
-        'Left Uncategorized (YNAB\'s "This needs a category" on the line); the split then ' +
+        'Left Uncategorized ("This needs a category" on the line); the split then ' +
           "counts as needing a category in the review banner and search",
       ),
     memo: z.string(),
@@ -146,11 +143,11 @@ export const TransactionSchema = z
     needsCategory: z
       .boolean()
       .describe(
-        'Left Uncategorized (YNAB\'s "This needs a category" icon); transfers within the ' +
+        'Left Uncategorized ("This needs a category" icon); transfers within the ' +
           "budget, tracking accounts and splits have no category (a split's lines have their " +
           "own `needsCategory`)",
       ),
-    imported: z.boolean().describe("From a file import (or matched to one, EVERYCENT-66/68)"),
+    imported: z.boolean().describe("From a file import (or matched to one)"),
     importedPayee: z
       .string()
       .nullable()
@@ -163,7 +160,7 @@ export const TransactionSchema = z
         memo: z.string(),
       })
       .nullable()
-      .describe("Matched to an import (YNAB's Matched Transactions): the imported side"),
+      .describe("Matched to an import (Matched Transactions): the imported side"),
     transferAccountId: z
       .string()
       .nullable()
@@ -185,14 +182,14 @@ export const TransactionSchema = z
       .boolean()
       .describe(
         "Transfers: the other side is reconciled (it follows changes to date, amount and " +
-          "account, and stays reconciled; YNAB warns before an amount or account change)",
+          "account, and stays reconciled; the app warns before an amount or account change)",
       ),
     transferSide: TransferSideSchema.nullable().describe(
       "Transfers: the other side's own state (null when the other side is a split's line, or " +
         "for other transactions)",
     ),
     attachment: AttachmentSchema.nullable().describe(
-      "Its photo or PDF (YNAB's transaction photo), shared by a transfer's two sides; a split " +
+      "Its photo or PDF, shared by a transfer's two sides; a split " +
         "has one for the whole split",
     ),
     subtransactions: z
@@ -212,7 +209,7 @@ export const TransactionSchema = z
     enteredBy: zMemberRef
       .nullable()
       .describe(
-        "Who entered it (EVERYCENT-89); null when nobody did (a scheduled occurrence entered on " +
+        "Who entered it; null when nobody did (a scheduled occurrence entered on " +
           "its date) or for transactions from before this was recorded",
       ),
     changedBy: zMemberRef
@@ -229,7 +226,7 @@ export const TransactionSchema = z
 
 /**
  * The versions rows had just before a write (a transfer's other side too). With the versions
- * after it, a client knows which version steps were its own (EVERYCENT-36).
+ * after it, a client knows which version steps were its own.
  */
 const PreviousVersions = z
   .record(z.string(), z.number().int())
@@ -387,7 +384,7 @@ export const listTransactions = createRoute({
         .regex(SORT_PATTERN)
         .default("date:desc")
         .describe(
-          "YNAB's stacked sort: comma-separated `column:asc|desc` fields, first field first " +
+          "Stacked sort: comma-separated `column:asc|desc` fields, first field first " +
             "(e.g. `payee:desc,date:asc`). Columns: " +
             SORT_COLUMNS.join(", ") +
             ". Outflow and inflow each count the other side's rows as zero; flag ascending is " +
@@ -461,7 +458,7 @@ export const createTransaction = createRoute({
             .optional()
             .describe(
               "An undo bringing back a deleted transaction: its accounts (and its transfers' " +
-                "accounts) may have been closed since, as YNAB's Undo allows",
+                "accounts) may have been closed since, which Undo allows",
             ),
           baseAmount: zMinorUnits
             .optional()
@@ -563,7 +560,7 @@ export const updateTransaction = createRoute({
             .describe(
               "Approve it (or un-approve it, as an undo does); a transfer's other side follows. " +
                 "Left out, any change but a flag approves an unapproved transaction, as saving " +
-                "it or clicking its cleared state does in YNAB",
+                "it or clicking its cleared state does",
             ),
         })
         .openapi("UpdateTransaction"),
@@ -630,7 +627,7 @@ export const uploadAttachment = createRoute({
   middleware: [requireAuth, attachmentBodyLimit] as const,
   summary: "Attach a photo or PDF to a transaction",
   description:
-    "One per transaction, as YNAB's transaction photo: delete it before adding another " +
+    "One per transaction: delete it before adding another " +
     "(`ATTACHMENT_EXISTS`). A transfer's two sides share it. The type is read from the file " +
     `(${ATTACHMENT_TYPES.join(", ")}); at most ${MAX_ATTACHMENT_BYTES / 1024 / 1024} MB.`,
   request: {
@@ -833,11 +830,11 @@ export const bulkUpdateTransactions = createRoute({
   middleware: [requireAuth] as const,
   summary: "Apply one action to every selected transaction it applies to",
   description:
-    "Follows YNAB's action bar: rows an action doesn't apply to are skipped, and `updated` " +
+    "Follows the action bar: rows an action doesn't apply to are skipped, and `updated` " +
     "counts the rest. `cleared` skips reconciled rows. `categorize` skips transfers within " +
     "the budget and tracking-account rows; it un-splits splits, except splits with a transfer " +
     "line, which stay split with every other line given the category. `memo` replaces the " +
-    "memo (a split's own, not its lines'; on the selected side of a transfer only, as YNAB's " +
+    "memo (a split's own, not its lines'; on the selected side of a transfer only, as " +
     "Edit Memo does). `move` moves rows to another account like a " +
     "single edit (a transfer keeps its other side, which then points at the new account) and " +
     "skips rows already there, transfers into their own other account and splits with a " +
@@ -845,8 +842,8 @@ export const bulkUpdateTransactions = createRoute({
     "sides of splits' transfer lines (they go with the split). `approve` approves the " +
     "unapproved rows (and their transfers' other sides); `reject` deletes the unapproved rows " +
     "(as `delete` does) and skips the rest; `cleared` and `categorize` approve the rows they " +
-    "change, as in YNAB. `duplicate` copies each row as " +
-    "YNAB does: same date and fields, cleared state kept (reconciled becomes cleared), approved, " +
+    "change. `duplicate` copies each row with the " +
+    "same date and fields, cleared state kept (reconciled becomes cleared), approved, " +
     "a transfer with a new other side; a split's transfer side copies its whole split, and a " +
     "transfer selected from both sides is copied once. Rows in (or transferring to) closed " +
     "accounts are skipped. All of it happens in one database transaction.",

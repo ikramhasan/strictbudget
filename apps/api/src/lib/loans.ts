@@ -1,5 +1,5 @@
-import { newId } from "@everycent/db";
-import { budgetAccount, loanCharge, loanTerms, payee, transaction } from "@everycent/db/schema";
+import { newId } from "@strictbudget/db";
+import { budgetAccount, loanCharge, loanTerms, payee, transaction } from "@strictbudget/db/schema";
 import {
   ACCOUNT_TYPES,
   accountFamily,
@@ -17,7 +17,7 @@ import {
   monthOf,
   termsFor,
   withLoanTerms,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { and, asc, desc, eq, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "./ledger";
@@ -47,13 +47,13 @@ export interface LoanState {
   months: LoanMonth[];
   transactions: LoanTransaction[];
   terms: LoanTerms[];
-  /** `updatedAt` of each override, keyed "YYYY-MM:kind" (YNAB's "Edited on October 13"). */
+  /** `updatedAt` of each override, keyed "YYYY-MM:kind" (shown as "Edited on October 13"). */
   editedAt: Map<string, Date>;
 }
 
 const firstOfMonth = (month: BudgetMonth) => `${month}-01`;
 
-/** Where a loan's terms from before 7f are filed: before any month it can have. */
+/** Where a loan's terms without `loan_terms` entries are filed: before any month it can have. */
 const EARLIEST_MONTH = "0001-01";
 
 /** The loans' transactions up to `today`, classified for `loanMonths`. */
@@ -125,7 +125,7 @@ async function termsByAccount(db: Db, accounts: AccountRow[]) {
     db,
     accounts.map((a) => a.id),
   );
-  // Loans from before 7f have only the account's columns: they apply to every month.
+  // Loans without `loan_terms` entries have only the account's columns: they apply to every month.
   for (const a of accounts) {
     if (!byAccount.has(a.id)) {
       byAccount.set(a.id, [
@@ -249,8 +249,7 @@ export async function setLoanCharge(
 
 /**
  * Update Balance fixes every month's interest and escrow at what's applied, shown "Reconciled"
- * (YNAB, 2026-10-13: July's capped escrow stayed −$100.00; a month with nothing applied kept no
- * interest line).
+ * (a capped escrow stays as capped; a month with nothing applied gets no interest line).
  */
 export async function freezeLoanCharges(
   db: Db,
@@ -306,9 +305,8 @@ async function saveLoanTermsEntry(
     .onConflictDoUpdate({ target: [loanTerms.accountId, loanTerms.month], set: values });
 }
 
-/** What Update Balance's interest rate / escrow check does to a loan (EVERYCENT-126). */
+/** What Update Balance's interest rate / escrow check does to a loan. */
 export interface LoanTermsCheck {
-  /** The loan as it is. */
   before: LoanState;
   /** The `loan_terms` entries to write; empty when nothing changes. */
   entries: LoanTerms[];
@@ -317,12 +315,11 @@ export interface LoanTermsCheck {
 }
 
 /**
- * Works out Update Balance's check step without writing anything. YNAB (2026-10-14, "ihni7's
- * Plan", x-126-Mort): the new rate or escrow applies "for October and going forward", and the
- * Difference it then shows re-estimates October with it ($98.75 became $181.88 for 6% → 7%, the
- * month's interest going from $498.75 to $581.88) while earlier months keep theirs. Months before
- * the change keep their terms here too: if no entry covers them yet, the old terms are pinned
- * from the start (otherwise they'd take the first entry, the changed one).
+ * Works out Update Balance's check step without writing anything. The new rate or escrow applies
+ * from this month on, and the Difference it then shows re-estimates this month with it while
+ * earlier months keep theirs. Months before the change keep their terms here too: if no entry
+ * covers them yet, the old terms are pinned from the start (otherwise they'd take the first entry,
+ * the changed one).
  */
 export async function checkLoanTerms(
   db: Db,
@@ -354,7 +351,8 @@ export async function applyLoanTerms(
   check: LoanTermsCheck,
 ) {
   if (check.entries.length === 0) return;
-  // A loan from before 7f keeps its terms for earlier months (they're only on the account).
+  // A loan without `loan_terms` entries keeps its terms for earlier months (they're only on the
+  // account).
   await keepEarlierTerms(db, account);
   for (const entry of check.entries) await saveLoanTermsEntry(db, account, entry);
   const now = termsFor(withLoanTerms(check.before.terms, check.entries), monthOf(today));
@@ -379,7 +377,7 @@ export async function currentLoanTerms(db: Db, accountIds: string[], today: stri
 }
 
 /**
- * Before a loan from before 7f (no `loan_terms` rows yet) gets new terms, records the ones it had
+ * Before a loan with no `loan_terms` rows yet gets new terms, records the ones it had
  * so earlier months keep them: months before the first entry use that entry (`termsFor`).
  */
 export async function keepEarlierTerms(
@@ -419,15 +417,12 @@ export async function lastLoanPayments(db: Db, budgetId: string, today: string) 
 
 /**
  * For each loan, the cash or credit account of the payment into it that was entered last (not
- * the latest-dated one): Record Payment starts there. YNAB (2026-10-14, "L7 Loans FS"): the
- * default followed the newest payment per loan, from Record Payment or a register transfer, even
- * one back-dated to before the others.
+ * the latest-dated one): Record Payment starts there. Payments from Record Payment and register
+ * transfers both count, even one back-dated to before the others.
  *
  * For each credit card, the cash or credit account of the transfer into it entered last: a card's
- * Record Payment prefills it (YNAB, 2026-10-14: "Payment from F Cash"). YNAB (2026-10-15, "ihni7's
- * Plan", x-c11-163 Card C): a transfer from another card entered after a cash payment became the
- * default ("Transfer from x-c11-163 Card B"), and a later payment back-dated before both replaced
- * it, as for loans.
+ * Record Payment prefills it. A transfer from another card counts too, and the last entered wins
+ * even when back-dated, as for loans.
  */
 export async function lastPaymentSources(db: Db, budgetId: string) {
   const loan = alias(budgetAccount, "paid_to");

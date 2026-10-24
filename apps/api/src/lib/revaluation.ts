@@ -1,11 +1,10 @@
-import { payee, type transaction } from "@everycent/db/schema";
-import { type CurrencyCode, convert, money, normalizeRate } from "@everycent/engine";
+import { payee, type transaction } from "@strictbudget/db/schema";
+import { type CurrencyCode, convert, money, normalizeRate } from "@strictbudget/engine";
 import { eq } from "drizzle-orm";
 import { AppError } from "./errors";
 import { knownRateOn } from "./fx";
 import type { Db } from "./ledger";
 
-/** Whether `payeeId` is the budget's built-in "FX Revaluation" payee. */
 export async function isRevaluationPayee(db: Db, payeeId: string | null) {
   if (!payeeId) return false;
   const [row] = await db
@@ -16,7 +15,7 @@ export async function isRevaluationPayee(db: Db, payeeId: string | null) {
 }
 
 /**
- * Unrealized FX gain or loss (EVERYCENT-56): what a foreign-currency account's balance is worth
+ * Unrealized FX gain or loss: what a foreign-currency account's balance is worth
  * in the budget's currency at `rate` (converted once, half-even) less what its transactions were
  * booked at (Σ base amounts). Positive is a gain.
  */

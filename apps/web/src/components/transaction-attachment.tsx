@@ -7,17 +7,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Button, buttonVariants } from "@everycent/ui/components/button";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Button, buttonVariants } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Spinner } from "@everycent/ui/components/spinner";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dialog";
+import { Spinner } from "@strictbudget/ui/components/spinner";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Download, ExternalLink, FileText, ImageOff, ImagePlus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -28,9 +28,9 @@ import { type Transaction, transactionsQueryPrefix } from "@/lib/transactions";
 
 type Attachment = NonNullable<Transaction["attachment"]>;
 
-/** The API's limit (YNAB's for a photo). */
+/** The API's limit. */
 export const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
-/** What the file picker offers: YNAB's photo types, HEIC from phones, and PDFs. */
+/** Common photo types, HEIC from phones, and PDFs. */
 export const ATTACHMENT_ACCEPT =
   "image/jpeg,image/png,image/webp,image/avif,image/gif,image/svg+xml,image/heic,image/heif,.heic,.heif,application/pdf";
 
@@ -49,7 +49,6 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-/** Adding and deleting a transaction's attachment, and the register refreshing after. */
 function useAttachment(budgetId: string, t: Transaction) {
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
@@ -109,7 +108,6 @@ function useAttachment(budgetId: string, t: Transaction) {
   return { upload, remove, uploading, deleting };
 }
 
-/** A hidden file picker, opened by `open()`. */
 function useFilePicker(onPick: (file: File) => void) {
   const input = useRef<HTMLInputElement>(null);
   const element = (
@@ -170,10 +168,7 @@ function Thumbnail({
   );
 }
 
-/**
- * YNAB's photo viewer: the file at full size, with Delete, Download and Close. A PDF opens in a
- * new tab instead (the browser's own viewer).
- */
+/** A PDF opens in a new tab instead (the browser's own viewer). */
 function AttachmentViewer({
   budgetId,
   transaction,
@@ -280,10 +275,7 @@ function AttachmentViewer({
   );
 }
 
-/**
- * The register's attachment cell (YNAB's photo column): a thumbnail that opens the viewer, or a
- * button that adds one. Scheduled transactions can't have one (`disabled`), as in YNAB.
- */
+/** Scheduled transactions can't have an attachment (`disabled`). */
 export function AttachmentCell({
   budgetId,
   transaction,
@@ -353,7 +345,7 @@ export function AttachmentCell({
   );
 }
 
-/** A scheduled transaction's cell: YNAB shows the button, disabled. */
+/** A scheduled transaction's cell shows the button, disabled. */
 export function ScheduledAttachmentCell() {
   return (
     <Button
@@ -370,7 +362,6 @@ export function ScheduledAttachmentCell() {
   );
 }
 
-/** The phone drawer's attachment row: the file and its viewer, or a button to add one. */
 export function AttachmentField({
   budgetId,
   transaction,

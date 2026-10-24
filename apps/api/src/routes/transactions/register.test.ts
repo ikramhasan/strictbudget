@@ -1,4 +1,4 @@
-import { transaction } from "@everycent/db/schema";
+import { transaction } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
@@ -99,7 +99,7 @@ describe("register search, filters, sort and paging", () => {
     ]);
   });
 
-  it("gives every row the same running balance on any page, sort or filter (EVERYCENT-33)", async () => {
+  it("gives every row the same running balance on any page, sort or filter", async () => {
     const { base, cookie, add, list } = await setup();
     // Days with several rows (inflows, outflows, equal amounts) and a gap, so the balance window
     // has ties to order and pages that start mid-day.
@@ -172,7 +172,7 @@ describe("register search, filters, sort and paging", () => {
     expect(await payees("0%")).toEqual(["100% Juice"]);
   });
 
-  it("filters with YNAB's search terms, all of which must match", async () => {
+  it("filters with search terms, all of which must match", async () => {
     const { base, cookie, add, list, groceries, household } = await setup();
     await send("PUT", `${base}/flags/blue`, cookie, { name: "Reimburse" });
     const a = await add({
@@ -211,7 +211,7 @@ describe("register search, filters, sort and paging", () => {
     expect(await ids("Inflow: <=50")).toEqual([income.id]);
     expect(await ids("Before: 03/01/2026, After: 03/01/2026")).toEqual([b.id]);
     expect(await ids("On: 02/01/2026")).toEqual([a.id]);
-    // A partial date is completed from the user's today, as YNAB does (EVERYCENT-167).
+    // A partial date is completed from the user's today.
     const today = { today: "2026-10-16" };
     expect(await ids("On: 2", today)).toEqual([a.id]);
     expect(await ids("Before: 3, After: x0301", today)).toEqual([b.id]);
@@ -228,8 +228,8 @@ describe("register search, filters, sort and paging", () => {
       json<{ id: string }>(
         await send("POST", `${base}/accounts`, cookie, { name, type, balance, date: "2026-10-03" }),
       );
-    // YNAB 2026-10-15 (EVERYCENT-114): Ready to Assign in and out, budget accounts' Starting
-    // Balances (card debt too), an RTA split line; not transfers, other categories, tracking.
+    // Ready to Assign in and out, budget accounts' Starting Balances (card debt too), an RTA split
+    // line; not transfers, other categories, tracking.
     const card = await newAccount("Card", "credit_card", "-50000");
     await newAccount("House", "asset", "900000");
     await add({ date: "2026-10-05", amount: "200000", payeeName: "Job", categoryId: rta });
@@ -409,9 +409,8 @@ describe("register search, filters, sort and paging", () => {
     ]);
   });
 
-  it("stacks sorts as YNAB does, and pages through each without gaps or repeats", async () => {
+  it("stacks sorts, and pages through each without gaps or repeats", async () => {
     const { add, list } = await setup();
-    // The rows of YNAB's "x-c11-29 Chk" (2026-10-15, EVERYCENT-29).
     const rows = [
       ["x29 Bravo", "2026-10-01", "-10000", "red", "cleared"],
       ["x29 Alpha", "2026-10-02", "-30000", "blue", "uncleared"],

@@ -1,7 +1,7 @@
-import { Button } from "@everycent/ui/components/button";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Spinner } from "@everycent/ui/components/spinner";
-import { Switch } from "@everycent/ui/components/switch";
+import { Button } from "@strictbudget/ui/components/button";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Spinner } from "@strictbudget/ui/components/spinner";
+import { Switch } from "@strictbudget/ui/components/switch";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check } from "lucide-react";
@@ -10,8 +10,8 @@ import { AuthCard } from "@/components/auth-card";
 import { PageTitle } from "@/components/page-title";
 import { authGet, authPost, requireSignIn } from "@/lib/agents";
 
-const READ = "everycent:read";
-const WRITE = "everycent:write";
+const READ = "strictbudget:read";
+const WRITE = "strictbudget:write";
 
 /**
  * Asks the signed-in person whether an MCP client may act for them (the API's `consentPage`).
@@ -66,7 +66,7 @@ function ConsentPage() {
     <>
       <PageTitle name="Allow access" />
       <AuthCard
-        title={client.isPending ? "Allow access?" : `Allow ${name} to use everycent?`}
+        title={client.isPending ? "Allow access?" : `Allow ${name} to use strictbudget?`}
         description={`It will act for you, ${session.user.email}. What it does shows as ${name}'s, on your behalf.`}
         footer={<span>You can disconnect it any time in Account settings.</span>}
       >

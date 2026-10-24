@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import {
   type CsvDateFormat,
   type CsvMapping,
@@ -6,17 +6,15 @@ import {
   guessCsvMapping,
   parseImportDate,
   possibleDateFormats,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 
 export type CsvImportSettings = components["schemas"]["CsvImportSettings"];
 export type ImportContext = components["schemas"]["ImportContext"];
 
-/** The file types YNAB's File Import takes (its file input's `accept`, 2026-10-17). */
 export const IMPORT_FILE_ACCEPT = ".csv,.tsv,.ofx,.qfx,.qif";
 
 export type ImportFileKind = "csv" | "ofx" | "qif";
 
-/** A file's kind by its extension; null for anything File Import doesn't take. */
 export function importFileKind(name: string): ImportFileKind | null {
   const ext = name.toLowerCase().split(".").pop();
   if (ext === "csv" || ext === "tsv") return "csv";
@@ -25,8 +23,7 @@ export function importFileKind(name: string): ImportFileKind | null {
   return null;
 }
 
-/** Whether the File Import explainer was turned off ("Don't show again", this browser only). */
-const INTRO_KEY = "everycent.fileImportIntroHidden";
+const INTRO_KEY = "strictbudget.fileImportIntroHidden";
 export function introHidden(): boolean {
   try {
     return localStorage.getItem(INTRO_KEY) === "1";
@@ -50,8 +47,8 @@ export interface CsvSetup {
 }
 
 /**
- * Where a CSV import starts: what the account remembered, when it was set for these column
- * names, otherwise YNAB's guess with the date format read from the file when only one fits.
+ * Where a CSV import starts: what the account remembered, when it was set for these column names;
+ * otherwise a guess, with the date format read from the file when only one fits.
  */
 export function initialCsvSetup(
   table: readonly string[][],
@@ -94,8 +91,8 @@ export function dateCandidates(
 }
 
 /**
- * The choices YNAB offers when the format is unclear: the readings of the first date ("October
- * 10, 2026 (MM/DD/YYYY)") when some formats fit, otherwise every format by name.
+ * The choices when the format is unclear: the readings of the first date ("October 10, 2026
+ * (MM/DD/YYYY)") when some formats fit, otherwise every format by name.
  */
 export function dateFormatChoices(
   first: string,

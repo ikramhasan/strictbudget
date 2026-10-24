@@ -1,6 +1,6 @@
-import { Button } from "@everycent/ui/components/button";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { Spinner } from "@everycent/ui/components/spinner";
+import { Button } from "@strictbudget/ui/components/button";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { format as formatDay } from "date-fns";
@@ -17,8 +17,8 @@ export const Route = createFileRoute("/_authed/budgets/$budgetId/activity")({
 });
 
 /**
- * Everything that changed in the budget, who changed it and when (EVERYCENT-108; an everycent
- * extra, YNAB has no change history): newest first by day, filtered by member and by what changed.
+ * Everything that changed in the budget, who changed it and when: newest first by day, filtered by
+ * member and by what changed.
  */
 function ActivityPage() {
   const { budget, formatDate } = useBudget();

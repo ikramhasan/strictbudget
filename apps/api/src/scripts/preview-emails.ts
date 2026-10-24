@@ -6,7 +6,7 @@ import { monthlySummaryEmail } from "../lib/summary/email";
 
 /**
  * Writes every email, rendered with sample data, as HTML files for a look in a browser:
- * `pnpm --filter @everycent/api preview:emails <dir> [web origin]`. Images load from the web
+ * `pnpm --filter @strictbudget/api preview:emails <dir> [web origin]`. Images load from the web
  * origin (default: the dev server).
  */
 const [dir = "email-previews", webOrigin = "http://localhost:5173"] = process.argv.slice(2);

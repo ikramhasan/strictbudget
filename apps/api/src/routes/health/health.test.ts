@@ -1,4 +1,4 @@
-import { createDb } from "@everycent/db";
+import { createDb } from "@strictbudget/db";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { createTestApp, testEnv } from "../../../test/helpers";
 import { createApp } from "../../app";

@@ -1,10 +1,10 @@
-import { type AccountType, accountFamily, usesCategory } from "@everycent/engine";
+import { type AccountType, accountFamily, usesCategory } from "@strictbudget/engine";
 
 /**
- * Whether a saved register row's category cell reads "Category not needed" (or, between a card
- * and a cash account, the card's payment category). YNAB (2026-10-16): every row in a tracking
- * account, in-budget transfers (card↔card, cash↔cash, card↔cash), and a credit card's Starting
- * Balance whatever its sign; a cash account's Starting Balance is "Inflow: Ready to Assign".
+ * Whether a saved register row's category cell reads "Category not needed" (or, between a card and
+ * a cash account, the card's payment category): every row in a tracking account, in-budget transfers
+ * (card↔card, cash↔cash, card↔cash), and a credit card's Starting Balance whatever its sign; a cash
+ * account's Starting Balance is "Inflow: Ready to Assign".
  */
 export function categoryNotNeeded(row: {
   accountType: AccountType;

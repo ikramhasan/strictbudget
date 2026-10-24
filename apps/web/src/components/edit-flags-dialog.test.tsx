@@ -43,7 +43,6 @@ beforeEach(() => {
   api.puts = [];
 });
 
-// YNAB, 2026-10-15 (ihni7's Plan → Edit Flags).
 describe("Edit Flags", () => {
   it("lists the six flags in order, an unnamed one showing its color's name", async () => {
     renderDialog();

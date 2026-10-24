@@ -1,4 +1,4 @@
-import { storageDeletion } from "@everycent/db/schema";
+import { storageDeletion } from "@strictbudget/db/schema";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   createBudget,
@@ -18,7 +18,6 @@ beforeEach(async () => {
 });
 afterAll(close);
 
-/** Runs the purge now rather than on its schedule. */
 async function purge() {
   await jobs.send(db, "storage.purge", null);
   await runJobs(app);

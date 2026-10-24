@@ -1,4 +1,4 @@
-import { newId } from "@everycent/db";
+import { newId } from "@strictbudget/db";
 import {
   budget,
   budgetAccount,
@@ -12,8 +12,8 @@ import {
   payeeRule,
   scheduledSubTransaction,
   scheduledTransaction,
-} from "@everycent/db/schema";
-import { accountFamily, monthOf } from "@everycent/engine";
+} from "@strictbudget/db/schema";
+import { accountFamily, monthOf } from "@strictbudget/engine";
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { insertStartingBalance, internalCategoryId, type Tx, transferPayeeId } from "./ledger";
 import { saveLoanTerms } from "./loans";
@@ -23,9 +23,8 @@ type BudgetRow = typeof budget.$inferSelect;
 
 /**
  * Each payee's Categorization setting, and its auto-categorization default (the transactions it
- * came from stay behind, so the copy carries it; YNAB 2026-10-16, "C4 Clean" → "x-c12-61 FS" kept
- * "Needs: Groceries" with no transactions). YNAB's copy of an "Always use my choice" payee loses
- * the chosen category; everycent keeps it, mapped to the new budget's category.
+ * came from stay behind, so the copy carries it). An "Always use my choice" payee keeps its chosen
+ * category, mapped to the new budget's category.
  */
 async function copyPayeeCategories(
   tx: Tx,
@@ -67,18 +66,15 @@ async function copyPayeeCategories(
 
 /**
  * What a fresh start adds to the old budget's name: "Household (Archived on 2026-10-15)", the
- * date always ISO whatever the budget's date format (YNAB, "x-c11-151 FS", 2026-10-15).
+ * date always ISO whatever the budget's date format.
  */
 export const ARCHIVED_STAMP = "(Archived on ";
 
 /**
- * Copies the old budget's setup into the freshly created `newBudgetId`, YNAB-style: partners,
- * category groups and categories (order, hidden flags, notes, targets), payees and their renaming rules, flag names, and
- * accounts (with their transfer payees), each starting at $0 with a $0 Starting Balance on `date`
- * for the user to update (YNAB: "Unlinked accounts will start with a $0 balance for you to update
- * with today's balance"; "C4 Order FS", 2026-10-12; everycent has no linked accounts), and
- * scheduled transactions, unchanged (YNAB, checked 2026-10-12: "C4 Order" → "C4 Order FS" kept
- * each schedule's dates, frequency, amount, category, memo and account; the old budget keeps them
+ * Copies the old budget's setup into the freshly created `newBudgetId`: partners, category groups
+ * and categories (order, hidden flags, notes, targets), payees and their renaming rules, flag
+ * names, accounts (with their transfer payees), each starting at $0 with a $0 Starting Balance on
+ * `date` for the user to update, and scheduled transactions, unchanged (the old budget keeps them
  * too). No transactions come along. Then archives the old budget.
  */
 export async function copyIntoFreshStart(
@@ -131,7 +127,6 @@ export async function copyIntoFreshStart(
       note: a.note,
       sortOrder: a.sortOrder,
       closed: a.closed,
-      // Stars come along (YNAB, "x-c11-151 FS" → "FS2", 2026-10-15).
       starredSortOrder: a.starredSortOrder,
       currency: a.currency,
       interestRate: a.interestRate,
@@ -151,8 +146,8 @@ export async function copyIntoFreshStart(
     });
   }
 
-  // People's payees, hidden ones still hidden (YNAB); the internal ones are recreated on first use, transfer ones came with the
-  // accounts.
+  // People's payees, hidden ones still hidden; the internal ones are recreated on first use,
+  // transfer ones came with the accounts.
   const payees = await tx
     .select({ id: payee.id, name: payee.name, hidden: payee.hidden })
     .from(payee)
@@ -168,8 +163,7 @@ export async function copyIntoFreshStart(
     await tx.insert(payee).values(copies);
   }
 
-  // Renaming rules come along on both kinds of payee, in order (YNAB, "x-c11-151 FS3" →
-  // "x-c12-62 FS", 2026-10-16: a transfer payee's rule was there in the new plan).
+  // Renaming rules come along on both kinds of payee, in order.
   const rules = await tx
     .select()
     .from(payeeRule)
@@ -263,16 +257,14 @@ export async function copyIntoFreshStart(
         repeatEvery: target.repeatEvery,
         repeatUnit: target.repeatUnit,
         startMonth: `${monthOf(date)}-01`,
-        // A weekly target begun this month keeps its start day (YNAB, 2026-10-12: "C5 First FS"
-        // still asked F D for the Saturdays from the 12th).
+        // A weekly target begun this month keeps its start day.
         startDay: monthOf(target.startMonth) === monthOf(date) ? target.startDay : null,
       });
     }
   }
 
-  // Loans keep their paired category and their current terms (YNAB, 2026-10-13: "C9 Payees FS"
-  // → "L7 Loans FS" kept L7 Neg paired with L7 Mortgage Pay and each loan's rate, payment and
-  // escrow, keyed by the fresh start's month).
+  // Loans keep their paired category and their current terms (rate, payment and escrow, keyed by
+  // the fresh start's month).
   for (const a of accounts) {
     const id = accountIds.get(a.id);
     if (!id || accountFamily(a.type) !== "loan") continue;
@@ -312,8 +304,7 @@ export async function copyIntoFreshStart(
 }
 
 /**
- * Copies the custom views (onto the new categories) and the Manage Views order (YNAB, 2026-10-15:
- * "x-c11-151 FS" → "FS2" kept both views and their order among the presets).
+ * Copies the custom views (onto the new categories) and the Manage Views order.
  */
 async function copyViews(
   tx: Tx,

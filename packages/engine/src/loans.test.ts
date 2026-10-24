@@ -39,7 +39,7 @@ describe("rateThousandths", () => {
   });
 });
 
-describe("monthlyInterest (YNAB, 2026-10-13)", () => {
+describe("monthlyInterest", () => {
   it.each([
     [10_000_000n, "5.125", 42_708n], // $100,000.00 → $427.08
     [9_967_708n, "5.125", 42_570n], // $99,677.08 → $425.70
@@ -47,7 +47,7 @@ describe("monthlyInterest (YNAB, 2026-10-13)", () => {
     [1_000_100n, "6", 5_001n], // $10,001.00 → $50.01 (50.005 rounds up)
     [700n, "6", 4n], // $7.00 → $0.04 (0.035 rounds up)
     [1_000_100n, "12", 10_001n], // $10,001.00 at 12% → $100.01
-    [207_497n, "6", 1_038n], // $2,074.97 → $10.38: 10.37485 → 10.375 → 10.38 (L7 Half)
+    [207_497n, "6", 1_038n], // $2,074.97 → $10.38: 10.37485 → 10.375 → 10.38
     [974_500n, "6", 4_873n], // $9,745.00 → $48.73 (48.725)
   ])("%s at %s%% → %s", (owed, rate, expected) =>
     expect(monthlyInterest(owed, rate, 2)).toBe(expected),
@@ -104,7 +104,7 @@ describe("loanTermsEntries (Update Balance's check step)", () => {
   });
 
   it("brings the old value back next month when not kept", () => {
-    // YNAB's API after 6% → 7% unchecked: {2026-10-01: 7%, 2026-11-01: 6%}.
+    // 6% → 7% unchecked: {2026-10-01: 7%, 2026-11-01: 6%}.
     expect(loanTermsEntries(history, "2026-10", { interestRate: once("7") })).toEqual([
       terms("2026-10", "7", 15_000n),
       terms("2026-11", "6", 15_000n),
@@ -135,7 +135,7 @@ describe("loanTermsEntries (Update Balance's check step)", () => {
   });
 
   it("re-estimates the month's interest at the new rate", () => {
-    // x-126-Mort (YNAB, 2026-10-14): $100,000 from Sep 1, $900 on Sep 15 and Oct 5, $150 escrow.
+    // $100,000 from Sep 1, $900 on Sep 15 and Oct 5, $150 escrow.
     const lines: LoanLine[] = [
       start("2026-09-01", -10_000_000n),
       { date: "2026-09-15", amount: 90_000n, kind: "payment" },
@@ -152,14 +152,14 @@ describe("loanTermsEntries (Update Balance's check step)", () => {
       withLoanTerms(pinned, loanTermsEntries(pinned, "2026-10", { interestRate: keep("7") })),
     );
     expect(after[0]).toEqual(before[0]);
-    // $99,750 × 7% ÷ 12 = $581.875 → $581.88: YNAB's Difference grew by $83.13.
+    // $99,750 × 7% ÷ 12 = $581.875 → $581.88: the charges grow by $83.13.
     expect(after[1]?.interest.applied).toBe(58_188n);
     expect(loanCharges(after) - loanCharges(before)).toBe(8_313n);
   });
 });
 
 describe("loanMonths", () => {
-  // YNAB's "L7 Mortgage": $100,000 at 5.125% with $150 escrow, started July 1.
+  // $100,000 at 5.125% with $150 escrow, started July 1.
   const mortgage = [terms("2026-10", "5.125", 15_000n)];
 
   it("charges escrow, then interest, then principal, only in months with payments", () => {
@@ -184,7 +184,7 @@ describe("loanMonths", () => {
     expect(aug?.endBalance).toBe(-9_967_708n);
     // Two payments share one month's charges.
     expect(sep?.interest.applied).toBe(42_570n);
-    expect(sep?.endBalance).toBe(-9_885_278n); // YNAB: −$98,852.78
+    expect(sep?.endBalance).toBe(-9_885_278n);
     expect(oct?.payments).toBe(0n);
     expect(oct?.endBalance).toBe(-9_885_278n);
   });
@@ -197,7 +197,7 @@ describe("loanMonths", () => {
       through: "2026-07",
       exponent: 2,
     });
-    // YNAB: escrow −$150, interest −$350 "$77.08 still due ($427.08 total this month)".
+    // Escrow −$150, interest −$350 of $427.08 ($77.08 still due).
     expect(jul?.escrow.applied).toBe(15_000n);
     expect(jul?.interest).toEqual({ total: 42_708n, applied: 35_000n, status: "estimated" });
     expect(jul?.endBalance).toBe(-10_000_000n);
@@ -209,12 +209,12 @@ describe("loanMonths", () => {
       through: "2026-07",
       exponent: 2,
     });
-    // YNAB: escrow −$100 "$50.00 still due ($150.00 total this month)", no interest.
+    // Escrow −$100 of $150.00 ($50.00 still due), no interest.
     expect(small?.escrow).toEqual({ total: 15_000n, applied: 10_000n, status: "estimated" });
     expect(small?.interest.applied).toBe(0n);
   });
 
-  it("raises the cap with a later payment in the same month (YNAB's L7 Neg)", () => {
+  it("raises the cap with a later payment in the same month", () => {
     const lines = [start("2026-08-01", -1_000_100n), pay("2026-09-05", 2_000n)];
     const terms6 = [terms("2026-10", "6")];
     const once = loanMonths({
@@ -234,7 +234,7 @@ describe("loanMonths", () => {
       exponent: 2,
     });
     expect(twice[1]?.interest.applied).toBe(5_001n);
-    expect(twice[1]?.endBalance).toBe(-993_101n); // YNAB: −$9,931.01
+    expect(twice[1]?.endBalance).toBe(-993_101n);
   });
 
   it("leaves the month's own activity out of the interest base", () => {

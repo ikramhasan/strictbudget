@@ -1,7 +1,7 @@
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import * as React from "react";
 
-// everycent: `containerRef`/`containerClassName` let the container be the scroll element (for
+// strictbudget: `containerRef`/`containerClassName` let the container be the scroll element (for
 // virtualized rows and a sticky header).
 function Table({
   className,

@@ -1,8 +1,8 @@
-import { Button } from "@everycent/ui/components/button";
-import { Field, FieldDescription, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { Textarea } from "@everycent/ui/components/textarea";
+import { Button } from "@strictbudget/ui/components/button";
+import { Field, FieldDescription, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { Textarea } from "@strictbudget/ui/components/textarea";
 import { type FormEvent, type ReactNode, useId, useState } from "react";
 import { useOptionalBudget } from "@/lib/budget-context";
 
@@ -11,10 +11,6 @@ export interface NameValues {
   note: string;
 }
 
-/**
- * YNAB-style inline editor: a popover with a name field (and optionally a note), OK/Cancel, and
- * any extra actions (Hide, Delete) the caller passes in.
- */
 export function NamePopover({
   trigger,
   title,
@@ -36,7 +32,7 @@ export function NamePopover({
   /** Extra buttons; call `close()` when one finishes. */
   actions?: (close: () => void) => ReactNode;
 }) {
-  // A viewer (EVERYCENT-88) sees the trigger, but it opens nothing to change.
+  // A viewer sees the trigger, but it opens nothing to change.
   const readOnly = useOptionalBudget()?.readOnly ?? false;
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState(initial);

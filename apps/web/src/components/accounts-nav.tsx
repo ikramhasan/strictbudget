@@ -1,13 +1,13 @@
 import { move } from "@dnd-kit/helpers";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { formatAmount, money } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
+import { formatAmount, money } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@everycent/ui/components/collapsible";
+} from "@strictbudget/ui/components/collapsible";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -16,8 +16,8 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@everycent/ui/components/sidebar";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/sidebar";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, GripVertical, Plus } from "lucide-react";
@@ -39,8 +39,8 @@ import { pictureSrc } from "@/lib/pictures";
 import { AddAccountDialog } from "./add-account-dialog";
 
 /**
- * YNAB's account list in the sidebar: sections by type with totals, drag to reorder. A starred
- * account shows twice (Starred and its own group); each group has its own order.
+ * The sidebar's account list: sections by type with totals, drag to reorder. A starred account
+ * shows twice (Starred and its own group); each group has its own order.
  */
 export function AccountsNav({ budget }: { budget: Budget }) {
   const queryClient = useQueryClient();
@@ -125,7 +125,6 @@ export function AccountsNav({ budget }: { budget: Budget }) {
         ))}
       </DragDropProvider>
 
-      {/* A viewer (EVERYCENT-88) can't add accounts. */}
       {budget.role !== "viewer" && (
         <SidebarGroup>
           <Button
@@ -168,7 +167,7 @@ function AccountSection({
             <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
             <span className="uppercase tracking-wide">{section.title}</span>
             {section.id !== "closed" && (
-              // Under 220px of sidebar the balances make way for the names, as YNAB's do.
+              // Under 220px of sidebar the balances make way for the names.
               <span
                 className="ml-auto tabular-nums [[data-sidebar-narrow]_&]:hidden"
                 title={hint ?? undefined}
@@ -258,7 +257,6 @@ function AccountItem({
           params={{ budgetId, accountId: account.id }}
           activeProps={{ "data-active": true }}
         >
-          {/* YNAB's dot before an account with transactions to approve or categorize. */}
           {/* The reorder handle shows over this slot on hover, inside the row's highlight. */}
           <span
             className={cn(
@@ -279,7 +277,7 @@ function AccountItem({
           <span className="truncate">{account.name}</span>
         </Link>
       </SidebarMenuButton>
-      {/* `!` beats the sidebar's active-item colour so money owed always reads red, as in YNAB.
+      {/* `!` beats the sidebar's active-item colour so money owed always reads red.
           Plain text, not the badge's recessed keycap. */}
       <SidebarMenuBadge
         className={cn(
@@ -294,7 +292,7 @@ function AccountItem({
 }
 
 /**
- * An account's leading icon (EVERYCENT-229): its logo, or its initial on a muted tile, so every
+ * An account's leading icon: its logo, or its initial on a muted tile, so every
  * name starts in the same place.
  */
 export function AccountLogo({

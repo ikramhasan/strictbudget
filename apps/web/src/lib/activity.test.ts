@@ -1,4 +1,4 @@
-import { formatAmount } from "@everycent/engine";
+import { formatAmount } from "@strictbudget/engine";
 import { describe, expect, it } from "vitest";
 import { type ActivityEvent, type ActivityLookups, actorName, describeEvent } from "./activity";
 
@@ -112,7 +112,6 @@ describe("Activity lines", () => {
         }),
       ),
     ).toBe("A deleted user");
-    // An agent's change, made for the member.
     expect(
       actorName(
         event({

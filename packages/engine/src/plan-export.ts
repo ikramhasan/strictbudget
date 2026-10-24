@@ -1,10 +1,9 @@
 import type { NumberFormat } from "./format-settings";
 import { NUMBER_FORMAT_SPECS } from "./format-settings";
 
-// YNAB's "Export Plan" and "Export # Transactions" files (EVERYCENT-70), read from YNAB's web app
-// code on 2026-10-17 (`exportBudgetData`, `getBudgetMonthsForExport`, `getAllTransactionsForExport`).
+// The "Export Plan" and "Export # Transactions" files.
 
-/** YNAB's plan file header. */
+/** The plan file header. */
 export const PLAN_EXPORT_HEADER = [
   "Month",
   "Category Group/Category",
@@ -15,7 +14,7 @@ export const PLAN_EXPORT_HEADER = [
   "Available",
 ] as const;
 
-/** YNAB's register file header. */
+/** The register file header. */
 export const REGISTER_EXPORT_HEADER = [
   "Account",
   "Flag",
@@ -31,8 +30,8 @@ export const REGISTER_EXPORT_HEADER = [
 ] as const;
 
 /**
- * everycent's columns after YNAB's, written only when the budget has an account in another
- * currency (EVERYCENT-59): the row's currency, the applied rate and the amounts in the budget's.
+ * Extra columns after the standard ones, written only when the budget has an account in another
+ * currency: the row's currency, the applied rate and the amounts in the budget's.
  */
 export const REGISTER_EXPORT_FX_HEADER = [
   "Currency",
@@ -41,13 +40,13 @@ export const REGISTER_EXPORT_FX_HEADER = [
   "Base Inflow",
 ] as const;
 
-/** YNAB's line break in export files. */
+/** The line break in export files. */
 export const EXPORT_NEWLINE = "\r\n";
 
-/** The UTF-8 byte-order mark YNAB writes at the start of each file in the Export Plan zip. */
+/** The UTF-8 byte-order mark at the start of each file in the Export Plan zip. */
 export const EXPORT_BOM = "﻿";
 
-/** A comma, or a tab for currencies whose decimal mark is a comma (YNAB). */
+/** A comma, or a tab for currencies whose decimal mark is a comma. */
 export function exportSeparator(numberFormat: NumberFormat): "," | "\t" {
   return NUMBER_FORMAT_SPECS[numberFormat].decimal === "," ? "\t" : ",";
 }
@@ -58,7 +57,7 @@ export function exportQuote(text: string): string {
 }
 
 /**
- * YNAB's formula guard: text that starts (after optional whitespace) with `+`, `-`, `=` or `@`
+ * Formula guard: text that starts (after optional whitespace) with `+`, `-`, `=` or `@`
  * gets a backslash before that character, the leading whitespace dropped.
  */
 export function exportSanitize(text: string): string {
@@ -70,12 +69,12 @@ export const exportText = (text: string) => exportQuote(exportSanitize(text));
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** A plan row's month, "Oct 2026" (YNAB's SHORT_MONTH_AND_YEAR). `month` is YYYY-MM. */
+/** A plan row's month, "Oct 2026". `month` is YYYY-MM. */
 export function exportMonthLabel(month: string): string {
   return `${MONTHS[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
 }
 
-/** What YNAB writes for a category: "Group: Category", the group, the category. */
+/** What's written for a category: "Group: Category", the group, the category. */
 export interface ExportCategory {
   /** null for a row without a category (a transfer, or Uncategorized). */
   name: string | null;
@@ -97,12 +96,11 @@ export function exportCategoryColumns(c: ExportCategory | null): [string, string
   return [`${group}: ${name}`, group, name];
 }
 
-/** YNAB's cleared column. */
 export function exportCleared(cleared: "uncleared" | "cleared" | "reconciled"): string {
   return cleared === "cleared" ? "Cleared" : cleared === "reconciled" ? "Reconciled" : "Uncleared";
 }
 
-/** YNAB's flag column: the flag's name when it has one, else its color ("Red"); "" for none. */
+/** The flag column: the flag's name when it has one, else its color ("Red"); "" for none. */
 export function exportFlag(color: string | null, name: string | undefined): string {
   if (!color) return "";
   return name || `${color.charAt(0).toUpperCase()}${color.slice(1)}`;
@@ -121,15 +119,14 @@ export function exportDateStamp(now: Date): string {
 
 /**
  * Export Plan's file names: the budget name with every run of characters other than ASCII letters
- * and digits turned into a space, then "as of" the stamp. YNAB's zip is "YNAB Export - …";
- * everycent's says "everycent Export - …".
+ * and digits turned into a space, then "as of" the stamp.
  */
 export function planExportNames(budgetName: string, stamp: string, separator: "," | "\t") {
   const name = budgetName.replace(/[^a-zA-Z0-9]+/g, " ");
   const ext = separator === "," ? ".csv" : ".tsv";
   const at = stamp.replace(/[/:]/g, "_");
   return {
-    zip: `everycent Export - ${name} as of ${at}.zip`,
+    zip: `strictbudget Export - ${name} as of ${at}.zip`,
     plan: `${name} as of ${at} - Plan${ext}`,
     register: `${name} as of ${at} - Register${ext}`,
   };

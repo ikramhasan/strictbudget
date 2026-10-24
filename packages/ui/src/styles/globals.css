@@ -8,12 +8,12 @@
 @source "../../../../apps/web/node_modules/streamdown/dist/*.js";
 
 @custom-variant dark (&:is(.dark *));
-/* everycent: the vendored components style orientation with `data-horizontal:`/`data-vertical:`,
+/* strictbudget: the vendored components style orientation with `data-horizontal:`/`data-vertical:`,
    but Radix marks it as `data-orientation="…"`, which those names don't match on their own. */
 @custom-variant data-horizontal (&[data-orientation="horizontal"]);
 @custom-variant data-vertical (&[data-orientation="vertical"]);
 
-/* everycent: the utilities (no-scrollbar, scroll-fade-*, shimmer-*) from shadcn 4.21.1's
+/* strictbudget: the utilities (no-scrollbar, scroll-fade-*, shimmer-*) from shadcn 4.21.1's
  `shadcn/tailwind.css`, which the vendored components use. Copied rather than imported: that
  file also redefines `data-open:`/`data-active:`/… variants app-wide. */
 @utility no-scrollbar {
@@ -25,7 +25,7 @@
   }
 }
 
-/* everycent: the scrollbar-* utilities message-scroller uses (ui.ikramhasan.com defines the same
+/* strictbudget: the scrollbar-* utilities message-scroller uses (ui.ikramhasan.com defines the same
    ones); small enough to write here rather than add a plugin. */
 @utility scrollbar-thin {
   scrollbar-width: thin;
@@ -587,7 +587,7 @@
 
 @theme inline {
   --font-heading: var(--font-sans);
-  /* everycent: a strong ease-out (easeOutQuint) for UI transitions; the built-in ease-out is too weak. */
+  /* strictbudget: a strong ease-out (easeOutQuint) for UI transitions; the built-in ease-out is too weak. */
   --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
   --color-success: var(--success);
   --color-primary-text: var(--primary-text);
@@ -675,7 +675,7 @@
   --sidebar-border: #ebebeb;
   --sidebar-ring: #0077e6;
   --success: #0a772a;
-  /* everycent: primary as text. Dark mode lifts it toward white (as the library's own link and
+  /* strictbudget: primary as text. Dark mode lifts it toward white (as the library's own link and
      tick colours do): the dark --primary is 3.5:1 on --background, under WCAG AA's 4.5:1. */
   --primary-text: var(--primary);
 }
@@ -729,7 +729,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    /* everycent: antialiased so macOS renders text at its intended weight. */
+    /* strictbudget: antialiased so macOS renders text at its intended weight. */
     @apply bg-background text-foreground antialiased;
   }
 }

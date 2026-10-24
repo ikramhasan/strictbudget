@@ -1,12 +1,12 @@
-import { transaction } from "@everycent/db/schema";
+import { transaction } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 
 /**
- * Undo bringing back a deleted transaction (EVERYCENT-133). YNAB's Undo restores a deleted
- * transfer's other side exactly as it was (its own cleared state, flag and memo), and still
- * restores it when the other account was closed in the meantime (checked 2026-10-14).
+ * Undo bringing back a deleted transaction restores a deleted transfer's other side exactly as it
+ * was (its own cleared state, flag and memo), even when the other account was closed in the
+ * meantime.
  */
 
 const { app, db, close } = createTestApp();
@@ -157,8 +157,7 @@ describe("restoring a deleted transaction (undo)", () => {
       memo: "checking side",
     });
     await ctx.patch(out.transferTransactionId ?? "", { cleared: "cleared", flag: "red" });
-    // A single edit's memo shows on both sides; the bulk Memo action sets one side's
-    // (EVERYCENT-158).
+    // A single edit's memo shows on both sides; the bulk Memo action sets one side's.
     const bulk = await send("POST", `${ctx.base}/transactions/bulk`, ctx.cookie, {
       selection: { ids: [out.transferTransactionId] },
       action: { type: "memo", memo: "savings side" },

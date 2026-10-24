@@ -1,5 +1,5 @@
-import { BUDGET_ROLES, INVITATION_DELIVERIES, MEMBER_ROLES } from "@everycent/db/schema";
 import { createRoute, z } from "@hono/zod-openapi";
+import { BUDGET_ROLES, INVITATION_DELIVERIES, MEMBER_ROLES } from "@strictbudget/db/schema";
 import { jsonError } from "../../lib/errors";
 import { zAvatarColor, zPicture } from "../../lib/member-colors";
 import {
@@ -9,7 +9,7 @@ import {
   sessionSecurity,
 } from "../../middleware/require-auth";
 
-/** YNAB Together: a group is the manager and up to five others. */
+/** A budget is shared by the owner and up to five others. */
 export const MAX_BUDGET_PEOPLE = 6;
 export const INVITATION_DAYS = 14;
 
@@ -121,8 +121,8 @@ export const createInvitation = createRoute({
             .enum(MEMBER_ROLES)
             .default("editor")
             .describe(
-              "`editor` (YNAB's only role: can change everything but sharing) or `viewer` (an " +
-                "everycent extra: can see the budget but not change it)",
+              "`editor` (can change everything but sharing) or `viewer` (can see the budget but " +
+                "not change it)",
             ),
           sendEmail: z
             .boolean()
@@ -297,7 +297,7 @@ export const changeMemberRole = createRoute({
   middleware: [requireSession] as const,
   summary: "Make someone an editor or a viewer (owner only)",
   description:
-    "A viewer (an everycent extra, EVERYCENT-88) sees everything but can't change anything. The " +
+    "A viewer sees everything but can't change anything. The " +
     "owner's own role changes only by transferring ownership (`CANNOT_CHANGE_OWNER`).",
   request: {
     params: MemberParams,
@@ -343,8 +343,7 @@ export const transferOwnership = createRoute({
   middleware: [requireSession] as const,
   summary: "Make someone else the budget's owner (owner only)",
   description:
-    "The new owner must already share the budget. The old owner keeps access as a member, as " +
-    'YNAB\'s plan owner does after "Transfer Plan".',
+    "The new owner must already share the budget. The old owner keeps access as a " + "member.",
   request: {
     params: BudgetParams,
     body: body(z.object({ userId: z.string() }).openapi("TransferBudgetOwnership")),

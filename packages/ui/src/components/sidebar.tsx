@@ -1,19 +1,19 @@
 "use client";
 
-import { Button } from "@everycent/ui/components/button";
-import { Input } from "@everycent/ui/components/input";
-import { Separator } from "@everycent/ui/components/separator";
+import { Button } from "@strictbudget/ui/components/button";
+import { Input } from "@strictbudget/ui/components/input";
+import { Separator } from "@strictbudget/ui/components/separator";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@everycent/ui/components/sheet";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@everycent/ui/components/tooltip";
-import { useIsMobile } from "@everycent/ui/hooks/use-mobile";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/sheet";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@strictbudget/ui/components/tooltip";
+import { useIsMobile } from "@strictbudget/ui/hooks/use-mobile";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 import { Slot } from "radix-ui";
@@ -91,8 +91,8 @@ function SidebarProvider({
     return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open);
   }, [isMobile, setOpen, setOpenMobile]);
 
-  // everycent: no Cmd/Ctrl+B here. The app binds YNAB's Shift+. through its shortcut registry,
-  // which honours the account's "Enable keyboard shortcuts" setting.
+  // strictbudget: no Cmd/Ctrl+B here. The app binds Shift+. through its shortcut registry, which
+  // honours the account's "Enable keyboard shortcuts" setting.
 
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.

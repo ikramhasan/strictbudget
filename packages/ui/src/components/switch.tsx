@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Switch as SwitchPrimitive } from "radix-ui";
 import * as React from "react";
 
@@ -11,7 +11,7 @@ function Switch({
 }: React.ComponentProps<typeof SwitchPrimitive.Root> & {
   size?: "sm" | "default";
 }) {
-  // everycent: Radix marks state with data-state, not the data-checked/data-unchecked attributes
+  // strictbudget: Radix marks state with data-state, not the data-checked/data-unchecked attributes
   // these classes were written for, so the variants below use data-[state=…].
   return (
     <SwitchPrimitive.Root

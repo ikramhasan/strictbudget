@@ -6,9 +6,9 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { InputGroup, InputGroupAddon } from "@everycent/ui/components/input-group";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dialog";
+import { InputGroup, InputGroupAddon } from "@strictbudget/ui/components/input-group";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Command as CommandPrimitive } from "cmdk";
 import { CheckIcon, SearchIcon } from "lucide-react";
 import * as React from "react";
@@ -161,7 +161,7 @@ function CommandItem({
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        // everycent: cmdk writes data-selected="false" on the other rows, so the
+        // strictbudget: cmdk writes data-selected="false" on the other rows, so the
         // highlight keys on data-[selected=true], not the bare data-selected.
         // The Dropdown Menu row: 32px, and the highlighted row lifts out of the
         // shell as a raised key. A press sinks it back (the Button's press).

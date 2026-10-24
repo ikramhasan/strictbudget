@@ -1,6 +1,6 @@
-import { newId, sql } from "@everycent/db";
-import { budget, budgetMember, userPreference } from "@everycent/db/schema";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { newId, sql } from "@strictbudget/db";
+import { budget, budgetMember, userPreference } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { keyAllowsBudget } from "../../lib/api-keys";
 import { setAuditContext } from "../../lib/audit-context";
@@ -45,13 +45,11 @@ export const listBudgetsHandler: RouteHandler<typeof listBudgets, Env> = async (
     .from(budgetMember)
     .innerJoin(budget, eq(budget.id, budgetMember.budgetId))
     .where(eq(budgetMember.userId, userId))
-    // YNAB's plan list: most recently used first.
     .orderBy(
       sql`${budgetMember.lastUsedAt} desc nulls last`,
       sql`lower(${budget.name})`,
       budget.id,
     );
-  // An API key limited to some budgets sees only those.
   const rows = allRows.filter((r) => keyAllowsBudget(c.var.apiKey, r.budget.id));
   const [pref] = await db
     .select({ lastBudgetId: userPreference.lastBudgetId })
@@ -108,7 +106,7 @@ export const updateBudgetHandler: RouteHandler<typeof updateBudget, Env> = async
   if (Object.keys(data).length > 0) {
     await c.var.deps.db.update(budget).set(data).where(eq(budget.id, budgetId));
   }
-  // YNAB's archive is only the name's stamp: renaming it away restores the plan (2026-10-15).
+  // Archiving is only the name's stamp: renaming it away restores the budget.
   if (current.archivedAt && data.name !== undefined && !data.name.includes(ARCHIVED_STAMP)) {
     await c.var.deps.db.update(budget).set({ archivedAt: null }).where(eq(budget.id, budgetId));
   }
@@ -126,7 +124,6 @@ export const freshStartBudgetHandler: RouteHandler<typeof freshStartBudget, Env>
   const { budgetId } = c.req.valid("param");
   const { date, name } = c.req.valid("json");
   const { db } = c.var.deps;
-  // An archived budget can start fresh again: YNAB's plan menu still offers it (2026-10-15).
   const { budget: old } = await loadBudgetAccess(c, budgetId, { budget: ["fresh_start"] });
 
   const created = await createOrganizationAs(c, {

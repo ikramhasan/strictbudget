@@ -42,7 +42,7 @@ export function formatAmount(
   options: { grouping?: boolean } = {},
 ): string {
   const base = NUMBER_FORMAT_SPECS[settings.numberFormat];
-  // YNAB's file exports write amounts without group separators (EVERYCENT-70).
+  // File exports write amounts without group separators.
   const spec = options.grouping === false ? { ...base, group: "" } : base;
   const exponent = currencyExponent(m.currency);
   const negative = m.amount < 0n;

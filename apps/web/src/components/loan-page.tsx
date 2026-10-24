@@ -1,14 +1,14 @@
-import { ACCOUNT_TYPE_LABELS, monthOf } from "@everycent/engine";
-import { Badge } from "@everycent/ui/components/badge";
-import { Button } from "@everycent/ui/components/button";
+import { ACCOUNT_TYPE_LABELS, monthOf } from "@strictbudget/engine";
+import { Badge } from "@strictbudget/ui/components/badge";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@everycent/ui/components/dropdown-menu";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dropdown-menu";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -85,13 +85,12 @@ type Open =
   | { kind: "share" }
   | null;
 
-/** YNAB's "Updated never" / "Updated 15 minutes ago" (a loan's last Update Balance). */
+/** "Updated never" / "Updated 15 minutes ago": the loan's last Update Balance. */
 export const updatedLabel = (lastReconciledAt: string | null) =>
   lastReconciledAt
     ? reconciledLabel(lastReconciledAt).replace(/^Reconciled/, "Updated")
     : "Updated never";
 
-/** Refreshes everything a loan change can move. */
 export function useLoanRefresh(budgetId: string) {
   const queryClient = useQueryClient();
   return () =>
@@ -106,9 +105,8 @@ export function useLoanRefresh(budgetId: string) {
 }
 
 /**
- * Saves a pairing choice, creating the new category first when there is one. A dialog retrying
- * after a failed save passes the same choice object, so it reuses the category it already made
- * instead of creating another.
+ * Creates the new category first when there is one. A retry after a failed save passes the same
+ * choice object, so it reuses the category it already made.
  */
 export function usePairCategory(budgetId: string) {
   const createCategory = $api.useMutation("post", "/v1/budgets/{budgetId}/categories");
@@ -126,20 +124,14 @@ export function usePairCategory(budgetId: string) {
   };
 }
 
-/**
- * Whether the starting balance isn't the loan's oldest transaction, which YNAB flags instead of
- * projecting: "We found an error with the starting balance of this account." (2026-10-13).
- */
+/** A starting balance that isn't the loan's oldest transaction is flagged instead of projected. */
 export function startingBalanceError(months: readonly LoanMonthData[]) {
   const lines = months.flatMap((m) => m.transactions);
   const start = lines.find((t) => t.kind === "starting_balance");
   return start ? lines.some((t) => t.date < start.date) : false;
 }
 
-/**
- * The loan's plan from its activity and the paired category's Monthly Debt Payment target.
- * Clicking a Past Balance point moves the original schedule's start (`originalFrom`).
- */
+/** Clicking a Past Balance point moves the original schedule's start (`originalFrom`). */
 export function useLoanPlan(account: Account | undefined, originalFrom?: string): LoanPlan | null {
   const { budget } = useBudget();
   const today = todayIso();
@@ -167,11 +159,6 @@ export function useLoanPlan(account: Account | undefined, originalFrom?: string)
   );
 }
 
-/**
- * YNAB's loan account page (checked 2026-10-13, YNAB findings "Loan activity" and "Loan
- * planner"): the loan's figures with its Payoff Date, the simulator and paid-off banners, Your
- * Loan's Progress, its paired plan category, and its activity by month.
- */
 export function LoanPage({
   account,
   accounts,
@@ -704,7 +691,6 @@ function Figure({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** A clickable line in a month (charges and other activity open their editors). */
 function Row({
   children,
   amount,
@@ -747,7 +733,6 @@ const StatusIcon = ({ status }: { status: ReturnType<typeof paymentStatus> }) =>
     <CircleCheck className="size-4 text-emerald-600 dark:text-emerald-400" aria-label="Covered" />
   );
 
-/** One month of YNAB's Account Activity: payments, interest, escrow and other activity. */
 export function MonthCard({
   month,
   first,
@@ -765,7 +750,7 @@ export function MonthCard({
   /** The loan's first month ("Initial Balance" under its total). */
   first: boolean;
   defaultOpen: boolean;
-  /** This month's scheduled payments still to come (today's month only, as YNAB). */
+  /** This month's scheduled payments still to come (today's month only). */
   upcoming: readonly LoanUpcoming[];
   formatDate: (isoDate: string) => string;
   onOpenUpcoming: (item: LoanUpcoming) => void;
@@ -792,15 +777,12 @@ export function MonthCard({
   const Toggle = open ? ChevronDown : ChevronRight;
   const otherTotal = others.reduce((s, t) => s + BigInt(t.amount), 0n);
   const status = paymentStatus(month);
-  // YNAB (2026-10-17): "2 Upcoming Transactions for $50.00", the count opening the Activity
-  // popover; under the entered payments, or in place of "No payments this month".
   const upcomingTotal = upcoming.reduce((s, u) => s + BigInt(u.amount), 0n);
   const upcomingLine = (
     <>
       <UpcomingActivity
         label={upcomingLabel(upcoming.length)}
         transactions={upcoming}
-        // Signed for the loan, as YNAB lists them (+$20.00).
         format={(m) => `+${format(BigInt(m))}`}
         formatDate={formatDate}
         onOpen={onOpenUpcoming}
@@ -966,7 +948,7 @@ const EditMark = () => (
   <Pencil className="size-3 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
 );
 
-/** A payment line; it jumps to the paying side, as YNAB's "Click to jump to the other side". */
+/** A payment line; it jumps to the paying side. */
 function PaymentLink({
   budgetId,
   line,

@@ -1,5 +1,5 @@
-import { newId } from "@everycent/db";
-import { budgetMember, category, categoryGroup } from "@everycent/db/schema";
+import { newId } from "@strictbudget/db";
+import { budgetMember, category, categoryGroup } from "@strictbudget/db/schema";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
@@ -40,12 +40,11 @@ describe("categories", () => {
   it("seeds a new budget with the starter template", async () => {
     const { tree } = await setup();
     expect(names(await tree())).toEqual(STARTER_CATEGORIES.map((g) => [g.group, g.categories]));
-    // A new YNAB plan's groups (EVERYCENT-180).
     expect((await tree()).groups.map((g) => g.name)).toEqual(["Bills", "Needs", "Wants"]);
     expect(STARTER_CATEGORIES.flatMap((g) => g.categories)).toHaveLength(12);
   });
 
-  it("starts every starter category with an emoji, like YNAB", () => {
+  it("starts every starter category with an emoji", () => {
     for (const name of STARTER_CATEGORIES.flatMap((g) => g.categories)) {
       expect(name, name).toMatch(/^\p{Extended_Pictographic}\uFE0F? \S/u);
     }
@@ -204,7 +203,7 @@ describe("categories", () => {
     expect(orphans).toEqual([]);
   });
 
-  it("reports what deleting a category would move (YNAB's delete dialogs)", async () => {
+  it("reports what deleting a category would move", async () => {
     const { cookie, base, tree } = await setup();
     const [rent, electric] = (await tree()).groups[0]?.categories ?? [];
     if (!rent || !electric) throw new Error("starter data missing");
@@ -289,7 +288,6 @@ describe("categories", () => {
     const ownerCategory = (await owner.tree()).groups[0]?.categories[0];
     const ownerGroup = (await owner.tree()).groups[0];
 
-    // A stranger can't see the budget at all.
     expect((await send("GET", `${owner.base}/categories`, other.cookie)).status).toBe(404);
     // A member of another budget can't reach this budget's rows through their own budget.
     const attempts = [

@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,15 +8,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Button } from "@everycent/ui/components/button";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@everycent/ui/components/card";
+} from "@strictbudget/ui/components/card";
 import {
   Dialog,
   DialogContent,
@@ -24,17 +24,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
+} from "@strictbudget/ui/components/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@everycent/ui/components/dropdown-menu";
-import { Field, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { Skeleton } from "@everycent/ui/components/skeleton";
+} from "@strictbudget/ui/components/dropdown-menu";
+import { Field, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { MoreHorizontal } from "lucide-react";
@@ -47,7 +47,7 @@ import { useInstance } from "@/lib/instance";
 import { pictureSrc } from "@/lib/pictures";
 import { sessionQueryOptions } from "@/lib/session";
 
-/** Budget settings' sharing card: YNAB Together's members and pending invitations, per budget. */
+/** Budget settings' sharing card: members and pending invitations, per budget. */
 export function BudgetMembers() {
   const { budget, formatDate } = useBudget();
   const queryClient = useQueryClient();
@@ -226,14 +226,14 @@ export type Member = components["schemas"]["BudgetMember"];
 type InvitationWithLink = components["schemas"]["BudgetInvitationWithLink"];
 type MemberRole = components["schemas"]["ChangeBudgetMemberRole"]["role"];
 
-/** YNAB calls everyone a plan is shared with a member; a viewer is an everycent extra. */
+/** Everyone a budget is shared with who can edit it is a "Member". */
 const ROLE_LABELS: Record<Member["role"], string> = {
   owner: "Owner",
   editor: "Member",
   viewer: "Viewer",
 };
 
-/** The owner picks whether a member can edit or only view (EVERYCENT-88). */
+/** The owner picks whether a member can edit or only view. */
 function RoleSelect({ member, onChanged }: { member: Member; onChanged: () => Promise<unknown> }) {
   const { budget } = useBudget();
   const change = $api.useMutation("patch", "/v1/budgets/{budgetId}/members/{userId}");
@@ -301,8 +301,8 @@ function Avatar({
 }
 
 /**
- * An invitation link for the owner to send however they like (an everycent extra: YNAB only
- * emails invitations). It's shown once: the server keeps only its hash.
+ * An invitation link for the owner to send however they like. It's shown once: the server keeps
+ * only its hash.
  */
 function ShareLinkDialog({
   invitation,
@@ -448,7 +448,7 @@ type Confirm = "remove" | "transfer" | "leave";
 
 /**
  * The owner removes people or makes one of them the owner; anyone else can leave. Each asks
- * first, as YNAB's Remove Member and Leave Group do.
+ * first.
  */
 function MemberActions({
   member,

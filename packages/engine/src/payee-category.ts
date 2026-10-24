@@ -11,11 +11,11 @@ export const zPayeeCategorization = z.enum(PAYEE_CATEGORIZATIONS);
 
 /**
  * The category a payee auto-categorizes to, from the categories of its transactions, oldest
- * first (split and uncategorized ones left out, as YNAB's "last 3 transactions" leaves them out).
+ * first (split and uncategorized ones left out).
  *
- * Checked in YNAB's register: the first categorization sets the default, and it only changes when
- * two of the payee's last three categorizations agree on another category (O1, O1, O2 stays O1;
- * O1, O2 stays O1; O1, O2, O2 becomes O2). `carried` is a default the payee had before this
+ * The first categorization sets the default, and it only changes when two of the payee's last
+ * three categorizations agree on another category (A, A, B stays A; A, B stays A; A, B, B becomes
+ * B). `carried` is a default the payee had before this
  * history, such as one copied into a fresh start: it stands until two of three agree.
  */
 export function payeeAutoCategory(
@@ -33,8 +33,8 @@ export function payeeAutoCategory(
 }
 
 /**
- * The default after a transaction of the payee is added or edited. YNAB keeps the default as
- * stored state rather than replaying the history (checked 2026-10-17, EVERYCENT-182): each add or
+ * The default after a transaction of the payee is added or edited. The default is stored state
+ * rather than a replay of the history: each add or
  * edit looks at the payee's last three categorized transactions by date, switches to a category
  * two of them agree on, and otherwise keeps the default (or, with none yet, takes `written`, the
  * category just saved). Deleting a transaction leaves the default alone.
@@ -70,7 +70,7 @@ export function payeePrefillCategory(payee: {
   }
 }
 
-/** How many "Suggested" categories YNAB lists for a payee. */
+/** How many "Suggested" categories are listed for a payee. */
 export const PAYEE_SUGGESTION_LIMIT = 5;
 
 /**
@@ -87,7 +87,7 @@ export function payeeRecentCategories(newestFirst: readonly string[]): string[] 
   return seen;
 }
 
-/** YNAB's "Suggested" categories: the payee's recent ones other than the selected one, five at most. */
+/** "Suggested" categories: the payee's recent ones other than the selected one, five at most. */
 export function payeeSuggestions(recent: readonly string[], selected: string | null): string[] {
   return recent.filter((id) => id !== selected).slice(0, PAYEE_SUGGESTION_LIMIT);
 }

@@ -1,7 +1,7 @@
-import { Button } from "@everycent/ui/components/button";
-import { Field, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { Spinner } from "@everycent/ui/components/spinner";
+import { Button } from "@strictbudget/ui/components/button";
+import { Field, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { type FormEvent, type ReactNode, useState } from "react";
 
 export interface SignInValues {
@@ -14,7 +14,6 @@ export function SignInForm({
   forgotPassword,
 }: {
   onSubmit: (values: SignInValues) => Promise<string | null>;
-  /** Shown beside the password label. */
   forgotPassword?: ReactNode;
 }) {
   const [error, setError] = useState<string | null>(null);

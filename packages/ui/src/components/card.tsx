@@ -1,4 +1,4 @@
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import * as React from "react";
 
 function Card({
@@ -32,7 +32,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-// everycent: a heading (h2) rather than shadcn's div, so a page's cards are in its outline.
+// strictbudget: a heading (h2) rather than shadcn's div, so a page's cards are in its outline.
 function CardTitle({ className, ...props }: React.ComponentProps<"h2">) {
   return (
     <h2

@@ -7,17 +7,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Button } from "@everycent/ui/components/button";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Spinner } from "@everycent/ui/components/spinner";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dialog";
+import { Spinner } from "@strictbudget/ui/components/spinner";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { FileText, ImageOff, ImagePlus, Sparkles, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -40,10 +40,8 @@ function usePreview(file: File | null): string | null {
 }
 
 /**
- * A new transaction's attachment cell, picked before the transaction exists: kept in the browser
- * and uploaded once the transaction is saved. The register's image button picks it (a spinner
- * while it's being read or uploaded); the thumbnail opens it, to delete it or have the AI fill
- * the row in. With AI on, picking a receipt asks at once whether to fill the row in (`onFill`).
+ * Picked before the transaction exists: kept in the browser and uploaded once the transaction is
+ * saved. With AI on, picking a receipt asks at once whether to fill the row in (`onFill`).
  */
 export function NewAttachmentCell({
   file,
@@ -200,7 +198,7 @@ export function NewAttachmentCell({
           <AlertDialogHeader>
             <AlertDialogTitle>Fill in this transaction?</AlertDialogTitle>
             <AlertDialogDescription>
-              everycent AI can read {file?.name ?? "the file"} and fill in the date, payee,
+              strictbudget AI can read {file?.name ?? "the file"} and fill in the date, payee,
               category, memo and amount, using your own payees and categories. Check them before
               saving: the transaction is added uncleared, for you to clear when it shows up in your
               account.

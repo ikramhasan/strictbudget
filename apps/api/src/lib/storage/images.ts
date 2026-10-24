@@ -3,7 +3,7 @@ import { attachmentType } from "./file-type";
 
 /**
  * A profile picture or account logo: the browser crops it to a square and sends a small raster
- * image (EVERYCENT-229), so only these types and a modest size are taken.
+ * image, so only these types and a modest size are taken.
  */
 export const PICTURE_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 export const MAX_PICTURE_BYTES = 2 * 1024 * 1024;

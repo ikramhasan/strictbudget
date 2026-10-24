@@ -1,5 +1,5 @@
-import type { CurrencyCode } from "@everycent/engine";
-import { type ChartConfig, ChartContainer } from "@everycent/ui/components/chart";
+import type { CurrencyCode } from "@strictbudget/engine";
+import { type ChartConfig, ChartContainer } from "@strictbudget/ui/components/chart";
 import { Area, AreaChart, CartesianGrid, ReferenceLine, Tooltip, XAxis, YAxis } from "recharts";
 import {
   COMPOSITION_KINDS,
@@ -27,10 +27,7 @@ const config = Object.fromEntries(
   COMPOSITION_KINDS.map((k) => [k, { label: COMPOSITION_LABELS[k], color: KIND_COLOR[k] }]),
 ) satisfies ChartConfig;
 
-/**
- * The composition view (an everycent extra): balances stacked by account kind, assets above zero
- * and debts below.
- */
+/** Balances stacked by account kind, assets above zero and debts below. */
 export function CompositionChart({
   report,
 }: {

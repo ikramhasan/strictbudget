@@ -1,4 +1,5 @@
-import { sql } from "@everycent/db";
+import type { RouteConfig, RouteHandler } from "@hono/zod-openapi";
+import { sql } from "@strictbudget/db";
 import {
   auditEvent,
   budget,
@@ -9,8 +10,7 @@ import {
   userPreference,
   user as userTable,
   verification,
-} from "@everycent/db/schema";
-import type { RouteConfig, RouteHandler } from "@hono/zod-openapi";
+} from "@strictbudget/db/schema";
 import { APIError } from "better-auth/api";
 import Bowser from "bowser";
 import { and, desc, eq, gt, inArray } from "drizzle-orm";
@@ -168,7 +168,7 @@ export const disableTwoFactorHandler: Handler<typeof disableTwoFactor> = async (
     }
     throw e;
   }
-  // What the plugin's own disable does, minus its password check (YNAB asks for a code instead).
+  // What the plugin's own disable does, minus its password check (the code is the check here).
   await db.transaction(async (tx) => {
     await tx.update(userTable).set({ twoFactorEnabled: false }).where(eq(userTable.id, me.id));
     await tx.delete(twoFactor).where(eq(twoFactor.userId, me.id));
@@ -218,13 +218,12 @@ export const deleteAccountHandler: Handler<typeof deleteAccount> = async (c) => 
     throw e;
   }
   await db.transaction(async (tx) => {
-    // YNAB: "any budgets that you owned will be unshared and deleted. Any budgets that were
-    // shared with you will no longer be shared." Deleting a budget cascades to everything in it.
+    // Owned budgets are deleted (cascading to everything in them); shared ones are left.
     const owned = await tx
       .select({ id: budgetMember.budgetId })
       .from(budgetMember)
       .where(and(eq(budgetMember.userId, me.id), eq(budgetMember.role, "owner")));
-    // Split lines would block the cascade to the categories (EVERYCENT-207).
+    // Split lines would block the cascade to the categories.
     for (const { id } of owned) await deleteBudgetTransactions(tx, id);
     await tx.delete(budget).where(
       inArray(

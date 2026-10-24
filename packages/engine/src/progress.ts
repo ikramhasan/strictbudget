@@ -26,8 +26,7 @@ export interface ProgressBar {
 }
 
 /**
- * YNAB's progress bar under a category in `month` (support.ynab.com "Progress Bars", and its web
- * app's bars read on 2026-10-07, YNAB findings "Snooze and progress bars"):
+ * The progress bar under a category in `month`:
  * - Sections: one for the month (no target, snoozed, refill) or the target period (dated targets);
  *   "Set aside another…" monthly and weekly targets put money carried in first, in its own
  *   section; weekly targets get a section per week and an extra one for money or spending beyond

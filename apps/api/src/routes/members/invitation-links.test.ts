@@ -29,7 +29,6 @@ function send(app: App, method: string, path: string, cookie: string | null, bod
 }
 const json = async <T>(res: Response) => (await res.json()) as T;
 
-/** The token in a shared invitation link (`…/invitation#token=…`). */
 function tokenOf(link: string | null) {
   const token = link && new URLSearchParams(new URL(link).hash.slice(1)).get("token");
   if (!token) throw new Error(`no token in ${link}`);

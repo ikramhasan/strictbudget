@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_SORT, formatSort, nextSort, readSort, type SortField } from "./register-sort";
 
 describe("register sort", () => {
-  it("stacks clicks as YNAB does: a new column first and descending, the first one flips", () => {
-    // YNAB, 2026-10-15 (EVERYCENT-29): Payee, Payee, Date, Date, Memo.
+  it("stacks clicks: a new column first and descending, the first one flips", () => {
+    // Clicks: Payee, Payee, Date, Date, Memo.
     let stack: SortField[] = [...DEFAULT_SORT];
     stack = nextSort(stack, "payee");
     expect(formatSort(stack)).toBe("payee:desc,date:desc");

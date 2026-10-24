@@ -23,7 +23,7 @@ export function useCreateAccount(budgetId: string) {
     ...values
   }: NewAccountValues): Promise<{ id: string } | { error: string }> => {
     try {
-      // A loan paired with a new category (YNAB's "Create a new category") gets it first.
+      // A loan paired with a new category ("Create a new category") gets it first.
       const pairedCategoryId = !pairing
         ? undefined
         : "categoryId" in pairing

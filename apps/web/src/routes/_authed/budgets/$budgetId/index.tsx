@@ -1,19 +1,24 @@
-import { addMonths, type BudgetMonth, type CurrencyCode, isBudgetMonth } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
+import {
+  addMonths,
+  type BudgetMonth,
+  type CurrencyCode,
+  isBudgetMonth,
+} from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Drawer,
   DrawerContent,
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
-} from "@everycent/ui/components/drawer";
+} from "@strictbudget/ui/components/drawer";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
   useDefaultLayout,
-} from "@everycent/ui/components/resizable";
-import { Skeleton } from "@everycent/ui/components/skeleton";
+} from "@strictbudget/ui/components/resizable";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PanelRight, Pencil, Plus } from "lucide-react";
@@ -98,11 +103,9 @@ import { useUndo } from "@/lib/undo";
 import { useCategoryActions } from "@/lib/use-category-actions";
 import { useViewportWidth } from "@/lib/use-viewport-width";
 
-/** The category list and the inspector; the header shares them so Ready to Assign fills the inspector's width. */
 /** Shift+Z also works from a category's Assigned input. */
 const inAssignedCell = (target: Element) => target.closest("[data-assigned-cell]") !== null;
 
-/** localStorage for the inspector's width, or nothing where the browser blocks storage. */
 const layoutStorage = {
   getItem: (key: string) => {
     try {
@@ -120,11 +123,10 @@ const layoutStorage = {
   },
 };
 
-/** YNAB's inspector width, in percent of the list and inspector together (its client code). */
+/** The inspector's width, in percent of the list and inspector together. */
 const INSPECTOR_SHARE = { min: 25, max: 50, default: 33 };
 
 export const Route = createFileRoute("/_authed/budgets/$budgetId/")({
-  // The month on screen, YYYY-MM; the current month when absent.
   validateSearch: z.object({
     month: z.string().refine(isBudgetMonth).optional().catch(undefined),
     // A category to select on arrival, its Assigned being edited with `assign` (the payoff
@@ -162,10 +164,9 @@ function BudgetPage() {
   const phone = viewportWidth < 768;
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const inspectorLayout = useDefaultLayout({
-    id: "everycent:budget-inspector",
+    id: "strictbudget:budget-inspector",
     storage: layoutStorage,
   });
-  // The header's Ready to Assign sits over the inspector at its width.
   const [inspectorWidth, setInspectorWidth] = useState<number | null>(null);
   const viewActions = useViewActions(budget.id);
   const [viewDialog, setViewDialog] = useState<ViewDialog>(null);
@@ -174,7 +175,7 @@ function BudgetPage() {
   const importing = templates.templates?.find((t) => t.id === search.template);
   const setTemplate = (template: string | undefined) =>
     void navigate({ search: (s) => ({ ...s, template }), replace: true });
-  // The custom view on, if the stored view is one; an unknown id (a deleted view) shows All.
+  // An unknown view id (a deleted view) shows All.
   const customView = isPresetFilter(filter)
     ? undefined
     : views.data?.views.find((v) => v.id === filter);
@@ -182,7 +183,6 @@ function BudgetPage() {
   const { progressBars, setProgressBars } = useProgressBars();
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set());
   const [editAssigned, setEditAssigned] = useState<string | undefined>();
-  // The category a link or Recent Moves opened, scrolled to once its month is on screen.
   const [scrollTo, setScrollTo] = useState<{ id: string } | undefined>();
   useEffect(() => {
     if (!search.category) return;
@@ -191,7 +191,7 @@ function BudgetPage() {
     setScrollTo({ id: search.category });
     void navigate({ search: { month: search.month }, replace: true });
   }, [search.category, search.assign]);
-  // YNAB's per-category history covers the current and later months and three months back.
+  // Per-category history covers the current and later months and three months back.
   const monthMoves = useQuery({
     ...monthMovesQueryOptions(budget.id, month),
     enabled: month >= addMonths(today, -HISTORY_MONTHS_BACK),
@@ -204,7 +204,7 @@ function BudgetPage() {
   );
   const moveMutation = $api.useMutation("post", "/v1/budgets/{budgetId}/months/{month}/moves");
   const noteMutation = $api.useMutation("put", "/v1/budgets/{budgetId}/months/{month}/note");
-  /** Saves `month`'s note; YNAB's Undo covers month notes (checked 2026-10-12). */
+  /** Saves `month`'s note; Undo covers month notes. */
   const saveMonthNote = async (m: BudgetMonth, before: string, after: string) => {
     const put = async (note: string) => {
       try {
@@ -248,7 +248,6 @@ function BudgetPage() {
     }
   }, [range?.first, range?.last, month, today, navigate, figures.isPlaceholderData]);
 
-  // Categories on the budget screen (not hidden), with their names and notes.
   const listed = useMemo(() => {
     const map = new Map<string, ListedCategory>();
     for (const g of categories.data?.groups ?? []) {
@@ -271,7 +270,6 @@ function BudgetPage() {
   );
   const shown = useMemo(
     () =>
-      // A custom view keeps its categories that aren't hidden (YNAB, 2026-10-14).
       customView
         ? new Set(customView.categoryIds.filter((id) => visible.has(id)))
         : figures.data && preset !== "all"
@@ -290,8 +288,8 @@ function BudgetPage() {
     [selected, visible, shown],
   );
 
-  // YNAB's Shift+Z (seen 2026-10-18): snoozes every selected category with a target, or wakes
-  // them when all are snoozed already; it works from the Assigned input too. This month only.
+  // Shift+Z snoozes every selected category with a target, or wakes them when all are snoozed
+  // already; it works from the Assigned input too. This month only.
   useShortcut(
     "snooze",
     () => {
@@ -330,7 +328,6 @@ function BudgetPage() {
     const parse = (text: string) => parseMoneyInput(text, settings);
     const toInput = (amount: string) => toMoneyInput(amount, settings);
 
-    /** Saves a change to assigned money and records its local inverse. */
     async function save(
       work: () => Promise<BudgetMonthData>,
       inverse: () => Promise<BudgetMonthData>,
@@ -406,7 +403,6 @@ function BudgetPage() {
         selectOnly: (id) => setSelected(new Set([id])),
         setAll: (ids) => setSelected(new Set(ids)),
       },
-      // A viewer (EVERYCENT-88) sees the numbers but can't assign or move money.
       assign: readOnly
         ? undefined
         : {
@@ -520,7 +516,7 @@ function BudgetPage() {
     names,
   ]);
 
-  // "Cover overspending from" offers the months Fix This does (YNAB, 2026-10-14).
+  // "Cover overspending from" offers the months Fix This does.
   const coverMonths = useFixThisMonths({
     budgetId: budget.id,
     month,
@@ -556,14 +552,13 @@ function BudgetPage() {
 
   /**
    * The Auto-Assign options for `selection` (the inspector's), or for the rows in view with an
-   * empty one (the Ready to Assign banner's Assign pop-up, YNAB's "Auto" tab).
+   * empty one (the Ready to Assign banner's Assign pop-up, its "Auto" tab).
    */
   const autoAssignPanel = (selection: ReadonlySet<string>, bare = false) =>
     listFigures &&
     !readOnly && (
       <AutoAssignPanel
         bare={bare}
-        // The selected categories, or the rows in view (hidden categories never are).
         categories={listFigures.month.categories.filter((c) =>
           selection.size > 0 ? selection.has(c.categoryId) : (shown ?? visible).has(c.categoryId),
         )}
@@ -659,8 +654,8 @@ function BudgetPage() {
       />
     );
 
-  // Below lg the inspector stacks under the list; from there it's beside it, and as wide as the
-  // user drags it, as YNAB's is (25–50% of the area, a third to start, kept in this browser).
+  // Below lg the inspector is a drawer; from there it's beside the list, as wide as the user drags
+  // it (25–50% of the area, a third to start, kept in this browser).
   const wide = viewportWidth >= 1024;
   // On a phone, picking one category opens the inspector drawer for it. A tablet shows the
   // Assigned column, so a tap there edits it in place, as on a desktop; Summary opens the drawer.
@@ -676,10 +671,7 @@ function BudgetPage() {
         <p className="text-muted-foreground">Couldn't load categories.</p>
       ) : (
         <div className="grid gap-3">
-          {/*
-           * One bar over the list: the views as text tabs on the left, the list's tools as icons
-           * on the right. The divider is an inset shadow the selected tab's underline paints over.
-           */}
+          {/* The divider is an inset shadow the selected tab's underline paints over. */}
           <div className="flex flex-wrap items-end gap-x-2 gap-y-1 shadow-[inset_0_-1px_0_var(--border)]">
             {listFigures && (
               <BudgetFilterBar
@@ -701,7 +693,6 @@ function BudgetPage() {
                         setViewDialog({
                           kind: "edit",
                           view: null,
-                          // Categories selected on the budget start checked (YNAB, 2026-10-14).
                           preselected: [...selection].filter((id) => id !== UNCATEGORIZED),
                         })
                       }
@@ -750,7 +741,6 @@ function BudgetPage() {
               categories={categories.data}
               actions={viewActions}
               onCreated={(view) => {
-                // YNAB switches to a new view and clears the selection.
                 setFilter(view.id);
                 setSelected(new Set());
               }}
@@ -778,7 +768,7 @@ function BudgetPage() {
       : onlySelected === UNCATEGORIZED
         ? "Uncategorized Transactions"
         : (listed.get(onlySelected)?.name ?? "Category");
-  // A phone's rows have no Assigned cell, so the drawer leads with a large one.
+  // A phone's rows have no Assigned cell, so the drawer leads with one.
   const onlyFigures =
     onlySelected && listFigures?.month.categories.find((c) => c.categoryId === onlySelected);
   const drawerAssigned = phone && onlySelected && onlyFigures && listFigures?.assign && (
@@ -814,7 +804,6 @@ function BudgetPage() {
   );
 
   return (
-    // No max width: the category list is dense, so it takes the room a wide screen gives it.
     <div className="grid gap-4">
       <TemplateGallery
         open={galleryOpen}
@@ -840,7 +829,6 @@ function BudgetPage() {
       />
       <div
         className="flex flex-wrap items-center justify-between gap-4 lg:grid"
-        // The header's right column sits over the inspector, as wide as it is.
         style={
           wide && inspectorWidth !== null
             ? { gridTemplateColumns: `minmax(0,1fr) ${inspectorWidth}px` }
@@ -851,7 +839,6 @@ function BudgetPage() {
           <PageTitle name={budget.name} />
           <PageHeader
             title={budget.name}
-            // Without the side inspector, the month's summary is a page action in the top bar.
             actions={
               !wide &&
               listFigures && (
@@ -901,7 +888,6 @@ function BudgetPage() {
               )
             }
             action={
-              // An overdraft's "Next Steps" (a YNAB help page) isn't built.
               listFigures.move && (
                 <FixThisButton
                   readyToAssign={listFigures.month.readyToAssign}
@@ -961,10 +947,6 @@ function BudgetPage() {
       ) : (
         <>
           {listColumn}
-          {/*
-           * Narrower than lg the inspector is a drawer (everycent's own layout, EVERYCENT-93): up
-           * from the bottom on a phone, in from the side on a tablet. Picking a category opens it.
-           */}
           <Drawer
             open={inspectorOpen}
             onOpenChange={(open) => {
@@ -992,7 +974,6 @@ function BudgetPage() {
   );
 }
 
-/** A payment category's details from the API, as bigints. */
 const paymentFigures = (p: NonNullable<BudgetMonthData["categories"][number]["payment"]>) =>
   Object.fromEntries(Object.entries(p).map(([k, v]) => [k, BigInt(v)])) as Record<
     keyof typeof p,
@@ -1007,8 +988,8 @@ interface ListedCategory {
 }
 
 /**
- * YNAB's inspector: one selected category's breakdown, target and note, or the month's summary over the
- * selection (two or more) or over the rows in view (nothing selected).
+ * One selected category's breakdown, target and note, or the month's summary over the selection
+ * (two or more) or over the rows in view (nothing selected).
  */
 function Inspector({
   figures,
@@ -1031,7 +1012,7 @@ function Inspector({
   const navigate = useNavigate();
   const history = useUndo();
   const { month, format, assign } = figures;
-  /** Amounts in a target's own currency (EVERYCENT-58), in the budget's number format. */
+  /** Amounts in a target's own currency, in the budget's number format. */
   const moneyIn = (currency: CurrencyCode): MoneyIO => {
     const settings = inCurrency({ ...budget, currency: month.currency }, currency);
     return {
@@ -1045,7 +1026,7 @@ function Inspector({
   const loanPlan = useLoanPlan(pairedLoan);
   const accounts = useQuery(accountsQueryOptions(budget.id));
   const categoryList = useQuery(categoriesQueryOptions(budget.id));
-  /** The summary's categories as report filters (Uncategorized by its category id). */
+  /** Uncategorized goes to reports by its category id. */
   const reportCategories = (ids: Iterable<string>) => {
     const uncategorized = categoryList.data?.uncategorizedCategoryId;
     return [...ids].flatMap((id) =>
@@ -1121,7 +1102,6 @@ function Inspector({
         format,
         warn: month.month >= figures.currentMonth,
         onCoverOverspent: onShowOverspent,
-        // YNAB (2026-10-15): opens the card's register with Record Payment's row.
         onRecordPayment: paidCard
           ? () =>
               void navigate({
@@ -1212,7 +1192,7 @@ function Inspector({
               onSave={(input) => targetActions.save(only, month.month, input, category.target)}
               onDelete={() => targetActions.remove(only, category.target)}
               onAssign={
-                // YNAB leaves the Assign button out in past months (seen 2026-10-08).
+                // No Assign button in past months.
                 month.month < figures.currentMonth
                   ? undefined
                   : (amount) => assign.assign(only, BigInt(totals.assigned) + amount)
@@ -1221,7 +1201,7 @@ function Inspector({
               debt={
                 pairedLoan
                   ? { plan: loanPlan }
-                  : // A loan unpaired or closed leaves its debt target (YNAB, 2026-10-14).
+                  : // A loan unpaired or closed leaves its debt target.
                     category.target?.cadence === "debt_monthly"
                     ? { plan: null, unpairedCategoryId: only }
                     : undefined
@@ -1260,7 +1240,7 @@ function Inspector({
       />
     );
   }
-  // Under All, YNAB's summary covers every category, hidden ones included.
+  // Under All, the summary covers every category, hidden ones included.
   const ids = shown ?? [
     ...month.categories.map((c) => c.categoryId),
     ...(month.uncategorized ? [UNCATEGORIZED] : []),
@@ -1270,9 +1250,8 @@ function Inspector({
       month={month.month}
       totals={summarize(month, ids)}
       format={format}
-      // Under All the link covers the whole plan; a view's link, its categories.
       reportCategories={shown ? reportCategories(shown) : undefined}
-      // The whole plan's targets, whatever the view; YNAB shows them in the current month only.
+      // The whole plan's targets, whatever the view, in the current month only.
       targets={
         month.month === figures.currentMonth
           ? {

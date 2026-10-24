@@ -28,7 +28,7 @@ const upcoming = {
   ],
 };
 
-// YNAB, 2026-10-12: U10 C with $50.00 scheduled and nothing available.
+// A category with $50.00 scheduled and nothing available.
 describe("UpcomingTransactions", () => {
   it("shows the upcoming total and what's left after it, yellow when short", () => {
     const { container } = render(

@@ -5,9 +5,9 @@ import {
   AutocompleteInput,
   AutocompleteItem,
   AutocompleteList,
-} from "@everycent/ui/components/autocomplete";
-import { InputGroupAddon } from "@everycent/ui/components/input-group";
-import { Tabs, TabsList, TabsTrigger } from "@everycent/ui/components/tabs";
+} from "@strictbudget/ui/components/autocomplete";
+import { InputGroupAddon } from "@strictbudget/ui/components/input-group";
+import { Tabs, TabsList, TabsTrigger } from "@strictbudget/ui/components/tabs";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
@@ -15,13 +15,9 @@ import { PageHeader } from "@/components/page-header";
 import { PageTitle } from "@/components/page-title";
 import { type BudgetRole, type SettingsMatch, searchSettings } from "@/lib/settings-index";
 
-/** The element id of a settings section, which the search scrolls to. */
 const sectionId = (section: string) => `settings-${section}`;
 
-/**
- * Account and Budget settings: the page's tabs, one group of settings each, and a search over
- * every setting on both pages in the top bar. The tabs' content goes in as `TabsContent`.
- */
+/** The search covers every setting on both the Account and Budget pages. */
 export function SettingsLayout<Tab extends string>({
   title,
   tabs,
@@ -34,7 +30,7 @@ export function SettingsLayout<Tab extends string>({
   tabs: readonly { id: Tab; label: string }[];
   tab: Tab;
   onTabChange: (tab: Tab) => void;
-  /** The budget whose settings the search reaches; null when there's none to go to. */
+  /** Null when there's no budget to go to. */
   budget: { id: string; role: BudgetRole } | null;
   children: ReactNode;
 }) {
@@ -78,7 +74,6 @@ export function SettingsLayout<Tab extends string>({
   );
 }
 
-/** One section of a settings tab: what the search scrolls to. */
 export function SettingsSection({ id, children }: { id: string; children: ReactNode }) {
   return (
     <section id={sectionId(id)} className="scroll-mt-4">

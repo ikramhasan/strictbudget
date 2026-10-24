@@ -8,8 +8,8 @@ import {
   AttachmentMedia,
   AttachmentTitle,
   AttachmentTrigger,
-} from "@everycent/ui/components/attachment";
-import { Spinner } from "@everycent/ui/components/spinner";
+} from "@strictbudget/ui/components/attachment";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { FileSpreadsheet, FileText, ImageOff, X } from "lucide-react";
 import { useRef, useState } from "react";
 import {
@@ -20,7 +20,6 @@ import {
   uploadAiAttachment,
 } from "@/lib/ai";
 
-/** At most this many files go with one message. */
 const MAX_FILES = 5;
 
 const isImage = (type: string) => type.startsWith("image/");
@@ -95,7 +94,6 @@ export function usePickedFiles(budgetId: string) {
   };
 }
 
-/** The files picked for the next message, above the message box. */
 export function PickedFiles({
   files,
   onRemove,
@@ -139,7 +137,7 @@ function FileIcon({ type }: { type: string }) {
   return isSheet(type) || /\.(xlsx|csv|tsv)$/i.test(type) ? <FileSpreadsheet /> : <FileText />;
 }
 
-/** The pointer a sent message keeps to a file (the API's `everycent-attachment:` part). */
+/** The pointer a sent message keeps to a file (the API's `strictbudget-attachment:` part). */
 export interface SentFile {
   attachmentId: string;
   fileName: string;
@@ -164,7 +162,6 @@ export function sentFile(part: unknown): SentFile | null {
   };
 }
 
-/** What kind of file a sent file is, in a word. */
 function kindLabel(type: string): string {
   if (type === "application/pdf") return "PDF";
   if (isSheet(type)) return "Spreadsheet";

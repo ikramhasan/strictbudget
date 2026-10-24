@@ -3,7 +3,7 @@ import {
   type CurrencyCode,
   DATE_FORMATS,
   NUMBER_FORMATS,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import {
   bigint,
   boolean,
@@ -23,10 +23,7 @@ import { timestamps } from "./columns";
 // (organization → budget, member → budgetMember, invitation → budgetInvitation). Plugin field
 // names must match exactly; `organizationId` is mapped to `budgetId`.
 
-/**
- * YNAB has one role for everyone a plan is shared with (editor here). `viewer` is an everycent
- * extra (EVERYCENT-88): a member who can see the budget but not change it.
- */
+/** `viewer` is a member who can see the budget but not change it. */
 export const BUDGET_ROLES = ["owner", "editor", "viewer"] as const;
 /** The roles the owner can give someone they share the budget with. */
 export const MEMBER_ROLES = ["editor", "viewer"] as const;
@@ -45,17 +42,17 @@ export const budget = pgTable("budget", {
   numberFormat: text({ enum: NUMBER_FORMATS }).notNull(),
   currencySymbolPosition: text({ enum: CURRENCY_SYMBOL_POSITIONS }).notNull(),
   dateFormat: text({ enum: DATE_FORMATS }).notNull(),
-  /** Set when a fresh start replaced this budget. It stays fully usable, as in YNAB. */
+  /** Set when a fresh start replaced this budget. It stays fully usable. */
   archivedAt: timestamp({ withTimezone: true }),
   /**
-   * YNAB's "Expected Income" under Cost to Be Me: what the household expects to earn in a month,
-   * entered once and kept from month to month. Null until entered; YNAB can't clear it again.
+   * "Expected Income" under Cost to Be Me: what the household expects to earn in a month, entered
+   * once and kept from month to month. Null until entered; it can't be cleared again.
    */
   expectedIncome: bigint({ mode: "bigint" }),
   expectedIncomeCurrency: char({ length: 3 }).$type<CurrencyCode>(),
   /**
-   * YNAB's plan setting `dismissed_loan_account_payoff_simulator_banner`: one dismissal hides the
-   * loan payoff simulator banner on every loan, for everyone on the plan (checked 2026-10-14).
+   * One dismissal hides the loan payoff simulator banner on every loan, for everyone on the
+   * budget.
    */
   loanSimulatorBannerDismissed: boolean().notNull().default(false),
   /**
@@ -65,8 +62,8 @@ export const budget = pgTable("budget", {
    */
   viewOrder: text().array(),
   /**
-   * Where the budget was imported from, e.g. "ynab:<plan id>" (EVERYCENT-69), so importing the
-   * same plan again finds it instead of making a copy. Null for budgets made here.
+   * Where the budget was imported from (the source app and its plan id), so importing the same
+   * plan again finds it instead of making a copy. Null for budgets made here.
    */
   importSource: text(),
   /**
@@ -92,7 +89,7 @@ export const budgetMember = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     role: text({ enum: BUDGET_ROLES }).notNull(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-    /** When this member last opened the budget (YNAB's plan list: "Last used 9 minutes ago"). */
+    /** When this member last opened the budget ("Last used 9 minutes ago"). */
     lastUsedAt: timestamp({ withTimezone: true }),
   },
   (t) => [
@@ -107,8 +104,8 @@ export type InvitationStatus = (typeof INVITATION_STATUSES)[number];
 export const INVITATION_DELIVERIES = ["email", "link"] as const;
 
 /**
- * An invitation to share a budget (YNAB Together's "Invite Member"). The plugin requires the
- * table; everycent's own `/v1` routes manage it (the plugin's endpoints are blocked).
+ * An invitation to share a budget. The plugin requires the table; our own `/v1` routes manage it
+ * (the plugin's endpoints are blocked).
  */
 export const budgetInvitation = pgTable(
   "budget_invitation",
@@ -118,7 +115,7 @@ export const budgetInvitation = pgTable(
       .notNull()
       .references(() => budget.id, { onDelete: "cascade" }),
     email: text().notNull(),
-    /** The invitee's first name, as the owner typed it (YNAB's "To"). */
+    /** The invitee's first name, as the owner typed it. */
     name: text().notNull().default(""),
     role: text(),
     status: text({ enum: INVITATION_STATUSES }).notNull().default("pending"),
@@ -127,7 +124,7 @@ export const budgetInvitation = pgTable(
     /** A shared link gets no reminder email: the reminder's new link would replace it. */
     delivery: text({ enum: INVITATION_DELIVERIES }).notNull().default("email"),
     expiresAt: timestamp({ withTimezone: true }).notNull(),
-    /** When the expiry reminder went out (EVERYCENT-125); a resend clears it. */
+    /** When the expiry reminder went out; a resend clears it. */
     remindedAt: timestamp({ withTimezone: true }),
     inviterId: text()
       .notNull()
@@ -146,16 +143,16 @@ export const userPreference = pgTable("user_preference", {
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
   lastBudgetId: text().references(() => budget.id, { onDelete: "set null" }),
-  /** YNAB's "Open last used plan by default": off opens the budget list instead. */
+  /** Off opens the budget list instead. */
   openLastBudget: boolean().notNull().default(true),
-  /** YNAB's "Enable keyboard shortcuts" (undo/redo included). */
+  /** Covers undo/redo too. */
   keyboardShortcuts: boolean().notNull().default(true),
   /**
-   * The currency account totals and net worth are shown in, in every budget (EVERYCENT-57);
-   * null is each budget's own currency.
+   * The currency account totals and net worth are shown in, in every budget; null is each
+   * budget's own currency.
    */
   displayCurrency: char({ length: 3 }).$type<CurrencyCode>(),
-  /** The monthly summary email (EVERYCENT-241), for every budget the person is on. */
+  /** The monthly summary email, for every budget the person is on. */
   monthlySummaryEmail: boolean().notNull().default(true),
   /** The summary's AI overview, on budgets that have AI on. */
   monthlySummaryAi: boolean().notNull().default(true),

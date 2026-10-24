@@ -1,11 +1,11 @@
-import { suggestFormatSettings } from "@everycent/engine";
+import { suggestFormatSettings } from "@strictbudget/engine";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@everycent/ui/components/card";
+} from "@strictbudget/ui/components/card";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -16,8 +16,7 @@ import { $api } from "@/lib/api";
 import { apiErrorMessage, budgetsQueryOptions, invalidateBudgets } from "@/lib/budgets";
 
 export const Route = createFileRoute("/_authed/budgets/new")({
-  // A category template to start the budget from: YNAB opens the new plan with the template's
-  // import dialog (2026-10-16).
+  // A category template to start the budget from: the new budget opens with its import dialog.
   validateSearch: z.object({ template: z.string().optional().catch(undefined) }),
   component: NewBudgetPage,
 });

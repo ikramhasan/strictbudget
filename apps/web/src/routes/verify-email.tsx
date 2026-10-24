@@ -1,6 +1,6 @@
-import { Button } from "@everycent/ui/components/button";
-import { FieldError } from "@everycent/ui/components/field";
-import { Spinner } from "@everycent/ui/components/spinner";
+import { Button } from "@strictbudget/ui/components/button";
+import { FieldError } from "@strictbudget/ui/components/field";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -108,7 +108,7 @@ function ConfirmLink({ token, step }: { token: string; step: Step }) {
           {step === "confirm" ? (
             <Link to="/sign-in">Sign in</Link>
           ) : (
-            <Link to="/">Go to everycent</Link>
+            <Link to="/">Go to strictbudget</Link>
           )}
         </Button>
       </AuthCard>

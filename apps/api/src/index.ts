@@ -9,12 +9,14 @@ import { startTelemetry } from "./telemetry";
 if (process.env.NODE_ENV !== "production") loadRootEnv();
 
 const env = parseEnv();
-const telemetry = startTelemetry("everycent-api");
+const telemetry = startTelemetry("strictbudget-api");
 const runtime = await createRuntime(env, { worker: env.JOBS_MODE === "all" });
 const app = createApp(runtime.deps);
 
 const server = serve({ fetch: app.fetch, port: env.PORT }, (info) => {
-  log.info(`everycent API on http://localhost:${info.port} — docs at /docs`, { port: info.port });
+  log.info(`strictbudget API on http://localhost:${info.port} — docs at /docs`, {
+    port: info.port,
+  });
 });
 
 function shutdown(signal: string) {

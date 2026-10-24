@@ -46,9 +46,7 @@ const account = (
 });
 
 describe("percentLabel", () => {
-  it("writes YNAB's one-decimal percent of |base|", () => {
-    // YNAB, 2026-10-17: −$15,966.74 on −$306,687.00 is −5.2%; −$322,651.74 on −$2.00 is
-    // −16,132,587.0%.
+  it("writes a one-decimal percent of |base|", () => {
     expect(percentLabel(-1_596_674n, -30_668_700n)).toBe("-5.2%");
     expect(percentLabel(-32_265_174n, -200n)).toBe("-16,132,587.0%");
     expect(percentLabel(0n, -200n)).toBe("0.0%");
@@ -76,7 +74,7 @@ describe("monthRows and headline", () => {
     ]);
   });
 
-  it("takes YNAB's Change in Net Worth from the first month in the range", () => {
+  it("takes the Change in Net Worth from the first month in the range", () => {
     expect(headline(report)).toEqual({
       netWorth: -32_265_374n,
       assets: 1_343_800n,
@@ -163,7 +161,7 @@ describe("export", () => {
     ],
   };
 
-  it("writes YNAB's rows: accounts, then Net Worth", () => {
+  it("writes the rows: accounts, then Net Worth", () => {
     expect(exportRows(report, 2, "comma_dot")).toEqual([
       ["Account", "Sep 2026", "Oct 2026"],
       ["Visa", { raw: "-120.00" }, { raw: "0.00" }],

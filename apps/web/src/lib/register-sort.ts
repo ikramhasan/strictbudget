@@ -17,13 +17,13 @@ export interface SortField {
   dir: SortDir;
 }
 
-/** YNAB's default order: newest first (a day's largest outflow on top). */
+/** Newest first (a day's largest outflow on top). */
 export const DEFAULT_SORT: readonly SortField[] = [{ column: "date", dir: "desc" }];
 
 /**
- * YNAB's stacked sort (checked 2026-10-15): every column clicked is kept, most recent first, and
- * earlier ones break ties in their own direction. A column that isn't first moves to the front
- * descending; clicking the first one flips it.
+ * A stacked sort: every column clicked is kept, most recent first, and earlier ones break ties in
+ * their own direction. A column that isn't first moves to the front descending; clicking the first
+ * one flips it.
  */
 export function nextSort(stack: readonly SortField[], column: SortColumn): SortField[] {
   const [first] = stack;

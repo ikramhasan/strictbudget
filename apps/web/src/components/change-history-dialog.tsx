@@ -4,22 +4,18 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Spinner } from "@everycent/ui/components/spinner";
+} from "@strictbudget/ui/components/dialog";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { format as formatDay } from "date-fns";
 import { $api } from "@/lib/api";
 import { useBudget } from "@/lib/budget-context";
 import { ActivityList } from "./activity-list";
 
-/**
- * One transaction's history (EVERYCENT-89, an everycent extra): who entered it and each later
- * change, its split lines' included, oldest first. Opened from a row's actions menu.
- */
 export function ChangeHistoryDialog({
   transactionId,
   onOpenChange,
 }: {
-  /** The transaction shown; null keeps the dialog closed. */
+  /** Null keeps the dialog closed. */
   transactionId: string | null;
   onOpenChange: (open: boolean) => void;
 }) {

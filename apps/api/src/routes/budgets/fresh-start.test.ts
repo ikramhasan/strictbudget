@@ -1,5 +1,5 @@
-import { newId } from "@everycent/db";
-import { budgetMember } from "@everycent/db/schema";
+import { newId } from "@strictbudget/db";
+import { budgetMember } from "@strictbudget/db/schema";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   createBudget,
@@ -68,12 +68,10 @@ describe("fresh start", () => {
       await send("POST", `${base}/accounts/${checking.id}/close`, owner.cookie, { date: TODAY }),
     );
     expect(old.closed).toBe(true);
-    // Customise the categories so we can see they're copied rather than re-seeded.
     const groups = (
       await json<{ groups: Group[] }>(await send("GET", `${base}/categories`, owner.cookie))
     ).groups;
     const bills = groups.find((g) => g.name === "Bills");
-    // A loan keeps its paired category (YNAB, 2026-10-13: "L7 Loans FS").
     await addAccount({
       name: "Mortgage",
       type: "mortgage",
@@ -96,7 +94,6 @@ describe("fresh start", () => {
     const costco = await json<{ payeeId: string }>(spend);
     await send("PATCH", `${base}/payees/${costco.payeeId}`, owner.cookie, { hidden: true });
 
-    // A starred account stays starred (YNAB, "x-c11-151 FS" → "FS2", 2026-10-15).
     await send("PATCH", `${base}/accounts/${visa.id}`, owner.cookie, { starred: true });
 
     const res = await freshStart(budget.id, owner.cookie, "Household 2027");
@@ -112,14 +109,13 @@ describe("fresh start", () => {
     });
     expect(fresh.id).not.toBe(budget.id);
 
-    // The new budget is the one the owner lands on next.
     const list = await json<{ lastUsedBudgetId: string }>(
       await send("GET", "/v1/budgets", owner.cookie),
     );
     expect(list.lastUsedBudgetId).toBe(fresh.id);
 
     const archived = await json<Budget>(await send("GET", base, owner.cookie));
-    // YNAB stamps the ISO date whatever the date format ("x-c11-151 FS", 2026-10-15).
+    // The stamp uses the ISO date whatever the budget's date format.
     expect(archived.name).toBe("Household (Archived on 2026-10-01)");
     expect(archived.archivedAt).not.toBeNull();
 
@@ -127,7 +123,7 @@ describe("fresh start", () => {
     const accounts = (
       await json<{ accounts: Account[] }>(await send("GET", `${freshBase}/accounts`, owner.cookie))
     ).accounts;
-    // YNAB starts unlinked accounts at $0 for the user to update ("C4 Order FS", 2026-10-12).
+    // Accounts start at $0 for the user to update.
     expect(accounts.map((a) => [a.name, a.type, a.closed, a.balances.working])).toEqual([
       ["Checking", "checking", true, "0"],
       ["Visa", "credit_card", false, "0"],
@@ -143,8 +139,6 @@ describe("fresh start", () => {
     expect(visaTxns).toEqual([
       expect.objectContaining({ amount: "0", payeeName: "Starting Balance", date: TODAY }),
     ]);
-    // Payees come along, hidden ones still hidden ("C9 Payees FS", 2026-10-13), with their
-    // auto-categorization default (payees/categorization.test.ts) but no recent categories.
     const payees = await json<{ payees: unknown[] }>(
       await send("GET", `${freshBase}/payees`, owner.cookie),
     );
@@ -171,14 +165,12 @@ describe("fresh start", () => {
     expect(accounts.find((a) => a.name === "Mortgage")?.pairedCategoryId).toBe(newPaired?.id);
     const freshBills = freshGroups.find((g) => g.name === "Bills");
     expect(freshBills?.categories[0]).toMatchObject({ note: "Due on the 1st", hidden: true });
-    // The payment category follows the new card, not the archived one.
     const payment = freshGroups[0]?.categories[0];
     expect(payment).toMatchObject({ name: "Visa", linkedAccountId: newVisa?.id });
     expect(newVisa?.paymentCategoryId).toBe(payment?.id);
     expect(visa.id).not.toBe(newVisa?.id);
   });
 
-  // YNAB, 2026-10-12: "C4 Order" → "C4 Order FS" kept every schedule, and the old plan kept them.
   it("copies scheduled transactions onto the new accounts, categories and payees", async () => {
     const { owner, budget, base, addAccount } = await setup();
     const checking = await addAccount({ name: "Checking", type: "checking", balance: "250000" });
@@ -271,7 +263,6 @@ describe("fresh start", () => {
         }),
       ]),
     );
-    // The archived budget keeps its own.
     expect(await list(base)).toHaveLength(3);
   });
 
@@ -298,8 +289,7 @@ describe("fresh start", () => {
     expect((await freshStart(budget.id, partner.cookie)).status).toBe(403);
   });
 
-  // YNAB, 2026-10-15 (EVERYCENT-151): an archived plan is an ordinary plan with a stamp in its
-  // name. Its menu still offers a fresh start, and renaming the stamp away restores it.
+  // An archived budget is an ordinary budget with a stamp in its name.
   it("restores an archived budget by renaming it, and lets it start fresh again", async () => {
     const { owner, budget, base } = await setup();
     expect((await freshStart(budget.id, owner.cookie)).status).toBe(201);
@@ -361,7 +351,6 @@ describe("fresh start", () => {
     });
   });
 
-  // YNAB "C5 First FS", 2026-10-12: the copy of a weekly target begun that day asked the same.
   it("keeps a weekly target's start day in the same month", async () => {
     const { owner, budget, base } = await setup();
     const categories = async (b: string) =>

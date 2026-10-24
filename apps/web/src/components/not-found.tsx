@@ -1,11 +1,11 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Empty,
   EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-} from "@everycent/ui/components/empty";
+} from "@strictbudget/ui/components/empty";
 import { Link } from "@tanstack/react-router";
 import { PageTitle } from "./page-title";
 

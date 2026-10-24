@@ -8,7 +8,6 @@ import {
   outflowAges,
 } from "./age-of-money";
 
-/** Dollars as cents. */
 const usd = (dollars: number) => BigInt(Math.round(dollars * 100));
 const inflow = (date: string, dollars: number): MoneyFlow => ({ date, amount: usd(dollars) });
 const outflow = (date: string, dollars: number): MoneyFlow => ({ date, amount: -usd(dollars) });
@@ -16,12 +15,8 @@ const days = (from: string, count: number) =>
   Array.from({ length: count }, (_, i) => addDays(from, i));
 const ageOf = (flows: MoneyFlow[], asOf?: string) => ageOfMoneyAt(outflowAges(flows), asOf);
 
-/**
- * The crafted cases run on YNAB's test plan (EVERYCENT-81, 2026-10-17), with the value YNAB's
- * API reported for the month.
- */
-describe("ageOfMoney: YNAB's crafted cases", () => {
-  it("averages the last ten outflows plainly, not by amount, and floors (case 1: 16)", () => {
+describe("ageOfMoney: crafted cases", () => {
+  it("averages the last ten outflows plainly, not by amount, and floors (16)", () => {
     const flows = [
       inflow("2026-04-01", 205),
       inflow("2026-04-22", 85),
@@ -33,7 +28,7 @@ describe("ageOfMoney: YNAB's crafted cases", () => {
     expect(ageOf(flows)).toBe(16);
   });
 
-  it("keeps money's age across a transfer between cash accounts (case 2: 32)", () => {
+  it("keeps money's age across a transfer between cash accounts (32)", () => {
     expect(countedAmount([{ amount: -usd(100), transferFamily: "cash" }])).toBe(0n);
     const flows = [
       inflow("2026-02-01", 100),
@@ -46,7 +41,7 @@ describe("ageOfMoney: YNAB's crafted cases", () => {
     expect(ageOf(flows, "2026-04-30")).toBe(32);
   });
 
-  it("floors each outflow's age before averaging (case A: 26)", () => {
+  it("floors each outflow's age before averaging (26)", () => {
     const flows = [
       inflow("2026-03-20", 7),
       ...Array.from({ length: 9 }, (_, j) => inflow(addDays("2026-03-24", 4 * j), 10)),
@@ -58,7 +53,7 @@ describe("ageOfMoney: YNAB's crafted cases", () => {
     expect(ageOf(flows)).toBe(26); // unfloored ages would give 27
   });
 
-  /** Case A, then June–August with the plan's own $100 loan transfer (06-15) and $3 (08-15). */
+  /** The case above, then June–August with a $100 loan transfer (06-15) and $3 (08-15). */
   const caseA = [
     inflow("2026-03-20", 7),
     ...Array.from({ length: 9 }, (_, j) => inflow(addDays("2026-03-24", 4 * j), 10)),
@@ -97,7 +92,7 @@ describe("ageOfMoney: YNAB's crafted cases", () => {
   });
 });
 
-describe("ageOfMoney: the test plan's shape (YNAB: 14 days)", () => {
+describe("ageOfMoney: a realistic budget's shape (14 days)", () => {
   it("counts a starting balance and card payments; 14", () => {
     const flows = [
       inflow("2026-10-02", 12000), // starting balance
@@ -121,11 +116,11 @@ describe("countedAmount", () => {
     expect(countedAmount([{ amount: -usd(5) }])).toBe(-usd(5));
     expect(countedAmount([{ amount: usd(5) }])).toBe(usd(5));
     expect(countedAmount([{ amount: usd(500), startingBalance: true }])).toBe(usd(500));
-    // A card payment is an outflow; money coming back from a card isn't settled (EVERYCENT-203).
+    // A card payment is an outflow; money coming back from a card is ignored.
     expect(countedAmount([{ amount: -usd(40), transferFamily: "credit" }])).toBe(-usd(40));
     expect(countedAmount([{ amount: usd(40), transferFamily: "credit" }])).toBe(0n);
     expect(countedAmount([{ amount: -usd(40), transferFamily: "loan" }])).toBe(-usd(40));
-    // Not settled either: a negative starting balance.
+    // So is a negative starting balance.
     expect(countedAmount([{ amount: -usd(500), startingBalance: true }])).toBe(0n);
   });
 

@@ -3,8 +3,8 @@ import { apiKey } from "@better-auth/api-key";
 import { cimd } from "@better-auth/cimd";
 import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { mcp } from "@better-auth/mcp";
-import { type Database, newId, sql } from "@everycent/db";
-import * as schema from "@everycent/db/schema";
+import { type Database, newId, sql } from "@strictbudget/db";
+import * as schema from "@strictbudget/db/schema";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
@@ -124,11 +124,10 @@ export function createAuth(
     }
   };
 
-  // Runs API operations for agents; createApp attaches the app to it.
   const agentRuntime = new AgentRuntime();
 
   const auth = betterAuth({
-    appName: "everycent",
+    appName: "strictbudget",
     baseURL: env.BETTER_AUTH_URL,
     basePath: "/api/auth",
     secret: env.BETTER_AUTH_SECRET,
@@ -187,8 +186,8 @@ export function createAuth(
       },
     },
     // `user.image` is ours: the profile picture's API path, set by PUT /v1/me/picture through the
-    // database (EVERYCENT-229). Better Auth's sign-up and update-user would take any string, which
-    // the user's own browser then loads, so they can't set it.
+    // database. Better Auth's sign-up and update-user would take any string, which the user's own
+    // browser then loads, so they can't set it.
     databaseHooks: {
       user: {
         // Without email, an address can't be confirmed, so it starts confirmed.
@@ -313,15 +312,15 @@ export function createAuth(
       // Refuses passwords found in known breaches (sign-up, change, reset). Only the first five
       // characters of the password's SHA-1 leave the server. Off in tests: it calls the network.
       haveIBeenPwned({ enabled: env.NODE_ENV !== "test" }),
-      // YNAB's Two-Step Verification: an authenticator app plus one emergency backup code. No
-      // "remember this device" (YNAB has none). Turning it off goes through /v1/me/two-factor,
-      // which asks for a code as YNAB does, instead of the plugin's password-based endpoint.
+      // An authenticator app plus one emergency backup code, no "remember this device". Turning it
+      // off goes through /v1/me/two-factor, which asks for a code, instead of the plugin's
+      // password-based endpoint.
       twoFactor({
-        issuer: "everycent",
+        issuer: "strictbudget",
         backupCodeOptions: { amount: 1, length: 10 },
         schema: { twoFactor: { modelName: "twoFactor" } },
       }),
-      // Personal API keys (EVERYCENT-230, `lib/api-keys.ts`). Its HTTP endpoints are blocked in
+      // Personal API keys (`lib/api-keys.ts`). Its HTTP endpoints are blocked in
       // app.ts: keys are managed through /v1/me/api-keys and checked by `requireAuth`. Keys never
       // become sessions (`enableSessionForAPIKeys` stays off), so they can't reach /api/auth/*.
       apiKey({

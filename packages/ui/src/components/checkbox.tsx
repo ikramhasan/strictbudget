@@ -1,12 +1,12 @@
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { CheckIcon } from "lucide-react";
 import { Checkbox as CheckboxPrimitive } from "radix-ui";
 import * as React from "react";
 
 function Checkbox({ className, ...props }: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
-  // everycent: Radix marks state with data-state, not the data-checked attribute these classes
-  // were written for, so the checked variants use data-[state=checked] (EVERYCENT-123). The
-  // indeterminate state gets the same fill and a dash.
+  // strictbudget: Radix marks state with data-state, not the data-checked attribute these classes
+  // were written for, so the checked variants use data-[state=checked]. The indeterminate state
+  // gets the same fill and a dash.
   return (
     <CheckboxPrimitive.Root
       data-slot="checkbox"

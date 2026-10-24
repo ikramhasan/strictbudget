@@ -27,7 +27,7 @@ function send(method: string, path: string, cookie: string, body?: unknown) {
 }
 const json = async <T>(res: Response) => (await res.json()) as T;
 
-/** YNAB's "G7 Loan" (2026-10-13): $10,000 at 6%, $200 a month, paired with "G7 Loan Pay". */
+/** A $10,000 loan at 6%, $200 a month, paired with a category. */
 async function setup() {
   const { cookie } = await signUp(app);
   const budget = await createBudget(app, cookie);
@@ -88,7 +88,7 @@ async function setup() {
   return { pay, other, setTarget, assign, row, payLoan, pairLoan, target };
 }
 
-describe("Monthly Debt Payment targets (YNAB, 2026-10-13, G7 Loan Pay)", () => {
+describe("Monthly Debt Payment targets", () => {
   it("asks the amount each month like set aside, whatever was paid", async () => {
     const { pay, setTarget, assign, row, payLoan } = await setup();
     const res = await setTarget(pay.id, { cadence: "debt_monthly", amount: "30000", dueDay: null });
@@ -134,7 +134,7 @@ describe("Monthly Debt Payment targets (YNAB, 2026-10-13, G7 Loan Pay)", () => {
     expect((await json<ErrorBody>(monthlyOnPaired)).error.code).toBe("MANAGED_CATEGORY");
   });
 
-  it("follows YNAB when the loan is unpaired, re-paired or paired elsewhere (2026-10-14)", async () => {
+  it("handles the loan being unpaired, re-paired or paired elsewhere", async () => {
     const { pay, other, setTarget, row, pairLoan, target } = await setup();
     await setTarget(pay.id, { cadence: "debt_monthly", amount: "4000", dueDay: null });
 

@@ -1,4 +1,4 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -6,20 +6,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Label } from "@everycent/ui/components/label";
-import { RadioGroup, RadioGroupItem } from "@everycent/ui/components/radio-group";
-import { type Theme, useTheme } from "@everycent/ui/lib/theme";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dialog";
+import { Label } from "@strictbudget/ui/components/label";
+import { RadioGroup, RadioGroupItem } from "@strictbudget/ui/components/radio-group";
+import { type Theme, useTheme } from "@strictbudget/ui/lib/theme";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useDifferentiateWithoutColor, useProgressBarsSetting } from "@/lib/display-options";
 import { PILL, STRONG_PILL } from "./move-money";
 
-/**
- * YNAB's Display Options (plan menu, seen 2026-10-18): Theme, Progress Bars and Balance Style as
- * picture cards with a radio each, applied together with Apply. The choices are kept in this
- * browser, as YNAB keeps them.
- */
+/** The choices are kept in this browser, not on the account. */
 export function DisplayOptionsDialog({
   open,
   onOpenChange,
@@ -145,7 +141,6 @@ function Section({
   );
 }
 
-/** A tiny budget screen in each theme; Match System is split corner to corner. */
 function ThemePreview({ kind }: { kind: "light" | "dark" | "system" }) {
   const screen = (dark: boolean) => (
     <span className={cn("flex size-full gap-1 p-1.5", dark ? "bg-neutral-900" : "bg-white")}>
@@ -195,7 +190,6 @@ function BarsPreview({ bars }: { bars: boolean }) {
   );
 }
 
-/** YNAB's sample: −$10.00 overspent, $10.00 cautious, $10.00 funded. */
 function PillsPreview({ strong }: { strong: boolean }) {
   const pill = "rounded-full px-2 py-0.5 font-medium text-xs";
   return (

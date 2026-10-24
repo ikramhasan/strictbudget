@@ -7,17 +7,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Button } from "@everycent/ui/components/button";
-import { Calendar } from "@everycent/ui/components/calendar";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Button } from "@strictbudget/ui/components/button";
+import { Calendar } from "@strictbudget/ui/components/calendar";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@everycent/ui/components/card";
-import { Checkbox } from "@everycent/ui/components/checkbox";
+} from "@strictbudget/ui/components/card";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +25,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
+} from "@strictbudget/ui/components/dialog";
 import {
   Field,
   FieldDescription,
@@ -33,8 +33,8 @@ import {
   FieldLabel,
   FieldLegend,
   FieldSet,
-} from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
+} from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
 import {
   Item,
   ItemActions,
@@ -43,11 +43,11 @@ import {
   ItemGroup,
   ItemMedia,
   ItemTitle,
-} from "@everycent/ui/components/item";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { RadioGroup, RadioGroupItem } from "@everycent/ui/components/radio-group";
-import { Spinner } from "@everycent/ui/components/spinner";
+} from "@strictbudget/ui/components/item";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { RadioGroup, RadioGroupItem } from "@strictbudget/ui/components/radio-group";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, ExternalLink, KeyRound } from "lucide-react";
 import { type FormEvent, useId, useState } from "react";
@@ -55,7 +55,6 @@ import { toast } from "sonner";
 import { $api, apiBaseUrl } from "@/lib/api";
 import { apiErrorMessage, budgetsQueryOptions } from "@/lib/budgets";
 
-/** Where the API reference (Scalar) lives. */
 const DOCS_URL = `${apiBaseUrl}/docs`;
 /** The longest custom lifetime the API accepts (`API_KEY_MAX_DAYS`). */
 const MAX_DAYS = 5 * 365;
@@ -76,7 +75,7 @@ type ApiKey = {
 };
 
 /**
- * Personal API keys (EVERYCENT-230): keys for the user's own scripts and tools, scoped to read-only
+ * Personal API keys: keys for the user's own scripts and tools, scoped to read-only
  * or read & write and to every budget or some, with an expiry. A key is shown once, on creation.
  */
 export function ApiKeysCard() {
@@ -113,8 +112,8 @@ export function ApiKeysCard() {
       <CardHeader>
         <CardTitle>API Keys</CardTitle>
         <CardDescription>
-          Let your own scripts and tools use your budgets through the everycent API. Each key works
-          like your account, limited to what you choose.{" "}
+          Let your own scripts and tools use your budgets through the strictbudget API. Each key
+          works like your account, limited to what you choose.{" "}
           <a
             href={DOCS_URL}
             target="_blank"

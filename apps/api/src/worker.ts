@@ -10,9 +10,9 @@ import { startTelemetry } from "./telemetry";
  */
 if (process.env.NODE_ENV !== "production") loadRootEnv();
 
-const telemetry = startTelemetry("everycent-worker");
+const telemetry = startTelemetry("strictbudget-worker");
 const runtime = await createRuntime(parseEnv(), { worker: true });
-log.info("everycent worker running");
+log.info("strictbudget worker running");
 
 async function shutdown(signal: string) {
   log.info("Shutting down", { signal });

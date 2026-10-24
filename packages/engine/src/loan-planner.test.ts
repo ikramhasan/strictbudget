@@ -14,7 +14,7 @@ import {
 const project = (owed: bigint, rate: string | null, payment: bigint) =>
   payoffProjection({ owed, rate, payment, exponent: 2 });
 
-describe("payoffProjection (YNAB, 2026-10-13, G7 Loan)", () => {
+describe("payoffProjection", () => {
   it.each([
     // $10,000.00 at 6%: the minimum, the simulator's payments, and a payment a cent above interest
     [1_000_000n, 20_000n, 58, 153_603n], // Aug 2031, "4 yrs, 10 mos", $1,536.03
@@ -51,7 +51,7 @@ describe("payoffProjection (YNAB, 2026-10-13, G7 Loan)", () => {
     expect(project(0n, "6", 20_000n)).toEqual({ months: 0, interest: 0n });
   });
 
-  it("projects a mortgage's payment without escrow (L7 Mortgage: 16 yrs, 6 mos)", () => {
+  it("projects a mortgage's payment without escrow (16 yrs, 6 mos)", () => {
     expect(effectivePayment(90_000n, 15_000n)).toBe(75_000n);
     expect(effectivePayment(90_000n, null)).toBe(90_000n);
     expect(effectivePayment(null, 15_000n)).toBeNull();
@@ -60,9 +60,9 @@ describe("payoffProjection (YNAB, 2026-10-13, G7 Loan)", () => {
 });
 
 describe("paymentForMonths", () => {
-  it("rounds the annuity payment up (YNAB: Dec 2027 → $741.37)", () => {
+  it("rounds the annuity payment up (Dec 2027 → $741.37)", () => {
     expect(paymentForMonths({ owed: 1_000_000n, rate: "6", months: 14 })).toBe(74_137n);
-    // Exactly $10,050.00 for one payment; YNAB's floats showed $10,050.01.
+    // Exactly $10,050.00 for one payment, not $10,050.01 from float noise.
     expect(paymentForMonths({ owed: 1_000_000n, rate: "6", months: 1 })).toBe(1_005_000n);
   });
 
@@ -81,8 +81,8 @@ describe("paymentForMonths", () => {
 });
 
 describe("payoffSchedule", () => {
-  // YNAB's Current Track for $10,000.00 at 6% paying $200.00, from December 1 (in cents).
-  const ynab = [
+  // The Current Track for $10,000.00 at 6% paying $200.00, from December 1 (in cents).
+  const expected = [
     985000, 969925, 954775, 939549, 924247, 908868, 893412, 877879, 862268, 846579, 830812, 814966,
     799041, 783036, 766951, 750786, 734540, 718213, 701804, 685313, 668740, 652084, 635344, 618521,
     601614, 584622, 567545, 550383, 533135, 515801, 498380, 480872, 463276, 445592, 427820, 409959,
@@ -90,9 +90,9 @@ describe("payoffSchedule", () => {
     169478, 150325, 131077, 111732, 92291, 72753, 53117, 33383, 13550, 0,
   ].map(BigInt);
 
-  it("matches YNAB's chart to the cent (interest rounded twice)", () => {
+  it("matches the expected chart to the cent (interest rounded twice)", () => {
     expect(payoffSchedule({ owed: 1_000_000n, rate: "6", payment: 20_000n, exponent: 2 })).toEqual(
-      ynab,
+      expected,
     );
   });
 
@@ -117,7 +117,7 @@ describe("plannedPayoff", () => {
   });
 
   it("pays this month's payment and interest with an extra before any payment", () => {
-    // YNAB: $1,000.00 extra in October → Jan 2031, interest $1,227.59.
+    // $1,000.00 extra in October → Jan 2031, interest $1,227.59.
     expect(plannedPayoff({ ...base, owed: 1_000_000n, extra: 100_000n })).toEqual({
       months: 51,
       interest: 122_759n,
@@ -127,7 +127,7 @@ describe("plannedPayoff", () => {
   });
 
   it("only takes the extra off after a payment this month", () => {
-    // YNAB: $9,850.00 after October's $200.00, $1,000.00 extra → Jan 2031, $1,177.59.
+    // $9,850.00 after October's $200.00, $1,000.00 extra → Jan 2031, $1,177.59.
     expect(
       plannedPayoff({ ...base, owed: 985_000n, extra: 100_000n, paidThisMonth: true }),
     ).toEqual({
@@ -148,7 +148,7 @@ describe("plannedPayoff", () => {
   });
 });
 
-describe("loanProgress and paidOffSavings (YNAB, 2026-10-13, G7 Off)", () => {
+describe("loanProgress and paidOffSavings", () => {
   // $100.00 at 12% from July 1 with a $20.00 minimum; $101.00 paid in `paidIn`.
   const history = (paidIn: string): LoanHistoryMonth[] =>
     ["2026-07", "2026-08", "2026-09", "2026-10"].map((month, index) => {
@@ -282,7 +282,7 @@ describe("loanProgress originalFrom", () => {
     ).toEqual([10_000n, 10_000n, 8_100n]);
   });
 
-  it("uses the most owed when the starting balance is $0 (YNAB: 98.1% of $2,074.97)", () => {
+  it("uses the most owed when the starting balance is $0 (98.1% of $2,074.97)", () => {
     const history: LoanHistoryMonth[] = [
       {
         month: "2026-09",

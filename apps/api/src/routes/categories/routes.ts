@@ -1,4 +1,5 @@
-import { CATEGORY_GROUP_KINDS } from "@everycent/db/schema";
+import { createRoute, z } from "@hono/zod-openapi";
+import { CATEGORY_GROUP_KINDS } from "@strictbudget/db/schema";
 import {
   BUDGET_MONTH_PATTERN,
   TARGET_REPEAT_UNITS,
@@ -6,8 +7,7 @@ import {
   zMinorUnits,
   zTargetBehavior,
   zTargetCadence,
-} from "@everycent/engine";
-import { createRoute, z } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { jsonError } from "../../lib/errors";
 import { serverToday } from "../../lib/ledger";
 import { authSecurity, requireAuth } from "../../middleware/require-auth";
@@ -33,7 +33,7 @@ const TargetSchema = z
   .object({
     cadence: zTargetCadence,
     behavior: zTargetBehavior.describe(
-      "set_aside: the full amount each period (YNAB's 'Set aside another'); refill: only what " +
+      "set_aside: the full amount each period ('Set aside another'); refill: only what " +
         "brings the category back up to the amount ('Refill up to', custom 'Fill up to'); balance: " +
         "reach the amount, by a month or eventually ('Have a balance of', custom only). Payment " +
         "targets: set_aside for payment_monthly and debt_monthly, balance for payoff_by_date",
@@ -124,8 +124,7 @@ const SetTargetSchema = z
           "Every 1–11 months or 1–2 years; null for one-time. Balance targets can't repeat",
         ),
     }),
-    // Credit card payment categories take only these two (YNAB's "Pay Specific Amount Monthly"
-    // and "Pay Off Balance by Date"); other categories can't take them.
+    // Credit card payment categories take only these two; other categories can't take them.
     z.object({
       cadence: z.literal("payment_monthly"),
       amount: Amount,
@@ -134,7 +133,7 @@ const SetTargetSchema = z
       cadence: z.literal("payoff_by_date"),
       dueMonth: zMonth.describe("Pay off the card's balance by the end of this month"),
     }),
-    // A category paired with a loan takes only this (YNAB's "Monthly Debt Payment").
+    // A category paired with a loan takes only this.
     z.object({
       cadence: z.literal("debt_monthly"),
       amount: Amount,
@@ -160,7 +159,7 @@ const SetTargetSchema = z
     }),
   )
   .superRefine((v, ctx) => {
-    // YNAB drops a pay-off target saved with a month before today's (YNAB findings).
+    // A pay-off target can't be saved with a month before today's.
     if (v.cadence === "payoff_by_date" && v.dueMonth < (v.today ?? serverToday()).slice(0, 7)) {
       ctx.addIssue({ code: "custom", path: ["dueMonth"], message: "Choose this month or later" });
     }
@@ -208,7 +207,7 @@ export const CategoryGroupSchema = z
     kind: z
       .enum(CATEGORY_GROUP_KINDS)
       .nullable()
-      .describe("credit_card_payments: managed by YNAB rules, listed first"),
+      .describe("credit_card_payments: managed by the app, listed first"),
     categories: z.array(CategorySchema).describe("In display order, hidden ones included"),
   })
   .openapi("CategoryGroup");
@@ -519,7 +518,7 @@ export const setCategoryTarget = createRoute({
     "unchanged from an earlier month moves the start back. Credit card payment categories take " +
     "only payment_monthly and " +
     "payoff_by_date targets, and only they take them; a category paired with a loan takes only " +
-    "debt_monthly (YNAB's Monthly Debt Payment), and only it does.",
+    "debt_monthly (Monthly Debt Payment), and only it does.",
   request: {
     params: CategoryParams,
     body: json(SetTargetSchema),
@@ -602,7 +601,7 @@ export const snoozeCategoryTarget = createRoute({
   description:
     "A snoozed target asks for nothing more in the month it's snoozed for; the next month it asks " +
     "again. Only the user's current month can be snoozed, and never a credit card payment " +
-    "target (YNAB).",
+    "target.",
   request: {
     params: CategoryParams,
     body: json(

@@ -1,13 +1,13 @@
-import type { Database } from "@everycent/db";
+import type { Database } from "@strictbudget/db";
 import type { AnyTextAdapter } from "@tanstack/ai";
 import type { Env } from "./env";
 import type { Auth } from "./lib/auth";
 import type { ChangeBus } from "./lib/change-bus";
 import type { EmailSender } from "./lib/email/sender";
+import type { ExternalClient } from "./lib/external-import/client";
 import type { FxProvider } from "./lib/fx/providers";
 import type { Jobs } from "./lib/jobs";
 import type { ObjectStorage } from "./lib/storage";
-import type { YnabClient } from "./lib/ynab/client";
 
 /** Everything a request handler may need. Injected once in createApp; read via c.var.deps. */
 export interface AppDeps {
@@ -21,7 +21,6 @@ export interface AppDeps {
    * Null when the server sends no email (`createEmailSender`).
    */
   email: EmailSender | null;
-  /** Background jobs (pg-boss). */
   jobs: Jobs;
   /** Exchange-rate providers, tried in order (tests use an in-memory fake). */
   fxProviders: FxProvider[];
@@ -32,8 +31,8 @@ export interface AppDeps {
    * transactions; null leaves it unbounded. Defaults to the real UTC date (tests set their own).
    */
   serverDate?: () => string | null;
-  /** Reads plans from YNAB's API for the importer; tests pass one over a fake `fetch`. */
-  ynab?: YnabClient;
+  /** The importer's client for the source app's API; tests pass one over a fake `fetch`. */
+  externalPlans?: ExternalClient;
   /**
    * The model behind the in-app AI assistant. Unset, it's Claude through the Anthropic adapter
    * (`AI_API_KEY`, `AI_MODEL`); tests pass TanStack AI's scripted `fakeText()`.
@@ -44,7 +43,6 @@ export interface AppDeps {
 export type AppEnv = {
   Variables: {
     deps: AppDeps;
-    /** Set by hono/request-id for every request. */
     requestId: string;
   };
 };

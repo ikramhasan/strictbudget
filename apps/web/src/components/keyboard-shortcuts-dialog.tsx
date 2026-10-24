@@ -1,4 +1,4 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogClose,
@@ -7,8 +7,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Kbd, KbdGroup } from "@everycent/ui/components/kbd";
+} from "@strictbudget/ui/components/dialog";
+import { Kbd, KbdGroup } from "@strictbudget/ui/components/kbd";
 import { capLabel, SHORTCUT_SECTIONS, SHORTCUTS, type ShortcutDef } from "@/lib/shortcuts";
 
 const BY_SECTION = SHORTCUT_SECTIONS.map((section) => ({
@@ -16,10 +16,6 @@ const BY_SECTION = SHORTCUT_SECTIONS.map((section) => ({
   shortcuts: (Object.values(SHORTCUTS) as ShortcutDef[]).filter((s) => s.section === section),
 }));
 
-/**
- * YNAB's Keyboard Shortcuts dialog ("?"): its four sections in two columns, each row a label and
- * its keys, closed with OK (seen 2026-10-18).
- */
 export function KeyboardShortcutsDialog({
   open,
   onOpenChange,
@@ -49,7 +45,6 @@ export function KeyboardShortcutsDialog({
                 <h3 id={`shortcuts-${section}`} className="mb-2 font-semibold text-base">
                   {section}
                 </h3>
-                {/* Column by column, as YNAB fills its two. */}
                 <dl className="gap-x-6 md:columns-2">
                   {shortcuts.map((shortcut) => (
                     <div

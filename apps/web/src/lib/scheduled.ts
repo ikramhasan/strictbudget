@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import { addMonths, format, parseISO } from "date-fns";
 import type { MoneySettings } from "./money-input";
 import { toMoneyInput } from "./money-input";
@@ -8,20 +8,18 @@ export type ScheduledTransaction = components["schemas"]["ScheduledTransaction"]
 type CreateBody = components["schemas"]["CreateScheduledTransaction"];
 type UpdateBody = components["schemas"]["UpdateScheduledTransaction"];
 
-/** Prefix of every Scheduled Transactions query (any budget, account or filter). */
 export const scheduledQueryPrefix = ["scheduled"] as const;
 
 type Result<T> = { ok: true; body: T } | { ok: false; error: string };
 
-/** A draft is saved as a schedule when it repeats or its date is still ahead (YNAB). */
+/** A draft is saved as a schedule when it repeats or its date is still ahead. */
 export function isScheduled(draft: Pick<Draft, "date" | "frequency">, today: string) {
   return (draft.frequency ?? "never") !== "never" || draft.date > today;
 }
 
 /**
- * The selected scheduled splits, for bulk Categorize's un-split warning (YNAB counts them with
- * the transactions, 2026-10-15). A split's other sides (`splitTransfer` rows) aren't the split:
- * bulk actions skip them.
+ * The selected scheduled splits, for bulk Categorize's un-split warning. A split's other sides
+ * (`splitTransfer` rows) aren't the split: bulk actions skip them.
  */
 export function scheduledSplits(rows: readonly ScheduledTransaction[]) {
   const splits = rows.filter((row) => row.kind === "schedule" && row.subtransactions.length > 0);
@@ -76,7 +74,7 @@ export function scheduleCreateBody(
 ): Result<CreateBody> {
   const result = createBody(draft, settings);
   if (!result.ok) return result;
-  // Scheduled transfers stay in one currency, without a fee (EVERYCENT-55).
+  // Scheduled transfers stay in one currency, without a fee.
   if (result.body.fee) return { ok: false, error: "A scheduled transfer can't have a fee." };
   const { cleared: _, subtransactions, transferAmount: _t, fee: _f, ...body } = result.body;
   return {
@@ -160,12 +158,12 @@ export function scheduleRestoreBody(row: ScheduledTransaction): CreateBody {
           categoryId: null,
         }
       : { categoryId: row.categoryId }),
-    // An undo puts it back even if its accounts were closed since, as YNAB's Undo does.
+    // An undo puts it back even if its accounts were closed since.
     restore: true,
   };
 }
 
-/** A plain transaction rescheduled to `draft` (its date moved into the future), as YNAB does. */
+/** A plain transaction rescheduled to `draft` (its date moved into the future). */
 export function rescheduleBody(
   t: Transaction,
   draft: Draft,
@@ -178,8 +176,8 @@ export function rescheduleBody(
 }
 
 /**
- * YNAB's Make Repeating: a new scheduled row prefilled from `t`, a month after its date (the
- * last day of a shorter month), repeating monthly. The transaction itself stays as it is.
+ * Make Repeating: a new scheduled row prefilled from `t`, a month after its date (the last day of a
+ * shorter month), repeating monthly. The transaction itself stays as it is.
  */
 export function makeRepeatingDraft(t: Transaction, settings: MoneySettings): Draft {
   const draft = draftFrom(t, settings);

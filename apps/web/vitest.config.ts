@@ -25,7 +25,7 @@ export default mergeConfig(
       setupFiles: ["./src/test/setup.ts"],
       // Under a full parallel run (pnpm check) a test that renders a long list (the currency
       // picker's ~160 options) and types into it can pass 5 s; one that times out keeps typing
-      // into the next test's form. Same allowance as the API tests (EVERYCENT-116, EVERYCENT-223).
+      // into the next test's form. Same allowance as the API tests.
       testTimeout: 15_000,
       restoreMocks: true,
       unstubEnvs: true,

@@ -11,7 +11,7 @@ import {
   type TrendCell,
   type TrendMonth,
   topSpenders,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { z } from "zod";
 import type { CategoryList } from "./categories";
 import { COLOR_LABEL } from "./flags";
@@ -25,8 +25,8 @@ import {
 } from "./reports";
 
 /**
- * How Spending Trends draws its months: YNAB's stacked bars (parity), and everycent's lines per
- * category (top N + Other), 100% share, small multiples and a calendar of daily spending.
+ * How Spending Trends draws its months: stacked bars, lines per category (top N + Other), 100%
+ * share, small multiples and a calendar of daily spending.
  */
 export const TREND_MODES = ["bars", "lines", "share", "multiples", "calendar"] as const;
 export type TrendMode = (typeof TREND_MODES)[number];
@@ -39,10 +39,9 @@ export const TREND_MODE_LABELS: Record<TrendMode, string> = {
   calendar: "Calendar",
 };
 
-/** What the series are: categories (YNAB's bars) or category groups (an everycent extra). */
+/** What the series are: categories or category groups. */
 export type TrendLevel = "category" | "group";
 
-/** Spending Trends' URL: the shared report filters plus its mode, level and drilled-into group. */
 export const trendsSearchSchema = reportSearchSchema.extend({
   mode: z.enum(TREND_MODES).optional().catch(undefined),
   by: z.enum(["category", "group"]).optional().catch(undefined),
@@ -80,8 +79,7 @@ export function catalogOf(list: CategoryList): Catalog {
   const colors = planColors(list);
   const categories = new Map<string, SeriesInfo>();
   const groups = new Map<string, SeriesInfo>();
-  // Uncategorized first, as the category filter lists it (YNAB keeps it where its internal group
-  // sits in the plan, which everycent doesn't show).
+  // Uncategorized first, as the category filter lists it.
   categories.set(list.uncategorizedCategoryId, {
     key: list.uncategorizedCategoryId,
     label: UNCATEGORIZED_LABEL,
@@ -217,19 +215,16 @@ export function withOther(
   return { keys: other ? [...top, OTHER_KEY] : top, months: folded };
 }
 
-/** The bar chart's months (YNAB draws only months with transactions, 2026-10-17). */
+/** The bar chart's months: only months with transactions. */
 export const chartedMonths = (months: readonly TrendMonth<string>[]) =>
   months.filter((m) => m.nets.size > 0);
 
-// ── Export ──────────────────────────────────────────────────────────────────────────────────
-
-/** "everycent-reflect-spending-trends-2026-10-17" (YNAB: "ynab-reflect-spending-trends-…"). */
-export const exportBaseName = (today: string) => `everycent-reflect-spending-trends-${today}`;
+export const exportBaseName = (today: string) => `strictbudget-reflect-spending-trends-${today}`;
 
 /**
- * The summary export (YNAB, 2026-10-17): one row per category with lines in the range, in plan
- * order, Uncategorized as ("", "Uncategorized"); a column per month (each net, signed), the
- * average month and the total. No total row.
+ * The summary export: one row per category with lines in the range, in budget order, Uncategorized
+ * as ("", "Uncategorized"); a column per month (each net, signed), the average month and the total.
+ * No total row.
  */
 export function summaryExportRows({
   rows,
@@ -284,10 +279,7 @@ const CLEARED_LABELS: Record<ReportTransaction["cleared"], string> = {
   reconciled: "Reconciled",
 };
 
-/**
- * An export amount as YNAB writes it (2026-10-17): the budget's symbol and decimal mark, no
- * digit grouping ("$1234.56"), unsigned.
- */
+/** An export amount: the budget's symbol and decimal mark, no digit grouping ("$1234.56"), unsigned. */
 export function exportMoney(
   amount: bigint,
   currency: CurrencyCode,
@@ -301,8 +293,8 @@ export function exportMoney(
 }
 
 /**
- * The transactions export (YNAB, 2026-10-17): newest first; Uncategorized lines have the three
- * category columns empty; amounts as Outflow/Inflow with the currency symbol, unquoted.
+ * The transactions export: newest first; Uncategorized lines have the three category columns empty;
+ * amounts as Outflow/Inflow with the currency symbol, unquoted.
  */
 export function transactionExportRows({
   transactions,
@@ -353,13 +345,10 @@ export function transactionExportRows({
   ];
 }
 
-// ── Calendar ────────────────────────────────────────────────────────────────────────────────
-
 export interface CalendarDay {
   date: string;
   /** Spending that day, positive (net of refunds; negative when refunds beat it). */
   total: bigint;
-  /** Lines that day. */
   count: number;
   /** Past the user's today (nothing can count yet). */
   future: boolean;

@@ -1,6 +1,6 @@
-import { type BudgetMonth, monthBounds, NUMBER_FORMAT_SPECS } from "@everycent/engine";
-import { type ChartConfig, ChartContainer } from "@everycent/ui/components/chart";
-import { cn } from "@everycent/ui/lib/utils";
+import { type BudgetMonth, monthBounds, NUMBER_FORMAT_SPECS } from "@strictbudget/engine";
+import { type ChartConfig, ChartContainer } from "@strictbudget/ui/components/chart";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { format as formatDateFns } from "date-fns";
 import {
   Area,
@@ -19,9 +19,8 @@ import { chartMonths, plotValue, type Track, trackAt } from "@/lib/loan-planner"
 export type LoanSeries = "past" | "original" | "minimum" | "current" | "simulation";
 
 /**
- * YNAB's lines (2026-10-13): Past Balance solid, the projections dashed; Original Payment Schedule
- * grey, Minimum Payment light, Current Track (or Simulation) strong. A target below the minimum
- * draws Current Track yellow; a paid-off loan's Past Balance is green and filled.
+ * A target below the minimum draws Current Track yellow; a paid-off loan's Past Balance is green
+ * and filled.
  */
 export const SERIES_LABELS: Record<LoanSeries, string> = {
   past: "Past Balance",
@@ -54,10 +53,7 @@ const config = {
 const tickLabel = (month: BudgetMonth, years: boolean) =>
   formatDateFns(isoToDate(monthBounds(month).start), years ? "yyyy" : "MMM ''yy");
 
-/**
- * The months labelled on the x axis: every month for a year or less, the first month and each
- * July up to ten years (YNAB: "Oct '26 | Jul '27 | Jul '28 …"), then years.
- */
+/** Every month for a year or less, the first month and each July up to ten years, then years. */
 function ticksFor(months: readonly BudgetMonth[]) {
   if (months.length <= 13) return { ticks: [...months], years: false };
   if (months.length <= 121) {
@@ -91,7 +87,7 @@ export function LoanChart({
   /** Draw Current Track (or Simulation) yellow: a target below the minimum. */
   warning?: boolean;
   className?: string;
-  /** Clicking a Past Balance point moves the original schedule's start (YNAB's tooltip). */
+  /** Clicking a Past Balance point moves the original schedule's start. */
   onPickPast?: (month: BudgetMonth) => void;
 }) {
   const { budget, formatAmount } = useBudget();
@@ -219,7 +215,6 @@ export function LoanChart({
   );
 }
 
-/** The chart's legend, with YNAB's ⓘ hints. */
 export function LoanChartLegend({
   series,
   paidOff = false,

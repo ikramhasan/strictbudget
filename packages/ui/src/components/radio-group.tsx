@@ -1,4 +1,4 @@
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import * as React from "react";
 
@@ -19,9 +19,8 @@ function RadioGroupItem({
   className,
   ...props
 }: React.ComponentProps<typeof RadioGroupPrimitive.Item>) {
-  // everycent: Radix marks state with data-state, not the data-checked attribute these classes
-  // were written for, so the checked variants use data-[state=checked] (as checkbox.tsx,
-  // EVERYCENT-123).
+  // strictbudget: Radix marks state with data-state, not the data-checked attribute these classes
+  // were written for, so the checked variants use data-[state=checked] (as checkbox.tsx).
   return (
     <RadioGroupPrimitive.Item
       data-slot="radio-group-item"

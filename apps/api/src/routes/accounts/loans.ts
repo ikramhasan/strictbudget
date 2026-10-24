@@ -1,12 +1,12 @@
-import { budgetAccount, budget as budgetTable, transaction } from "@everycent/db/schema";
+import type { RouteHandler } from "@hono/zod-openapi";
+import { budgetAccount, budget as budgetTable, transaction } from "@strictbudget/db/schema";
 import {
   accountFamily,
   isOnBudget,
   monthEndBalances,
   monthOf,
   occurrencesBetween,
-} from "@everycent/engine";
-import type { RouteHandler } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { and, eq } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { latestTransactionDate } from "../../lib/dates";
@@ -81,11 +81,10 @@ function bannersJson(budget: { loanSimulatorBannerDismissed: boolean }, account:
 }
 
 /**
- * The loan's scheduled payments still to come this month, as YNAB's Payments row lists them
- * ("2 Upcoming Transactions for $50.00"; checked 2026-10-17, EVERYCENT-176): every occurrence
- * dated after today in today's month (a weekly one twice), none from later months, newest first.
- * A payment is a transfer into the loan, as for entered ones. Each is shown as entered, from the
- * schedule's own account and payee.
+ * The loan's scheduled payments still to come this month, as the Payments row lists them ("2
+ * Upcoming Transactions for $50.00"): every occurrence dated after today in today's month (a
+ * weekly one twice), none from later months, newest first. A payment is a transfer into the loan,
+ * as for entered ones. Each is shown as entered, from the schedule's own account and payee.
  */
 async function upcomingPayments(db: Db, loan: AccountRow, today: string) {
   const month = monthOf(today);
@@ -186,7 +185,7 @@ export const dismissLoanBannerHandler: RouteHandler<typeof dismissLoanBanner, En
   const { budgetId, accountId } = c.req.valid("param");
   const { banner } = c.req.valid("json");
   const { db } = c.var.deps;
-  // Anyone on the plan can dismiss them, as anyone sees them (a viewer can't: it's the plan's).
+  // Anyone on the budget can dismiss them, as anyone sees them (a viewer can't).
   const { budget } = await loadBudgetAccess(c, budgetId, { account: ["update"] });
   const account = await findLoan(db, budgetId, accountId);
   if (banner === "simulator") {
@@ -218,7 +217,7 @@ export const setLoanChargeHandler: RouteHandler<typeof setLoanChargeRoute, Env> 
   const value = BigInt(amount);
   if (value < 0n) throw new AppError(400, "BAD_REQUEST", "Enter a charge of zero or more");
   const months = (await loanState(db, account, today)).months;
-  // YNAB's Add Interest offers the loan's first month through this month.
+  // Add Interest offers the loan's first month through this month.
   if (!months.some((m) => m.month === month)) {
     throw new AppError(400, "BAD_REQUEST", "That month is outside the loan's activity");
   }
@@ -251,8 +250,8 @@ export const recordLoanPaymentHandler: RouteHandler<typeof recordLoanPayment, En
     // The payment's amount is the loan's; paying from another currency isn't built yet.
     assertSameCurrency(from, loan, "transfer");
     if (latest !== null && date > latest) {
-      // YNAB (2026-10-16, EVERYCENT-169): a payment dated after today becomes a one-time
-      // scheduled transfer on the loan, out of the same category as an entered one.
+      // A payment dated after today becomes a one-time scheduled transfer on the loan, out of the
+      // same category as an entered one.
       await writeSchedule(tx, budgetId, {
         accountId: loan.id,
         frequency: "never",
@@ -267,8 +266,8 @@ export const recordLoanPaymentHandler: RouteHandler<typeof recordLoanPayment, En
       });
       return;
     }
-    // YNAB (2026-10-13): the paying side is uncleared and comes out of the paired category, or
-    // Uncategorized; the loan's side, entered from the loan, is cleared.
+    // The paying side is uncleared and comes out of the paired category, or Uncategorized; the
+    // loan's side, entered from the loan, is cleared.
     const payingId = await insertTransaction(tx, {
       budgetId,
       accountId: from.id,

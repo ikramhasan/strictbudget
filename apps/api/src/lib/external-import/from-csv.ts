@@ -1,4 +1,4 @@
-import { FLAG_COLORS } from "@everycent/db/schema";
+import { FLAG_COLORS } from "@strictbudget/db/schema";
 import {
   type AccountType,
   accountFamily,
@@ -7,14 +7,19 @@ import {
   hasPaymentCategory,
   NUMBER_FORMAT_SPECS,
   parseAmount,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import Papa from "papaparse";
 import { BACKUP_FORMAT, BACKUP_VERSION, type Backup } from "../backup/schema";
 import { AppError } from "../errors";
-import { categoryFor, YNAB_CARD_GROUP, YNAB_HIDDEN_GROUP, YNAB_INTERNAL_PAYEES } from "./convert";
+import {
+  categoryFor,
+  EXTERNAL_CARD_GROUP,
+  EXTERNAL_HIDDEN_GROUP,
+  EXTERNAL_INTERNAL_PAYEES,
+} from "./convert";
 import type { Conversion } from "./from-api";
 
-// YNAB's Export Plan files (EVERYCENT-70 has the layout, read from YNAB's web app on 2026-10-17):
+// The source's export files:
 // "<plan> - Plan.csv" (Month, Category Group/Category, Category Group, Category, Assigned,
 // Activity, Available) and "<plan> - Register.csv" (Account, Flag, Date, Payee, Category
 // Group/Category, Category Group, Category, Memo, Outflow, Inflow, Cleared); tab-separated for
@@ -57,14 +62,14 @@ function parseRows(text: string, file: string, columns: readonly string[]): Row[
   if (missing.length > 0) {
     throw new AppError(
       400,
-      "YNAB_FILE_INVALID",
+      "EXTERNAL_FILE_INVALID",
       `The ${file} file isn't YNAB's: it has no ${missing.map((m) => `"${m}"`).join(", ")} column`,
     );
   }
   return parsed.data;
 }
 
-/** YNAB's formula guard put a backslash before a leading + - = @; take it off again. */
+/** The source's formula guard put a backslash before a leading + - = @; take it off again. */
 const text = (value: string | undefined) => (value ?? "").replace(/^\\([+\-=@])/, "$1");
 
 /** "$1,234.56", "12,00€", "-$5.00": the number, in the budget's number format, as minor units. */
@@ -80,7 +85,7 @@ function amountOf(
   } catch {
     throw new AppError(
       400,
-      "YNAB_FILE_INVALID",
+      "EXTERNAL_FILE_INVALID",
       `"${value}" isn't an amount in that number format`,
     );
   }
@@ -101,7 +106,11 @@ function dateOf(value: string | undefined, settings: CsvSettings): string {
     !/^\d{2}$/.test(d) ||
     digits.length !== format.length
   ) {
-    throw new AppError(400, "YNAB_FILE_INVALID", `"${value}" isn't a date in the format ${format}`);
+    throw new AppError(
+      400,
+      "EXTERNAL_FILE_INVALID",
+      `"${value}" isn't a date in the format ${format}`,
+    );
   }
   return `${y}-${m}-${d}`;
 }
@@ -111,7 +120,7 @@ function monthOfLabel(value: string | undefined): string {
   const [name, year] = (value ?? "").trim().split(/\s+/);
   const index = MONTHS.indexOf(name ?? "");
   if (index < 0 || !/^\d{4}$/.test(year ?? "")) {
-    throw new AppError(400, "YNAB_FILE_INVALID", `"${value}" isn't a month like "Oct 2026"`);
+    throw new AppError(400, "EXTERNAL_FILE_INVALID", `"${value}" isn't a month like "Oct 2026"`);
   }
   return `${year}-${String(index + 1).padStart(2, "0")}-01`;
 }
@@ -126,7 +135,7 @@ export function csvAccounts(
   const register = parseRows(registerText, "register", REGISTER_COLUMNS);
   const plan = parseRows(planText, "plan", PLAN_COLUMNS);
   const cardNames = new Set(
-    plan.filter((r) => r["Category Group"] === YNAB_CARD_GROUP).map((r) => r.Category ?? ""),
+    plan.filter((r) => r["Category Group"] === EXTERNAL_CARD_GROUP).map((r) => r.Category ?? ""),
   );
   const names: string[] = [];
   const categorized = new Set<string>();
@@ -156,13 +165,13 @@ export function csvAccounts(
 }
 
 /**
- * YNAB's Export Plan files in everycent's backup layout: accounts (of the types given or guessed),
+ * The export files in the backup layout: accounts (of the types given or guessed),
  * category groups and categories as the plan file lists them (hidden ones in a "Hidden Categories"
  * group: the file doesn't say which group they were in), every month's assigned amounts, and the
  * register's transactions with splits rebuilt from their "Split (i/n)" memos and transfers paired
  * by account, date and amount.
  */
-export function fromYnabCsv(
+export function fromExternalCsv(
   input: { plan: string; register: string; name: string },
   settings: CsvSettings,
   now = new Date(),
@@ -235,7 +244,7 @@ export function fromYnabCsv(
     const key = categoryKey(group, name);
     const existing = categoryIds.get(key);
     if (existing) return existing;
-    const card = group === YNAB_CARD_GROUP;
+    const card = group === EXTERNAL_CARD_GROUP;
     let groupRow = groups.find((g) => g.name === group && !g.internal);
     if (!groupRow) {
       groupRow = {
@@ -257,7 +266,7 @@ export function fromYnabCsv(
       name,
       note: "",
       sortOrder: categories.filter((c) => c.groupId === groupRow.id).length,
-      hidden: group === YNAB_HIDDEN_GROUP,
+      hidden: group === EXTERNAL_HIDDEN_GROUP,
       internalKind: null,
       linkedAccountId: linked,
     });
@@ -274,7 +283,7 @@ export function fromYnabCsv(
     if (amount !== 0n)
       assignments.push({ categoryId: id, month, amount: amount.toString(), currency });
   }
-  if (plan.some((r) => r["Category Group"] === YNAB_HIDDEN_GROUP)) {
+  if (plan.some((r) => r["Category Group"] === EXTERNAL_HIDDEN_GROUP)) {
     warnings.push(
       "Hidden categories are in a \"Hidden Categories\" group: YNAB's files don't say which group they were in.",
     );
@@ -282,7 +291,7 @@ export function fromYnabCsv(
   // Every card needs a payment category.
   for (const a of accounts) {
     if (!hasPaymentCategory(a.type) || categories.some((c) => c.linkedAccountId === a.id)) continue;
-    const id = addCategory(YNAB_CARD_GROUP, a.name);
+    const id = addCategory(EXTERNAL_CARD_GROUP, a.name);
     const row = categories.find((c) => c.id === id);
     if (row) row.linkedAccountId = a.id;
   }
@@ -293,7 +302,7 @@ export function fromYnabCsv(
     }
   }
 
-  // Payees by name (YNAB treats names that differ only in case as one).
+  // Payees by name (names that differ only in case are one).
   const payees: Backup["payees"] = accounts.map((a) => ({
     id: `transfer:${a.name}`,
     name: `Transfer : ${a.name}`,
@@ -314,7 +323,7 @@ export function fromYnabCsv(
     payees.push({
       id,
       name,
-      internalKind: YNAB_INTERNAL_PAYEES[name as keyof typeof YNAB_INTERNAL_PAYEES] ?? null,
+      internalKind: EXTERNAL_INTERNAL_PAYEES[name as keyof typeof EXTERNAL_INTERNAL_PAYEES] ?? null,
       transferAccountId: null,
       hidden: false,
       categorization: "auto",

@@ -1,4 +1,5 @@
-import { sql } from "@everycent/db";
+import type { RouteHandler } from "@hono/zod-openapi";
+import { sql } from "@strictbudget/db";
 import {
   budgetAccount,
   category,
@@ -6,9 +7,8 @@ import {
   payee,
   subTransaction,
   transaction,
-} from "@everycent/db/schema";
-import { monthBounds } from "@everycent/engine";
-import type { RouteHandler } from "@hono/zod-openapi";
+} from "@strictbudget/db/schema";
+import { monthBounds } from "@strictbudget/engine";
 import { and, eq, gte, inArray, isNotNull, isNull, lte, ne, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { loadBudgetAccess } from "../../lib/budget-access";
@@ -68,10 +68,9 @@ async function categoryIds(
 }
 
 /**
- * The transactions behind a month's Activity (YNAB's Activity popover): those dated in the month
- * up to the user's today, with a split's lines listed one by one. For a credit card's payment
- * category it's the card's register for the month, spending, returns and payments (YNAB's card
- * Activity window lists them all).
+ * The transactions behind a month's Activity: those dated in the month up to the user's today,
+ * with a split's lines listed one by one. For a credit card's payment category it's the card's
+ * register for the month: spending, returns and payments.
  */
 export const listMonthActivityHandler: RouteHandler<typeof listMonthActivity, Env> = async (c) => {
   const { budgetId, month } = c.req.valid("param");
@@ -114,8 +113,7 @@ export const listMonthActivityHandler: RouteHandler<typeof listMonthActivity, En
     .leftJoin(payee, eq(payee.id, transaction.payeeId))
     .where(
       cardAccountId
-        ? // A payment category: the card's register for the month (YNAB's card Activity window),
-          // without its Starting Balance (YNAB's Citi window left it out).
+        ? // A payment category: the card's register for the month, without its Starting Balance.
           and(
             dated,
             eq(transaction.accountId, cardAccountId),
@@ -123,7 +121,7 @@ export const listMonthActivityHandler: RouteHandler<typeof listMonthActivity, En
           )
         : and(dated, isNotNull(transaction.categoryId), inArray(transaction.categoryId, inIds)),
     );
-  // A card's splits are listed line by line (YNAB's Card T5 window, 2026-10-11).
+  // A card's splits are listed line by line.
   const cardSplits = cardAccountId
     ? new Set(
         (
@@ -168,7 +166,6 @@ export const listMonthActivityHandler: RouteHandler<typeof listMonthActivity, En
           ),
     );
 
-  // Newest first, as the register lists them.
   const rows = [...whole.filter((r) => !cardSplits.has(r.id)), ...lines].sort(
     (a, b) =>
       b.date.localeCompare(a.date) ||
@@ -186,7 +183,7 @@ export const listMonthActivityHandler: RouteHandler<typeof listMonthActivity, En
         date: r.date,
         payeeName: r.payeeName,
         categoryId: r.categoryId,
-        // A card's payments and other transfers show its payment category, as in YNAB.
+        // A card's payments and other transfers show its payment category.
         categoryName: labels.get(r.categoryId ?? cardCategoryId ?? "") ?? null,
         memo: r.memo,
         amount: r.amount.toString(),
@@ -198,7 +195,7 @@ export const listMonthActivityHandler: RouteHandler<typeof listMonthActivity, En
   );
 };
 
-/** "Group: Category" for each category, as YNAB labels them; internal ones by their own name. */
+/** "Group: Category" for each category; internal ones by their own name. */
 async function categoryLabels(db: Db, budgetId: string) {
   const rows = await db
     .select({

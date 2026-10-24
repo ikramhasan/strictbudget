@@ -1,4 +1,4 @@
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import type * as React from "react";
 
 // The register's table parts, in the shared Table's look (a muted tray, its rows on a raised card)

@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -52,7 +52,6 @@ function bar(s: Summary, props: Partial<Parameters<typeof SelectionBar>[0]> = {}
   };
 }
 
-/** Opens Categorize, then `group`'s submenu, and picks `category`. */
 async function categorizeAs(group: string, category: string) {
   screen.getByRole("button", { name: "Categorize" }).focus();
   await userEvent.keyboard("{Enter}");
@@ -63,7 +62,7 @@ async function categorizeAs(group: string, category: string) {
 }
 
 describe("SelectionBar", () => {
-  it("offers YNAB's Export # Transactions in More", async () => {
+  it("offers Export # Transactions in More", async () => {
     const onExport = vi.fn();
     bar(summary({ count: 2 }), { onExport });
     await userEvent.click(screen.getByRole("button", { name: "More" }));
@@ -90,7 +89,7 @@ describe("SelectionBar", () => {
     expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
   });
 
-  it("offers Clear only when every selected row is uncleared, as YNAB does", () => {
+  it("offers Clear only when every selected row is uncleared", () => {
     const { unmount } = bar(summary({ uncleared: 2 }));
     expect(screen.getByRole("button", { name: /Clear$/ })).toBeVisible();
     unmount();
@@ -98,7 +97,7 @@ describe("SelectionBar", () => {
     expect(screen.queryByRole("button", { name: /^Clear$/ })).toBeNull();
   });
 
-  it("categorizes from a menu of groups with their categories as submenus, as YNAB", async () => {
+  it("categorizes from a menu of groups with their categories as submenus", async () => {
     const { onAction } = bar(summary({}));
     screen.getByRole("button", { name: "Categorize" }).focus();
     await userEvent.keyboard("{Enter}");
@@ -127,8 +126,8 @@ describe("SelectionBar", () => {
   });
 });
 
-// YNAB, 2026-10-15 (x-c11-136 Sched, S1, S2, S3): scheduled splits count, and the transfer
-// wording shows only when a selected split has a transfer line.
+// Scheduled splits count, and the transfer wording shows only when a selected split has a
+// transfer line.
 describe("un-split warning", () => {
   async function warning(
     s: Summary,
@@ -189,7 +188,7 @@ describe("groupOptions", () => {
   });
 });
 
-describe("Match and Unmatch (EVERYCENT-68)", () => {
+describe("Match and Unmatch", () => {
   it("offers Match only when the register says the pair can match", async () => {
     const onMatch = vi.fn();
     const { unmount } = bar(summary({ unapproved: 1 }), { onMatch });
@@ -208,7 +207,7 @@ describe("Match and Unmatch (EVERYCENT-68)", () => {
   });
 });
 
-describe("SelectionBar keys (YNAB, 2026-10-18)", () => {
+describe("SelectionBar keys", () => {
   const flags = [
     { color: "red", name: "" },
     { color: "orange", name: "" },

@@ -2,8 +2,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 import type { FakeFxProvider } from "../../lib/fx/fake";
 
-// EVERYCENT-54: activity in foreign-currency accounts reaches the plan in the budget's currency,
-// converted once at a per-transaction rate.
+// Activity in foreign-currency accounts reaches the plan in the budget's currency, converted
+// once at a per-transaction rate.
 const { app, db, close, fxProviders } = createTestApp();
 const fx = fxProviders[0] as FakeFxProvider;
 beforeEach(async () => {

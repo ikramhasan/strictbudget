@@ -34,7 +34,6 @@ async function addAccount(name: string) {
   await userEvent.click(screen.getByRole("button", { name: "Add account" }));
 }
 
-// YNAB, 2026-10-15 (EVERYCENT-151): "Success!" with Add Another and Done.
 describe("AddAccountDialog", () => {
   it("offers Add Another and Done after adding an account", async () => {
     const onOpenChange = vi.fn();
@@ -46,14 +45,12 @@ describe("AddAccountDialog", () => {
     await addAccount("Checking");
     expect(await screen.findByText("Success!")).toBeInTheDocument();
 
-    // Add Another starts over with an empty form.
     await userEvent.click(screen.getByRole("button", { name: "Add Another" }));
     expect(screen.getByLabelText("Nickname")).toHaveValue("");
     await addAccount("Savings");
     expect(created).toEqual(["Checking", "Savings"]);
     expect(navigate).not.toHaveBeenCalled();
 
-    // Done closes and opens the account just added.
     await userEvent.click(await screen.findByRole("button", { name: "Done" }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(navigate).toHaveBeenCalledWith({

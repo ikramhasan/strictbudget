@@ -4,5 +4,5 @@ import type { getInstance } from "./routes";
 
 export const getInstanceHandler: RouteHandler<typeof getInstance, AppEnv> = (c) => {
   const { env, email } = c.var.deps;
-  return c.json({ deployment: env.EVERYCENT_DEPLOYMENT, email: email !== null }, 200);
+  return c.json({ deployment: env.STRICTBUDGET_DEPLOYMENT, email: email !== null }, 200);
 };

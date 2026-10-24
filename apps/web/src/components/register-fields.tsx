@@ -6,7 +6,7 @@ import {
   SCHEDULE_FREQUENCIES,
   SCHEDULE_FREQUENCY_LABELS,
   type ScheduleFrequency,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import {
   Autocomplete,
   AutocompleteCollection,
@@ -17,9 +17,9 @@ import {
   AutocompleteInput,
   AutocompleteItem,
   AutocompleteList,
-} from "@everycent/ui/components/autocomplete";
-import { Button } from "@everycent/ui/components/button";
-import { Calendar } from "@everycent/ui/components/calendar";
+} from "@strictbudget/ui/components/autocomplete";
+import { Button } from "@strictbudget/ui/components/button";
+import { Calendar } from "@strictbudget/ui/components/calendar";
 import {
   Combobox,
   ComboboxCollection,
@@ -30,17 +30,17 @@ import {
   ComboboxItem,
   ComboboxLabel,
   ComboboxList,
-} from "@everycent/ui/components/combobox";
+} from "@strictbudget/ui/components/combobox";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from "@everycent/ui/components/input-group";
-import { Label } from "@everycent/ui/components/label";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/input-group";
+import { Label } from "@strictbudget/ui/components/label";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { cn } from "@strictbudget/ui/lib/utils";
 import {
   ArrowLeftRight,
   CalendarDays,
@@ -90,7 +90,7 @@ export function isInsidePopup(node: EventTarget | null) {
 
 /**
  * A date typed in the budget's format ("10/5" works too), with a calendar to pick from. With
- * `repeat`, the calendar has YNAB's "Repeat:" select under it (new and scheduled transactions).
+ * `repeat`, the calendar has a "Repeat:" select under it (new and scheduled transactions).
  */
 export function DateField({
   value,
@@ -104,14 +104,13 @@ export function DateField({
 }: {
   value: string;
   onChange: (iso: string) => void;
-  /** A day was chosen in the calendar. */
   onPick?: (iso: string) => void;
   format: DateFormat;
   autoFocus?: boolean;
   repeat?: { value: ScheduleFrequency; onChange: (frequency: ScheduleFrequency) => void };
-  /** A plain transaction's date picker offers YNAB's "Make Repeating" instead. */
+  /** A plain transaction's date picker offers "Make Repeating" instead. */
   onMakeRepeating?: () => void;
-  /** Start with the calendar open (Make Repeating's new row, as YNAB opens it). */
+  /** Start with the calendar open (Make Repeating's new row). */
   defaultOpen?: boolean;
 }) {
   const display = (iso: string) => formatDate(iso, format);
@@ -121,7 +120,7 @@ export function DateField({
   const repeatId = useId();
   const shortcuts = useShortcutsEnabled();
 
-  /** YNAB's date-picker keys change the date in place, the text selected for the next one. */
+  /** The date-picker keys change the date in place, the text selected for the next one. */
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (!shortcuts || e.ctrlKey || e.metaKey || e.altKey) return;
     const next = dateForKey(value, e.key, todayIso(), { dash: !format.includes("-") });
@@ -221,7 +220,7 @@ type PayeeItem = {
   /** Transfers: the other account. */
   accountId?: string;
   accountName?: string;
-  /** Transfers: what the list shows (YNAB's wording, or just the account's name). */
+  /** Transfers: what the list shows ("Payment from X", or just the account's name). */
   text?: string;
 };
 
@@ -240,15 +239,13 @@ function matches(item: PayeeItem, text: string) {
 const SELECTED = "selected:";
 const asSelected = (item: PayeeItem): PayeeItem => ({ ...item, id: `${SELECTED}${item.id}` });
 
-/** An account a transfer can go to. */
 export interface TransferTarget {
   id: string;
   name: string;
-  /** With the editing account's `own`, names the transfer as YNAB does ("Payment from X"). */
+  /** With the editing account's `own`, names the transfer ("Payment from X"). */
   type?: AccountType;
 }
 
-/** What a payee field holds: a payee name, or a transfer to another account. */
 export interface PayeeChoice {
   name: string;
   transferAccountId: string | null;
@@ -257,12 +254,11 @@ export interface PayeeChoice {
 }
 
 /**
- * Payee name with suggestions, plus YNAB's "Payments and Transfers" for each account money can
- * move to, worded by `own` and the amount's direction (`transferChoiceLabel`: "Payment from F
- * Cash", "Transfer to Savings", "To/From X"); "Transfer : <account>" without `own`. Typing a new
- * name is fine (it's created on save); YNAB also lists "Create … Payee" at the top so it's clear
- * that's what will happen, while the first existing match stays the highlighted one (2026-10-16).
- * That entry is a button above the list rather than an item, so autocomplete never lands on it.
+ * Payee name with suggestions, plus "Payments and Transfers" for each account money can move to,
+ * worded by `own` and the amount's direction (`transferChoiceLabel`); "Transfer : <account>"
+ * without `own`. A new name is created on save; "Create … Payee" is listed at the top so that's
+ * clear, while the first existing match stays highlighted. That entry is a button above the list
+ * rather than an item, so autocomplete never lands on it.
  */
 export function PayeeField({
   label = "Payee",
@@ -280,7 +276,6 @@ export function PayeeField({
   label?: string;
   value: string;
   onChange: (choice: PayeeChoice) => void;
-  /** An item in the list was chosen. */
   onPick?: (choice: PayeeChoice) => void;
   payees: readonly Payee[];
   transfers: readonly TransferTarget[];
@@ -289,17 +284,17 @@ export function PayeeField({
   /** The account the field's transfer goes to, to tell two accounts with one name apart. */
   transferAccountId?: string | null;
   autoFocus?: boolean;
-  /** An imported transaction's Bank Import Details (EVERYCENT-155), behind the Selected payee. */
+  /** An imported transaction's Bank Import Details, behind the Selected payee. */
   importDetails?: ImportDetails;
 }) {
   const trimmed = value.trim();
   const managePayees = useManagePayees();
   const [detailsOpen, setDetailsOpen] = useState(false);
-  // Hidden payees aren't suggested, but typing one's exact name still uses it (YNAB).
+  // Hidden payees aren't suggested, but typing one's exact name still uses it.
   const hiddenMatch = payees.some(
     (p) => p.hidden && p.name.toLowerCase() === trimmed.toLowerCase(),
   );
-  // YNAB shows the whole list as soon as the field is focused, with the current payee selected so
+  // The whole list shows as soon as the field is focused, with the current payee selected so
   // typing replaces it; the list narrows once something is typed.
   const [open, setOpen] = useState(Boolean(autoFocus));
   const [typed, setTyped] = useState(false);
@@ -324,9 +319,8 @@ export function PayeeField({
     const chosen =
       (transferAccountId && toAccounts.find((p) => p.accountId === transferAccountId)) ||
       [...known, ...toAccounts].find((p) => matches(p, trimmed));
-    // YNAB (2026-10-16): the whole list starts with "Selected" (the payee in the field, ticked),
-    // then "Payments and Transfers", then "Saved Payees"; once something is typed, saved payees
-    // come first.
+    // Untyped, the list is "Selected", then "Payments and Transfers", then "Saved Payees"; once
+    // something is typed, saved payees come first.
     const saved = { value: "Saved Payees", items: known };
     const moves = { value: "Payments and Transfers", items: toAccounts };
     const selected = chosen && !typed ? [{ value: "Selected", items: [asSelected(chosen)] }] : [];
@@ -334,7 +328,7 @@ export function PayeeField({
       groups: [...selected, ...(typed ? [saved, moves] : [moves, saved])].filter(
         (g) => g.items.length > 0,
       ),
-      // A name no payee has yet: YNAB offers to create it at the top of the list.
+      // A name no payee has yet: offer to create it at the top of the list.
       create: trimmed && !chosen && !hiddenMatch ? trimmed : null,
     };
   }, [payees, transfers, own, trimmed, hiddenMatch, typed, transferAccountId]);
@@ -484,11 +478,10 @@ export function PayeeField({
   );
 }
 
-/** What Bank Import Details shows for an imported transaction. */
 export interface ImportDetails {
   /** The payee as the bank sent it. */
   statement: string;
-  /** As it was imported: everycent doesn't clean names up (EVERYCENT-206), so the same text. */
+  /** As it was imported: names aren't cleaned up, so the same text. */
   imported: string;
   /** The payee a renaming rule (or an edit) moved it to, when it isn't the imported name. */
   renamedTo: string | null;
@@ -496,10 +489,6 @@ export interface ImportDetails {
   onDontRename?: () => void;
 }
 
-/**
- * YNAB's Bank Import Details (2026-10-17): the payee as it appears on the statement and as it was
- * imported, each with Copy, "Don't Rename as …" when it was renamed, and a store's order history.
- */
 function BankImportDetails({ details, onClose }: { details: ImportDetails; onClose: () => void }) {
   const copy = (text: string) => void navigator.clipboard?.writeText(text).catch(() => {});
   const card = "grid gap-1 rounded-md border bg-background p-2.5";
@@ -532,7 +521,7 @@ function BankImportDetails({ details, onClose }: { details: ImportDetails; onClo
         </button>
       </div>
       <div className={card}>
-        <p className="font-medium text-xs">As everycent imported it</p>
+        <p className="font-medium text-xs">As strictbudget imported it</p>
         <p className="break-words">{details.imported}</p>
         <button
           type="button"
@@ -577,9 +566,7 @@ interface CategoryGroupItems {
   items: CategoryOption[];
 }
 
-/** The "Split" entry at the end of the category list. */
 const SPLIT: CategoryOption = { id: "__split", name: "Split", group: "" };
-/** YNAB's "Payment/Transfer" button at the end of the category list. */
 const PAYMENT_TRANSFER: CategoryOption = {
   id: "__payment_transfer",
   name: "Payment/Transfer",
@@ -591,9 +578,8 @@ const SHORTCUT = "__shortcut:";
 const shortcut = (option: CategoryOption) => ({ ...option, id: `${SHORTCUT}${option.id}` });
 
 /**
- * YNAB's sections above the groups: "Selected" (the category in the field, with or without a
- * payee) and, once a known payee is picked, "Suggested" (the payee's other recent categories).
- * They make way for the matches as soon as something is typed (2026-10-16 and 2026-10-17).
+ * "Selected" (the category in the field) and, once a known payee is picked, "Suggested" (the
+ * payee's other recent categories). They make way for the matches as soon as something is typed.
  */
 function shortcutGroups(
   categories: readonly CategoryOption[],
@@ -611,12 +597,8 @@ function shortcutGroups(
 }
 
 /**
- * Category picker grouped like the budget; clearing it means Uncategorized. With `onSplit`, the
- * list ends with YNAB's "Split", to spread the transaction across several categories; with
- * `onPaymentTransfer`, with its "Payment/Transfer" (before Split, in cash and card registers alike;
- * 2026-10-16), which goes to the payee list to pick an account. With `shortcuts` (the register's
- * category fields, split lines included), it starts with YNAB's "Selected", then "Suggested" from
- * `suggestedIds` (a payee's recent categories).
+ * Category picker grouped like the budget; clearing it means Uncategorized. "Payment/Transfer"
+ * (before Split, in cash and card registers alike) goes to the payee list to pick an account.
  */
 export function CategoryField({
   label = "Category",
@@ -682,7 +664,7 @@ export function CategoryField({
         } else onChange(option?.id.replace(SHORTCUT, "") ?? null);
       }}
       itemToStringLabel={categoryLabel}
-      // The Selected copy and the category in its group are both ticked (YNAB, 2026-10-16).
+      // The Selected copy and the category in its group are both ticked.
       isItemEqualToValue={(a, b) => a.id.replace(SHORTCUT, "") === b.id.replace(SHORTCUT, "")}
       autoHighlight
     >
@@ -713,7 +695,7 @@ export function CategoryField({
                         <ArrowLeftRight className="size-4 text-muted-foreground" /> Payment/Transfer
                       </>
                     ) : option.id.startsWith(SHORTCUT) ? (
-                      // YNAB: "O2 (Test)", the group in parentheses.
+                      // The group in parentheses: "Rent (Bills)".
                       <span className="flex w-full items-center justify-between gap-3">
                         <span className="truncate">
                           {option.name}{" "}

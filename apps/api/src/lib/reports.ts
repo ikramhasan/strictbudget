@@ -1,4 +1,4 @@
-import { sql } from "@everycent/db";
+import { sql } from "@strictbudget/db";
 import {
   budgetAccount,
   category,
@@ -7,8 +7,8 @@ import {
   payee,
   subTransaction,
   transaction,
-} from "@everycent/db/schema";
-import { ACCOUNT_TYPES, type CurrencyCode, isOnBudget } from "@everycent/engine";
+} from "@strictbudget/db/schema";
+import { ACCOUNT_TYPES, type CurrencyCode, isOnBudget } from "@strictbudget/engine";
 import {
   and,
   asc,
@@ -28,18 +28,16 @@ import { type AnyPgColumn, alias } from "drizzle-orm/pg-core";
 import { type Db, internalCategoryId, internalPayeeId } from "./ledger";
 
 /**
- * What a report sums (YNAB's Reflect definitions, settled on the test plan 2026-10-17):
+ * What a report sums:
  * - `spending`: lines on budget accounts with a category other than Inflow: Ready to Assign, split
  *   lines one by one. Transfers between budget accounts carry no category and drop out; a transfer
  *   to a tracking account counts under its category (Uncategorized when it has none). It's the
  *   plan's category Activity, so a report total equals Activity for the same month and category.
- * - `income`: lines on budget accounts categorized to Ready to Assign, except starting balances
- *   (YNAB's Income v Expense income).
+ * - `income`: lines on budget accounts categorized to Ready to Assign, except starting balances.
  */
 export const REPORT_KINDS = ["spending", "income"] as const;
 export type ReportKind = (typeof REPORT_KINDS)[number];
 
-/** What a report's sums can be grouped by. */
 export const REPORT_GROUPINGS = [
   "month",
   "day",
@@ -80,7 +78,6 @@ export interface ReportSum {
 
 const ON_BUDGET_TYPES = ACCOUNT_TYPES.filter((t) => isOnBudget(t));
 
-/** The columns a report line reads, for whole transactions or split lines. */
 interface LineSource {
   categoryId: SQLWrapper;
   payeeId: SQL;
@@ -109,7 +106,6 @@ function matchNullable(column: SQLWrapper, values: readonly (string | null)[]) {
   return parts.length ? or(...parts) : sql`false`;
 }
 
-/** The budget's internal ids a report's definitions use. */
 interface ReportIds {
   readyToAssign: string;
   startingBalance: string;

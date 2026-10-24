@@ -3,8 +3,8 @@ import { todayIso } from "./dates";
 import { DEFAULT_SORT, readSort, type SortField } from "./register-sort";
 
 /**
- * YNAB's View menu for a register: a date range and what to show. YNAB keeps these per account
- * (and for All Accounts); they're remembered in this browser.
+ * A register's View menu: a date range and what to show, per account (and for All Accounts),
+ * remembered in this browser.
  */
 export interface RegisterView {
   range: DateRange;
@@ -15,13 +15,13 @@ export interface RegisterView {
   /** Account registers only; All Accounts has no running balance. */
   showRunningBalance: boolean;
   showFlags: boolean;
-  /** YNAB's "Show Images": the attachment column, on by default. */
+  /** The attachment column ("Show Images"), on by default. */
   showAttachments: boolean;
-  /** Who entered each transaction (EVERYCENT-89; an everycent extra, off by default). */
+  /** Who entered each transaction (off by default). */
   showEnteredBy: boolean;
-  /** The Scheduled Transactions section folded away (YNAB remembers it per register). */
+  /** The Scheduled Transactions section folded away. */
   scheduledCollapsed: boolean;
-  /** The stacked sort, first field first (YNAB keeps it per register: `…_sortFields`). */
+  /** The stacked sort, first field first. */
   sort: SortField[];
 }
 
@@ -44,7 +44,7 @@ export const DATE_RANGE_LABELS: Record<(typeof DATE_RANGES)[number], string> = {
   all: "All Dates",
 };
 
-/** YNAB's defaults: all dates, reconciled transactions and the running balance hidden. */
+/** Defaults: all dates, reconciled transactions and the running balance hidden. */
 export const DEFAULT_VIEW: RegisterView = {
   range: "all",
   showReconciled: false,
@@ -66,7 +66,6 @@ function monthEnd(month: string) {
   return `${month}-${String(last).padStart(2, "0")}`;
 }
 
-/** The month `offset` months from `month` (YYYY-MM). */
 export function addMonths(month: string, offset: number) {
   const [y, m] = month.split("-").map(Number) as [number, number];
   const total = y * 12 + (m - 1) + offset;
@@ -107,7 +106,7 @@ export function rangeDates(view: RegisterView, today = todayIso()) {
   };
 }
 
-const STORAGE_PREFIX = "everycent:register-view:";
+const STORAGE_PREFIX = "strictbudget:register-view:";
 
 function read(key: string): RegisterView {
   try {
@@ -142,10 +141,10 @@ export function useRegisterView(budgetId: string, key: string) {
 }
 
 /**
- * YNAB remembers each register's search in the browser (per plan and account, All Accounts
- * included) and shows it again when you come back, even after a reload (checked 2026-10-11).
+ * Each register's search is remembered in the browser (per budget and account, All Accounts
+ * included) and shown again on coming back, even after a reload.
  */
-const SEARCH_PREFIX = "everycent:register-search:";
+const SEARCH_PREFIX = "strictbudget:register-search:";
 
 export function savedSearch(budgetId: string, key: string): string | undefined {
   try {

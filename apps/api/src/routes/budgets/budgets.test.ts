@@ -1,5 +1,5 @@
-import { newId } from "@everycent/db";
-import { budgetMember } from "@everycent/db/schema";
+import { newId } from "@strictbudget/db";
+import { budgetMember } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -37,7 +37,6 @@ async function userId(cookie: string): Promise<string> {
   return ((await res.json()) as { id: string }).id;
 }
 
-/** Shares a budget directly in the database (invites arrive in roadmap phase 16). */
 async function share(budgetId: string, cookie: string, role: "owner" | "editor" = "editor") {
   await db
     .insert(budgetMember)
@@ -67,7 +66,7 @@ describe("budgets", () => {
 
     const result = await list(alice.cookie);
     expect(result.budgets.map((b) => b.name)).toEqual(["Apple", "zebra"]);
-    expect(result.lastUsedBudgetId).toBe(apple.id); // created most recently
+    expect(result.lastUsedBudgetId).toBe(apple.id);
   });
 
   it("returns an empty list and no last-used budget for a new user", async () => {
@@ -75,7 +74,6 @@ describe("budgets", () => {
     expect(await list(cookie)).toEqual({ budgets: [], lastUsedBudgetId: null });
   });
 
-  // YNAB's plan list: "Last used 9 minutes ago", most recent first (2026-10-15, EVERYCENT-151).
   it("lists the most recently used budgets first, with when each was last used", async () => {
     const { cookie } = await signUp(app);
     const zebra = await createBudget(app, cookie, { name: "zebra" });
@@ -88,7 +86,6 @@ describe("budgets", () => {
     expect(budgets.map((b) => b.name)).toEqual(["zebra", "Apple"]);
     expect(Date.now() - Date.parse(budgets[0]?.lastUsedAt ?? "")).toBeLessThan(60_000);
 
-    // Each member has their own.
     const partner = await signUp(app);
     const me = (await (await send("GET", "/v1/me", partner.cookie)).json()) as { id: string };
     await db
@@ -243,7 +240,6 @@ describe("budgets", () => {
     for (const [path, method, operationId] of ops) {
       const op = doc.paths[path]?.[method];
       expect(op?.operationId).toBe(operationId);
-      // Creating and deleting a budget take a signed-in session; the rest also take an API key.
       expect(op?.security).toEqual(
         operationId === "createBudget" || operationId === "deleteBudget"
           ? [{ cookieAuth: [] }]

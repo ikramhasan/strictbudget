@@ -1,6 +1,6 @@
-import { newId } from "@everycent/db";
-import { budget, budgetAccount, fxRate, fxRateOverride } from "@everycent/db/schema";
-import { type CurrencyCode, crossRate, invertRate, normalizeRate } from "@everycent/engine";
+import { newId } from "@strictbudget/db";
+import { budget, budgetAccount, fxRate, fxRateOverride } from "@strictbudget/db/schema";
+import { type CurrencyCode, crossRate, invertRate, normalizeRate } from "@strictbudget/engine";
 import { and, desc, eq, inArray, lt, ne, or } from "drizzle-orm";
 import type { AppDeps } from "../../types";
 import { shiftDay } from "../dates";
@@ -302,7 +302,7 @@ function fetchOnce(
 }
 
 /**
- * The `fx.prefetch` job (EVERYCENT-192), a few times a day: fetches today's market rates once per
+ * The `fx.prefetch` job, a few times a day: fetches today's market rates once per
  * budget currency that has a foreign account, so reads find them cached. A base that already has
  * today's own rate is skipped. Early in the day a provider may only have yesterday's (currency-api
  * 404s until the day's file is out, Frankfurter has no weekend rates); that answer is cached as

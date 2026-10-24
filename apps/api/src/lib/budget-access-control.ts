@@ -1,13 +1,12 @@
-import type { BudgetRole } from "@everycent/db/schema";
+import type { BudgetRole } from "@strictbudget/db/schema";
 import { createAccessControl } from "better-auth/plugins/access";
 import { defaultStatements } from "better-auth/plugins/organization/access";
 
 /**
- * Budget roles, modelled on YNAB Together: the owner (creator) manages sharing, deletion and fresh
- * start; everyone the budget is shared with can do everything else, but a viewer (an everycent
- * extra, EVERYCENT-88) can't change anything (and `viewerGuard` refuses their writes before any
- * route sees them). The plugin checks
- * `organization` permissions on its own endpoints, so budget-level actions use that resource name.
+ * Budget roles: the owner (creator) manages sharing, deletion and fresh start; everyone the budget
+ * is shared with can do everything else, but a viewer can't change anything (and `viewerGuard`
+ * refuses their writes before any route sees them). The plugin checks `organization` permissions
+ * on its own endpoints, so budget-level actions use that resource name.
  */
 export const budgetAc = createAccessControl({
   ...defaultStatements,

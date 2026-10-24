@@ -1,5 +1,5 @@
-import { type BudgetMonth, money, NUMBER_FORMAT_SPECS } from "@everycent/engine";
-import { type ChartConfig, ChartContainer } from "@everycent/ui/components/chart";
+import { type BudgetMonth, money, NUMBER_FORMAT_SPECS } from "@strictbudget/engine";
+import { type ChartConfig, ChartContainer } from "@strictbudget/ui/components/chart";
 import {
   Bar,
   CartesianGrid,
@@ -23,17 +23,12 @@ const config = {
 
 export type ChartSeries = "income" | "expenses";
 
-/**
- * everycent's Income v Expense chart (EVERYCENT-80): income bars above zero, expense bars below,
- * net income as a line, and months that lost money shaded. Bar heights are positions only; every
- * label and tooltip amount is the exact one from the table.
- */
+/** Bar heights are positions only; every label and tooltip amount is the exact one from the table. */
 export function IncomeExpenseChart({
   table,
   onPick,
 }: {
   table: IncomeExpenseTable;
-  /** Clicking a bar opens that month's income or expenses. */
   onPick: (series: ChartSeries, month: BudgetMonth) => void;
 }) {
   const { budget, formatAmount } = useBudget();

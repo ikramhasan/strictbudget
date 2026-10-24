@@ -6,7 +6,7 @@ import type { Jobs } from "./lib/jobs";
  * OpenTelemetry, configured entirely by the standard `OTEL_*` variables (any OTLP backend: a
  * collector, Grafana, Honeycomb, Sentry's OTLP endpoint; or `OTEL_METRICS_EXPORTER=prometheus` for
  * a scrape endpoint on its own port, 9464 by default). Nothing starts unless one is set, so a
- * deployment that sets none runs without it and logs to stdout only (EVERYCENT-106).
+ * deployment that sets none runs without it and logs to stdout only.
  */
 export function telemetryConfigured(env: Record<string, string | undefined> = process.env) {
   if (env.OTEL_SDK_DISABLED === "true") return false;
@@ -20,7 +20,6 @@ export function telemetryConfigured(env: Record<string, string | undefined> = pr
   return endpoints || exporters;
 }
 
-/** Starts the SDK when configured; returns how to flush and stop it. */
 export function startTelemetry(serviceName: string): { shutdown: () => Promise<void> } {
   if (!telemetryConfigured()) return { shutdown: async () => {} };
   const sdk = new NodeSDK({ serviceName: process.env.OTEL_SERVICE_NAME ?? serviceName });
@@ -31,18 +30,18 @@ export function startTelemetry(serviceName: string): { shutdown: () => Promise<v
 /** Job queue gauges (queued, active, deferred, failed per queue), read when metrics are collected. */
 export function observeJobs(jobs: Jobs) {
   if (!telemetryConfigured()) return;
-  const meter = metrics.getMeter("everycent");
+  const meter = metrics.getMeter("strictbudget");
   const gauges = {
-    queued: meter.createObservableGauge("everycent.jobs.queued", {
+    queued: meter.createObservableGauge("strictbudget.jobs.queued", {
       description: "Jobs waiting to run, per queue",
     }),
-    active: meter.createObservableGauge("everycent.jobs.active", {
+    active: meter.createObservableGauge("strictbudget.jobs.active", {
       description: "Jobs running, per queue",
     }),
-    deferred: meter.createObservableGauge("everycent.jobs.deferred", {
+    deferred: meter.createObservableGauge("strictbudget.jobs.deferred", {
       description: "Jobs waiting for a later start (retries, scheduled), per queue",
     }),
-    failed: meter.createObservableGauge("everycent.jobs.failed", {
+    failed: meter.createObservableGauge("strictbudget.jobs.failed", {
       description: "Jobs that failed every retry and are still kept, per queue",
     }),
   };

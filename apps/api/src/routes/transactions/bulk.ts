@@ -1,7 +1,13 @@
-import { sql } from "@everycent/db";
-import { budgetAccount, category, payee, subTransaction, transaction } from "@everycent/db/schema";
-import { usesCategory } from "@everycent/engine";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { sql } from "@strictbudget/db";
+import {
+  budgetAccount,
+  category,
+  payee,
+  subTransaction,
+  transaction,
+} from "@strictbudget/db/schema";
+import { usesCategory } from "@strictbudget/engine";
 import { and, eq, exists, inArray, isNull, notInArray, or, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { FxDeps } from "../../lib/base-amount";
@@ -36,7 +42,6 @@ type Env = AppEnv & AuthedEnv;
 
 export type Selection = { ids: string[] } | { filter: RegisterFilter; exclude: string[] };
 
-/** The selected transactions' ids, as a condition on `transaction.id`. */
 export function selectedWhere(
   db: Db,
   budgetId: string,
@@ -62,7 +67,6 @@ export async function checkFilterAccount(db: Db, budgetId: string, selection: Se
   return null;
 }
 
-/** What the action bar needs to know about each selected row. */
 function selectedRows(db: Db, where: SQL) {
   const transferAccount = alias(budgetAccount, "transfer_account");
   const linePayee = alias(payee, "line_payee");
@@ -136,7 +140,7 @@ export const summarizeSelectionHandler: RouteHandler<typeof summarizeSelection, 
   );
   const rows = await selectedRows(db, selectedWhere(db, budgetId, selection, settings));
   const count = (test: (row: SelectedRow) => boolean) => rows.filter(test).length;
-  // Amounts in different currencies don't add up (converted totals: EVERYCENT-57).
+  // Amounts in different currencies don't add up.
   const currency = new Set(rows.map((r) => r.currency)).size === 1 ? rows[0]?.currency : null;
   return c.json(
     {
@@ -213,7 +217,6 @@ export const bulkUpdateTransactionsHandler: RouteHandler<
         if (ids.length > 0) {
           await tx.update(transaction).set({ cleared: action.cleared }).where(selectedIds(ids));
         }
-        // Marking rows cleared (or uncleared) approves them in YNAB (2026-10-16).
         await approve(tx, rows, ids);
         updatedIds = ids;
         break;
@@ -226,8 +229,7 @@ export const bulkUpdateTransactionsHandler: RouteHandler<
         );
         break;
       case "reject":
-        // YNAB's Reject deletes an unapproved transaction it didn't import (2026-10-16); on a
-        // mixed selection the approved rows stay.
+        // Reject deletes the unapproved rows; on a mixed selection the approved rows stay.
         updatedIds = await remove(
           tx,
           budgetId,
@@ -244,7 +246,6 @@ export const bulkUpdateTransactionsHandler: RouteHandler<
         break;
       case "categorize":
         updatedIds = await categorize(tx, budgetId, rows, action.categoryId);
-        // Bulk Categorize approves the rows it categorizes in YNAB (2026-10-16).
         await approve(tx, rows, updatedIds);
         break;
       case "move":
@@ -281,8 +282,8 @@ export const bulkUpdateTransactionsHandler: RouteHandler<
 };
 
 /**
- * YNAB's bulk categorize: splits are un-split, unless they have a transfer line; those stay
- * split and every other line takes the category. Rows without a category are skipped.
+ * Splits are un-split, unless they have a transfer line; those stay split and every other line
+ * takes the category. Rows without a category are skipped.
  */
 async function categorize(tx: Db, budgetId: string, rows: SelectedRow[], categoryId: string) {
   const [target] = await tx
@@ -331,8 +332,7 @@ async function categorize(tx: Db, budgetId: string, rows: SelectedRow[], categor
 
 /**
  * Approves the unapproved rows among `ids`, with their transfers' other sides, split transfer
- * lines' included (approving one side approves both in YNAB, 2026-10-16). Returns the rows it
- * approved.
+ * lines' included (approving one side approves both). Returns the rows it approved.
  */
 async function approve(tx: Db, rows: readonly SelectedRow[], ids: readonly string[]) {
   const wanted = new Set(ids);
@@ -344,7 +344,7 @@ async function approve(tx: Db, rows: readonly SelectedRow[], ids: readonly strin
 }
 
 /**
- * Moves each row as a single edit would. Skipped, as YNAB does: rows already in the account,
+ * Moves each row as a single edit would. Skipped: rows already in the account,
  * transfers into their own other account, and splits with a transfer line to it.
  */
 async function move(
@@ -446,12 +446,12 @@ async function remove(tx: Db, budgetId: string, ids: readonly string[]) {
 }
 
 /**
- * YNAB's Duplicate: a copy of each row, same date and fields, cleared state kept (a reconciled
+ * A copy of each row, same date and fields, cleared state kept (a reconciled
  * one comes back cleared) and approved; a transfer gets a new other side. A split's transfer side
  * copies its split; a transfer picked from both sides is copied once. Rows that would add a
  * transaction to a closed account are skipped. Returns the copies' ids (`created`; deleting one
- * takes its other sides along) and, in `copies`, each copy row whose original row was selected:
- * YNAB selects both sides of a transfer's copy when both sides were selected (EVERYCENT-135).
+ * takes its other sides along) and, in `copies`, each copy row whose original row was selected,
+ * so both sides of a transfer's copy are selected when both sides were.
  */
 async function duplicate(tx: Db, fx: FxDeps, budgetId: string, ids: readonly string[]) {
   const created: string[] = [];

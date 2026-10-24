@@ -10,10 +10,10 @@ const EnvSchema = z
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     PORT: z.coerce.number().int().positive().default(3000),
     /**
-     * `self-hosted` (default) or `cloud`, the hosted everycent we run. Cloud requires what running
+     * `self-hosted` (default) or `cloud`, the hosted strictbudget we run. Cloud requires what running
      * the service needs (email); self-hosted leaves those optional (`isCloud`).
      */
-    EVERYCENT_DEPLOYMENT: optional(z.enum(["self-hosted", "cloud"])).transform(
+    STRICTBUDGET_DEPLOYMENT: optional(z.enum(["self-hosted", "cloud"])).transform(
       (v) => v ?? "self-hosted",
     ),
     DATABASE_URL: z.url(),
@@ -26,7 +26,7 @@ const EnvSchema = z
      */
     RESEND_API_KEY: optional(z.string().startsWith("re_", "must be a Resend API key (re_…)")),
     /**
-     * Sender: an address (`hello@example.com`), a display form (`everycent <hello@example.com>`),
+     * Sender: an address (`hello@example.com`), a display form (`strictbudget <hello@example.com>`),
      * or just a verified sending domain (`mail.example.com`, sent as `no-reply@` that domain).
      */
     FROM_EMAIL: optional(z.string().min(3)),
@@ -78,7 +78,6 @@ const EnvSchema = z
      * in-app AI is off for every budget and budget settings say why.
      */
     AI_API_KEY: optional(z.string().min(1)),
-    /** The Claude model the assistant runs on. */
     AI_MODEL: optional(z.enum(ANTHROPIC_MODELS)).transform((v) => v ?? "claude-sonnet-5-5"),
   })
   .superRefine((env, ctx) => {
@@ -96,7 +95,7 @@ const EnvSchema = z
         message: "required with RESEND_API_KEY",
       });
     }
-    if (env.NODE_ENV !== "production" || env.EVERYCENT_DEPLOYMENT !== "cloud") return;
+    if (env.NODE_ENV !== "production" || env.STRICTBUDGET_DEPLOYMENT !== "cloud") return;
     for (const key of ["RESEND_API_KEY", "FROM_EMAIL"] as const) {
       if (!env[key])
         ctx.addIssue({ code: "custom", path: [key], message: "required in cloud production" });
@@ -107,9 +106,9 @@ export type Env = z.infer<typeof EnvSchema>;
 
 type EnvSource = Record<string, string | undefined>;
 
-/** The hosted everycent we run, rather than a self-hosted server. */
-export function isCloud(env: Pick<Env, "EVERYCENT_DEPLOYMENT">): boolean {
-  return env.EVERYCENT_DEPLOYMENT === "cloud";
+/** The hosted strictbudget we run, rather than a self-hosted server. */
+export function isCloud(env: Pick<Env, "STRICTBUDGET_DEPLOYMENT">): boolean {
+  return env.STRICTBUDGET_DEPLOYMENT === "cloud";
 }
 
 /**

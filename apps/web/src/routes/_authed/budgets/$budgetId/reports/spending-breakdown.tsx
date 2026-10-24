@@ -1,4 +1,4 @@
-import { exportDelimiter, isOnBudget, money, toDelimited } from "@everycent/engine";
+import { exportDelimiter, isOnBudget, money, toDelimited } from "@strictbudget/engine";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -26,7 +26,6 @@ export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/spendin
   component: Report,
 });
 
-/** YNAB's Spending Breakdown report (EVERYCENT-77), with everycent's extras. */
 function Report() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();

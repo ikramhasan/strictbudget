@@ -1,5 +1,5 @@
-import { newId } from "@everycent/db";
-import { budgetMember, category, transaction } from "@everycent/db/schema";
+import { newId } from "@strictbudget/db";
+import { budgetMember, category, transaction } from "@strictbudget/db/schema";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
@@ -115,7 +115,7 @@ describe("accounts", () => {
         linkedAccountId: visa.id,
       }),
     ]);
-    // Starting debt has no category (existing debt; Design notes).
+    // Starting debt has no category.
     expect((await transactions(visa.id))[0]).toMatchObject({
       amount: "-37500",
       categoryName: null,
@@ -195,8 +195,8 @@ describe("accounts", () => {
     expect((await accounts()).map((x) => x.name)).toEqual(["B", "A"]);
   });
 
-  // YNAB, 2026-10-15 (EVERYCENT-149): open cash and credit accounts only, plan-wide, new stars
-  // at the end of the Starred group, reorderable within it.
+  // Open cash and credit accounts only, budget-wide; new stars go at the end of the Starred
+  // group, reorderable within it.
   it("stars accounts for everyone on the budget, in their own order", async () => {
     const { cookie, budget, base, addAccount, accounts } = await setup();
     const a = await addAccount({ name: "A", type: "checking", balance: "0" });
@@ -214,7 +214,6 @@ describe("accounts", () => {
     expect(await (await star(b.id, true)).json()).toMatchObject({ starredOrder: 0 });
     expect((await star(a.id, true)).status).toBe(200);
     expect(await starredNames()).toEqual(["B", "A"]);
-    // Starring again keeps its place.
     await star(b.id, true);
     expect(await starredNames()).toEqual(["B", "A"]);
 
@@ -239,14 +238,13 @@ describe("accounts", () => {
     expect(((await (await star(t.id, true)).json()) as ErrorBody).error.code).toBe("BAD_REQUEST");
     await send("POST", `${base}/accounts/${t.id}/close`, cookie, { date: TODAY });
     expect((await star(t.id, true)).status).toBe(400);
-    // Closing drops the star; reopened, the account isn't starred (EVERYCENT-170).
+    // Closing drops the star; reopened, the account isn't starred.
     const c = await addAccount({ name: "C", type: "cash", balance: "0" });
     await star(c.id, true);
     await send("POST", `${base}/accounts/${c.id}/close`, cookie, { date: TODAY });
     const reopened = await send("POST", `${base}/accounts/${c.id}/reopen`, cookie);
     expect(await reopened.json()).toMatchObject({ closed: false, starredOrder: null });
 
-    // Another member sees and changes the same stars.
     const partner = await signUp(app);
     const me = (await (await send("GET", "/v1/me", partner.cookie)).json()) as { id: string };
     await db
@@ -270,14 +268,12 @@ describe("accounts", () => {
     });
 
     const visa = await addAccount({ name: "Visa", type: "credit_card", balance: "0" });
-    // Only a starting balance: no history (YNAB offers Delete instead of Close). The closing
-    // adjustment gives Savings some.
+    // Only a starting balance: no history. The closing adjustment gives Savings some.
     expect((await accounts()).find((a) => a.id === visa.id)).toMatchObject({ hasHistory: false });
     expect((await accounts()).find((a) => a.id === savings.id)).toMatchObject({ hasHistory: true });
     await send("POST", `${base}/accounts/${visa.id}/close`, cookie, { date: TODAY });
-    // YNAB leaves it visible with whatever is set aside.
+    // The category stays visible with whatever is set aside.
     expect((await groups())[0]?.categories[0]?.hidden).toBe(false);
-    // A zero balance needs no adjustment.
     expect(await transactions(visa.id)).toHaveLength(1);
 
     const reopened = await send("POST", `${base}/accounts/${visa.id}/reopen`, cookie);
@@ -286,8 +282,8 @@ describe("accounts", () => {
   });
 
   it("reconciles: locks cleared transactions and adjusts for a difference", async () => {
-    // YNAB 2026-10-11 ("Onboarding Check", R9 Chk A): bank $480 against a cleared $483 added a
-    // reconciled −$3 "Reconciliation Balance Adjustment" in Inflow: Ready to Assign.
+    // Bank $480 against a cleared $483 adds a reconciled −$3 "Reconciliation Balance Adjustment"
+    // in Inflow: Ready to Assign.
     const { base, cookie, addAccount, accounts, transactions } = await setup();
     const checking = await addAccount({ name: "Checking", type: "checking", balance: "48300" });
     expect(checking.lastReconciledAt).toBeNull();
@@ -325,7 +321,6 @@ describe("accounts", () => {
         .sort(),
     ).toEqual(["cleared", "uncleared"]);
 
-    // Matching balance: no adjustment.
     await send("POST", `${base}/accounts/${checking.id}/reconcile`, cookie, {
       balance: "48000",
       date: TODAY,
@@ -354,7 +349,7 @@ describe("accounts", () => {
       ).readyToAssign;
     const before = await rta();
     expect((await reconcile(card.id, "-5700")).status).toBe(200);
-    // More debt from Ready to Assign doesn't move it (YNAB: R9 Card's −$7 left it unchanged).
+    // More debt from Ready to Assign doesn't move it.
     expect(await rta()).toBe(before);
     expect(
       (await transactions(card.id)).find(
@@ -367,7 +362,7 @@ describe("accounts", () => {
         (t) => t.payeeName === "Reconciliation Balance Adjustment",
       ),
     ).toMatchObject({ amount: "2000", categoryName: null });
-    // A loan's Update Balance (YNAB, 2026-10-13).
+    // A loan's Update Balance.
     expect((await reconcile(loan.id, "-890000")).status).toBe(200);
     expect(
       (await transactions(loan.id)).find(
@@ -377,8 +372,8 @@ describe("accounts", () => {
   });
 
   it("sets a working balance with a Manual Balance Adjustment", async () => {
-    // YNAB 2026-10-11: R9 Chk B 328 → 320 added a cleared −$8 adjustment with no memo; R9 Card
-    // −64 → 70 added +$134, both in Inflow: Ready to Assign.
+    // 328 → 320 adds a cleared −$8 adjustment with no memo; a card's −64 → 70 adds +$134, both in
+    // Inflow: Ready to Assign.
     const { base, cookie, addAccount, transactions } = await setup();
     const checking = await addAccount({ name: "Checking", type: "checking", balance: "32800" });
     const card = await addAccount({ name: "Visa", type: "credit_card", balance: "-6400" });
@@ -403,7 +398,7 @@ describe("accounts", () => {
     ).toBe("13400");
 
     // The same balance adds nothing; closed accounts have no working balance field. A loan's is
-    // YNAB's "Today's Balance".
+    // its Today's Balance.
     await patch(checking.id, { workingBalance: "32000" });
     expect(
       (await transactions(checking.id)).filter((t) => t.payeeName === "Manual Balance Adjustment"),
@@ -489,7 +484,6 @@ describe("payment categories and category history", () => {
       expect(((await res.json()) as ErrorBody).error.code).toBe("MANAGED_CATEGORY");
     }
 
-    // Notes and hiding are fine.
     const ok = await send("PATCH", `${base}/categories/${payment}`, cookie, {
       note: "Pay in full",
       hidden: true,
@@ -503,7 +497,7 @@ describe("payment categories and category history", () => {
     const [bills, frequent] = await groups();
     const rent = bills?.categories[0];
     const groceries = frequent?.categories[0];
-    // Transactions arrive in phase 5; insert one directly to give Rent some history.
+    // Insert a transaction directly to give Rent some history.
     await db.insert(transaction).values({
       id: newId(),
       budgetId: budget.id,

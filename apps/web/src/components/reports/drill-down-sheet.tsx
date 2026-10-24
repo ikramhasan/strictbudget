@@ -1,12 +1,12 @@
-import { type CurrencyCode, money } from "@everycent/engine";
+import { type CurrencyCode, money } from "@strictbudget/engine";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@everycent/ui/components/sheet";
-import { Skeleton } from "@everycent/ui/components/skeleton";
+} from "@strictbudget/ui/components/sheet";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Flag } from "lucide-react";
@@ -14,7 +14,6 @@ import { useBudget } from "@/lib/budget-context";
 import { FLAG_CLASS } from "@/lib/flags";
 import { type ReportRequest, rangeLabel, reportTransactionsOptions } from "@/lib/reports";
 
-/** What a clicked mark stands for: a title and the filters that select its lines. */
 export interface DrillDown {
   title: string;
   request: ReportRequest;
@@ -25,10 +24,7 @@ export interface DrillDown {
 /** Rows shown at most; the total and count still cover every match. */
 const LIMIT = 500;
 
-/**
- * The transactions behind a report mark (an everycent extra on every report, EVERYCENT-76): a side
- * sheet with their total, newest first, each opening in its account's register.
- */
+/** The transactions behind a report mark, newest first; each opens in its account's register. */
 export function DrillDownSheet({
   drill,
   onClose,

@@ -58,14 +58,13 @@ async function setup(budgetInput: Record<string, string> = {}) {
   return { cookie, budget, base, addAccount, groups, post };
 }
 
-/** The file's lines (CRLF), the byte-order mark kept on the first. */
 const lines = (text: string) => text.split("\r\n");
-/** The body as text, a byte-order mark kept (`Response.text()` drops it). */
+// `Response.text()` drops the byte-order mark.
 const body = async (res: Response) =>
   new TextDecoder("utf-8", { ignoreBOM: true }).decode(await res.arrayBuffer());
 
 describe("plan export", () => {
-  it("writes YNAB's plan file: every category's month, hidden ones last", async () => {
+  it("writes the plan file: every category's month, hidden ones last", async () => {
     const { cookie, base, addAccount, groups, post } = await setup();
     const checking = await addAccount("Checking", "checking", "100000");
     const [first] = (await groups()).filter((g) => !g.kind);
@@ -98,7 +97,6 @@ describe("plan export", () => {
     expect(rows).toContain(
       `"Oct 2026","Hidden Categories: ${other.name}","Hidden Categories","${other.name}",$0.00,$0.00,$0.00`,
     );
-    // The hidden category comes after every visible one, in each month.
     const october = rows.filter((r) => r.startsWith('"Oct 2026"'));
     expect(october.at(-1)).toContain("Hidden Categories");
     // From the first month with a transaction (September's starting balance) to next month.
@@ -124,7 +122,7 @@ describe("plan export", () => {
 });
 
 describe("register export", () => {
-  it("writes YNAB's register file: newest first, splits by line, transfers and flags", async () => {
+  it("writes the register file: newest first, splits by line, transfers and flags", async () => {
     const { cookie, base, addAccount, groups, post } = await setup();
     const checking = await addAccount("Checking", "checking", "100000");
     const savings = await addAccount("Savings", "savings", "0");

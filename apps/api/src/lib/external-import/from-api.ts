@@ -5,24 +5,24 @@ import {
   hasPaymentCategory,
   SCHEDULE_FREQUENCIES,
   type ScheduleFrequency,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { BACKUP_FORMAT, BACKUP_VERSION, type Backup } from "../backup/schema";
 import {
   categoryFor,
   currencyOf,
   dateFormatOf,
+  EXTERNAL_ACCOUNT_TYPES,
+  EXTERNAL_CARD_GROUP,
+  EXTERNAL_HIDDEN_GROUP,
+  EXTERNAL_INTERNAL_GROUP,
+  EXTERNAL_INTERNAL_PAYEES,
+  EXTERNAL_READY_TO_ASSIGN,
+  EXTERNAL_UNCATEGORIZED,
   minorUnits,
   numberFormatOf,
   symbolPositionOf,
-  YNAB_ACCOUNT_TYPES,
-  YNAB_CARD_GROUP,
-  YNAB_HIDDEN_GROUP,
-  YNAB_INTERNAL_GROUP,
-  YNAB_INTERNAL_PAYEES,
-  YNAB_READY_TO_ASSIGN,
-  YNAB_UNCATEGORIZED,
 } from "./convert";
-import type { YnabCategory, YnabPlan } from "./types";
+import type { ExternalCategory, ExternalPlan } from "./types";
 
 export interface Conversion {
   backup: Backup;
@@ -32,27 +32,27 @@ export interface Conversion {
 
 type Target = Backup["targets"][number];
 
-const RTA_ID = "ynab:ready-to-assign";
-const UNCATEGORIZED_ID = "ynab:uncategorized";
-const INTERNAL_GROUP_ID = "ynab:internal";
-const CARD_GROUP_ID = "ynab:card-payments";
+const RTA_ID = "external:ready-to-assign";
+const UNCATEGORIZED_ID = "external:uncategorized";
+const INTERNAL_GROUP_ID = "external:internal";
+const CARD_GROUP_ID = "external:card-payments";
 
 const firstOf = (day: string) => `${day.slice(0, 7)}-01`;
 const flagOf = (flag: string | null | undefined) =>
   flag ? (flag as Backup["transactions"][number]["flag"]) : null;
 
-/** "7000" (YNAB's loan rate, thousandths of a percent) as "7.000". */
+/** "7000" (the source's loan rate, thousandths of a percent) as "7.000". */
 const percent = (value: number) =>
   `${Math.trunc(value / 1000)}.${String(Math.abs(value) % 1000).padStart(3, "0")}`;
 
 /**
- * A YNAB category goal as an everycent target, following YNAB's API docs for the NEED fields
- * (goal_cadence, goal_cadence_frequency, goal_day, goal_needs_whole_amount) and the YNAB findings
- * for the legacy types (TB, TBD, MF) and payment-category targets. Returns a reason instead when
- * the goal can't be carried.
+ * A source category goal as a target, following the source's API docs for the NEED fields
+ * (goal_cadence, goal_cadence_frequency, goal_day, goal_needs_whole_amount) and its observed
+ * behaviour for the legacy types (TB, TBD, MF) and payment-category targets. Returns a reason
+ * instead when the goal can't be carried.
  */
 function targetOf(
-  c: YnabCategory,
+  c: ExternalCategory,
   input: {
     categoryId: string;
     payment: boolean;
@@ -94,7 +94,7 @@ function targetOf(
     }
     return `the credit card payment target on "${c.name}" (${type})`;
   }
-  // A $0 goal is YNAB's starter placeholder: its plan screen shows no target.
+  // A $0 goal is the source's starter placeholder: it shows no target.
   if (amount <= 0n) return null;
   if (type === "TB") return { ...base, cadence: "custom", behavior: "balance" };
   if (type === "TBD") {
@@ -143,13 +143,13 @@ function targetOf(
 }
 
 /**
- * A YNAB plan, as read from YNAB's API, in everycent's backup layout, ready for `importBackup`:
+ * A plan, as read from the source's API, in the backup layout, ready for `importBackup`:
  * accounts (with loan terms), payees, category groups and categories (with notes and targets),
  * every month's assigned amounts and notes, transactions (transfers, splits, flags, cleared and
  * approved states) and scheduled transactions. Deleted rows stay behind. Money is converted from
  * milliunits exactly.
  */
-export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
+export function fromExternalApi(plan: ExternalPlan, now = new Date()): Conversion {
   const warnings: string[] = [];
   const format = plan.currency_format;
   const currency = currencyOf(format?.iso_code);
@@ -157,26 +157,25 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
   const numberFormat = (format && numberFormatOf(format)) ?? "comma_dot";
   if (format && !numberFormatOf(format)) {
     warnings.push(
-      `YNAB's number format (decimal "${format.decimal_separator}", grouping "${format.group_separator}") isn't one everycent has; the budget uses 1,234.56.`,
+      `YNAB's number format (decimal "${format.decimal_separator}", grouping "${format.group_separator}") isn't one strictbudget has; the budget uses 1,234.56.`,
     );
   }
   const dateFormat = dateFormatOf(plan.date_format?.format) ?? "MM/DD/YYYY";
   if (!dateFormatOf(plan.date_format?.format)) {
     warnings.push(
-      `YNAB's date format ${plan.date_format?.format} isn't one everycent has; the budget uses MM/DD/YYYY.`,
+      `YNAB's date format ${plan.date_format?.format} isn't one strictbudget has; the budget uses MM/DD/YYYY.`,
     );
   }
   const firstMonth = firstOf(plan.first_month ?? now.toISOString());
 
-  // Accounts.
   const accounts = plan.accounts.filter((a) => !a.deleted);
   const typeOf = new Map<string, AccountType>();
   const backupAccounts: Backup["accounts"] = [];
   const loanTerms: Backup["loanTerms"] = [];
   for (const [i, a] of accounts.entries()) {
-    const type = YNAB_ACCOUNT_TYPES[a.type];
+    const type = EXTERNAL_ACCOUNT_TYPES[a.type];
     if (!type) {
-      warnings.push(`The account "${a.name}" has a type everycent doesn't know (${a.type}).`);
+      warnings.push(`The account "${a.name}" has a type strictbudget doesn't know (${a.type}).`);
       continue;
     }
     typeOf.set(a.id, type);
@@ -188,7 +187,7 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
     ]
       .map(firstOf)
       .sort();
-    // A month without its own value keeps the one before (YNAB: "for October and going forward").
+    // A month without its own value keeps the one before.
     let rate: string | null = null;
     let minimum: string | null = null;
     let escrow: string | null = null;
@@ -244,7 +243,6 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
     if (!s.deleted && s.category_id) used.add(s.category_id);
   for (const m of plan.months) for (const c of m.categories) if (c.budgeted !== 0) used.add(c.id);
 
-  // Category groups and categories.
   const groupName = new Map(plan.category_groups.map((g) => [g.id, g]));
   const categoryIds = new Map<string, string>();
   const groups: Backup["categoryGroups"] = [
@@ -261,7 +259,7 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
     {
       id: RTA_ID,
       groupId: INTERNAL_GROUP_ID,
-      name: YNAB_READY_TO_ASSIGN,
+      name: EXTERNAL_READY_TO_ASSIGN,
       note: "",
       sortOrder: 0,
       hidden: false,
@@ -271,7 +269,7 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
     {
       id: UNCATEGORIZED_ID,
       groupId: INTERNAL_GROUP_ID,
-      name: YNAB_UNCATEGORIZED,
+      name: EXTERNAL_UNCATEGORIZED,
       note: "",
       sortOrder: 1,
       hidden: false,
@@ -286,11 +284,11 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
   const live = plan.categories.filter((c) => !c.deleted || used.has(c.id));
   const groupsInUse = new Set(live.map((c) => c.category_group_id));
   for (const [i, g] of plan.category_groups.entries()) {
-    if (g.name === YNAB_INTERNAL_GROUP) continue;
+    if (g.name === EXTERNAL_INTERNAL_GROUP) continue;
     if (g.deleted && !groupsInUse.has(g.id)) continue;
-    // YNAB's own (empty) group for hidden categories: hidden ones stay in their groups.
-    if (g.name === YNAB_HIDDEN_GROUP && !groupsInUse.has(g.id)) continue;
-    const card = g.name === YNAB_CARD_GROUP;
+    // The source's own (empty) group for hidden categories: hidden ones stay in their groups.
+    if (g.name === EXTERNAL_HIDDEN_GROUP && !groupsInUse.has(g.id)) continue;
+    const card = g.name === EXTERNAL_CARD_GROUP;
     groups.push({
       id: card ? CARD_GROUP_ID : g.id,
       name: g.name,
@@ -304,9 +302,9 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
   const order = new Map<string, number>();
   for (const c of live) {
     const group = groupName.get(c.category_group_id);
-    if (group?.name === YNAB_INTERNAL_GROUP) {
-      if (c.name === YNAB_READY_TO_ASSIGN) categoryIds.set(c.id, RTA_ID);
-      else if (c.name === YNAB_UNCATEGORIZED) categoryIds.set(c.id, UNCATEGORIZED_ID);
+    if (group?.name === EXTERNAL_INTERNAL_GROUP) {
+      if (c.name === EXTERNAL_READY_TO_ASSIGN) categoryIds.set(c.id, RTA_ID);
+      else if (c.name === EXTERNAL_UNCATEGORIZED) categoryIds.set(c.id, UNCATEGORIZED_ID);
       else if (used.has(c.id)) {
         warnings.push(
           `YNAB's internal category "${c.name}" is used; its rows come over uncategorized.`,
@@ -315,7 +313,7 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
       }
       continue;
     }
-    const card = group?.name === YNAB_CARD_GROUP;
+    const card = group?.name === EXTERNAL_CARD_GROUP;
     const linkedAccountId = card ? (creditByName.get(c.name) ?? null) : null;
     if (card && !linkedAccountId) {
       warnings.push(`The credit card payment category "${c.name}" has no card of that name.`);
@@ -346,13 +344,13 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
     if (typeof target === "string") warnings.push(`Not carried: ${target}.`);
     else if (target) targets.push(target);
   }
-  // Every card needs its payment category; one YNAB lacks gets a fresh one.
+  // Every card needs its payment category; one the source lacks gets a fresh one.
   for (const a of backupAccounts) {
     if (!hasPaymentCategory(a.type) || linked.has(a.id)) continue;
     if (!groups.some((g) => g.id === CARD_GROUP_ID)) {
       groups.push({
         id: CARD_GROUP_ID,
-        name: YNAB_CARD_GROUP,
+        name: EXTERNAL_CARD_GROUP,
         sortOrder: -1,
         hidden: false,
         internal: false,
@@ -362,7 +360,7 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
     const sortOrder = order.get(CARD_GROUP_ID) ?? 0;
     order.set(CARD_GROUP_ID, sortOrder + 1);
     categories.push({
-      id: `ynab:payment:${a.id}`,
+      id: `external:payment:${a.id}`,
       groupId: CARD_GROUP_ID,
       name: a.name,
       note: "",
@@ -374,7 +372,7 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
   }
   const category = (id: string | null) => (id ? (categoryIds.get(id) ?? null) : null);
 
-  // Payees: YNAB treats names that differ only in case as one payee.
+  // Payees: the source treats names that differ only in case as one payee.
   const payeeIds = new Map<string, string>();
   const payees: Backup["payees"] = [];
   const byName = new Map<string, string>();
@@ -408,7 +406,8 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
     payees.push({
       id: p.id,
       name: p.name || "(no name)",
-      internalKind: YNAB_INTERNAL_PAYEES[p.name as keyof typeof YNAB_INTERNAL_PAYEES] ?? null,
+      internalKind:
+        EXTERNAL_INTERNAL_PAYEES[p.name as keyof typeof EXTERNAL_INTERNAL_PAYEES] ?? null,
       transferAccountId: null,
       hidden: p.deleted,
       categorization: "auto",
@@ -426,7 +425,7 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
   for (const a of backupAccounts) {
     if (transferPayees.has(a.id)) continue;
     payees.push({
-      id: `ynab:transfer:${a.id}`,
+      id: `external:transfer:${a.id}`,
       name: `Transfer : ${a.name}`,
       internalKind: null,
       transferAccountId: a.id,
@@ -437,7 +436,6 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
     });
   }
 
-  // Assignments and month notes.
   const assignments: Backup["assignments"] = [];
   const monthNotes: Backup["monthNotes"] = [];
   for (const m of plan.months) {
@@ -455,7 +453,7 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
     }
   }
 
-  // Transactions. A loan's interest and escrow are charges in everycent, not transactions.
+  // A loan's interest and escrow are charges here, not transactions.
   const loanCharges = new Map<string, Backup["loanCharges"][number]>();
   const transactions: Backup["transactions"] = [];
   const subTransactions: Backup["subTransactions"] = [];
@@ -483,8 +481,8 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
   }
   const lines = plan.subtransactions.filter((s) => !s.deleted && kept.has(s.transaction_id));
   const splitParents = new Set(lines.map((s) => s.transaction_id));
-  // A split's transfer line: YNAB's other side names no transaction; find it by account, date and
-  // amount among the other account's transfers back that name none either.
+  // A split's transfer line: the source's other side names no transaction; find it by account,
+  // date and amount among the other account's transfers back that name none either.
   const transferLineOf = new Map<string, string>();
   const byId = new Map(liveTransactions.map((t) => [t.id, t]));
   for (const s of lines) {
@@ -575,7 +573,6 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
     });
   }
 
-  // Scheduled transactions.
   const scheduledTransactions: Backup["scheduledTransactions"] = [];
   const scheduledSubTransactions: Backup["scheduledSubTransactions"] = [];
   const schedules = plan.scheduled_transactions.filter(
@@ -587,7 +584,7 @@ export function fromYnabApi(plan: YnabPlan, now = new Date()): Conversion {
   for (const s of schedules) {
     if (!(SCHEDULE_FREQUENCIES as readonly string[]).includes(s.frequency)) {
       warnings.push(
-        `A scheduled transaction repeats ${s.frequency}, which everycent doesn't have.`,
+        `A scheduled transaction repeats ${s.frequency}, which strictbudget doesn't have.`,
       );
       continue;
     }

@@ -114,7 +114,7 @@ describe("CellEditor", () => {
       },
     ]);
     const groups = within(await screen.findByRole("listbox")).getAllByRole("group");
-    // The row itself counts (YNAB, 2026-10-17), but Rent is the one selected.
+    // The row itself counts, but Rent is the one selected.
     expect(groups[0]).toHaveTextContent(/^Selected\s*Rent \(Bills\)$/);
     expect(groups[1]).toHaveTextContent(/^Bills/);
   });
@@ -150,7 +150,7 @@ describe("CellEditor", () => {
     expect(onCommit).toHaveBeenCalledWith("Transfer : Savings", "stay", "savings");
   });
 
-  it("opens the whole payee list, as YNAB does, and narrows it once you type", async () => {
+  it("opens the whole payee list and narrows it once you type", async () => {
     const payees = [
       {
         id: "p1",
@@ -178,7 +178,7 @@ describe("CellEditor", () => {
     const { onCommit } = renderCell("payee", txn, payees);
     const user = userEvent.setup();
     const options = () => screen.getAllByRole("option").map((o) => o.textContent);
-    // The current payee under Selected, then transfers while nothing is typed (YNAB, 2026-10-16).
+    // The current payee under Selected, then transfers while nothing is typed.
     const groups = within(screen.getByRole("listbox")).getAllByRole("group");
     expect(groups[0]).toHaveTextContent(/^SelectedMarket$/);
     expect(options()).toEqual(["Market", "Savings", "Market", "Bakery"]);

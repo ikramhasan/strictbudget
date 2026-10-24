@@ -1,6 +1,6 @@
-import { isOnBudget } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
+import { isOnBudget } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { CircleAlert } from "lucide-react";
@@ -13,8 +13,8 @@ import { type Draft, directionOf, emptyDraft, transferChoiceLabel } from "@/lib/
 import { AvailablePill } from "./move-money";
 
 /**
- * What a card's Record Payment fills in (YNAB, 2026-10-14, x-130 Card): the lower of the payment
- * category's Available and the card's cleared balance owed; nothing when either is zero or less.
+ * What a card's Record Payment fills in: the lower of the payment category's Available and the
+ * card's cleared balance owed; nothing when either is zero or less.
  */
 export function cardPaymentAmount(available: bigint, cleared: bigint): bigint {
   const owed = -cleared;
@@ -23,10 +23,10 @@ export function cardPaymentAmount(available: bigint, cleared: bigint): bigint {
 }
 
 /**
- * YNAB's Record Payment on a credit card (2026-10-14) opens a new register row rather than a
- * dialog: today's date, a transfer from the account of the transfer into the card entered last
- * ("Payment from F Cash", or "Transfer from" another card: 2026-10-15), for `cardPaymentAmount` as
- * an inflow. With no earlier payment the payee is left empty.
+ * Record Payment on a credit card opens a new register row rather than a dialog: today's date, a
+ * transfer from the account of the transfer into the card entered last ("Payment from F Cash", or
+ * "Transfer from" another card), for `cardPaymentAmount` as an inflow. With no earlier payment the
+ * payee is left empty.
  */
 export function cardPaymentDraft({
   card,
@@ -49,7 +49,7 @@ export function cardPaymentDraft({
     ...emptyDraft(card.id, today),
     ...(from
       ? {
-          // YNAB words it by the amount: "Payment from F Cash", or "To/From F Cash" with none.
+          // Worded by the amount: "Payment from F Cash", or "To/From F Cash" with none.
           payeeName: transferChoiceLabel(card.type, from, directionOf(amount)),
           transferAccountId: from.id,
         }
@@ -78,10 +78,10 @@ export function useCardPayment(card: Account | undefined) {
 }
 
 /**
- * The yellow "Overspending (Oct)" figure left of a card register's Payment (YNAB, 2026-10-15,
- * x-c11-159 Card): this month's credit overspending on the card, even once its payment category
- * covers the balance (the inspector's Overspent Categories is then $0). Plain text; hidden at zero,
- * and last month's overspending doesn't show.
+ * The yellow "Overspending (Oct)" figure left of a card register's Payment: this month's credit
+ * overspending on the card, even once its payment category covers the balance (the inspector's
+ * Overspent Categories is then $0). Plain text; hidden at zero, and last month's overspending
+ * doesn't show.
  */
 export function OverspendingFigure({
   amount,
@@ -104,10 +104,9 @@ export function OverspendingFigure({
 }
 
 /**
- * The "Payment" figure at the right of a card's balance row (YNAB, 2026-10-14): its payment
- * category's Available, coloured as in the plan. While it doesn't cover the card (yellow, with a
- * "!") it opens "You don't have enough money set aside for your payment." with a link to the
- * category in this month's plan.
+ * The "Payment" figure at the right of a card's balance row: its payment category's Available,
+ * coloured as in the plan. While it doesn't cover the card (yellow, with a "!") it opens "You don't
+ * have enough money set aside for your payment." with a link to the category in this month's plan.
  */
 export function PaymentFigure({
   categoryId,

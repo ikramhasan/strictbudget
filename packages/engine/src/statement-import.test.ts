@@ -5,8 +5,8 @@ import { applyStatementOptions, ofxRows, qifRows, readOfx, readQif } from "./sta
 const fixture = (name: string) =>
   readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
 
-describe("OFX, QFX and QIF import (EVERYCENT-67)", () => {
-  it("reads an SGML bank statement, naming it like YNAB", () => {
+describe("OFX, QFX and QIF import", () => {
+  it("reads an SGML bank statement, naming it by account type and last digits", () => {
     const statement = readOfx(fixture("bank.ofx"), "USD");
     expect(statement.source).toBe("CHECKING: ***2345");
     expect(ofxRows(statement)).toEqual([

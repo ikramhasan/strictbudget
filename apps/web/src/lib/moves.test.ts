@@ -26,7 +26,7 @@ const members = [
   { userId: "pat", name: "Pat" },
 ];
 
-describe("Recent Moves member filter (YNAB, EVERYCENT-166)", () => {
+describe("Recent Moves member filter", () => {
   it("lists every member, even one without moves", () => {
     expect(memberFilterOptions([move({})], members)).toEqual([
       { value: "owner", label: "ihni7" },

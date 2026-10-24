@@ -6,13 +6,13 @@ import {
   type CurrencyCode,
   isDebtAccount,
   isOnBudget,
-} from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { RadioGroup, RadioGroupItem } from "@everycent/ui/components/radio-group";
-import { Textarea } from "@everycent/ui/components/textarea";
+} from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { RadioGroup, RadioGroupItem } from "@strictbudget/ui/components/radio-group";
+import { Textarea } from "@strictbudget/ui/components/textarea";
 import { Landmark } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import { editBalanceLabel } from "@/lib/accounts";
@@ -79,9 +79,9 @@ const ESCROW_HINT =
   "This would only apply if your bank collects your property taxes on behalf of your city or if it collects other fees as part of your payment.";
 
 /**
- * A loan's terms with YNAB's wording (2026-10-13): Add Account asks for the "Monthly payment
- * required by your lender" and, for a mortgage, whether it includes escrow; Edit Account has
- * Minimum Monthly Payment, Interest Rate (%) and, for a mortgage, Monthly Escrow or Fee Amount.
+ * A loan's terms. Add Account asks for the "Monthly payment required by your lender" and, for a
+ * mortgage, whether it includes escrow; Edit Account has Minimum Monthly Payment, Interest Rate (%)
+ * and, for a mortgage, Monthly Escrow or Fee Amount.
  */
 export function LoanFields({
   values,
@@ -193,9 +193,9 @@ export interface NewAccountValues {
   interestRate?: string;
   minimumPayment?: string;
   escrowAmount?: string;
-  /** Loans: YNAB's optional "Pair a Category" step. */
+  /** Loans: the optional "Pair a Category" step. */
   pairing?: PairChoice;
-  /** An optional logo, already cropped (EVERYCENT-229); uploaded once the account exists. */
+  /** An optional logo, already cropped; uploaded once the account exists. */
   logo?: Blob | null;
 }
 
@@ -268,7 +268,6 @@ export function AddAccountForm({
   });
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  /** Loans go on to "Optional: Pair a Category" (YNAB, 2026-10-13). */
   const [pairStep, setPairStep] = useState(false);
   const [pairing, setPairing] = useState<PairChoice>(null);
   const debt = isDebtAccount(type);
@@ -429,9 +428,9 @@ export function EditAccountForm({
 }: {
   settings: MoneySettings;
   initial: AccountEdit;
-  /** The logo field, which saves on its own (EVERYCENT-229). */
+  /** The logo field, which saves on its own. */
   logo?: ReactNode;
-  /** The account's working balance; null hides the field (closed accounts, as YNAB). */
+  /** The account's working balance; null hides the field (closed accounts). */
   workingBalance: bigint | null;
   onSubmit: (values: AccountEdit) => Promise<string | null>;
 }) {
@@ -455,7 +454,7 @@ export function EditAccountForm({
       ? parseLoan(loan, settings, type)
       : ({ ok: true, interestRate: null, minimumPayment: null, escrowAmount: null } as const);
     if (!loanValues.ok) return setError(loanValues.error);
-    // YNAB takes the working balance as typed (signed): a card's "70" is $70 in credit.
+    // Taken as typed (signed): a card's "70" is $70 in credit.
     const newBalance = workingBalance === null ? null : parseMoneyInput(balance || "0", settings);
     if (typeof newBalance === "string") return setError(newBalance);
     setPending(true);

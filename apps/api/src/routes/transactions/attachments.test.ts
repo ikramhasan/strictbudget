@@ -1,4 +1,4 @@
-import { storageDeletion, transactionAttachment } from "@everycent/db/schema";
+import { storageDeletion, transactionAttachment } from "@strictbudget/db/schema";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   createBudget,

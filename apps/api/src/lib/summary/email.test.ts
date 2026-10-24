@@ -68,6 +68,6 @@ describe("monthly summary email", () => {
   it("makes no such caveat when every amount is the budget's", () => {
     const mail = render(summary);
     expect(mail.html).toContain("Amounts are in USD, the budget's currency.");
-    expect(mail.subject).toBe("Your September in everycent: Home");
+    expect(mail.subject).toBe("Your September in strictbudget: Home");
   });
 });

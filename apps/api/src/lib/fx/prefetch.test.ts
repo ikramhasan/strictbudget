@@ -1,6 +1,6 @@
-import { sql } from "@everycent/db";
-import { fxRate } from "@everycent/db/schema";
-import type { CurrencyCode } from "@everycent/engine";
+import { sql } from "@strictbudget/db";
+import { fxRate } from "@strictbudget/db/schema";
+import type { CurrencyCode } from "@strictbudget/engine";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, runJobs, signUp } from "../../../test/helpers";
@@ -48,7 +48,7 @@ const cachedToday = (base: CurrencyCode) =>
     .from(fxRate)
     .where(and(eq(fxRate.base, base), eq(fxRate.date, TODAY), eq(fxRate.rateDate, TODAY)));
 
-describe("FX prefetch job (EVERYCENT-192)", () => {
+describe("FX prefetch job", () => {
   it("fetches today's rates once per budget currency with a foreign account, then skips it", async () => {
     await budgetWith(["EUR", "GBP"]);
     await budgetWith(["EUR"]);

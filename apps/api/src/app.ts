@@ -27,6 +27,7 @@ import { categoryTemplatesRouter } from "./routes/category-templates";
 import { clientErrorsRouter } from "./routes/client-errors";
 import { eventsRouter } from "./routes/events";
 import { exportsRouter } from "./routes/exports";
+import { externalImportRouter } from "./routes/external-import";
 import { flagsRouter } from "./routes/flags";
 import { fxRatesRouter } from "./routes/fx-rates";
 import { healthRouter } from "./routes/health";
@@ -42,16 +43,13 @@ import { reportsRouter } from "./routes/reports";
 import { scheduledRouter } from "./routes/scheduled";
 import { transactionsRouter } from "./routes/transactions";
 import { viewsRouter } from "./routes/views";
-import { ynabImportRouter } from "./routes/ynab-import";
 import type { AppDeps } from "./types";
 
 export function createApp(deps: AppDeps) {
   const app = createRouter();
 
   app.use("*", requestId());
-  // Traces and request metrics; no-ops unless telemetry is configured (`telemetry.ts`).
-  app.use("*", httpInstrumentationMiddleware({ serviceName: "everycent-api" }));
-  // Production logs one JSON line per request; development keeps Hono's readable lines.
+  app.use("*", httpInstrumentationMiddleware({ serviceName: "strictbudget-api" }));
   if (deps.env.NODE_ENV === "production") app.use("*", requestLog);
   else if (deps.env.NODE_ENV !== "test") app.use("*", logger());
   app.use("*", secureHeaders());
@@ -77,9 +75,8 @@ export function createApp(deps: AppDeps) {
     "/api/auth/revoke-session",
     "/api/auth/revoke-sessions",
     "/api/auth/revoke-other-sessions",
-    // Two-step verification: set up with /two-factor/enable + /verify-totp, signed in with
-    // /verify-totp or /verify-backup-code. Turning it off is /v1/me/two-factor (a code, as YNAB
-    // asks); YNAB has no email codes or regenerated backup codes.
+    // Two-step verification is turned off through /v1/me/two-factor, which asks for a code; there
+    // are no email codes or regenerated backup codes.
     "/api/auth/two-factor/disable",
     "/api/auth/two-factor/send-otp",
     "/api/auth/two-factor/verify-otp",
@@ -131,7 +128,7 @@ export function createApp(deps: AppDeps) {
   app.route("/v1", agentsRouter);
   app.route("/v1", apiKeysRouter);
   app.route("/v1", picturesRouter);
-  app.route("/v1", ynabImportRouter);
+  app.route("/v1", externalImportRouter);
   app.route("/v1", backupsRouter);
   app.route("/v1", budgetsRouter);
   app.route("/v1", membersRouter);
@@ -153,7 +150,6 @@ export function createApp(deps: AppDeps) {
   app.route("/v1", exportsRouter);
 
   registerDocs(app);
-  // Agents run the API's own operations (built from its OpenAPI document on first use).
   auth.agentRuntime.attach(app);
   if (deps.env.WEB_DIST_DIR) serveWebApp(app, deps.env.WEB_DIST_DIR);
   return app;

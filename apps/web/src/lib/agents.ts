@@ -21,7 +21,6 @@ export function authorizeUrl(search: string): string {
   return `${apiBaseUrl}/api/auth/oauth2/authorize?${params}`;
 }
 
-/** Sends a signed-out person to sign in first, then back to this page (query included). */
 export async function requireSignIn(queryClient: QueryClient, href: string) {
   const session = await queryClient.ensureQueryData(sessionQueryOptions);
   if (!session) throw redirect({ to: "/sign-in", search: { redirect: href } });
@@ -51,7 +50,6 @@ export async function authGet<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-/** The MCP server's URL, for connecting a client (same origin as the API). */
 export const mcpServerUrl = () => `${apiBaseUrl}/mcp`;
 
 /**
@@ -62,16 +60,16 @@ export const mcpServerUrl = () => `${apiBaseUrl}/mcp`;
 export function agentSetupPrompt(origin: string = apiBaseUrl): string {
   const mcp = `${origin}/mcp`;
   return [
-    "Connect yourself to my everycent budget so you can help me with it.",
+    "Connect yourself to my strictbudget budget so you can help me with it.",
     "",
-    `1. Add everycent as a remote MCP server (Streamable HTTP, OAuth sign-in) named "everycent" at ${mcp}`,
-    `   - Claude Code: run \`claude mcp add --transport http everycent ${mcp}\`, then open /mcp and authenticate.`,
+    `1. Add strictbudget as a remote MCP server (Streamable HTTP, OAuth sign-in) named "strictbudget" at ${mcp}`,
+    `   - Claude Code: run \`claude mcp add --transport http strictbudget ${mcp}\`, then open /mcp and authenticate.`,
     "   - Other clients: add it to your MCP settings as a remote/HTTP server with that URL.",
-    "2. When a browser opens, I'll sign in to everycent and choose whether you can make changes.",
+    "2. When a browser opens, I'll sign in to strictbudget and choose whether you can make changes.",
     "3. Then call listBudgets and tell me which budgets you can see.",
     "",
     `If you support the Agent Auth protocol instead of MCP, start from ${origin}/.well-known/agent-configuration and send me the approval link it gives you.`,
     "",
-    'Money amounts in everycent are integer strings in the currency\'s minor units ("-1250" is -12.50). Your changes show as yours, made on my behalf.',
+    'Money amounts in strictbudget are integer strings in the currency\'s minor units ("-1250" is -12.50). Your changes show as yours, made on my behalf.',
   ].join("\n");
 }

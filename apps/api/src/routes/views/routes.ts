@@ -1,5 +1,5 @@
-import { MAX_CUSTOM_VIEWS, PRESET_BUDGET_VIEWS } from "@everycent/db/schema";
 import { createRoute, z } from "@hono/zod-openapi";
+import { MAX_CUSTOM_VIEWS, PRESET_BUDGET_VIEWS } from "@strictbudget/db/schema";
 import { jsonError } from "../../lib/errors";
 import { authSecurity, requireAuth } from "../../middleware/require-auth";
 

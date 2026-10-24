@@ -1,4 +1,4 @@
-import { type CurrencyCode, formatDate } from "@everycent/engine";
+import { type CurrencyCode, formatDate } from "@strictbudget/engine";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,15 +8,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Button } from "@everycent/ui/components/button";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@everycent/ui/components/card";
+} from "@strictbudget/ui/components/card";
 import {
   Dialog,
   DialogContent,
@@ -24,9 +24,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Input } from "@everycent/ui/components/input";
-import { Label } from "@everycent/ui/components/label";
+} from "@strictbudget/ui/components/dialog";
+import { Input } from "@strictbudget/ui/components/input";
+import { Label } from "@strictbudget/ui/components/label";
 import {
   Table,
   TableBody,
@@ -34,7 +34,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@everycent/ui/components/table";
+} from "@strictbudget/ui/components/table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Trash2 } from "lucide-react";
 import { type FormEvent, useId, useState } from "react";
@@ -52,13 +52,9 @@ import {
 import { CurrencyPicker } from "./currency-picker";
 import { DateField } from "./register-fields";
 
-/** A sensible first pick for a foreign currency: EUR, or USD for a euro budget. */
 const firstForeign = (budget: Budget): CurrencyCode => (budget.currency === "EUR" ? "USD" : "EUR");
 
-/**
- * Budget settings' Exchange rates: the budget's own rates per currency and day (they win over
- * the market rate for that day), and a lookup of the rate a currency would get on a date.
- */
+/** The budget's own rates per currency and day win over the market rate for that day. */
 export function ExchangeRates({ budget }: { budget: Budget }) {
   const queryClient = useQueryClient();
   const overrides = useQuery(fxRateOverridesQueryOptions(budget.id));
@@ -325,7 +321,6 @@ function OverrideForm({
   );
 }
 
-/** "Look up rate": the rate a currency gets on a date (the budget's own, else the market's). */
 function RateLookup({ budget }: { budget: Budget }) {
   const [currency, setCurrency] = useState<CurrencyCode>(firstForeign(budget));
   const [date, setDate] = useState(todayIso());

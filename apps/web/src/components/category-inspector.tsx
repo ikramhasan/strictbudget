@@ -1,13 +1,13 @@
-import { addMonths, isBudgetMonth } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
+import { addMonths, isBudgetMonth } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@everycent/ui/components/collapsible";
-import { Input } from "@everycent/ui/components/input";
-import { Textarea } from "@everycent/ui/components/textarea";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/collapsible";
+import { Input } from "@strictbudget/ui/components/input";
+import { Textarea } from "@strictbudget/ui/components/textarea";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { ChartColumn, ChevronDown, ChevronRight, SquarePen } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
@@ -18,8 +18,8 @@ import { monthName } from "@/lib/months";
 type Format = (minorUnits: string) => string;
 
 /**
- * A line of the breakdown; `value` null shows YNAB's dash (Uncategorized can't hold money).
- * `report` adds a link to the report behind the figure (an everycent extra, EVERYCENT-82).
+ * A line of the breakdown; `value` null shows a dash (Uncategorized can't hold money). `report`
+ * adds a link to the report behind the figure.
  */
 function Line({
   label,
@@ -78,8 +78,8 @@ function Panel({ children, label }: { children: ReactNode; label: string }) {
 }
 
 /**
- * The inspector with nothing (or several categories) selected: YNAB's month summary, added up
- * over the rows in view or the selection.
+ * The inspector with nothing (or several categories) selected: the month summary, added up over
+ * the rows in view or the selection.
  */
 export function MonthSummary({
   month,
@@ -97,11 +97,10 @@ export function MonthSummary({
    * covers the whole plan.
    */
   reportCategories?: string[];
-  /** Names of the selected categories, when two or more are. */
   selectedNames?: string[];
   /**
-   * What the plan's targets ask of this month and the next (YNAB's "Cost to Be Me"), with the
-   * budget's expected income; shown in the current month only, as YNAB does.
+   * What the plan's targets ask of this month and the next ("Cost to Be Me"), with the budget's
+   * expected income; shown in the current month only.
    */
   targets?: {
     month: bigint;
@@ -155,7 +154,6 @@ export function MonthSummary({
         <>
           <h3 className="font-semibold text-sm">Cost to Be Me</h3>
           <CostToBeMe name={name} targets={targets} format={format} />
-          {/* YNAB showed this line whenever next month's total was higher; equal or lower wasn't seen. */}
           {targets.nextMonth > targets.month && (
             <p className="rounded-md bg-muted p-2 text-center text-muted-foreground text-xs">
               Next month's targets could increase your total to{" "}
@@ -173,11 +171,10 @@ const barWidth = (part: bigint, whole: bigint) =>
   whole <= 0n || part >= whole ? "100%" : `${Number((part * 10000n) / whole) / 100}%`;
 
 /**
- * YNAB's Cost to Be Me (seen 2026-10-08, YNAB findings "Targets overview and history"): the
- * month's targets and, once entered, the expected income, each with a bar against the larger of
- * the two. The targets bar is blue while the income covers them and red when it falls short;
- * the income bar is grey. "Enter your expected income" opens an amount field; zero leaves it as
- * it was (YNAB can't clear it).
+ * Cost to Be Me: the month's targets and, once entered, the expected income, each with a bar
+ * against the larger of the two. The targets bar is blue while the income covers them and red
+ * when it falls short; the income bar is grey. "Enter your expected income" opens an amount
+ * field; zero leaves it as it was (it can't be cleared).
  */
 function CostToBeMe({
   name,
@@ -308,16 +305,14 @@ export function CategoryInspector({
   format: Format;
   /** A paired loan's "Paired with … Account" line, under the name. */
   pairedWith?: ReactNode;
-  /** A paired loan's payment section (YNAB's Available for Payment and Record Payment). */
+  /** A paired loan's payment section (Available for Payment and Record Payment). */
   loan?: ReactNode;
-  /** The Available pill (it opens the move and cover popovers). */
   available: ReactNode;
   note: string;
   onNoteChange: (note: string) => Promise<void>;
   uncategorized?: boolean;
-  /** The Target section. */
   target?: ReactNode;
-  /** The month's upcoming scheduled transactions, under the breakdown (YNAB). */
+  /** The month's upcoming scheduled transactions, under the breakdown. */
   upcoming?: ReactNode;
 }) {
   const overspent = totals.available < 0n;
@@ -369,7 +364,7 @@ export interface PaymentFigures {
   priorBalance: bigint;
   spendingAndOutflows: bigint;
   paymentsAndInflows: bigint;
-  /** What's owed beyond Available (YNAB's Total Underfunded). */
+  /** What's owed beyond Available (Total Underfunded). */
   underfunded: bigint;
   /** The part of underfunded from this month's credit overspending. */
   overspentCategories: bigint;
@@ -380,12 +375,11 @@ export interface PaymentFigures {
 }
 
 /**
- * The inspector for a credit card's payment category (YNAB's "Payment" panel, checked in its web
- * app on 2026-10-03): whether Available covers the balance, the Total Underfunded split into this
- * month's overspent categories and the rest, then Current Balance and Available for Payment with
- * where the money came from. With a target that applies, `target` (the Target section) takes the
- * alert's place (YNAB, 2026-10-08). In a past month YNAB shows neither the alert nor Current
- * Balance (Card R6, 2026-10-11).
+ * The inspector for a credit card's payment category: whether Available covers the balance, the
+ * Total Underfunded split into this month's overspent categories and the rest, then Current
+ * Balance and Available for Payment with where the money came from. With a target that applies,
+ * `target` (the Target section) takes the alert's place. A past month shows neither the alert
+ * nor Current Balance.
  */
 export function PaymentInspector({
   name,
@@ -409,17 +403,16 @@ export function PaymentInspector({
   available: ReactNode;
   note: string;
   onNoteChange: (note: string) => Promise<void>;
-  /** YNAB only shows the Underfunded alert from the current month on. */
+  /** The Underfunded alert shows only from the current month on. */
   warn: boolean;
   /** A month before the current one (no alert, no Current Balance). */
   past?: boolean;
   /** "Cover Overspent Categories": shows the Overspent view. */
   onCoverOverspent?: () => void;
-  /** Record Payment, once the balance is covered. */
   onRecordPayment?: () => void;
   /** The Target section, which shows the alert itself when no target applies. */
   target?: ReactNode;
-  /** Scheduled payments still to come, in Available for Payment (YNAB, 2026-10-12: Card W). */
+  /** Scheduled payments still to come, in Available for Payment. */
   upcoming?: ReactNode;
 }) {
   return (
@@ -464,8 +457,8 @@ function ActivityHeading() {
   return <dt className="pt-1 font-medium text-sm">Activity This Month</dt>;
 }
 
-/** YNAB keeps the payment inspector's folded sections in the browser, for every plan. */
-const FOLD_PREFIX = "everycent:inspector-folded:";
+/** The payment inspector's folded sections are kept in the browser, for every plan. */
+const FOLD_PREFIX = "strictbudget:inspector-folded:";
 
 function readFolded(key: string) {
   try {
@@ -475,10 +468,7 @@ function readFolded(key: string) {
   }
 }
 
-/**
- * A payment inspector section that folds to its title and total, as YNAB's Current Balance and
- * Available for Payment do (checked 2026-10-11; YNAB remembers it in localStorage).
- */
+/** A payment inspector section that folds to its title and total. */
 function FoldingSection({
   storageKey,
   title,
@@ -521,12 +511,11 @@ function FoldingSection({
 }
 
 /**
- * YNAB's Payment alert: the payment was more than was set aside (red), this month's overspent
+ * The Payment alert: the payment was more than was set aside (red), this month's overspent
  * categories or the rest of the balance still to cover, or the card paid off. While the balance
  * isn't covered it offers "Create a Debt Payoff Target" (`onCreateTarget`), then Total
- * Underfunded with its parts. Once Available covers what's owed it offers Record Payment (YNAB,
- * 2026-10-15, x-c11-163 Card C: covered or exactly covered, this month or later; not when only
- * part is covered, nor on a paid-off card).
+ * Underfunded with its parts. Once Available covers what's owed (or exactly covers it), this
+ * month or later, it offers Record Payment; not when only part is covered, nor on a paid-off card.
  */
 export function PaymentAlert({
   name,
@@ -544,7 +533,7 @@ export function PaymentAlert({
   format: Format;
   warn: boolean;
   onCreateTarget?: () => void;
-  /** YNAB's "Cover Overspent Categories": switches the budget to the Overspent view. */
+  /** "Cover Overspent Categories": switches the budget to the Overspent view. */
   onCoverOverspent?: () => void;
   /** Opens the card's register with Record Payment's row. */
   onRecordPayment?: () => void;
@@ -590,7 +579,7 @@ export function PaymentAlert({
           <p>Your {name} is paid off! Being debt free is a wonderful thing.</p>
         ) : null}
         {!overpaid && warn && payment.overspentCategories > 0n && onCoverOverspent && (
-          // YNAB, 2026-10-11: one click, no money moves; it shows the Overspent view.
+          // One click, no money moves; it shows the Overspent view.
           <Button size="sm" onClick={onCoverOverspent}>
             Cover Overspent Categories
           </Button>
@@ -628,9 +617,9 @@ export function PaymentAlert({
 }
 
 /**
- * YNAB's overspending message, by kind (checked in its web app on 2026-10-03): cash only, credit
- * only ("…with credit. Cover this overspending to avoid creating debt!") or both ("…with cash and
- * credit. Add at least $1.00 …", the cash part). Uncategorized quotes only its cash part.
+ * The overspending message, by kind: cash only, credit only ("…with credit. Cover this
+ * overspending to avoid creating debt!") or both ("…with cash and credit. Add at least $1.00 …",
+ * the cash part). Uncategorized quotes only its cash part.
  */
 function OverspentMessage({
   totals,
@@ -674,7 +663,7 @@ function OverspentMessage({
   );
 }
 
-/** YNAB's Notes: click to type, saved when you click away. */
+/** Notes: click to type, saved when you click away. */
 function NoteField({
   note,
   onChange,

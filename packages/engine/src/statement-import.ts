@@ -5,8 +5,8 @@ import { type CsvDateFormat, parseImportAmount, parseImportDate } from "./file-i
 import type { NumberFormat } from "./format-settings";
 
 /**
- * A bank statement file (OFX/QFX or QIF), read: where it says it's from (YNAB's "imported from
- * CHECKING: ***2345" or "from Bank", 2026-10-17) and its transactions with their dates as written.
+ * A bank statement file (OFX/QFX or QIF), read: where it says it's from ("CHECKING: ***2345", or
+ * the QIF type such as "Bank") and its transactions with their dates as written.
  */
 export interface Statement {
   source: string;
@@ -129,7 +129,7 @@ export function readQif(
 
 /**
  * QIF writes the year after an apostrophe in some dates ("10/15'2026") and pads with spaces
- * ("1/ 5/2026"); YNAB read a file mixing "10/14/2026" and "10/15'2026" as one format (2026-10-17).
+ * ("1/ 5/2026"); a file mixing "10/14/2026" and "10/15'2026" reads as one format.
  */
 function qifDate(value: string) {
   return value.replace(/'/g, "/").replace(/\s+/g, "");
@@ -157,7 +157,6 @@ export interface StatementOptions {
   swapInflowOutflow: boolean;
 }
 
-/** YNAB's OFX/QIF options (2026-10-17): Import Memos, Swap Payee and Memo, Swap Inflow and Outflow. */
 export function applyStatementOptions(
   rows: readonly ImportRow[],
   options: StatementOptions,

@@ -57,7 +57,7 @@ const mirror: ScheduledTransaction = {
 };
 
 describe("isScheduled", () => {
-  it("schedules a repeat or a date still ahead, as YNAB does", () => {
+  it("schedules a repeat or a date still ahead", () => {
     expect(isScheduled({ date: TODAY, frequency: "never" }, TODAY)).toBe(false);
     expect(isScheduled({ date: TODAY }, TODAY)).toBe(false);
     expect(isScheduled({ date: "2026-10-12", frequency: "never" }, TODAY)).toBe(true);
@@ -162,7 +162,7 @@ describe("scheduleRestoreBody", () => {
       payeeName: "Gym",
       categoryId: "c1",
       flag: "red",
-      // Even if its accounts were closed since (YNAB's Undo).
+      // Even if its accounts were closed since.
       restore: true,
     });
     expect(scheduleRestoreBody({ ...row, transferAccountId: "savings" })).toMatchObject({

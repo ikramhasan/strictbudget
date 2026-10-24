@@ -11,10 +11,10 @@ import type { exportBackup, importBackup } from "./routes";
 
 type Env = AppEnv & AuthedEnv;
 
-/** A file name made of the budget's name and the day: "Household 2026-10-17.everycent.json". */
+/** A file name made of the budget's name and the day: "Household 2026-10-17.strictbudget.json". */
 function backupFileName(name: string, now: Date) {
   const safe = name.replace(/[^\p{L}\p{N} _-]+/gu, " ").trim() || "budget";
-  return `${safe} ${now.toISOString().slice(0, 10)}.everycent.json`;
+  return `${safe} ${now.toISOString().slice(0, 10)}.strictbudget.json`;
 }
 
 export const exportBackupHandler: RouteHandler<typeof exportBackup, Env> = async (c) => {

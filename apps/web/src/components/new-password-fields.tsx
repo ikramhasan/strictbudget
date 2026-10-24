@@ -1,5 +1,5 @@
-import { Field, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
+import { Field, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
 
 export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_PASSWORD_LENGTH = 128;
@@ -34,7 +34,6 @@ export function NewPasswordFields({ label = "New password" }: { label?: string }
   );
 }
 
-/** The new password from a form with `NewPasswordFields`, or an error when the two differ. */
 export function readNewPassword(form: FormData): { password: string } | { error: string } {
   const password = String(form.get("newPassword") ?? "");
   if (password !== String(form.get("confirmPassword") ?? "")) {

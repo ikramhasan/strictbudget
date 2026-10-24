@@ -1,11 +1,11 @@
-import { Button } from "@everycent/ui/components/button";
-import { cn } from "@everycent/ui/lib/utils";
 import {
   MessageScroller as MessageScrollerPrimitive,
   useMessageScroller,
   useMessageScrollerScrollable,
   useMessageScrollerVisibility,
 } from "@shadcn/react/message-scroller";
+import { Button } from "@strictbudget/ui/components/button";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ArrowDownIcon } from "lucide-react";
 import * as React from "react";
 

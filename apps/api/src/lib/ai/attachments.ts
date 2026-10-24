@@ -1,5 +1,5 @@
-import type { Database } from "@everycent/db";
-import { aiAttachment } from "@everycent/db/schema";
+import type { Database } from "@strictbudget/db";
+import { aiAttachment } from "@strictbudget/db/schema";
 import type { ChatMiddleware, ContentPart, ModelMessage } from "@tanstack/ai";
 import { and, eq, inArray } from "drizzle-orm";
 import { AppError } from "../errors";
@@ -8,11 +8,11 @@ import { kindOf, modelParts } from "./files";
 
 // A file in a conversation is stored once, in object storage (`ai_attachment`), and the
 // conversation's transcript only points at it: an image or document part whose URL source is
-// `everycent-attachment:<id>`. Just before each model call the pointers are swapped for the
+// `strictbudget-attachment:<id>`. Just before each model call the pointers are swapped for the
 // file's contents (`attachmentMiddleware`), as the provider's own messages, so the transcript in
 // the database never holds a file's bytes.
 
-const SCHEME = "everycent-attachment:";
+const SCHEME = "strictbudget-attachment:";
 
 type AttachmentRow = typeof aiAttachment.$inferSelect;
 type Part = Record<string, unknown>;
@@ -180,7 +180,7 @@ export function attachmentMiddleware(deps: {
   };
 
   return {
-    name: "everycent-attachments",
+    name: "strictbudget-attachments",
     async onConfig(_ctx, config) {
       const ids = new Set(config.messages.flatMap((m) => (partsOf(m) ?? []).map(pointedAt)));
       ids.delete(null);

@@ -53,11 +53,11 @@ export interface KeyCursor {
 }
 
 /**
- * YNAB's Up/Down over a list of rows (seen 2026-10-18 in the plan and the register). With nothing
- * selected, Down selects the first row and Up the last. Plain Up/Down moves a single selection one
- * row, wrapping at the ends; with several selected the register moves on from the range's anchor
- * and the plan does nothing (`several`). Shift grows or shrinks a range from the anchor and stops
- * at the ends. Null when nothing changes.
+ * Up/Down over a list of rows (the budget screen and the register). With nothing selected, Down
+ * selects the first row and Up the last. Plain Up/Down moves a single selection one row, wrapping at
+ * the ends; with several selected the register moves on from the range's anchor and the budget
+ * screen does nothing (`several`). Shift grows or shrinks a range from the anchor and stops at the
+ * ends. Null when nothing changes.
  */
 export function stepSelection(
   order: readonly string[],

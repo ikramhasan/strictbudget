@@ -1,6 +1,6 @@
 "use client";
 
-// everycent: shadcn has no Autocomplete wrapper yet. Base UI's Autocomplete (free text with
+// strictbudget: shadcn has no Autocomplete wrapper yet. Base UI's Autocomplete (free text with
 // suggestions) shares its input, popup, list, group and empty parts with Combobox, so this reuses
 // the shadcn combobox styling and only adds the root and item.
 import { Autocomplete as AutocompletePrimitive } from "@base-ui/react";
@@ -12,8 +12,8 @@ import {
   ComboboxLabel as AutocompleteGroupLabel,
   ComboboxInput as AutocompleteInput,
   ComboboxList as AutocompleteList,
-} from "@everycent/ui/components/combobox";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/combobox";
+import { cn } from "@strictbudget/ui/lib/utils";
 
 const Autocomplete = AutocompletePrimitive.Root;
 

@@ -1,5 +1,5 @@
-import { type CurrencyCode, money, shareLabel } from "@everycent/engine";
-import { ChartContainer } from "@everycent/ui/components/chart";
+import { type CurrencyCode, money, shareLabel } from "@strictbudget/engine";
+import { ChartContainer } from "@strictbudget/ui/components/chart";
 import { Pie, PieChart, Tooltip, Treemap, type TreemapNode } from "recharts";
 import { useBudget } from "@/lib/budget-context";
 import { chartNumber } from "@/lib/reports";
@@ -7,7 +7,6 @@ import type { Breakdown, BreakdownRow } from "@/lib/spending-breakdown";
 
 export type BreakdownChartKind = "donut" | "treemap";
 
-/** The tooltip for a row: its name, the exact amount and its share. */
 function RowTip({ row, breakdown }: { row: BreakdownRow; breakdown: Breakdown }) {
   const { budget, formatAmount } = useBudget();
   return (
@@ -29,11 +28,7 @@ function RowTip({ row, breakdown }: { row: BreakdownRow; breakdown: Breakdown })
   );
 }
 
-/**
- * Spending Breakdown's chart: YNAB's donut with Total Spending in the centre, or everycent's
- * treemap (groups holding their categories, area = spending) so small categories stay readable.
- * Only rows that spent draw a mark; clicking one opens it.
- */
+/** The treemap (area = spending) keeps small categories readable. Only rows that spent draw a mark. */
 export function SpendingBreakdownChart({
   kind,
   breakdown,
@@ -42,7 +37,6 @@ export function SpendingBreakdownChart({
 }: {
   kind: BreakdownChartKind;
   breakdown: Breakdown;
-  /** Nest the treemap's categories in their groups. */
   nested: boolean;
   onSelect: (row: BreakdownRow) => void;
 }) {
@@ -139,12 +133,10 @@ function nestByGroup(rows: readonly BreakdownRow[]) {
   return [...groups.values()];
 }
 
-/** A treemap rectangle: a category's (filled, labelled when it fits) or a group's outline. */
 function TreemapCell({ node, onSelect }: { node: TreemapNode; onSelect: (key: string) => void }) {
   const { x, y, width, height, name } = node;
   const rowKey = node.rowKey as string | undefined;
   if (!rowKey) {
-    // A group: an outline around its categories.
     return node.depth > 0 ? (
       <rect
         x={x}

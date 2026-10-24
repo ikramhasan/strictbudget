@@ -34,7 +34,7 @@ describe("register selection", () => {
   });
 });
 
-describe("stepSelection (YNAB's Up/Down)", () => {
+describe("stepSelection (Up/Down)", () => {
   const order = ["a", "b", "c", "d"];
   const none = { anchor: null, head: null };
   const step = (

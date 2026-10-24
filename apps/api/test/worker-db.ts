@@ -6,7 +6,7 @@ export const TEST_WORKERS = Math.max(
   Math.min(Number(process.env.API_TEST_WORKERS) || availableParallelism() - 1, 8),
 );
 
-/** `url` with the database renamed for one worker (`everycent_test` → `everycent_test_w3`). */
+/** `url` with the database renamed for one worker (`strictbudget_test` → `strictbudget_test_w3`). */
 export function workerDatabaseUrl(url: string, worker: number): string {
   const u = new URL(url);
   u.pathname = `${u.pathname}_w${worker}`;

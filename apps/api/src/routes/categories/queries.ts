@@ -1,4 +1,4 @@
-import { newId, sql } from "@everycent/db";
+import { newId, sql } from "@strictbudget/db";
 import {
   category,
   categoryAssignment,
@@ -10,8 +10,8 @@ import {
   scheduledTransaction,
   subTransaction,
   transaction,
-} from "@everycent/db/schema";
-import { monthOf } from "@everycent/engine";
+} from "@strictbudget/db/schema";
+import { monthOf } from "@strictbudget/engine";
 import { type AnyColumn, and, asc, count, eq, inArray, isNull, max, ne } from "drizzle-orm";
 import { adjustAssigned } from "../../lib/assignments";
 import { AppError } from "../../lib/errors";
@@ -38,9 +38,7 @@ export function toTargetJson(t: TargetRow) {
 }
 
 export interface CategoryUsage {
-  /** Transactions and split lines in the category (YNAB's delete dialog: "All transactions [n]"). */
   transactionCount: number;
-  /** Money assigned in any month (YNAB asks before deleting it). */
   hasAssignedMoney: boolean;
 }
 
@@ -63,7 +61,6 @@ export function toCategoryJson(
   };
 }
 
-/** One category as the API returns it, its history and usage looked up. */
 export async function loadCategoryJson(
   db: Db,
   budgetId: string,
@@ -98,7 +95,6 @@ export async function listCategoryTree(db: Db, budgetId: string) {
     .select()
     .from(categoryGroup)
     .where(and(eq(categoryGroup.budgetId, budgetId), eq(categoryGroup.internal, false)))
-    // YNAB pins Credit Card Payments to the top.
     .orderBy(
       sql`${categoryGroup.kind} is null`,
       asc(categoryGroup.sortOrder),
@@ -131,7 +127,6 @@ export async function listCategoryTree(db: Db, budgetId: string) {
   };
 }
 
-/** A user-editable group of the budget. Internal groups are reported as not found. */
 export async function findGroup(db: Db, budgetId: string, groupId: string) {
   const [row] = await db
     .select()
@@ -147,7 +142,6 @@ export async function findGroup(db: Db, budgetId: string, groupId: string) {
   return row;
 }
 
-/** A user-editable category of the budget. Internal categories are reported as not found. */
 export async function findCategory(db: Db, budgetId: string, categoryId: string) {
   const [row] = await db
     .select()
@@ -195,8 +189,6 @@ export async function insertCategory(db: Db, budgetId: string, groupId: string, 
   return row;
 }
 
-/** Refuses edits YNAB doesn't allow on the Credit Card Payments group and payment categories. */
-/** A category's target, if it has one. */
 export async function findTarget(db: Db, categoryId: string) {
   const [row] = await db
     .select()
@@ -277,8 +269,8 @@ export async function reassignHistory(
     userId,
   );
   if (!target) return;
-  // As in YNAB, the assigned money goes along (and with it what's available). Moved to Ready to
-  // Assign or Uncategorized, it just returns to Ready to Assign with the deleted rows.
+  // The assigned money goes along (and with it what's available). Moved to Ready to Assign or
+  // Uncategorized, it just returns to Ready to Assign with the deleted rows.
   const assignments = target.internalKind
     ? []
     : await db
@@ -319,10 +311,9 @@ export async function reassignHistory(
 }
 
 /**
- * Recent Moves for categories about to be deleted, as YNAB keeps them (checked 2026-10-11): their
- * earlier moves stay, naming the "deleted category", and the delete itself is logged, each month's
- * assigned money going to `destinationId` (the category picked, or Ready to Assign). A negative
- * amount moves the other way ("Moved $5.00 from Ready to Assign to deleted category V6c A").
+ * Recent Moves for categories about to be deleted: their earlier moves stay, naming the "deleted
+ * category", and the delete itself is logged, each month's assigned money going to
+ * `destinationId` (the category picked, or Ready to Assign). A negative amount moves the other way.
  */
 async function recordDeletion(
   db: Db,
@@ -373,7 +364,6 @@ async function recordDeletion(
   }
 }
 
-/** Each category's {@link CategoryUsage}, for the whole budget or just `categoryIds`. */
 export async function categoryUsage(db: Db, budgetId: string, categoryIds?: readonly string[]) {
   const only = <T extends AnyColumn>(column: T) =>
     categoryIds ? inArray(column, [...categoryIds]) : undefined;

@@ -1,11 +1,11 @@
-import { addMonths, type CurrencyCode } from "@everycent/engine";
-import { type ChartConfig, ChartContainer } from "@everycent/ui/components/chart";
+import { addMonths, type CurrencyCode } from "@strictbudget/engine";
+import { type ChartConfig, ChartContainer } from "@strictbudget/ui/components/chart";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@everycent/ui/components/collapsible";
-import { Skeleton } from "@everycent/ui/components/skeleton";
+} from "@strictbudget/ui/components/collapsible";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
@@ -14,8 +14,7 @@ import { accountHistory, netWorthOptions } from "@/lib/net-worth";
 import { chartNumber, currentMonth, monthLabel } from "@/lib/reports";
 import { useAmountFormat } from "./reports/net-worth/format";
 
-const STORAGE_KEY = "everycent:balance-history-open";
-/** How far back the chart reaches. */
+const STORAGE_KEY = "strictbudget:balance-history-open";
 const MONTHS = 24;
 
 const config = { balance: { label: "Balance", color: "var(--report-1)" } } satisfies ChartConfig;
@@ -29,9 +28,9 @@ function storedOpen() {
 }
 
 /**
- * The register's "Balance over time" (EVERYCENT-79, an everycent extra): the account's month-end
- * working balance over the last two years (from its first month), from the net worth report's
- * balance history, in the account's own currency. Collapsed until opened; the choice is kept.
+ * The register's "Balance over time": the account's month-end working balance over the last two
+ * years (from its first month), from the net worth report's balance history, in the account's own
+ * currency. Collapsed until opened; the choice is kept.
  */
 export function BalanceHistory({
   budgetId,

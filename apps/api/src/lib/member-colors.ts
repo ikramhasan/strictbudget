@@ -1,19 +1,17 @@
+import { z } from "@hono/zod-openapi";
 import {
   budgetMember,
   CONNECTED_AGENT_KINDS,
   connectedAgent,
   user,
   userAvatar,
-} from "@everycent/db/schema";
-import { z } from "@hono/zod-openapi";
+} from "@strictbudget/db/schema";
 import { asc, eq, inArray, type SQL, sql } from "drizzle-orm";
 import type { Db } from "./ledger";
 
 /**
- * YNAB's six member avatar colours, 1-based (avatar-one … avatar-six). YNAB's client (checked
- * 2026-10-16 on a shared plan, EVERYCENT-166) gives the manager avatar-one and every other member
- * the next of avatar-two … avatar-six in member-list order, avatar-six once they run out. A budget
- * here has at most six people, so the owner gets 1 and the others 2–6 by when they joined.
+ * Six member avatar colours, 1-based (avatar-one … avatar-six). A budget has at most six people,
+ * so the owner gets 1 and the others 2–6 by when they joined.
  */
 export const zAvatarColor = z
   .number()
@@ -21,10 +19,10 @@ export const zAvatarColor = z
   .min(1)
   .max(6)
   .describe(
-    "YNAB's member avatar colour, 1–6: the owner is 1, the others 2–6 in the order they joined",
+    "The member's avatar colour, 1–6: the owner is 1, the others 2–6 in the order they joined",
   );
 
-/** A user's profile picture URL (EVERYCENT-229), shown as a circle; null without one. */
+/** A user's profile picture URL, shown as a circle; null without one. */
 export const zPicture = z
   .string()
   .nullable()
@@ -33,7 +31,7 @@ export const zPicture = z
 /**
  * A user's profile picture URL, built from their `user_avatar` row (`/v1/users/{id}/picture?v=`,
  * as `profilePictureUrl` writes it). Never `user.image`: Better Auth's own endpoints accept any
- * string there, and other members' browsers would load it (PR #19 review).
+ * string there, and other members' browsers would load it.
  */
 export function pictureUrlSql(userId: SQL | typeof user.id): SQL<string | null> {
   return sql<

@@ -1,16 +1,15 @@
-import { sql } from "@everycent/db";
-import { category, payee, subTransaction, transaction } from "@everycent/db/schema";
+import { sql } from "@strictbudget/db";
+import { category, payee, subTransaction, transaction } from "@strictbudget/db/schema";
 import {
   nextPayeeAutoCategory,
   type PayeeCategorization,
   payeeAutoCategory,
   payeePrefillCategory,
   payeeRecentCategories,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { and, desc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type { Db } from "./ledger";
 
-/** What a payee's transactions say about its category. */
 export interface PayeeCategories {
   /** Manage Payees' "Current default category" (two of the last three, see `payeeAutoCategory`). */
   autoCategoryId: string | null;
@@ -41,8 +40,8 @@ interface Use {
 
 /**
  * Each payee's categories, from its transactions by date. Uncategorized doesn't count. The default
- * only reads whole transactions, as YNAB's "last 3 transactions" skips splits; the recent
- * categories ("Suggested" in the category list) read split lines too, as YNAB's do.
+ * only reads whole transactions (split lines are skipped); the recent categories ("Suggested" in
+ * the category list) read split lines too.
  */
 export async function payeeCategories(
   db: Db,
@@ -129,8 +128,8 @@ export async function payeeCategories(
 
 /**
  * Updates the stored auto-categorization default of these transactions' payees after an add or
- * edit (YNAB's "This is updated when you add or edit a transaction"; see `nextPayeeAutoCategory`).
- * Call it once the transactions are written. Deletes don't call it: YNAB keeps the default.
+ * edit (see `nextPayeeAutoCategory`). Call it once the transactions are written. Deletes don't
+ * call it: the default stays.
  */
 export async function notePayeeCategorizations(
   db: Db,

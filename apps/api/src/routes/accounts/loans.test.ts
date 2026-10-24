@@ -1,4 +1,4 @@
-import { loanTerms } from "@everycent/db/schema";
+import { loanTerms } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
@@ -51,7 +51,7 @@ function send(method: string, path: string, cookie: string, body?: unknown) {
   });
 }
 
-/** YNAB's "L7 Mortgage" (2026-10-13): $100,000 at 5.125%, $900 a month, $150 escrow, July 1. */
+/** $100,000 at 5.125%, $900 a month, $150 escrow, July 1. */
 async function setup() {
   const { cookie } = await signUp(app);
   const budget = await createBudget(app, cookie);
@@ -126,7 +126,7 @@ async function setup() {
   };
 }
 
-describe("loan activity (YNAB, 2026-10-13)", () => {
+describe("loan activity", () => {
   it("reports the account of the payment entered last, not the latest-dated one", async () => {
     const { cookie, base, addAccount, checking, mortgage, account, pay } = await setup();
     expect((await account(mortgage.id))?.lastPaymentFromAccountId).toBeNull();
@@ -135,7 +135,7 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
     expect((await account(mortgage.id))?.lastPaymentFromAccountId).toBe(checking.id);
     expect((await account(checking.id))?.lastPaymentFromAccountId).toBeNull();
 
-    // YNAB (2026-10-14): a payment back-dated before the others still becomes the default.
+    // A payment back-dated before the others still becomes the default.
     const savings = await addAccount({ name: "Savings", type: "savings", balance: "500000" });
     const res = await send("POST", `${base}/accounts/${mortgage.id}/loan/payments`, cookie, {
       fromAccountId: savings.id,
@@ -147,7 +147,7 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
     expect((await account(mortgage.id))?.lastPaymentFromAccountId).toBe(savings.id);
   });
 
-  it("schedules a payment dated after today, once (YNAB, 2026-10-16)", async () => {
+  it("schedules a payment dated after today, once", async () => {
     const { cookie, base, checking, mortgage, payCategory, account, transactions } = await setup();
     const res = await send(
       "POST",
@@ -201,7 +201,7 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
     });
   });
 
-  it("lists this month's upcoming payments, every occurrence (YNAB, 2026-10-17)", async () => {
+  it("lists this month's upcoming payments, every occurrence", async () => {
     const { cookie, base, checking, mortgage, payCategory } = await setup();
     const record = async (date: string, amount: string, memo: string) => {
       const res = await send(
@@ -214,7 +214,7 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
     };
     await record("2026-10-20", "2000", "x-a");
     await record("2026-10-28", "3000", "x-b");
-    // Next month's isn't listed (YNAB shows only the current month's).
+    // Next month's isn't listed.
     await record("2026-11-05", "4000", "x-c");
     // A weekly payment entered in the checking register: each occurrence left in October.
     const weekly = await send("POST", `${base}/scheduled-transactions`, cookie, {
@@ -252,7 +252,6 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
       ["2026-10-22", "500", "x-w", "L7 Chk", "Transfer : L7 Mortgage"],
       ["2026-10-20", "2000", "x-a", "L7 Mortgage", "Transfer : L7 Chk"],
     ]);
-    // Each jumps to the paying account's register row.
     const recorded = body.upcoming.find((u) => u.memo === "x-a");
     expect(recorded).toMatchObject({ payingAccountId: checking.id });
     expect(recorded?.payingRowId).toBe(`${recorded?.scheduleId}~${checking.id}`);
@@ -290,8 +289,8 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
     expect((await account(card.id))?.lastPaymentFromAccountId).toBeNull();
     await transfer(checking.id, card.id, "2026-10-05");
     expect((await account(card.id))?.lastPaymentFromAccountId).toBe(checking.id);
-    // YNAB (2026-10-15, x-c11-163 Card C): a transfer from another card entered later becomes
-    // the default; a cash advance goes the other way and doesn't.
+    // A transfer from another card entered later becomes the default; a cash advance goes the other
+    // way and doesn't.
     await transfer(other.id, card.id, "2026-10-06");
     expect((await account(card.id))?.lastPaymentFromAccountId).toBe(other.id);
     await transfer(card.id, checking.id, "2026-10-07");
@@ -340,7 +339,7 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
     });
   });
 
-  it("rounds interest twice and lists the loan's terms (YNAB, L7 Half: $2,074.97 → $10.38)", async () => {
+  it("rounds interest twice and lists the loan's terms ($2,074.97 → $10.38)", async () => {
     const { base, cookie, addAccount, pay } = await setup();
     const half = await addAccount({
       name: "L7 Half",
@@ -379,7 +378,7 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
     sep = (await months())[2];
     expect(sep?.interest).toMatchObject({ total: "0", applied: "0", status: "edited" });
 
-    // A recorded amount applies without payments (YNAB's help center: accrued interest).
+    // A recorded amount applies without payments (accrued interest).
     await setCharge("2026-10", "interest", "1000");
     await setCharge("2026-10", "escrow", "500");
     const oct = (await months())[3];
@@ -408,7 +407,7 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
 
   it("keeps a pre-7f loan's old terms for earlier months", async () => {
     const { base, cookie, mortgage, pay, months } = await setup();
-    // Loans from before 7f have no loan_terms rows, only the account's columns.
+    // Older loans have no loan_terms rows, only the account's columns.
     await db.delete(loanTerms).where(eq(loanTerms.accountId, mortgage.id));
     await pay("2026-09-05", "90000");
     await pay("2026-10-05", "90000");
@@ -467,8 +466,8 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
     expect((await months())[2]?.interest.applied).toBe(sep?.interest.applied);
   });
 
-  describe("Update Balance's interest rate / escrow check (YNAB, 2026-10-14)", () => {
-    /** YNAB's x-126-Mort: $100,000 from Sep 1, 6%, $900, $150 escrow; $900 on Sep 15, Oct 5. */
+  describe("Update Balance's interest rate / escrow check", () => {
+    /** $100,000 from Sep 1, 6%, $900, $150 escrow; $900 on Sep 15, Oct 5. */
     async function x126() {
       const s = await setup();
       const loan = await s.addAccount({
@@ -525,13 +524,12 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
       expect(await preview()).toBe("9875");
       const rate7 = { interestRate: { rate: "7", keepGoingForward: true } };
       expect(await preview(rate7)).toBe("18188");
-      // An unchanged rate is no change.
       expect(await preview({ interestRate: { rate: "6.000", keepGoingForward: false } })).toBe(
         "9875",
       );
 
       const after = await reconcile(rate7);
-      // YNAB froze October's interest at the old $498.75: −$99,498.75 + $181.88 = −$99,316.87.
+      // October's interest stays at the old $498.75: −$99,498.75 + $181.88 = −$99,316.87.
       expect(after.balances.working).toBe("-9931687");
       expect(after.interestRate).toBe("7.000");
       const [sep, oct] = await months(loan.id);
@@ -560,7 +558,7 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
     });
 
     it("keeps earlier months' terms when the only entry is this month's", async () => {
-      // As in YNAB: the loan added in October, its starting balance moved back to September.
+      // The loan added in October, its starting balance moved back to September.
       const s = await setup();
       const loan = await s.addAccount({
         name: "x-126-Late",
@@ -580,7 +578,7 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
         date: TODAY,
         loanTerms: { interestRate: { rate: "7", keepGoingForward: true } },
       });
-      // Only October is re-estimated: September stays at 6% ($500.00), as in YNAB.
+      // Only October is re-estimated: September stays at 6% ($500.00).
       expect(await res.json()).toEqual({ adjustment: "18188" });
     });
 
@@ -589,7 +587,7 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
       const escrow = { escrowAmount: { amount: "20000", keepGoingForward: true } };
       expect(await preview(escrow)).toBe("14875");
       const after = await reconcile(escrow);
-      // YNAB: Balance Adjustment +$148.75, escrow kept "Reconciled −$150.00", ended −$99,350.00.
+      // Balance Adjustment +$148.75, escrow kept "Reconciled −$150.00", ended −$99,350.00.
       expect(after.balances.working).toBe("-9935000");
       expect(after.escrowAmount).toBe("20000");
       expect((await months(loan.id))[1]?.escrow).toMatchObject({
@@ -638,7 +636,7 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
       interestRate: "6",
       pairedCategoryId: payCategory.id,
     });
-    // Pairing moves the category (YNAB: L7 Neg took L7 Mortgage's).
+    // Pairing moves the category.
     expect(neg.pairedCategoryId).toBe(payCategory.id);
     expect((await account(mortgage.id))?.pairedCategoryId).toBeNull();
 
@@ -664,7 +662,7 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
     expect((await account(neg.id))?.pairedCategoryId).toBeNull();
   });
 
-  it("caps the charges at the month's payments (YNAB's L7 Neg)", async () => {
+  it("caps the charges at the month's payments", async () => {
     const { addAccount, pay, months } = await setup();
     const neg = await addAccount({
       name: "L7 Neg",
@@ -699,7 +697,7 @@ describe("loan activity (YNAB, 2026-10-13)", () => {
   });
 });
 
-describe("loan page banners (YNAB plan settings, 2026-10-14)", () => {
+describe("loan page banners", () => {
   it("dismisses the simulator banner plan-wide and the paid-off one per loan", async () => {
     const { cookie, base, addAccount, checking, mortgage } = await setup();
     const other = await addAccount({
@@ -723,7 +721,7 @@ describe("loan page banners (YNAB plan settings, 2026-10-14)", () => {
     const res = await dismiss(mortgage.id, "simulator");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ simulatorDismissed: true, paidOffDismissed: false });
-    // One dismissal covers every loan (YNAB: x-142 Loan Old, then Loan New).
+    // One dismissal covers every loan.
     expect(await banners(other.id)).toEqual({ simulatorDismissed: true, paidOffDismissed: false });
 
     expect((await dismiss(other.id, "paidOff")).status).toBe(200);

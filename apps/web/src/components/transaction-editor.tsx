@@ -4,7 +4,7 @@ import {
   formatAmount,
   money,
   usesCategory,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,12 +14,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Button } from "@everycent/ui/components/button";
-import { FieldError } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Button } from "@strictbudget/ui/components/button";
+import { FieldError } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Circle, CircleCheck, Plus, Split, X } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useState } from "react";
 import { toast } from "sonner";
@@ -51,11 +51,6 @@ import { type ColumnId, PINNED_BG, pinned, pinnedColumns, pinnedWidth } from "./
 import { CategoryField, DateField, listOwnsKey, PayeeField } from "./register-fields";
 import { RegisterCell, RegisterRow } from "./register-table";
 
-/**
- * The row for a new transaction (or a whole split being edited), like YNAB's: Tab moves between
- * fields, Enter saves, Esc cancels. A split adds a row per line, then a row to add lines and see
- * what's left to split; the last row holds the buttons and any error.
- */
 /** Fields that share a line in the stacked editor. */
 const STACKED_ROWS: ColumnId[][] = [
   ["account"],
@@ -108,7 +103,7 @@ export function TransactionEditor({
 }: {
   initial: Draft;
   columns: readonly ColumnId[];
-  /** Accounts a new transaction can go in (open ones). */
+  /** Open accounts only. */
   accounts: readonly Account[];
   /** The account list, when narrower than `accounts` (an existing one stays in its currency). */
   accountChoices?: readonly Account[];
@@ -119,17 +114,15 @@ export function TransactionEditor({
   settings: MoneySettings;
   flags: readonly Flag[];
   onRenameFlags: (changes: Flag[]) => Promise<void>;
-  /** Names the editor's row for screen readers. */
   label?: string;
-  /** Offer YNAB's "Repeat:" in the date picker (new and scheduled transactions). */
+  /** Offer "Repeat:" in the date picker (new and scheduled transactions). */
   repeat?: boolean;
   /** A scheduled transaction: it has no cleared state until it's entered. */
   scheduled?: boolean;
-  /** Open the date picker first (Make Repeating, as YNAB does). */
+  /** Open the date picker first (Make Repeating). */
   openDatePicker?: boolean;
-  /** Start in the memo, as YNAB's S (split) does. */
+  /** Start in the memo (the S shortcut's split). */
   focusMemo?: boolean;
-  /** "stacked" lays the fields out one under another, for a phone's drawer. */
   layout?: "row" | "stacked";
   pending: boolean;
   error: string | null;
@@ -157,12 +150,12 @@ export function TransactionEditor({
   const transferTo = accounts.find((a) => a.id === draft.transferAccountId);
   const needsCategory = account ? usesCategory(account.type, transferTo?.type) : true;
   // Money can move to any other open account; a split can't itself be a transfer (its lines can).
-  // Scheduled transfers stay in one currency (EVERYCENT-55).
+  // Scheduled transfers stay in one currency.
   const transfers = accounts.filter(
     (a) => a.id !== draft.accountId && (!scheduled || a.currency === account?.currency),
   );
   const lines = draft.lines;
-  // A transfer to an account in another currency: that side's own amount (EVERYCENT-55).
+  // A transfer to an account in another currency: that side's own amount.
   const crossTo =
     !scheduled && !lines && account && transferTo && transferTo.currency !== account.currency
       ? transferTo
@@ -181,8 +174,7 @@ export function TransactionEditor({
   const canSplit = account ? usesCategory(account.type, null) && !draft.transferAccountId : false;
   // Remounts the payee field focused, after the card's "Payment to <card>" is picked.
   const [payeeFocus, setPayeeFocus] = useState(0);
-  // YNAB (2026-10-15): a card's category list has "Payment to <card>" under "Credit Cards".
-  // Picking it clears the payee and category and moves to the payee list, to pick the account
+  // A card's category list has "Payment to <card>" under "Credit Cards". Picking it clears the payee and category and moves to the payee list, to pick the account
   // the payment comes from.
   const pickable =
     account && accountFamily(account.type) === "credit"
@@ -202,7 +194,7 @@ export function TransactionEditor({
     setDraft((d) => ({ ...d, lines: d.lines?.filter((l) => l.key !== key) ?? null }));
   }
 
-  // YNAB's "Something Doesn't Add Up": saving a split whose lines miss its total asks first.
+  // Saving a split whose lines miss its total asks first.
   const [mismatch, setMismatch] = useState<ReturnType<typeof splitMismatch>>(null);
   function save(another = false) {
     // Not while the AI is still filling the row in.
@@ -213,7 +205,6 @@ export function TransactionEditor({
     else onSave(draft, file);
   }
 
-  /** Asks the AI to read the receipt and fills the row in with what it found. */
   async function fillFrom(receipt: File) {
     if (!newAttachment) return;
     setFilling(true);
@@ -246,7 +237,7 @@ export function TransactionEditor({
       onCancel();
     } else if (event.key === "Enter" && !(event.target instanceof HTMLButtonElement)) {
       event.preventDefault();
-      // On a new row, YNAB's Enter is "Save and add another" (2026-10-15).
+      // On a new row, Enter is "Save and add another".
       save(true);
     }
   }
@@ -291,8 +282,8 @@ export function TransactionEditor({
               const self = draft.transferAccountId === e.target.value;
               set({
                 accountId: e.target.value,
-                // On a new row (the one with "Save and add another") YNAB re-applies the
-                // account's starting state, over a manual toggle.
+                // On a new row (the one with "Save and add another") the account's starting state
+                // is re-applied, over a manual toggle.
                 ...(onSaveAndAddAnother ? { cleared: clearedFor(next?.type) } : {}),
                 ...(self ? { payeeName: "", transferAccountId: null } : {}),
                 ...(next && !usesCategory(next.type, self ? null : transferTo?.type)
@@ -346,7 +337,7 @@ export function TransactionEditor({
                   // What another account receives is typed again for a new one.
                   ...(transferAccountId !== d.transferAccountId ? { transferAmount: "" } : {}),
                   ...(!uses ? { categoryId: null } : {}),
-                  // YNAB fills in the payee's category, by its Categorization setting.
+                  // Fills in the payee's category, by its Categorization setting.
                   ...(payee?.prefillCategoryId && uses && d.categoryId === null && !d.lines
                     ? { categoryId: payee.prefillCategoryId }
                     : {}),
@@ -376,7 +367,7 @@ export function TransactionEditor({
               setPayeeFocus((n) => n + 1);
             }}
             onSplit={canSplit ? () => setDraft(startSplit) : undefined}
-            // YNAB (2026-10-16): opens the payee list, keeping the payee and category.
+            // Opens the payee list, keeping the payee and category.
             onPaymentTransfer={() => setPayeeFocus((n) => n + 1)}
             categories={pickable}
             shortcuts
@@ -406,7 +397,7 @@ export function TransactionEditor({
             placeholder={column === "outflow" ? "Outflow" : "Inflow"}
             inputMode="decimal"
             value={draft[column]}
-            // YNAB keeps one side: typing an outflow clears the inflow and vice versa.
+            // One side only: typing an outflow clears the inflow and vice versa.
             onChange={(e) =>
               set(
                 column === "outflow"
@@ -556,7 +547,7 @@ export function TransactionEditor({
       )}
       {error && <FieldError className="mr-auto">{error}</FieldError>}
       {crossTo && (
-        // EVERYCENT-55: the other account's own amount; left empty, the date's rate.
+        // The other account's own amount; left empty, the date's rate.
         <div className="flex flex-col items-end gap-0.5 text-muted-foreground text-sm">
           <div className="flex items-center gap-1.5">
             <span aria-hidden>
@@ -606,8 +597,7 @@ export function TransactionEditor({
         </div>
       )}
       {foreign && account && (
-        // EVERYCENT-54: what the plan counts is this amount at the rate; left empty, the
-        // date's rate (locked once saved, looked up again only when the date changes).
+        // What the plan counts is this amount at the rate; left empty, the date's rate (locked once saved, looked up again only when the date changes).
         <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
           <span aria-hidden>1 {account.currency} =</span>
           <Input
@@ -646,7 +636,7 @@ export function TransactionEditor({
               )}. How would you like to handle the unassigned ${show(mismatch.unassigned)}?`}
           </AlertDialogDescription>
         </AlertDialogHeader>
-        {/* YNAB's order; each leaves the row open to check before saving. */}
+        {/* Each leaves the row open to check before saving. */}
         <AlertDialogFooter>
           {mismatch?.distributed && (
             <AlertDialogAction
@@ -670,7 +660,7 @@ export function TransactionEditor({
     </AlertDialog>
   );
 
-  // A phone edits in a drawer: the same fields, one under another, with their names (EVERYCENT-93).
+  // A phone edits in a drawer: the same fields, one under another, with their names.
   if (layout === "stacked") {
     const stacked = STACKED_ROWS.flat().filter(
       (c) =>
@@ -775,11 +765,10 @@ export function TransactionEditor({
           className="px-1.5 pt-0"
         >
           {/*
-           * EVERYCENT-194: the register's table can be wider than its scrolling container, so a
-           * footer as wide as the row ran past the visible edge. It takes the container's visible
-           * width (`100cqw`: the register's container is a query container), sticks to its left
-           * edge while scrolling sideways, and wraps within it. It stops short of the pinned columns
-           * (Cleared, Actions), which keep their own cells in this row.
+           * The register's table can be wider than its scrolling container, so the footer takes
+           * the container's visible width (`100cqw`: the container is a query container), sticks
+           * to its left edge while scrolling sideways, and wraps within it. It stops short of the
+           * pinned columns (Cleared, Actions), which keep their own cells in this row.
            */}
           <div
             className="sticky left-1.5 flex max-w-full flex-wrap items-center justify-end gap-2 whitespace-normal"
@@ -819,7 +808,7 @@ function transferRate(
   return transferRateLabel(amount, own, otherAmount, other);
 }
 
-/** Which way the typed amount goes: YNAB words its transfers by it ("Payment from …"). */
+/** Which way the typed amount goes: transfers are worded by it ("Payment from …"). */
 function typedDirection(amounts: { outflow: string; inflow: string }): TransferDirection {
   if (amounts.inflow.trim()) return "in";
   if (amounts.outflow.trim()) return "out";

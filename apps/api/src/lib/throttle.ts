@@ -1,5 +1,5 @@
-import type { Database } from "@everycent/db";
-import { throttle } from "@everycent/db/schema";
+import type { Database } from "@strictbudget/db";
+import { throttle } from "@strictbudget/db/schema";
 import { RateLimiterDrizzle, RateLimiterRes } from "rate-limiter-flexible";
 import { API_KEY_REQUESTS_PER_HOUR } from "./api-keys";
 import { AppError } from "./errors";

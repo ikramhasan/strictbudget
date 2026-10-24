@@ -4,7 +4,7 @@ import {
   TARGET_BEHAVIORS,
   TARGET_CADENCES,
   TARGET_REPEAT_UNITS,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { sql } from "drizzle-orm";
 import {
   bigint,
@@ -24,13 +24,13 @@ import { budget } from "./budget";
 import { timestamps } from "./columns";
 
 /**
- * System categories YNAB keeps out of the category list. Each budget has exactly one of each,
+ * System categories kept out of the category list. Each budget has exactly one of each,
  * inside the budget's internal group.
  */
 export const INTERNAL_CATEGORY_KINDS = ["ready_to_assign", "uncategorized"] as const;
 export type InternalCategoryKind = (typeof INTERNAL_CATEGORY_KINDS)[number];
 
-/** Groups YNAB manages itself. */
+/** Groups the app manages itself. */
 export const CATEGORY_GROUP_KINDS = ["credit_card_payments"] as const;
 export type CategoryGroupKind = (typeof CATEGORY_GROUP_KINDS)[number];
 
@@ -94,8 +94,8 @@ export const category = pgTable(
 );
 
 /**
- * Money assigned to a category in one month (YNAB's "Assigned"). A row stays once a month has
- * been assigned in, even at zero: YNAB keeps such a month (and the one after it) open.
+ * Money assigned to a category in one month. A row stays once a month has been assigned in, even
+ * at zero: such a month (and the one after it) stays open.
  */
 export const categoryAssignment = pgTable(
   "category_assignment",
@@ -123,7 +123,7 @@ export const categoryAssignment = pgTable(
 );
 
 /**
- * YNAB's "Recent Moves": every change to assigned money. From Ready to Assign (its internal
+ * Recent Moves: every change to assigned money. From Ready to Assign (its internal
  * category) to a category is "Assigned", back to it "Removed", between two categories "Moved".
  */
 export const moneyMove = pgTable(
@@ -139,19 +139,19 @@ export const moneyMove = pgTable(
     fromCategoryId: text().references(() => category.id, { onDelete: "set null" }),
     toCategoryId: text().references(() => category.id, { onDelete: "set null" }),
     /**
-     * The name of a deleted category on either side (YNAB keeps such moves as "deleted category
+     * The name of a deleted category on either side (such moves show as "deleted category
      * <name>"); null while the category exists.
      */
     fromCategoryName: text(),
     toCategoryName: text(),
-    /** Logged by deleting a category (YNAB shows these with a trash icon, under "Moved"). */
+    /** Logged by deleting a category (shown with a trash icon, under "Moved"). */
     deletion: boolean().notNull().default(false),
     /**
-     * Shared by the moves of one Auto-Assign (YNAB groups them under a lightning icon as "N
-     * categories"); null for every other move.
+     * Shared by the moves of one Auto-Assign (grouped as "N categories"); null for every other
+     * move.
      */
     autoAssignBatchId: text(),
-    /** The Auto-Assign option behind the batch (YNAB's "Method: Assigned Last Month"). */
+    /** The Auto-Assign option behind the batch. */
     autoAssignMethod: text({ enum: AUTO_ASSIGN_OPTIONS }),
     /** First day of the month the money moved in, YYYY-MM-01. */
     month: date({ mode: "string" }).notNull(),
@@ -164,7 +164,7 @@ export const moneyMove = pgTable(
 );
 
 /**
- * A category's target (YNAB's goal): one per category at a time. Editing it changes every month
+ * A category's target: one per category at a time. Editing it changes every month
  * from `startMonth` on; targets only compute what's asked for and never move money.
  */
 export const categoryTarget = pgTable(
@@ -197,7 +197,7 @@ export const categoryTarget = pgTable(
      * current month; earlier occurrences that month aren't asked for. Null for the whole month.
      */
     startDay: integer(),
-    /** YYYY-MM-01 of the month the target is snoozed for (YNAB's snooze lasts one month). */
+    /** YYYY-MM-01 of the month the target is snoozed for (a snooze lasts one month). */
     snoozedMonth: date({ mode: "string" }),
     ...timestamps,
   },
@@ -205,8 +205,7 @@ export const categoryTarget = pgTable(
 );
 
 /**
- * YNAB's month note ("Enter a note…" under the month name): one per budget and month, not carried
- * to other months.
+ * A month note: one per budget and month, not carried to other months.
  */
 export const monthNote = pgTable(
   "month_note",
@@ -224,18 +223,17 @@ export const monthNote = pgTable(
 );
 
 /**
- * YNAB's preset views that Manage Views can reorder (All and Overspent stay first and fixed), in
- * YNAB's default order.
+ * Preset views that Manage Views can reorder (All and Overspent stay first and fixed), in their
+ * default order.
  */
 export const PRESET_BUDGET_VIEWS = ["underfunded", "overfunded", "available", "snoozed"] as const;
 export type PresetBudgetView = (typeof PRESET_BUDGET_VIEWS)[number];
 
-/** YNAB allows up to 12 custom views per plan. */
 export const MAX_CUSTOM_VIEWS = 12;
 
 /**
- * A custom view (YNAB's "New Custom View"): a named set of categories, shared by everyone on the
- * budget. `categoryIds` keeps hidden categories (they come back when unhidden, as in YNAB); ids of
+ * A custom view: a named set of categories, shared by everyone on the budget. `categoryIds` keeps
+ * hidden categories (they come back when unhidden); ids of
  * deleted categories are dropped when read. Names are unique per budget, ignoring case.
  */
 export const budgetView = pgTable(

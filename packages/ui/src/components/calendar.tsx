@@ -1,7 +1,7 @@
 "use client";
 
-import { Button, buttonVariants } from "@everycent/ui/components/button";
-import { cn } from "@everycent/ui/lib/utils";
+import { Button, buttonVariants } from "@strictbudget/ui/components/button";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import * as React from "react";
 import { type DayButton, DayPicker, getDefaultClassNames, type Locale } from "react-day-picker";
@@ -187,7 +187,7 @@ function CalendarDayButton({
         // secondary Button skin, on ::before); a selected day, or either end
         // of a range, is the blue default Button skin, popping in from 0.9 on
         // ::after. Gradients can't transition, so both skins cross-fade.
-        // everycent: the press overrides the Button's own scale-[0.97] (same variant)
+        // strictbudget: the press overrides the Button's own scale-[0.97] (same variant)
         // rather than base-nova's translate-y-px.
         "relative isolate z-10 flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 rounded-(--cell-radius) border-0 leading-none font-normal tabular-nums transition-[color,scale] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-transparent focus-visible:z-20 focus-visible:ring-offset-0 active:not-aria-[haspopup]:scale-95 disabled:opacity-100 aria-expanded:bg-transparent motion-reduce:active:scale-100 dark:hover:bg-transparent dark:hover:text-foreground",
         "before:absolute before:inset-0 before:-z-1 before:rounded-[inherit] before:border before:border-input before:bg-linear-to-b before:from-background before:to-secondary before:opacity-0 before:shadow-[0_1px_2px_rgb(0_0_0/0.08),inset_0_-1px_0_rgb(0_0_0/0.03)] before:transition-opacity before:duration-150 before:ease-[cubic-bezier(0.23,1,0.32,1)] hover:before:opacity-100 dark:before:from-[color-mix(in_oklch,var(--secondary),var(--foreground)_6%)] dark:before:shadow-[0_1px_2px_rgb(0_0_0/0.4),inset_0_1px_0_rgb(255_255_255/0.06)]",

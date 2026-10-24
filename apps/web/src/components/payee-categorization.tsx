@@ -1,6 +1,6 @@
-import type { PayeeCategorization } from "@everycent/engine";
-import { type CurrencyCode, money } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
+import type { PayeeCategorization } from "@strictbudget/engine";
+import { type CurrencyCode, money } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -8,14 +8,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
+} from "@strictbudget/ui/components/dialog";
 import {
   NativeSelect,
   NativeSelectOptGroup,
   NativeSelectOption,
-} from "@everycent/ui/components/native-select";
-import { RadioGroup, RadioGroupItem } from "@everycent/ui/components/radio-group";
-import { Skeleton } from "@everycent/ui/components/skeleton";
+} from "@strictbudget/ui/components/native-select";
+import { RadioGroup, RadioGroupItem } from "@strictbudget/ui/components/radio-group";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useId, useMemo, useState } from "react";
 import { $api } from "@/lib/api";
@@ -28,11 +28,7 @@ export interface CategorizationChange {
   defaultCategoryId: string | null;
 }
 
-/**
- * Manage Payees' "Categorization" section (YNAB, checked 2026-10-16): auto-categorize from the
- * payee's history (showing the current default), always use a chosen category, or don't
- * auto-categorize. "Always use my choice" saves once a category is picked, as YNAB's does.
- */
+/** "Always use my choice" saves once a category is picked. */
 export function PayeeCategorizationSection({
   payee,
   busy,
@@ -90,8 +86,8 @@ export function PayeeCategorizationSection({
           {mode === "auto" && (
             <div className="grid gap-2 pl-6 text-sm">
               <p>
-                everycent will auto-select the category for new {payee.name} transactions based on
-                how the{" "}
+                strictbudget will auto-select the category for new {payee.name} transactions based
+                on how the{" "}
                 <button
                   type="button"
                   className="text-primary-text underline underline-offset-4 hover:no-underline"
@@ -158,7 +154,7 @@ export function PayeeCategorizationSection({
   );
 }
 
-/** YNAB's "Last 3 transactions": the payee's latest categorized ones, splits left out. */
+/** The payee's latest categorized transactions, splits left out. */
 function LastThree({ payee, onClose }: { payee: Payee; onClose: () => void }) {
   const { budget, formatAmount, formatDate } = useBudget();
   const query = $api.useQuery("get", "/v1/budgets/{budgetId}/payees/transactions", {

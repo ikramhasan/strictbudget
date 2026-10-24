@@ -1,5 +1,5 @@
-import { type CurrencyCode, money } from "@everycent/engine";
-import { ToggleGroup, ToggleGroupItem } from "@everycent/ui/components/toggle-group";
+import { type CurrencyCode, money } from "@strictbudget/engine";
+import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronRight, Flag } from "lucide-react";
@@ -34,12 +34,7 @@ import { SpendingBreakdownList, SpendingBreakdownTable } from "./spending-breakd
 
 type ReportState = ReturnType<typeof useReportState>;
 
-/**
- * Spending Breakdown's content: the Categories / Groups toggle (and everycent's payee, account and
- * flag breakdowns), YNAB's header stats, the chart with its bar list, and the largest
- * transactions. Clicking a group opens it in place (YNAB's "All Groups › Group"); clicking
- * anything else lists its transactions.
- */
+/** Clicking a group opens it in place ("All Groups › Group"); anything else lists its transactions. */
 export function SpendingBreakdownBody({
   search,
   state,
@@ -238,7 +233,7 @@ export function SpendingBreakdownBody({
           onViewChange={(view) => update({ view })}
           loading={loading}
           empty={rows.length === 0 ? "No spending in this range with these filters." : undefined}
-          fileName="everycent-spending-breakdown"
+          fileName="strictbudget-spending-breakdown"
           className="content-start"
           chart={
             <div className="grid gap-2">

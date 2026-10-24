@@ -1,4 +1,4 @@
-import { userPreference } from "@everycent/db/schema";
+import { userPreference } from "@strictbudget/db/schema";
 import {
   type AccountFamily,
   type AccountType,
@@ -7,7 +7,7 @@ import {
   convert,
   isOnBudget,
   money,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { eq } from "drizzle-orm";
 import { knownRate } from "./fx";
 import type { AccountBalances, Db } from "./ledger";
@@ -32,7 +32,7 @@ export interface Total {
   missing: string[];
 }
 
-/** The user's display currency (EVERYCENT-57); null is each budget's own. */
+/** The user's display currency; null is each budget's own. */
 export async function displayCurrencyOf(db: Db, userId: string): Promise<CurrencyCode | null> {
   const [row] = await db
     .select({ currency: userPreference.displayCurrency })
@@ -68,7 +68,7 @@ function totalsOf(a: TotalsAccount): TotalId[] {
 /**
  * Each account's balances in `display`, and the sidebar's totals and net worth in it: native
  * balances at today's known rate (no network), converted half-even, so they are today's value,
- * not what the plan booked. Accounts with no known rate are left out of the totals (`missing`).
+ * not what the budget booked. Accounts with no known rate are left out of the totals (`missing`).
  */
 export async function convertedTotals(
   db: Db,

@@ -1,15 +1,15 @@
-import type { CurrencyCode } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
+import type { CurrencyCode } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@everycent/ui/components/card";
-import { Checkbox } from "@everycent/ui/components/checkbox";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
+} from "@strictbudget/ui/components/card";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
@@ -21,7 +21,6 @@ import { preferencesQueryOptions } from "@/lib/preferences";
 import { refreshSession } from "@/lib/session";
 import { CurrencyPicker } from "./currency-picker";
 
-/** YNAB's "First Name": "We use your first name to personalize your YNAB experience." */
 export function NameCard({ name }: { name: string }) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -50,7 +49,8 @@ export function NameCard({ name }: { name: string }) {
       <CardHeader>
         <CardTitle>First Name</CardTitle>
         <CardDescription>
-          We use your first name to personalize everycent, and partners see it on budgets you share.
+          We use your first name to personalize strictbudget, and partners see it on budgets you
+          share.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -77,7 +77,7 @@ export function NameCard({ name }: { name: string }) {
   );
 }
 
-/** YNAB's Account Settings → Options; each saves as soon as it's ticked. */
+/** Each option saves as soon as it's ticked. */
 export function OptionsCard() {
   const queryClient = useQueryClient();
   const preferences = useQuery(preferencesQueryOptions());

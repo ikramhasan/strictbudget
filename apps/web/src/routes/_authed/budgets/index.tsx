@@ -1,9 +1,14 @@
-import { formatDate } from "@everycent/engine";
-import { Alert, AlertTitle } from "@everycent/ui/components/alert";
-import { Button } from "@everycent/ui/components/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@everycent/ui/components/card";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@everycent/ui/components/empty";
-import { Skeleton } from "@everycent/ui/components/skeleton";
+import { formatDate } from "@strictbudget/engine";
+import { Alert, AlertTitle } from "@strictbudget/ui/components/alert";
+import { Button } from "@strictbudget/ui/components/button";
+import { Card, CardDescription, CardHeader, CardTitle } from "@strictbudget/ui/components/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@strictbudget/ui/components/empty";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
@@ -16,7 +21,7 @@ import { type Budget, budgetsQueryOptions, lastUsedLabel } from "@/lib/budgets";
 
 export const Route = createFileRoute("/_authed/budgets/")({
   // A category template on its way to a budget (the import dialog's "Choose Another Budget"):
-  // the budget opened, or created, next shows its import dialog (YNAB, 2026-10-16).
+  // the budget opened, or created, next shows its import dialog.
   validateSearch: z.object({ template: z.string().optional().catch(undefined) }),
   component: AllBudgetsPage,
 });
@@ -63,9 +68,8 @@ function AllBudgetsPage() {
       ) : (
         <>
           {/*
-           * YNAB's plan list: "Your Plans", then "Plans Shared With You", most recently used
-           * first (the API's order). Archived budgets are among them, their names stamped
-           * "(Archived on …)" (YNAB, 2026-10-15).
+           * Your budgets, then those shared with you, most recently used first (the API's order).
+           * Archived budgets are among them, their names stamped "(Archived on …)".
            */}
           <section className="grid gap-3">
             <h2 className="font-medium text-muted-foreground text-sm">Your budgets</h2>

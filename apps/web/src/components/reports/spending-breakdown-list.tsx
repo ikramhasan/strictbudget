@@ -1,4 +1,4 @@
-import { type CurrencyCode, money } from "@everycent/engine";
+import { type CurrencyCode, money } from "@strictbudget/engine";
 import {
   Table,
   TableBody,
@@ -6,8 +6,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@everycent/ui/components/table";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/table";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useBudget } from "@/lib/budget-context";
 import { chartNumber } from "@/lib/reports";
 import { type Breakdown, type BreakdownRow, rowChange, shares } from "@/lib/spending-breakdown";
@@ -27,12 +27,7 @@ function useChangeLabel() {
   };
 }
 
-/**
- * The sorted bar list beside the chart (everycent's legend): each row's amount, its share of the
- * gross outflows (YNAB's percentage) and of income, a bar sized by spending, and with comparison
- * on, a ghost bar for the comparison period and the change. Then YNAB's Positive Inflow
- * Categories with their total.
- */
+/** Shares are of the gross outflows and of income; positive inflow categories follow with their total. */
 export function SpendingBreakdownList({
   breakdown,
   income,
@@ -42,7 +37,6 @@ export function SpendingBreakdownList({
 }: {
   breakdown: Breakdown;
   income: bigint | undefined;
-  /** Comparison spending per row key, when comparison is on. */
   previous: Map<string, bigint> | undefined;
   positiveTitle: string;
   onSelect: (row: BreakdownRow) => void;
@@ -135,7 +129,6 @@ export function SpendingBreakdownList({
   );
 }
 
-/** The chart's table view: every row with its exact amounts, shares and comparison. */
 export function SpendingBreakdownTable({
   breakdown,
   income,

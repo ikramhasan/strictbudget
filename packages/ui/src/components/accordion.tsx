@@ -1,4 +1,4 @@
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
 import { Accordion as AccordionPrimitive } from "radix-ui";
 import * as React from "react";
@@ -72,7 +72,7 @@ function AccordionContent({
   return (
     <AccordionPrimitive.Content
       data-slot="accordion-content"
-      // everycent: Radix marks state with data-state (not Base UI's data-open), and its height
+      // strictbudget: Radix marks state with data-state (not Base UI's data-open), and its height
       // lives in --radix-accordion-content-height, which tw-animate-css's accordion keyframes read.
       className="overflow-hidden text-sm duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down motion-reduce:animate-none"
       {...props}

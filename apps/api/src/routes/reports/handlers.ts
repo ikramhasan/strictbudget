@@ -1,6 +1,6 @@
-import { type FlagColor, payee, transaction } from "@everycent/db/schema";
-import { type BudgetMonth, monthBounds } from "@everycent/engine";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { type FlagColor, payee, transaction } from "@strictbudget/db/schema";
+import { type BudgetMonth, monthBounds } from "@strictbudget/engine";
 import { eq, inArray, sql } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError } from "../../lib/errors";

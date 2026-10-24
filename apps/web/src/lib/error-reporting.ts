@@ -4,9 +4,9 @@ import { apiBaseUrl } from "./api";
 const MAX_REPORTS = 5;
 
 /**
- * Sends uncaught errors and unhandled rejections to the API's log (`POST /v1/client-errors`),
- * once per distinct message, so they show with the server's logs and in OpenTelemetry when it's
- * configured (EVERYCENT-106). Only the page's path goes along: fragments carry link tokens.
+ * Sends uncaught errors and unhandled rejections to the API's log (`POST /v1/client-errors`), once
+ * per distinct message, so they show with the server's logs and in OpenTelemetry when it's
+ * configured. Only the page's path goes along: fragments carry link tokens.
  */
 export function startErrorReporting() {
   if (import.meta.env.DEV) return;

@@ -31,7 +31,7 @@ describe("AddAccountForm", () => {
     Element.prototype.scrollIntoView = vi.fn();
     const onSubmit = vi.fn().mockResolvedValue(null);
     render(<AddAccountForm settings={usd} onSubmit={onSubmit} />);
-    // Budget accounts take one (EVERYCENT-54); loans use the budget's currency.
+    // Budget accounts take a currency; loans use the budget's.
     expect(screen.getByLabelText("Currency")).toHaveTextContent("USD");
     await userEvent.selectOptions(screen.getByLabelText("Account type"), "mortgage");
     expect(screen.queryByLabelText("Currency")).not.toBeInTheDocument();
@@ -70,7 +70,6 @@ describe("AddAccountForm", () => {
     await userEvent.type(screen.getByLabelText("How much do you owe today?"), "250000");
     await userEvent.type(screen.getByLabelText("Interest rate (%)"), "6.125");
     await userEvent.type(screen.getByLabelText("Monthly payment required by your lender"), "1,800");
-    // YNAB asks mortgages whether the payment includes escrow.
     await userEvent.click(screen.getByLabelText("Yes"));
     await userEvent.type(screen.getByLabelText("How much is the monthly escrow or fee?"), "150");
     await userEvent.click(screen.getByRole("button", { name: "Add account" }));
@@ -172,7 +171,7 @@ describe("EditAccountForm", () => {
     expect(options).toEqual(["Credit Card", "Line of Credit"]);
   });
 
-  it("labels a tracking account's balance Today's Balance, as YNAB does", () => {
+  it("labels a tracking account's balance Today's Balance", () => {
     render(
       <EditAccountForm
         settings={usd}
@@ -213,7 +212,7 @@ describe("EditAccountForm", () => {
     expect(field).toHaveValue("-64.00");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(onSubmit.mock.lastCall?.[0]).not.toHaveProperty("workingBalance");
-    // Taken as typed, as YNAB does: a card's "70" is a positive balance.
+    // Taken as typed: a card's "70" is a positive balance.
     await user.clear(field);
     await user.type(field, "70");
     await user.click(screen.getByRole("button", { name: "Save" }));

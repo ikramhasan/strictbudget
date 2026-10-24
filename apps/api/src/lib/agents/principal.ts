@@ -1,5 +1,5 @@
-import { type Database, newId } from "@everycent/db";
-import { type ConnectedAgentKind, connectedAgent, user } from "@everycent/db/schema";
+import { type Database, newId } from "@strictbudget/db";
+import { type ConnectedAgentKind, connectedAgent, user } from "@strictbudget/db/schema";
 import { and, eq, ne, sql } from "drizzle-orm";
 import type { AuthUser } from "../auth";
 
@@ -24,7 +24,7 @@ export interface AgentPrincipal {
   canWrite: boolean;
 }
 
-export const AGENT_PRINCIPAL = Symbol("everycent.agentPrincipal");
+export const AGENT_PRINCIPAL = Symbol("strictbudget.agentPrincipal");
 
 export function principalFromEnv(env: unknown): AgentPrincipal | null {
   if (!env || typeof env !== "object") return null;

@@ -8,14 +8,14 @@ import {
   monthsIn,
   observations,
   percentOf,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { useQuery } from "@tanstack/react-query";
 import { categoriesQueryOptions } from "./categories";
 import { monthQueryOptions } from "./months";
 import { netWorthOptions } from "./net-worth";
 import { currentMonth, planColors, type ReportSum, reportActivityOptions } from "./reports";
 
-/** Spending per month, positive (YNAB's Total Spending: minus the months' category nets). */
+/** Spending per month, positive (Total Spending: minus the months' category nets). */
 export function spentByMonth(rows: readonly ReportSum[]): Map<BudgetMonth, bigint> {
   const spent = new Map<BudgetMonth, bigint>();
   for (const r of rows) {
@@ -25,7 +25,6 @@ export function spentByMonth(rows: readonly ReportSum[]): Map<BudgetMonth, bigin
   return spent;
 }
 
-/** Income per month. */
 export function incomeByMonth(rows: readonly ReportSum[]): Map<BudgetMonth, bigint> {
   const income = new Map<BudgetMonth, bigint>();
   for (const r of rows) {
@@ -162,7 +161,7 @@ export function useReportsHomeData(budgetId: string) {
     ? observations({
         month,
         categories: categorySpending(byCategory.data.rows, month, names),
-        // Card payment categories aren't overspent in YNAB's sense (their Available is the card's).
+        // Card payment categories aren't overspent (their Available is the card's).
         overspent: plan.data.categories.flatMap((c) =>
           BigInt(c.available) < 0n && !paymentCategories.has(c.categoryId)
             ? [

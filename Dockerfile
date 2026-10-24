@@ -1,7 +1,7 @@
-# everycent: one image runs the API, serves the web app, and runs the migrate step.
-#   docker build -t everycent .
-#   docker run --rm -e DATABASE_URL=… everycent node dist/migrate.mjs   # before each new version
-#   docker run -p 3000:3000 -e DATABASE_URL=… -e BETTER_AUTH_SECRET=… … everycent
+# strictbudget: one image runs the API, serves the web app, and runs the migrate step.
+#   docker build -t strictbudget .
+#   docker run --rm -e DATABASE_URL=… strictbudget node dist/migrate.mjs   # before each new version
+#   docker run -p 3000:3000 -e DATABASE_URL=… -e BETTER_AUTH_SECRET=… … strictbudget
 # Nothing in it is specific to one host (Railway, Docker Compose, Coolify, …).
 
 FROM node:24-slim AS build
@@ -10,9 +10,9 @@ WORKDIR /repo
 RUN corepack enable
 COPY . .
 RUN pnpm install --frozen-lockfile
-RUN pnpm exec turbo run build --filter=@everycent/api --filter=@everycent/web
+RUN pnpm exec turbo run build --filter=@strictbudget/api --filter=@strictbudget/web
 # The API's production dependencies on their own (workspace packages are bundled into dist/).
-RUN pnpm --filter @everycent/api deploy --prod --legacy /out
+RUN pnpm --filter @strictbudget/api deploy --prod --legacy /out
 
 FROM node:24-slim
 WORKDIR /app

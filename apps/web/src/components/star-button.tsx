@@ -1,5 +1,5 @@
-import { Button } from "@everycent/ui/components/button";
-import { cn } from "@everycent/ui/lib/utils";
+import { Button } from "@strictbudget/ui/components/button";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
@@ -9,9 +9,8 @@ import { apiErrorMessage } from "@/lib/budgets";
 import { useUndo } from "@/lib/undo";
 
 /**
- * YNAB's "Toggle Starred" star next to the account name in the register (open cash and credit
- * accounts only). Starring adds the account to the end of the sidebar's Starred group, for
- * everyone on the budget; Undo puts it back where it was.
+ * Open cash and credit accounts only. Starring adds the account to the end of the sidebar's
+ * Starred group, for everyone on the budget.
  */
 export function StarButton({
   budgetId,

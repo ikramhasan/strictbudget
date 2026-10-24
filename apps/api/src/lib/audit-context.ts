@@ -1,10 +1,10 @@
-import { type Database, sql } from "@everycent/db";
+import { type Database, sql } from "@strictbudget/db";
 import type { Context, Next } from "hono";
 import type { AuthedEnv } from "../middleware/require-auth";
 import type { AppEnv } from "../types";
 import type { Db } from "./ledger";
 
-/** Who and what a transaction's changes are logged as (migration 0038's `everycent.*` settings). */
+/** Who and what a transaction's changes are logged as (migration 0038's `strictbudget.*` settings). */
 export interface AuditContext {
   actorId: string | null;
   /** The agent (`connected_agent` id) making the change for the actor; null for the user's own. */
@@ -22,16 +22,16 @@ export interface AuditContext {
  */
 export async function setAuditContext(tx: Db, ctx: AuditContext): Promise<void> {
   await tx.execute(sql`select
-    set_config('everycent.actor_id', ${ctx.actorId ?? ""}, true),
-    set_config('everycent.agent_id', ${ctx.agentId ?? ""}, true),
-    set_config('everycent.client_id', ${ctx.clientId ?? ""}, true),
-    set_config('everycent.request_id', ${ctx.requestId ?? ""}, true),
-    set_config('everycent.source', ${ctx.source ?? ""}, true)`);
+    set_config('strictbudget.actor_id', ${ctx.actorId ?? ""}, true),
+    set_config('strictbudget.agent_id', ${ctx.agentId ?? ""}, true),
+    set_config('strictbudget.client_id', ${ctx.clientId ?? ""}, true),
+    set_config('strictbudget.request_id', ${ctx.requestId ?? ""}, true),
+    set_config('strictbudget.source', ${ctx.source ?? ""}, true)`);
 }
 
 /** Skips the change log and stamps for the rest of the transaction (purging a deleted user). */
 export async function pauseAudit(tx: Db): Promise<void> {
-  await tx.execute(sql`select set_config('everycent.audit', 'off', true)`);
+  await tx.execute(sql`select set_config('strictbudget.audit', 'off', true)`);
 }
 
 /**

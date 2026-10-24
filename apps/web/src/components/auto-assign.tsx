@@ -3,7 +3,7 @@ import {
   type AutoAssignOption,
   type FundingStep,
   fundUnderfunded,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,19 +13,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Button } from "@everycent/ui/components/button";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Button } from "@strictbudget/ui/components/button";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useState } from "react";
 import type { BudgetMonthData } from "@/lib/months";
 
 type Format = (minorUnits: string) => string;
 type MonthCategory = BudgetMonthData["categories"][number];
 
-/**
- * YNAB's labels, singular when one category is selected; a lone payment category's spending options
- * read "Paid Last Month" and "Average Paid" (seen 2026-10-08 on Cards E1–E3).
- */
 /** An Auto-Assign as Recent Moves names its method ("Method: Reset Assigned Amounts"). */
 export const autoAssignMethodLabel = (option: AutoAssignOption) => label(option, false);
 
@@ -54,14 +50,13 @@ export interface AutoAssignChange {
   categoryId: string;
   name: string;
   group: string;
-  /** What Assigned changes by. */
   delta: bigint;
 }
 
 /**
  * What an option would change: each category whose Assigned moves, and by how much. Underfunded
- * with `readyToAssign` given (the whole plan or a view) funds in YNAB's order until it runs out;
- * the server does the same (`fundUnderfunded`).
+ * with `readyToAssign` given (the whole plan or a view) funds in `fundUnderfunded`'s order until
+ * it runs out, as the server does.
  */
 export function autoAssignChanges(
   option: AutoAssignOption,
@@ -93,10 +88,9 @@ export function autoAssignChanges(
 }
 
 /**
- * The amount on an option's button: what the categories would end up with (YNAB showed $30.00 on
- * Assigned Last Month for $30.00 assigned last month, and $0.00 on both resets). For Reset
- * Available that's the Available after it, otherwise the Assigned. Underfunded and Reduce
- * Overfunding show what they'd add or take back (YNAB: $1,525.00 and $63.00).
+ * The amount on an option's button: what the categories would end up with. For Reset Available
+ * that's the Available after it, otherwise the Assigned. Underfunded and Reduce Overfunding show
+ * what they'd add or take back.
  */
 function buttonAmount(option: AutoAssignOption, categories: readonly MonthCategory[]) {
   return categories.reduce((sum, c) => {
@@ -116,8 +110,8 @@ function buttonAmount(option: AutoAssignOption, categories: readonly MonthCatego
 }
 
 /**
- * Whether YNAB lists an option: Reduce Overfunding only when something is over, and Underfunded
- * on a single category only while it's short (a met target has no Underfunded button).
+ * Reduce Overfunding is listed only when something is over, and Underfunded on a single category
+ * only while it's short (a met target has no Underfunded button).
  */
 function listsOption(option: AutoAssignOption, amount: bigint, one: boolean) {
   if (option === "reduceOverfunding") return amount !== 0n;
@@ -125,18 +119,14 @@ function listsOption(option: AutoAssignOption, amount: bigint, one: boolean) {
   return true;
 }
 
-/**
- * Cards Underfunded lists apart: credit overspending, or uncategorized transactions this month
- * (YNAB, 2026-10-12, "C5 First": F Card with an uncategorized $5.00 was listed; moved to September,
- * it wasn't).
- */
+/** Cards Underfunded lists apart: credit overspending, or uncategorized transactions this month. */
 const needsAttention = (c: MonthCategory) =>
   Boolean(c.payment && (c.payment.overspentCategories !== "0" || c.payment.hasUncategorized));
 
 /**
- * YNAB's Auto-Assign section of the inspector. With categories selected an option applies to them
- * at once; with none selected it covers every visible category, after a preview (and Reset
- * Assigned asks first, as the help center says).
+ * The inspector's Auto-Assign section. With categories selected an option applies to them at
+ * once; with none selected it covers every visible category, after a preview (and Reset Assigned
+ * asks first).
  */
 export function AutoAssignPanel({
   categories,
@@ -157,19 +147,19 @@ export function AutoAssignPanel({
   readyToAssign: bigint;
   format: Format;
   onApply: (option: AutoAssignOption) => Promise<void>;
-  /** A view that keeps nothing: YNAB says so instead of listing the options. */
+  /** A view that keeps nothing: say so instead of listing the options. */
   onViewAll?: () => void;
   /** Without the frame and heading, as in the Ready to Assign banner's Assign pop-up. */
   bare?: boolean;
 }) {
   const [preview, setPreview] = useState<AutoAssignOption | null>(null);
-  // YNAB's labels go singular whenever one category is covered (selected or the only one in view).
+  // Labels go singular whenever one category is covered (selected or the only one in view).
   const one = categories.length === 1;
   const payment = one && Boolean(categories[0]?.payment);
   const underfunded = preview === "underfunded";
   const changes = preview ? autoAssignChanges(preview, categories, names, readyToAssign) : [];
-  // Underfunded lists the cards that need attention on their own, changed or not (YNAB showed
-  // LOC A at $0.00), and counts the categories it funds in full.
+  // Underfunded lists the cards that need attention on their own, changed or not (even at
+  // $0.00), and counts the categories it funds in full.
   const attention = underfunded
     ? categories.filter(needsAttention).flatMap((c) => {
         const named = names.get(c.categoryId);
@@ -186,8 +176,7 @@ export function AutoAssignPanel({
       category && BigInt(category.assigned) + c.delta === BigInt(category.autoAssign.underfunded)
     );
   };
-  // Underfunded lists what it can only partly fund apart from what it funds in full (YNAB,
-  // 2026-10-12, "C5 First" with $30.00 for $40.00 of targets).
+  // Underfunded lists what it can only partly fund apart from what it funds in full.
   const fullyFunded = underfunded ? listed.filter(isFull) : listed;
   const partlyFunded = underfunded ? listed.filter((c) => !isFull(c)) : [];
   const amountText = (delta: bigint) => `${delta > 0n ? "+" : ""}${format(delta.toString())}`;
@@ -308,7 +297,7 @@ function PreviewBox({ tone, children }: { tone: "yellow" | "green"; children: Re
   );
 }
 
-/** Changes listed by category group, as YNAB's preview does. */
+/** Changes listed by category group. */
 function ChangeList({
   changes,
   amountText,

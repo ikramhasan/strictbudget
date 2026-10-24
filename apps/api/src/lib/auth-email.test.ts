@@ -1,4 +1,4 @@
-import { rateLimit, session, user, verification } from "@everycent/db/schema";
+import { rateLimit, session, user, verification } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -49,7 +49,7 @@ async function errorCode(res: Response) {
 
 const fresh = () => `user-${crypto.randomUUID()}@example.com`;
 
-describe("email verification (EVERYCENT-44)", () => {
+describe("email verification", () => {
   it("signs nobody in at sign-up and emails a link to the web app with the token in the fragment", async () => {
     const email = fresh();
     const res = await signUpOnly(email);
@@ -179,7 +179,7 @@ describe("email verification (EVERYCENT-44)", () => {
   });
 });
 
-describe("password reset (EVERYCENT-45)", () => {
+describe("password reset", () => {
   const requestReset = (email: string) => post("/api/auth/request-password-reset", { email });
   const reset = (token: string, newPassword: string) =>
     post("/api/auth/reset-password", { token, newPassword });
@@ -239,7 +239,7 @@ describe("password reset (EVERYCENT-45)", () => {
   });
 });
 
-describe("change email (EVERYCENT-46)", () => {
+describe("change email", () => {
   const changeEmail = (cookie: string, newEmail: string, password: string) =>
     post("/v1/me/email", { newEmail, password }, cookie);
 
@@ -380,7 +380,7 @@ describe("change email (EVERYCENT-46)", () => {
   });
 });
 
-describe("change password (EVERYCENT-46)", () => {
+describe("change password", () => {
   it("needs the current password, can sign out other devices, and tells the owner", async () => {
     const { cookie, email, password } = await signUp(app);
     const other = await signIn(app, email, password);
@@ -437,7 +437,7 @@ describe("password guessing with a stolen session", () => {
   });
 });
 
-describe("sessions (EVERYCENT-47)", () => {
+describe("sessions", () => {
   const MAC_CHROME =
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
   const IPHONE =

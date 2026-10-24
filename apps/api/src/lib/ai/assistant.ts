@@ -1,5 +1,5 @@
-import type { Database } from "@everycent/db";
-import { aiAttachment, aiToolRun } from "@everycent/db/schema";
+import type { Database } from "@strictbudget/db";
+import { aiAttachment, aiToolRun } from "@strictbudget/db/schema";
 import type { AnyTextAdapter, JSONSchema } from "@tanstack/ai";
 import { toolDefinition } from "@tanstack/ai";
 import { createAnthropicChat } from "@tanstack/ai-anthropic";
@@ -14,7 +14,6 @@ import type { ObjectStorage } from "../storage";
 import { calculate } from "./calculate";
 import { chartInputSchema, checkChart } from "./chart";
 
-/** The model behind the in-app assistant, from the server's AI key and `AI_MODEL`. */
 export function anthropicAdapter(env: Env): AnyTextAdapter | null {
   if (!env.AI_API_KEY) return null;
   return createAnthropicChat(env.AI_MODEL, env.AI_API_KEY);
@@ -29,8 +28,8 @@ export async function inAppPrincipal(db: Database, user: AuthUser): Promise<Agen
   const agent = await connectAgent(db, {
     userId: user.id,
     kind: "in_app",
-    externalId: "everycent",
-    name: "everycent AI",
+    externalId: "strictbudget",
+    name: "strictbudget AI",
     authorizedAt: new Date(),
   });
   if (!agent) throw new Error("Couldn't record the in-app assistant");
@@ -330,10 +329,9 @@ const calculator = toolDefinition({
   calculate(String((args as { expression?: unknown } | null)?.expression ?? "")),
 );
 
-/** The assistant's standing instructions for one budget. */
 export function systemPrompt(b: Pick<BudgetRow, "name" | "currency">, today: string): string {
   return [
-    `You are the AI assistant in everycent, a zero-based (YNAB-style) budgeting app. You are helping the signed-in person with their budget "${b.name}" (base currency ${b.currency}). Today is ${today}.`,
+    `You are the AI assistant in strictbudget, a zero-based budgeting app. You are helping the signed-in person with their budget "${b.name}" (base currency ${b.currency}). Today is ${today}.`,
     'Use the tools to look things up rather than guessing; every tool works on this budget only. Money amounts are integer strings in the currency\'s minor units ("-1250" is -12.50 in a two-decimal currency): convert them when you talk about money, and send them that way. Months are YYYY-MM, dates YYYY-MM-DD.',
     "Tools that change the budget only run once the person approves them in the app, so call them directly when the person asks for a change; don't ask for confirmation in text first. Each one takes a `summary`: the plain-language sentence the person reads when approving, so make it exact and free of ids. If they deny one, don't retry it; ask what they'd like instead. Say a change is done only after its tool succeeds.",
     "Never do arithmetic in your head: use the calculate tool for every total, difference, percentage, average or split, including converting between minor units and amounts.",

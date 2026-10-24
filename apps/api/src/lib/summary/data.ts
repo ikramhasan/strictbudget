@@ -4,7 +4,7 @@ import {
   categoryGroup,
   payee,
   scheduledTransaction,
-} from "@everycent/db/schema";
+} from "@strictbudget/db/schema";
 import {
   addMonths,
   type BudgetFormatSettings,
@@ -12,14 +12,13 @@ import {
   type CurrencyCode,
   monthBounds,
   occurrencesBetween,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { and, eq, lte } from "drizzle-orm";
 import { budgetMonthJson } from "../../routes/months/handlers";
 import type { FxDeps } from "../base-amount";
 import type { Db } from "../ledger";
 import { reportLines, reportSums } from "../reports";
 
-/** How many rows a list in the summary shows. */
 const TOP_GROUPS = 5;
 const TOP_TARGETS = 3;
 const TOP_TRANSACTIONS = 3;
@@ -34,7 +33,7 @@ export interface SummaryBudget extends BudgetFormatSettings {
 }
 
 /**
- * One budget's month in numbers, for the monthly summary email (EVERYCENT-241). Amounts are in the
+ * One budget's month in numbers, for the monthly summary email. Amounts are in the
  * budget's currency except an upcoming transaction's, which is in its account's. `spent` is the
  * Spending report's total for the month (category Activity), positive when money went out.
  */
@@ -68,7 +67,6 @@ export interface MonthlySummary {
     /** The ones still short, the largest shortfall first. */
     short: { name: string; funded: bigint; needed: bigint; dueDate: string | null }[];
   };
-  /** The month's largest outflows. */
   largest: {
     payee: string | null;
     date: string;
@@ -103,7 +101,6 @@ export interface MonthlySummary {
   };
 }
 
-/** True when nothing happened in the month: no money in, out or assigned. */
 export const isEmptySummary = (s: MonthlySummary) =>
   s.income === 0n && s.spent === 0n && s.assigned === 0n;
 

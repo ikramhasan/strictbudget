@@ -1,6 +1,12 @@
-import { newId } from "@everycent/db";
-import { accountLogo, budgetAccount, budgetMember, user, userAvatar } from "@everycent/db/schema";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { newId } from "@strictbudget/db";
+import {
+  accountLogo,
+  budgetAccount,
+  budgetMember,
+  user,
+  userAvatar,
+} from "@strictbudget/db/schema";
 import { and, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { MiddlewareHandler } from "hono";
@@ -37,15 +43,12 @@ export const pictureBodyLimit: MiddlewareHandler<Env> = bodyLimit({
   },
 });
 
-/** A profile picture's URL, as kept in `user.image`. */
 export const profilePictureUrl = (userId: string, avatarId: string) =>
   `/v1/users/${userId}/picture?v=${avatarId}`;
 
-/** An account logo's URL, as accounts carry it. */
 export const accountLogoUrl = (budgetId: string, accountId: string, logoId: string) =>
   `/v1/budgets/${budgetId}/accounts/${accountId}/logo?v=${logoId}`;
 
-/** The budget's account logos, as URLs by account id. */
 export async function accountLogoUrls(db: Db, budgetId: string): Promise<Map<string, string>> {
   const rows = await db
     .select({ id: accountLogo.id, accountId: accountLogo.accountId })

@@ -1,4 +1,4 @@
-import { sql } from "@everycent/db";
+import { sql } from "@strictbudget/db";
 import type { PgTable } from "drizzle-orm/pg-core";
 import { AppError } from "./errors";
 import type { Db } from "./ledger";

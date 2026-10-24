@@ -13,7 +13,7 @@ function send(method: string, path: string, cookie: string, body?: unknown) {
   });
 }
 
-it("deletes a budget whose transactions include a split (EVERYCENT-207)", async () => {
+it("deletes a budget whose transactions include a split", async () => {
   const { cookie } = await signUp(app);
   const budget = await createBudget(app, cookie);
   const base = `/v1/budgets/${budget.id}`;

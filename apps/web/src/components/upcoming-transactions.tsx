@@ -1,12 +1,11 @@
-import { Button } from "@everycent/ui/components/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { cn } from "@everycent/ui/lib/utils";
+import { Button } from "@strictbudget/ui/components/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useState } from "react";
 import type { BudgetMonthData } from "@/lib/months";
 
 type Upcoming = NonNullable<BudgetMonthData["categories"][number]["upcoming"]>;
 
-/** One scheduled occurrence in an Activity popover. */
 export interface UpcomingItem {
   scheduleId: string;
   accountId: string;
@@ -17,16 +16,10 @@ export interface UpcomingItem {
   amount: string;
 }
 
-/** YNAB's "1 Upcoming Transaction" / "N Upcoming Transactions". */
 export const upcomingLabel = (count: number) =>
   `${count} Upcoming Transaction${count === 1 ? "" : "s"}`;
 
-/**
- * YNAB's upcoming scheduled transactions under a category's Available (checked 2026-10-12): "N
- * Upcoming Transaction(s)" with their net amount, then "Available After Upcoming", yellow when
- * that's negative. The first line opens an Activity popover listing them; a row opens its
- * account's register on the schedule.
- */
+/** "Available After Upcoming" is yellow when it's negative. */
 export function UpcomingTransactions({
   name,
   available,
@@ -40,7 +33,6 @@ export function UpcomingTransactions({
   upcoming: Upcoming;
   format: (minorUnits: string) => string;
   formatDate: (isoDate: string) => string;
-  /** Opens the schedule in its account's register. */
   onOpen: (accountId: string, scheduleId: string) => void;
 }) {
   const after = available + BigInt(upcoming.amount);
@@ -72,11 +64,7 @@ export function UpcomingTransactions({
   );
 }
 
-/**
- * The "N Upcoming Transactions" link and its Activity popover (Account, Date, Payee, Memo,
- * Amount, Close), as YNAB shows it under a category's Available and on a loan's Payments row. A
- * row opens the schedule in a register.
- */
+/** Used under a category's Available and on a loan's Payments row. */
 export function UpcomingActivity<T extends UpcomingItem>({
   label,
   name,
@@ -94,7 +82,6 @@ export function UpcomingActivity<T extends UpcomingItem>({
   format: (minorUnits: string) => string;
   formatDate: (isoDate: string) => string;
   onOpen: (item: T) => void;
-  /** Which edge of the link the popover lines up with. */
   align?: "start" | "end";
   className?: string;
 }) {

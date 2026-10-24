@@ -1,5 +1,5 @@
-import { RATE_SCALE } from "@everycent/engine";
 import { z } from "@hono/zod-openapi";
+import { RATE_SCALE } from "@strictbudget/engine";
 
 /** An FX rate on the wire: a positive decimal string, never a float. */
 export const zFxRate = z

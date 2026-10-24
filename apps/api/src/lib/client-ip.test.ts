@@ -37,7 +37,7 @@ afterAll(async () => {
   await plain.close();
 });
 
-describe("client IP (EVERYCENT-124)", () => {
+describe("client IP", () => {
   const headers = { "x-real-ip": "198.51.100.9", "x-forwarded-for": "203.0.113.1" };
 
   it("reads CLIENT_IP_HEADER when set (Railway's x-real-ip), not x-forwarded-for", async () => {

@@ -1,4 +1,4 @@
-import { budget, subTransaction, transaction } from "@everycent/db/schema";
+import { budget, subTransaction, transaction } from "@strictbudget/db/schema";
 import {
   type CurrencyCode,
   convert,
@@ -6,7 +6,7 @@ import {
   impliedRate,
   money,
   normalizeRate,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { asc, eq } from "drizzle-orm";
 import type { AppDeps } from "../types";
 import { resolveRate } from "./fx";
@@ -24,7 +24,6 @@ export interface BaseFields {
 export interface BaseInput {
   budgetId: string;
   budgetCurrency: CurrencyCode;
-  /** The account's currency. */
   currency: CurrencyCode;
   date: string;
   amount: bigint;
@@ -49,7 +48,7 @@ export async function rateFor(db: Db, deps: FxDeps, input: Omit<BaseInput, "amou
 }
 
 /**
- * Converts a transaction's amount into the budget's currency, once (EVERYCENT-54): an account in
+ * Converts a transaction's amount into the budget's currency, once: an account in
  * the budget's currency keeps its amount; a foreign one converts at the typed rate or the date's.
  */
 export async function baseFields(db: Db, deps: FxDeps, input: BaseInput): Promise<BaseFields> {
@@ -134,7 +133,7 @@ function sideRate(
 }
 
 /**
- * The other side's amount of a transfer between currencies when none is given (EVERYCENT-55):
+ * The other side's amount of a transfer between currencies when none is given:
  * the entered side's base amount, negated, in the other side's currency at the date's rate.
  */
 export async function otherSideAmount(
@@ -143,7 +142,6 @@ export async function otherSideAmount(
   input: {
     budgetId: string;
     budgetCurrency: CurrencyCode;
-    /** The entered side's base amount. */
     base: bigint;
     currency: CurrencyCode;
     date: string;
@@ -168,7 +166,7 @@ export function oppositeSides(amount: bigint, other: bigint) {
  * Brings what follows a transaction's base amount in line with it: a split's lines (at its rate,
  * adding up to it), the other side of a transfer and of each transfer line. A transfer's sides
  * always have opposite base amounts, so it moves no money in the budget. Between currencies
- * (EVERYCENT-55) each side keeps its own amount: a side in the budget's currency decides the base
+ * each side keeps its own amount: a side in the budget's currency decides the base
  * amount (its amount is it), otherwise this side's does; the other side's rate is the one its
  * amounts imply. A split's transfer line follows the split's rate, so a line's other side in the
  * budget's currency takes the line's base amount as its amount.

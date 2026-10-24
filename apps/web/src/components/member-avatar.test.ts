@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { avatarPattern } from "./member-avatar";
 
-describe("avatarPattern (YNAB's same-initial patterns, EVERYCENT-202)", () => {
+describe("avatarPattern (same-initial patterns)", () => {
   const members = [
     { userId: "owner", name: "Ihni7" },
     { userId: "b", name: "Ikram Monsha" },
@@ -25,7 +25,7 @@ describe("avatarPattern (YNAB's same-initial patterns, EVERYCENT-202)", () => {
     expect(avatarPattern(members, "gone")).toBe(0);
   });
 
-  it("stops at YNAB's fifth pattern", () => {
+  it("stops at the fifth pattern", () => {
     const many = Array.from({ length: 8 }, (_, i) => ({ userId: `u${i}`, name: `Al ${i}` }));
     expect(avatarPattern(many, "u5")).toBe(5);
     expect(avatarPattern(many, "u7")).toBe(5);

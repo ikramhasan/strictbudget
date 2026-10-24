@@ -45,7 +45,6 @@ function renderImport() {
   return { onImport, onCancel, onChooseAnother, box };
 }
 
-// YNAB, 2026-10-16 (EVERYCENT-153): the import dialog's checklist.
 describe("ImportTemplateDialog", () => {
   it("asks about the budget with every category ticked", async () => {
     const { onImport } = renderImport();
@@ -73,7 +72,7 @@ describe("ImportTemplateDialog", () => {
     expect(box("💰 Security Deposit")).toBeChecked();
   });
 
-  it("still imports with nothing ticked, as YNAB's button stays enabled", async () => {
+  it("still imports with nothing ticked, as the button stays enabled", async () => {
     const { onImport, box } = renderImport();
     await userEvent.click(box("Before You Move"));
     await userEvent.click(box("Unexpected"));
@@ -108,7 +107,6 @@ describe("TemplateGallery", () => {
     await userEvent.click(screen.getByRole("button", { name: /^Moving/ }));
     const deposit = screen.getByText("💰 Security Deposit").closest("li");
     expect(within(deposit as HTMLElement).getByText("$1000.00")).toBeVisible();
-    // No example amount, no amount shown.
     const about = screen.getByText("📋 About This Template").closest("li");
     expect(about?.textContent).toBe("📋 About This Template");
     expect(screen.getByText("$2450.00")).toBeVisible();

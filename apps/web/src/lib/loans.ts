@@ -1,10 +1,10 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import {
   type AccountType,
   type BudgetMonth,
   monthBounds,
   rateThousandths,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { queryOptions } from "@tanstack/react-query";
 import { format as formatDateFns } from "date-fns";
 import { apiClient } from "./api";
@@ -34,31 +34,28 @@ export const loanQueryOptions = (budgetId: string, accountId: string, today = to
     },
   });
 
-/** Only mortgages ask about escrow in YNAB (its Edit Account and Add Account, 2026-10-13). */
+/** Only mortgages ask about escrow. */
 export const hasEscrow = (type: AccountType) => type === "mortgage";
 
-/** "6.000" → "6", "5.125" → "5.125" (YNAB shows "6%"). */
+/** "6.000" → "6", "5.125" → "5.125". */
 export function formatRate(rate: string) {
   return rate.includes(".") ? rate.replace(/\.?0+$/, "") : rate;
 }
 
-/** "October 13", as YNAB writes dates on the loan page. */
 export const dayLabel = (iso: string) => formatDateFns(isoToDate(iso), "MMMM d");
 
-/** "Oct 2026" (YNAB's month picker and dialog titles). */
 export const shortMonth = (month: BudgetMonth) =>
   formatDateFns(isoToDate(monthBounds(month).start), "MMM yyyy");
 
-/** "October 2026" (the Account Activity headings). */
 export const longMonth = (month: BudgetMonth) =>
   formatDateFns(isoToDate(monthBounds(month).start), "MMMM yyyy");
 
 export type LoanTermsCheck = components["schemas"]["LoanTermsCheck"];
 
 /**
- * The Changes lines of Update Balance's interest rate / escrow check, worded as YNAB's
- * (2026-10-14): "Your interest rate has been changed to 7% for October and going forward." and,
- * with "Keep … going forward" unchecked, "… for October.". Only values that changed get a line.
+ * The Changes lines of Update Balance's interest rate / escrow check: "Your interest rate has been
+ * changed to 7% for October and going forward." and, with "Keep … going forward" unchecked, "… for
+ * October.". Only values that changed get a line.
  */
 export function loanTermsChangeLines(
   check: LoanTermsCheck,
@@ -103,9 +100,9 @@ export const chargeShown = (charge: LoanChargeData) =>
   charge.status !== "estimated" || BigInt(charge.applied) > 0n;
 
 /**
- * The note under "Interest Charges This Month" or "Escrow Held" (YNAB, 2026-10-13): "Estimated" or
- * "Set aside by your lender", with ", $77.08 still due ($427.08 total this month)" when the month's
- * payments didn't cover it; "Edited on October 13"; "Reconciled".
+ * The note under "Interest Charges This Month" or "Escrow Held": "Estimated" or "Set aside by your
+ * lender", with ", $77.08 still due ($427.08 total this month)" when the month's payments didn't
+ * cover it; "Edited on October 13"; "Reconciled".
  */
 export function chargeNote(
   kind: "interest" | "escrow",
@@ -133,7 +130,7 @@ export function paymentStatus(month: LoanMonthData): "none" | "partial" | "cover
 
 export type OtherLineKind = "initial" | "adjustment" | "credit" | "charge";
 
-/** What a loan line that isn't a payment is (YNAB's "Other Activity" wording). */
+/** What a loan line that isn't a payment is (the "Other Activity" wording). */
 export function otherKind(line: LoanLineData): OtherLineKind {
   if (line.kind === "starting_balance") return "initial";
   if (line.payeeKind === "manual_balance_adjustment") return "adjustment";
@@ -148,6 +145,5 @@ export const OTHER_LABELS: Record<OtherLineKind, string> = {
   charge: "Charge",
 };
 
-/** Newest first, as YNAB lists a month's payments and other activity. */
 export const newestFirst = <T extends { date: string; id: string }>(lines: readonly T[]) =>
   [...lines].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));

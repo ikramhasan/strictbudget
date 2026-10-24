@@ -5,7 +5,7 @@ describe("agentSetupPrompt", () => {
   it("names the MCP server, how to add it and a first check, for this server", () => {
     const prompt = agentSetupPrompt("https://budget.example");
     expect(prompt).toContain(
-      "claude mcp add --transport http everycent https://budget.example/mcp",
+      "claude mcp add --transport http strictbudget https://budget.example/mcp",
     );
     expect(prompt).toContain("listBudgets");
     expect(prompt).toContain("https://budget.example/.well-known/agent-configuration");

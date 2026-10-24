@@ -1,4 +1,4 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -6,10 +6,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Slider } from "@everycent/ui/components/slider";
-import { Spinner } from "@everycent/ui/components/spinner";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dialog";
+import { Slider } from "@strictbudget/ui/components/slider";
+import { Spinner } from "@strictbudget/ui/components/spinner";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ImagePlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
@@ -113,7 +113,6 @@ export function PictureCropDialog({
   );
 }
 
-/** A picture's preview: round for a profile picture, a rounded square for a logo. */
 export function PicturePreview({
   src,
   shape,
@@ -139,8 +138,8 @@ export function PicturePreview({
 }
 
 /**
- * Pick, crop and set a picture, or remove it: a preview with Upload/Change and Remove. `onPick`
- * gets the cropped square (it may upload it or keep it for later, as a new account's logo does).
+ * `onPick` gets the cropped square (it may upload it or keep it for later, as a new account's logo
+ * does).
  */
 export function PictureField({
   shape,
@@ -155,7 +154,6 @@ export function PictureField({
 }: {
   shape: PictureShape;
   size: number;
-  /** The current picture, if any. */
   src: string | undefined;
   /** Shown in the preview without a picture (an initial, an icon). */
   fallback: ReactNode;

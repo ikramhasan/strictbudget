@@ -1,5 +1,11 @@
-import type { components } from "@everycent/api-client";
-import { type BudgetMonth, type CurrencyCode, type Money, money, monthOf } from "@everycent/engine";
+import type { components } from "@strictbudget/api-client";
+import {
+  type BudgetMonth,
+  type CurrencyCode,
+  type Money,
+  money,
+  monthOf,
+} from "@strictbudget/engine";
 import type { QueryClient } from "@tanstack/react-query";
 import { format, parse } from "date-fns";
 import { useCallback, useState } from "react";
@@ -26,9 +32,8 @@ export function invalidateMonths(queryClient: QueryClient) {
 export const currentMonth = (now = new Date()) => monthOf(todayIso(now));
 
 /**
- * The month last shown on each budget's screen. YNAB reopens it when you come back to Plan, but a
- * reload (or another device) starts on the current month again (checked 2026-10-11), so it lives
- * in memory only.
+ * The month last shown on each budget's screen: reopened on coming back to Plan, but a reload (or
+ * another device) starts on the current month again, so it lives in memory only.
  */
 const lastViewed = new Map<string, BudgetMonth>();
 
@@ -42,17 +47,14 @@ export function lastViewedMonth(budgetId: string): BudgetMonth | undefined {
   return month === currentMonth() ? undefined : month;
 }
 
-/** "Oct 2026", as YNAB labels the month. */
 export function monthLabel(month: BudgetMonth) {
   return format(parse(month, "yyyy-MM", new Date()), "MMM yyyy");
 }
 
-/** "November", as YNAB names a month in lists. */
 export function monthName(month: BudgetMonth) {
   return format(parse(month, "yyyy-MM", new Date()), "MMMM");
 }
 
-/** "Oct" for 2026-10. */
 export function shortMonthName(month: BudgetMonth) {
   return format(parse(month, "yyyy-MM", new Date()), "MMM");
 }
@@ -69,12 +71,9 @@ function readCollapsed(key: string): string[] {
   }
 }
 
-/**
- * Collapsed category groups. YNAB keeps them collapsed across reloads and months, in the browser
- * (`.collapsedCategories` in localStorage, checked 2026-10-11).
- */
+/** Collapsed category groups, kept across reloads and months in this browser. */
 export function useCollapsedGroups(budgetId: string) {
-  const key = `everycent:collapsed-groups:${budgetId}`;
+  const key = `strictbudget:collapsed-groups:${budgetId}`;
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
     () => new Set(readCollapsed(key)),
   );
@@ -101,8 +100,8 @@ export interface MoneyOption {
 }
 
 /**
- * Where money can move to or from, as YNAB lists it: Ready to Assign first, then the visible
- * categories by group, each with what's available this month.
+ * Where money can move to or from: Ready to Assign first, then the visible categories by group,
+ * each with what's available this month.
  */
 export function moneyOptions(list: CategoryList, month: BudgetMonthData): MoneyOption[] {
   const available = new Map(month.categories.map((c) => [c.categoryId, c.available]));
@@ -128,5 +127,4 @@ export function moneyOptions(list: CategoryList, month: BudgetMonthData): MoneyO
   ];
 }
 
-/** The smaller of two amounts in minor units. */
 export const minAmount = (a: bigint, b: bigint) => (a < b ? a : b);

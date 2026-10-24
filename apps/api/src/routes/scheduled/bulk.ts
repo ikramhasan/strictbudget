@@ -1,5 +1,5 @@
-import { scheduledTransaction } from "@everycent/db/schema";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { scheduledTransaction } from "@strictbudget/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { type Db, serverToday } from "../../lib/ledger";

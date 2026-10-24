@@ -1,8 +1,8 @@
 import { fileTypeFromBuffer } from "file-type";
 
 /**
- * What a transaction attachment can be: YNAB's photo types (jpg, png, webp, avif, gif, svg, and
- * heic from phones; EVERYCENT-31) plus PDFs, an everycent extra.
+ * What a transaction attachment can be: photo types (jpg, png, webp, avif, gif, svg, and heic
+ * from phones) and PDFs.
  */
 export const ATTACHMENT_TYPES = [
   "image/jpeg",
@@ -17,7 +17,6 @@ export const ATTACHMENT_TYPES = [
 ] as const;
 export type AttachmentType = (typeof ATTACHMENT_TYPES)[number];
 
-/** YNAB's limit on a transaction photo. */
 export const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
 
 const isAttachmentType = (mime: string): mime is AttachmentType =>

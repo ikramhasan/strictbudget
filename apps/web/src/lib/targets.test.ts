@@ -44,7 +44,6 @@ const need = (
   snoozed: false,
   beforeOpening: false,
 });
-/** A one-section bar holding `spent` and `left`. */
 const bar = (spent: string, left: string) => ({
   tone: "funded" as const,
   sections: [
@@ -83,7 +82,7 @@ describe("target wording", () => {
     expect(dueDayIn(31, "2026-02")).toBe(28);
   });
 
-  it("matches YNAB's inspector headings", () => {
+  it("matches the inspector headings", () => {
     expect(targetHeading(target(), "$100.00")).toBe("Set Aside Another $100.00 Each Month");
     expect(targetHeading(target({ behavior: "refill" }), "$100.00")).toBe(
       "Refill Up to $100.00 Each Month",
@@ -105,7 +104,7 @@ describe("target wording", () => {
     );
   });
 
-  it("matches YNAB's due lines", () => {
+  it("matches the due lines", () => {
     expect(targetDueLine(target(), null)).toBe("By the End of the Month");
     expect(targetDueLine(target({ dueDay: 15 }), null)).toBe("By the 15th of the Month");
     expect(targetDueLine(target({ cadence: "weekly", dueDay: 6 }), null)).toBe("By Saturday");
@@ -119,7 +118,7 @@ describe("target wording", () => {
     expect(targetDueLine({ ...balance, dueDate: "2026-12-01" }, null)).toBe("By Dec 2026");
   });
 
-  it("matches YNAB's row notes", () => {
+  it("matches the row notes", () => {
     const note = (t: CategoryTarget, n: TargetNeed, month = "2026-10") =>
       targetRowNote(t, n, month, format).text;
     expect(note(target(), need("10000", "4000", "6000"))).toBe("$60.00 more needed by the 31st");
@@ -146,12 +145,11 @@ describe("target wording", () => {
     ).toBe("$100.00 needed this month");
   });
 
-  // YNAB plan "C4 Clean", 2026-10-12.
   it("writes met and past-due row notes with their spending", () => {
     const row = (t: CategoryTarget, n: TargetNeed, spent: string, left: string) =>
       categoryRowNote(t, n, bar(spent, left), "2026-10", format);
     const monthly = target({ amount: "5000" });
-    // C5 M0: $50.00 assigned and spent.
+    // $50.00 assigned and spent.
     expect(row(monthly, need("5000", "5000", "0"), "5000", "0")).toEqual({
       strong: "",
       rest: "Fully Spent",
@@ -162,7 +160,7 @@ describe("target wording", () => {
     });
     const once = target({ cadence: "custom", amount: "10000", dueDate: "2026-09-15" });
     const past = (funded: string) => need("10000", funded, "0", "2026-09-15", true);
-    // C5 P1: $30.00 assigned, $10.00 spent; C5 U1 with $40.00 and with nothing in it.
+    // $30.00 assigned, $10.00 spent; then with $40.00 and with nothing in it.
     expect(row(once, past("3000"), "1000", "2000")).toEqual({
       strong: "Funded",
       rest: ". Spent $10.00 of $30.00",
@@ -172,7 +170,6 @@ describe("target wording", () => {
     expect(targetMessage(once, past("3000"), format)).toBeNull();
   });
 
-  // YNAB "C5 First", 2026-10-12.
   it("asks to meet a pay-off target in its own month", () => {
     const payoff = target({ cadence: "payoff_by_date", dueDate: "2026-10-01", amount: "0" });
     const n = need("200", "100", "100", "2026-10-01");
@@ -187,7 +184,7 @@ describe("target wording", () => {
     expect(targetMessage(payoff, need("200", "100", "0", "2026-10-01", true), format)).toBeNull();
   });
 
-  // YNAB "ihni7's Plan", 2026-10-12: Card E3 opened Oct 8, its target seen in September.
+  // The card was opened Oct 8; its target is seen in September.
   it("asks $0.00 of a payment target before its card was opened", () => {
     const monthly = target({ cadence: "payment_monthly", behavior: "set_aside", amount: "3000" });
     const n = { ...need("3000", "0", "0"), beforeOpening: true };
@@ -227,7 +224,6 @@ describe("target wording", () => {
   });
 });
 
-// YNAB findings "Credit card payment targets" (YNAB, 2026-10-08).
 describe("payment target wording", () => {
   const payoff = target({
     cadence: "payoff_by_date",
@@ -240,7 +236,7 @@ describe("payment target wording", () => {
   it("heads Pay off by date with what's left to pay off, and its month", () => {
     expect(targetHeading(payoff, "$100.00")).toBe("Pay off $100.00");
     expect(targetDueLine(payoff, null)).toBe("By Mar 2027");
-    // Card E2: $110.00 owed, $10.00 of it funded spending: the lines add it back.
+    // $110.00 owed, $10.00 of it funded spending: the lines add it back.
     expect(targetLines(payoff, need("10000", "0", "3334", "2026-12-01"), format, "1000")).toEqual([
       { label: "Needed for Payoff", value: "$110.00" },
       { label: "Available for Payment", value: "$10.00" },
@@ -255,18 +251,17 @@ describe("payment target wording", () => {
     });
   });
 
-  // YNAB, 2026-10-11 (YNAB findings "Credit lifecycle (phase 7e)").
   it("cheers a met pay-off target and heads it with what's been put in plus To Go", () => {
-    // Card T2: owes $14.00, $20.00 assigned and $6.00 paid, so $14.00 counts.
+    // Owes $14.00, $20.00 assigned and $6.00 paid, so $14.00 counts.
     expect(targetMessage(payoff, need("1400", "1400", "0"), format)).toEqual({
       text: "Cheers to a debt-free future!",
     });
     expect(payoffAmount(need("1400", "1400", "0"), "-600")).toBe("2000");
-    // Card T7 paid off: nothing owed or counted, $20.00 paid.
+    // Paid off: nothing owed or counted, $20.00 paid.
     expect(payoffAmount(need("0", "0", "0"), "-2000")).toBe("2000");
-    // Card E1: $50.00 counted of $125.00, nothing paid.
+    // $50.00 counted of $125.00, nothing paid.
     expect(payoffAmount(need("12500", "5000", "2084"), "0")).toBe("12500");
-    // A met Pay Specific Amount Monthly keeps the usual words (Card T3).
+    // A met Pay Specific Amount Monthly keeps the usual words.
     expect(targetMessage(monthly, need("500", "500", "0"), format)).toEqual({
       text: "You've met your target!",
     });

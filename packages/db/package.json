@@ -1,5 +1,5 @@
 {
-  "name": "@everycent/db",
+  "name": "@strictbudget/db",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -15,13 +15,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@everycent/engine": "workspace:*",
+    "@strictbudget/engine": "workspace:*",
     "drizzle-orm": "catalog:",
     "postgres": "catalog:",
     "uuid": "catalog:"
   },
   "devDependencies": {
-    "@everycent/tsconfig": "workspace:*",
+    "@strictbudget/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "drizzle-kit": "catalog:",
     "tsx": "catalog:",

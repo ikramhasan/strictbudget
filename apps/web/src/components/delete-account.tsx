@@ -1,11 +1,11 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@everycent/ui/components/card";
+} from "@strictbudget/ui/components/card";
 import {
   Dialog,
   DialogContent,
@@ -13,10 +13,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Field, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { Spinner } from "@everycent/ui/components/spinner";
+} from "@strictbudget/ui/components/dialog";
+import { Field, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
@@ -25,7 +25,7 @@ import { $api } from "@/lib/api";
 import { apiErrorMessage, budgetsQueryOptions } from "@/lib/budgets";
 import { refreshSession } from "@/lib/session";
 
-/** YNAB's Delete Account: confirmed with the password; owned budgets go with it. */
+/** Confirmed with the password; budgets the person owns are deleted with the account. */
 export function DeleteAccountCard() {
   const [open, setOpen] = useState(false);
   return (
@@ -34,8 +34,8 @@ export function DeleteAccountCard() {
       <CardHeader>
         <CardTitle>Delete Account</CardTitle>
         <CardDescription>
-          Delete your account if you no longer wish to use everycent (and want all of your account
-          and budget data permanently deleted).
+          Delete your account if you no longer wish to use strictbudget (and want all of your
+          account and budget data permanently deleted).
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -10,7 +10,6 @@ export const categoryTemplatesQueryOptions = (budgetId: string) =>
     params: { path: { budgetId } },
   });
 
-/** The template gallery (loaded once asked for) and importing one into the budget. */
 export function useCategoryTemplates(budgetId: string, enabled: boolean) {
   const queryClient = useQueryClient();
   const list = useQuery({

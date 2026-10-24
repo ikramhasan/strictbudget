@@ -1,8 +1,7 @@
-// Notes a template import puts on its categories (EVERYCENT-178). YNAB's gallery ships its own
-// notes; ours are written here, in our own words, rather than copied. They live apart from the
-// generated `category-template-data.ts` so regenerating that file from YNAB's gallery never
-// touches them; they're keyed by template id and category name, and a test checks every
-// "📋 About This Template" category in the data still has one.
+// Notes a template import puts on its categories. They live apart from the generated
+// `category-template-data.ts` so regenerating that file never touches them; they're keyed by
+// template id and category name, and a test checks every "📋 About This Template" category in the
+// data still has one.
 
 /** What each template's "📋 About This Template" category explains, by template id. */
 const ABOUT: Readonly<Record<string, string>> = {
@@ -31,7 +30,7 @@ const ABOUT: Readonly<Record<string, string>> = {
   kid: "A simple first budget for a child: some to spend, some to save and some to give. Each time money comes in, split it between the jars together and talk about the choices.",
   "kitchen-remodel":
     "Every part of a new kitchen, from cabinets and counters to appliances and labour. Use your quotes for the amounts, save toward the total, and keep a little extra for the things you find once the old kitchen comes out.",
-  "minimalist-ynab":
+  minimalist:
     "A few broad categories for when you want a simple plan. Give every dollar a job here first; split a category up later only if you need to see more detail.",
   "new-baby":
     "Get ready for a new baby: gear, medical bills, clothes and the first months at home. Start saving early so the big purchases are covered before the due date.",
@@ -49,7 +48,7 @@ const ABOUT: Readonly<Record<string, string>> = {
     "Set up life after school: the monthly bills, the costs that come once or twice a year, and savings to build a cushion. Fund the monthly ones first, then work toward the others.",
   "small-business":
     "Keep the business's money apart from your own. Cost of the Work and Running the Business cover what the business spends, Paying Myself is your pay, and Hands Off! holds money that isn't yours to spend, like taxes.",
-  "teach-ynab":
+  "teach-budgeting":
     "An example plan for showing someone how this works. Walk through the monthly bills first, then the costs that don't come every month, then goals, giving every dollar a job as you go.",
   teen: "A teenager's own budget. My Expenses covers what they pay for, the Wish Farm saves for things they want soon, and Someday! is for the bigger goals further off.",
   travel:
@@ -58,14 +57,14 @@ const ABOUT: Readonly<Record<string, string>> = {
     "The parts of a wedding in their own groups, from the ceremony and reception to the week itself. Fill in your estimates, decide what matters most, and keep a buffer for the extras.",
   "wish-farm":
     "Save for the things you want. Wish Farm holds the treats you're saving for now; Wish List is for later. Move a wish up when the one before it is funded.",
-  "ynab-beginner-template":
+  "beginner-template":
     "A first plan for giving every dollar a job. Start with the monthly bills, then fun, debt and kids, then save a little each month for the yearly costs and your goals. Delete what doesn't apply.",
 };
 
 /** Notes on other template categories, by template id, then category name. None yet. */
 const NOTES: Readonly<Record<string, Readonly<Record<string, string>>>> = {};
 
-/** YNAB names the category "📋 About This Template", sometimes without the space. */
+/** The category is "📋 About This Template", sometimes without the space. */
 export const isAboutCategory = (name: string) => /^📋\s*About This Template$/.test(name);
 
 /** The note a template's category is imported with, if it has one. */

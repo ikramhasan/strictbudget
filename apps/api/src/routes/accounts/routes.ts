@@ -1,3 +1,4 @@
+import { createRoute, z } from "@hono/zod-openapi";
 import {
   LOAN_CHARGE_KINDS,
   LOAN_LINE_KINDS,
@@ -5,8 +6,7 @@ import {
   zBudgetMonth,
   zCurrencyCode,
   zMinorUnits,
-} from "@everycent/engine";
-import { createRoute, z } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { IsoDate, TodayQuery } from "../../lib/dates";
 import { jsonError } from "../../lib/errors";
 import { zFxRate } from "../../lib/fx/rate-schema";
@@ -33,9 +33,7 @@ export const AccountSchema = z
     logo: z
       .string()
       .nullable()
-      .describe(
-        "Its logo's URL (an API path; EVERYCENT-229), shown before its name; null without one",
-      ),
+      .describe("Its logo's URL (an API path), shown before its name; null without one"),
     type: zAccountType,
     note: z.string(),
     closed: z.boolean(),
@@ -86,8 +84,8 @@ export const AccountSchema = z
       .number()
       .int()
       .describe(
-        "Transactions that are unapproved or need a category (YNAB's \"N new transactions to " +
-          'approve or categorize" and the dot by the account in the sidebar)',
+        "Transactions that are unapproved or need a category (the review banner's count and the " +
+          "dot by the account in the sidebar)",
       ),
     unrealizedGain: zMinorUnits
       .nullable()
@@ -273,7 +271,7 @@ export const updateAccount = createRoute({
   summary: "Rename an account, edit its note, type or loan details, or set its working balance",
   description:
     "A `workingBalance` different from the account's adds a Manual Balance Adjustment for the " +
-    "difference, dated `date` and cleared (as YNAB's Edit Account does; budget accounts take it " +
+    "difference, dated `date` and cleared (budget accounts take it " +
     "from Ready to Assign). Not for closed accounts. A loan's interest rate, minimum payment and " +
     "escrow apply from `date`'s month on.",
   request: {
@@ -395,12 +393,12 @@ export const reconcileAccount = createRoute({
     "Locks every cleared transaction dated up to `date` (they become reconciled, for good) and " +
     "records when. If `balance` differs from the cleared balance, a Reconciliation Balance " +
     "Adjustment for the difference comes first, dated `date` (budget accounts take it from " +
-    "Ready to Assign; tracking accounts have no category). A loan (YNAB's Update Balance) is " +
+    "Ready to Assign; tracking accounts have no category). A loan (Update Balance) is " +
     "compared with its working balance, every transaction up to `date` is reconciled, and each " +
     "month's interest and escrow are fixed at what's applied. A loan's `loanTerms` (Update " +
     "Balance's interest rate / escrow check) change its terms from `date`'s month first; the " +
     "adjustment then makes up the difference to the balance with this month re-estimated on the " +
-    "new terms, while the months are fixed at what they had (YNAB, 2026-10-14).",
+    "new terms, while the months are fixed at what they had.",
   request: {
     params: AccountParams,
     body: json(ReconcileAccountBody),
@@ -550,8 +548,8 @@ export const reopenAccount = createRoute({
   summary: "Reopen a closed account (and show its payment category again)",
   description:
     "Reopening a tracking account that was updated to a loan account erases the link: the " +
-    "loan no longer shows its history, and the account can be updated to a loan again (YNAB's " +
-    '"Erase & Re-open").',
+    "loan no longer shows its history, and the account can be updated to a loan " +
+    "again.",
   request: { params: AccountParams, query: TodayQuery },
   responses: {
     200: ok("Reopened", AccountSchema),
@@ -590,7 +588,7 @@ export const updateToLoanAccount = createRoute({
   tags: ["Accounts"],
   security: authSecurity,
   middleware: [requireAuth] as const,
-  summary: "Update a tracking liability to a new loan account (YNAB's Update to a Loan Account)",
+  summary: "Update a tracking liability to a new loan account",
   description:
     "Adds a loan account with a Starting Balance of `balance` dated `date` (cleared), its terms " +
     "and the paired category. The original account keeps its transactions and is closed: a " +
@@ -651,7 +649,7 @@ const LoanBannersSchema = z
       .boolean()
       .describe('This loan\'s "Another debt bites the dust" banner was dismissed'),
   })
-  .describe("YNAB keeps these as plan settings, so they follow the plan to every device and member")
+  .describe("Kept as budget settings, so they follow the budget to every device and member")
   .openapi("LoanBanners");
 
 const LoanActivitySchema = z
@@ -701,7 +699,7 @@ const LoanActivitySchema = z
       )
       .describe(
         "This month's scheduled payments still to come, every occurrence of a repeating one, " +
-          'newest first (YNAB\'s "N Upcoming Transactions"); not in the balances',
+          "newest first; not in the balances",
       ),
     terms: z
       .array(
@@ -727,7 +725,7 @@ const LoanActivitySchema = z
       .nullable()
       .describe(
         "A loan made by updating a tracking liability: the original account's month-end " +
-          'balances (YNAB\'s "Original Tracking Account History")',
+          "balances",
       ),
   })
   .openapi("LoanActivity");
@@ -767,7 +765,7 @@ export const setLoanCharge = createRoute({
   summary: "Set a loan month's total interest or escrow",
   description:
     "Replaces the month's estimate (or earlier amount) and applies in full, payments or not, as " +
-    "YNAB's Edit Interest, Edit Escrow and Add Interest do; zero is YNAB's Delete Interest. " +
+    "Edit Interest, Edit Escrow and Add Interest do; zero is Delete Interest. " +
     "Months run from the loan's first through today's.",
   request: {
     params: AccountParams,
@@ -800,7 +798,7 @@ export const recordLoanPayment = createRoute({
   tags: ["Accounts"],
   security: authSecurity,
   middleware: [requireAuth] as const,
-  summary: "Record a loan payment (YNAB's Record Payment)",
+  summary: "Record a loan payment",
   description:
     "A transfer from `fromAccountId` into the loan: the paying side is uncleared and comes out " +
     "of the loan's paired category (Uncategorized when it has none); the loan's side is cleared. " +
@@ -840,7 +838,7 @@ export const dismissLoanBanner = createRoute({
   summary: "Dismiss a loan page banner for the whole plan",
   description:
     "`simulator` hides the payoff simulator banner on every loan; `paidOff` hides this loan's " +
-    '"Another debt bites the dust". Kept on the plan, as YNAB keeps them (checked 2026-10-14).',
+    '"Another debt bites the dust". Kept on the budget.',
   request: {
     params: AccountParams,
     body: json(z.object({ banner: z.enum(["simulator", "paidOff"]) }).openapi("DismissLoanBanner")),

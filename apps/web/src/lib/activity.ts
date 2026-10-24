@@ -1,10 +1,9 @@
-import type { components } from "@everycent/api-client";
-import { type CurrencyCode, type Money, money } from "@everycent/engine";
+import type { components } from "@strictbudget/api-client";
+import { type CurrencyCode, type Money, money } from "@strictbudget/engine";
 
 export type ActivityEvent = components["schemas"]["ActivityEvent"];
 type Values = NonNullable<ActivityEvent["before"]>;
 
-/** Names for the ids an event's rows carry, from the lists the app already has. */
 export interface ActivityLookups {
   account: (id: string) => string | undefined;
   category: (id: string) => string | undefined;
@@ -31,7 +30,6 @@ export interface ActivityLine {
   changes: ActivityChange[];
 }
 
-/** What each table is called in a sentence. */
 const NOUNS: Record<string, string> = {
   transaction: "transaction",
   sub_transaction: "split line",
@@ -57,7 +55,6 @@ const NOUNS: Record<string, string> = {
   fx_rate_override: "exchange rate",
 };
 
-/** The entity filter's choices, in the Activity page's order. */
 export const ACTIVITY_ENTITIES: { value: string; label: string }[] = [
   { value: "transaction,sub_transaction,transaction_attachment", label: "Transactions" },
   { value: "category_assignment", label: "Assigned money" },
@@ -130,7 +127,6 @@ const humanize = (column: string) =>
 
 const MONEY = new Set(["amount", "balance", "minimum_payment", "escrow_amount"]);
 
-/** A column's value as people read it. */
 function show(
   column: string,
   value: string | null,
@@ -152,7 +148,6 @@ function show(
   return value;
 }
 
-/** What the row was, for the sentence: its name, or its payee and amount. */
 function subjectOf(entity: string, row: Values, l: ActivityLookups): string | null {
   const amount = row.amount ? show("amount", row.amount, row, l) : null;
   switch (entity) {
@@ -186,7 +181,6 @@ function subjectOf(entity: string, row: Values, l: ActivityLookups): string | nu
   }
 }
 
-/** The columns that differ, before → after, in a readable form. */
 export function changesOf(event: ActivityEvent, l: ActivityLookups): ActivityChange[] {
   const before = event.before ?? {};
   const after = event.after ?? {};
@@ -208,7 +202,6 @@ export function changesOf(event: ActivityEvent, l: ActivityLookups): ActivityCha
   return changes;
 }
 
-/** An event as a line of the Activity page: who did what to which row. */
 export function describeEvent(event: ActivityEvent, l: ActivityLookups): ActivityLine {
   const noun = NOUNS[event.entity] ?? humanize(event.entity).toLowerCase();
   const row = event.after ?? event.before ?? {};
@@ -243,7 +236,7 @@ export function actorName(event: ActivityEvent): string {
     return event.actor.agent ? agentFor(event.actor.agent.name, name) : name;
   }
   if (event.source === "scheduled") return "Scheduled transactions";
-  return "everycent";
+  return "strictbudget";
 }
 
 /** "Claude Code for Ada": an agent's change, made on a member's behalf. */
@@ -251,5 +244,4 @@ export function agentFor(agentName: string, memberName: string): string {
   return `${agentName} for ${memberName}`;
 }
 
-/** Prefix of every Activity page query (any budget or filter). */
 export const activityQueryPrefix = ["activity"] as const;

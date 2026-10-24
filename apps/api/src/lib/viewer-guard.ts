@@ -1,4 +1,4 @@
-import { budgetMember } from "@everycent/db/schema";
+import { budgetMember } from "@strictbudget/db/schema";
 import { and, eq } from "drizzle-orm";
 import type { Context } from "hono";
 import type { AuthedEnv } from "../middleware/require-auth";
@@ -18,11 +18,10 @@ const VIEWER_ALLOWED = [/^leave$/, ...READ_ONLY_POSTS] as const;
 /** A budget-scoped path: the budget id, then the rest of the path. */
 export const BUDGET_PATH = /^\/v1\/budgets\/([^/]+)(?:\/(.*))?$/;
 
-/** Whether a budget-scoped POST only reads (`rest` is the path after the budget id). */
 export const onlyReads = (rest: string) => READ_ONLY_POSTS.some((re) => re.test(rest));
 
 /**
- * Refuses every write a viewer (EVERYCENT-88) sends to their budget: 403 READ_ONLY, before the
+ * Refuses every write a viewer sends to their budget: 403 READ_ONLY, before the
  * route validates anything, so no write route can forget it. Reads, and the few POSTs that only
  * read, pass. Non-members pass through to the route's own 404.
  */

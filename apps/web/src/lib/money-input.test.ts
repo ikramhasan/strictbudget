@@ -1,4 +1,4 @@
-import { formatAmount, money } from "@everycent/engine";
+import { formatAmount, money } from "@strictbudget/engine";
 import { describe, expect, it } from "vitest";
 import { inCurrency, type MoneySettings, parseMoneyInput, toMoneyInput } from "./money-input";
 

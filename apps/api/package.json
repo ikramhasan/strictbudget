@@ -1,5 +1,5 @@
 {
-  "name": "@everycent/api",
+  "name": "@strictbudget/api",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -22,8 +22,8 @@
     "@better-auth/cimd": "catalog:",
     "@better-auth/mcp": "catalog:",
     "@better-auth/oauth-provider": "catalog:",
-    "@everycent/db": "workspace:*",
-    "@everycent/engine": "workspace:*",
+    "@strictbudget/db": "workspace:*",
+    "@strictbudget/engine": "workspace:*",
     "@hono/node-server": "catalog:",
     "@hono/otel": "catalog:",
     "@hono/zod-openapi": "catalog:",
@@ -51,7 +51,7 @@
   },
   "devDependencies": {
     "@better-auth/utils": "catalog:",
-    "@everycent/tsconfig": "workspace:*",
+    "@strictbudget/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@types/papaparse": "catalog:",
     "tsdown": "catalog:",

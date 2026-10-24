@@ -30,7 +30,6 @@ describe("pickBudgetRedirect", () => {
   });
 });
 
-// YNAB's plan list, 2026-10-15 (EVERYCENT-151).
 describe("lastUsedLabel", () => {
   const now = new Date("2026-10-15T08:20:00Z");
   it.each([

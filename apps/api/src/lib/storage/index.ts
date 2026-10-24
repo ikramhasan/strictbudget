@@ -8,9 +8,7 @@ export { DiskStorage } from "./disk";
 export { MemoryStorage } from "./memory";
 export { S3Storage } from "./s3";
 
-/** How a stored file is handed to the browser. */
 export interface ServeOptions {
-  /** The name a download is saved as. */
   fileName: string;
   contentType: string;
   /** Save it (Content-Disposition: attachment) rather than show it inline. */
@@ -26,7 +24,6 @@ export interface ServeOptions {
  */
 export interface ObjectStorage {
   put(key: string, body: Uint8Array, contentType: string): Promise<void>;
-  /** The object's bytes, or null if there's none under `key`. */
   get(key: string): Promise<Uint8Array | null>;
   /**
    * A short-lived URL the browser fetches the object from directly, or null when the API serves
@@ -45,7 +42,6 @@ export const attachmentKey = (budgetId: string, attachmentId: string) =>
 export const accountLogoKey = (budgetId: string, accountId: string, logoId: string) =>
   `budgets/${budgetId}/accounts/${accountId}/logo/${logoId}`;
 
-/** A file attached in a conversation with the AI assistant. */
 export const aiAttachmentKey = (budgetId: string, attachmentId: string) =>
   `budgets/${budgetId}/ai-attachments/${attachmentId}`;
 

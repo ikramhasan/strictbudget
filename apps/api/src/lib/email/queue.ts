@@ -8,7 +8,7 @@ import type { EmailMessage, EmailSender } from "./sender";
 const PURPOSE = "email.send";
 
 /**
- * Queues an email for the worker to send, retrying until the provider takes it (EVERYCENT-124).
+ * Queues an email for the worker to send, retrying until the provider takes it.
  * Sent on `db`, so an email queued inside a transaction goes out only if it commits. Sealed,
  * because links carry sign-in and reset tokens.
  */

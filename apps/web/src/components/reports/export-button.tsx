@@ -1,4 +1,4 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -6,16 +6,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
+} from "@strictbudget/ui/components/dialog";
 import { FileDown } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { downloadExport, type ExportFile } from "@/lib/reports";
 
-/**
- * YNAB's report Export (2026-10-17): a confirmation ("Export Report", Cancel / Export), then the
- * download, CSV or TSV, several files zipped together.
- */
+/** Asks for confirmation, then downloads CSV or TSV; several files are zipped together. */
 export function ExportButton({
   files,
   zipName,

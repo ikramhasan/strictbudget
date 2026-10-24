@@ -1,5 +1,5 @@
-import { zMinorUnits } from "@everycent/engine";
 import { createRoute, z } from "@hono/zod-openapi";
+import { zMinorUnits } from "@strictbudget/engine";
 import { jsonError } from "../../lib/errors";
 import {
   authSecurity,
@@ -96,7 +96,6 @@ const ConversationParams = BudgetParams.extend({
   conversationId: z.string().openapi({ param: { name: "conversationId", in: "path" } }),
 });
 
-/** Errors every conversation route shares. */
 const aiErrors = {
   401: jsonError("Not signed in"),
   403: jsonError(
@@ -282,7 +281,7 @@ export const uploadAiAttachment = createRoute({
   description:
     "Kept in object storage, private to the caller. Send it by putting a pointer to it in a chat " +
     'message: an image or document part whose source is `{ type: "url", value: ' +
-    '"everycent-attachment:<id>" }`. A file that isn\'t sent within a day is deleted.',
+    '"strictbudget-attachment:<id>" }`. A file that isn\'t sent within a day is deleted.',
   request: { params: BudgetParams, body: fileBody({}) },
   responses: {
     201: {

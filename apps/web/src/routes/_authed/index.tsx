@@ -4,8 +4,8 @@ import { pendingInvitation } from "@/lib/pending-invitation";
 import { preferencesQueryOptions } from "@/lib/preferences";
 
 /**
- * "/" opens an invitation opened before signing in, else the last-used budget (like YNAB; the
- * budget list when that option is off), else the first one, else the create form.
+ * "/" opens an invitation opened before signing in, else the last-used budget (the budget list
+ * when that option is off), else the first one, else the create form.
  */
 export const Route = createFileRoute("/_authed/")({
   beforeLoad: async ({ context }) => {
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_authed/")({
       context.queryClient.fetchQuery({ ...budgetsQueryOptions(), staleTime: 0 }),
       context.queryClient.fetchQuery({ ...preferencesQueryOptions(), staleTime: 0 }),
     ]);
-    // YNAB's "Open last used plan by default" off: the budget list instead.
+    // "Open last used budget by default" off: the budget list instead.
     if (!preferences.openLastBudget && list.budgets.length > 0) {
       throw redirect({ to: "/budgets", replace: true });
     }

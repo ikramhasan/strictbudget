@@ -1,4 +1,4 @@
-import { type CurrencyCode, comparedToAverage, money } from "@everycent/engine";
+import { type CurrencyCode, comparedToAverage, money } from "@strictbudget/engine";
 import {
   Table,
   TableBody,
@@ -6,15 +6,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@everycent/ui/components/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@everycent/ui/components/tooltip";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@strictbudget/ui/components/tooltip";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Info } from "lucide-react";
 import { useBudget } from "@/lib/budget-context";
 import { monthLabel } from "@/lib/reports";
 import { DifferenceText, type TrendChartData } from "./spending-trends-charts";
 
-/** YNAB's hint on Compared to Average (2026-10-17). */
 export const COMPARED_TO_AVERAGE_HINT =
   "This column highlights the difference between your spending in individual months and your average monthly spending for the selected time period.";
 
@@ -23,11 +22,7 @@ function useFormat() {
   return (v: bigint) => formatAmount(money(v, budget.currency as CurrencyCode));
 }
 
-/**
- * YNAB's Spending Trends table (2026-10-17): every month of the range, newest first, its Total
- * Spending and how it compares with the average ("↑ +$1,549.00 (75.5%)"). everycent adds the
- * comparison's column when one is on, and marks months above the average.
- */
+/** Every month of the range, newest first, compared with the average. */
 export function TrendMonthsTable({ data }: { data: TrendChartData }) {
   const format = useFormat();
   const comparison = data.comparison;
@@ -91,7 +86,6 @@ export function TrendMonthsTable({ data }: { data: TrendChartData }) {
   );
 }
 
-/** The chart's table view: each series' spending per month, with its average and total. */
 export function TrendSeriesTable({
   data,
   onPick,

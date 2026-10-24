@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { budgetInvitation, user } from "@everycent/db/schema";
+import { budgetInvitation, user } from "@strictbudget/db/schema";
 import { and, eq, gt, isNull, lte } from "drizzle-orm";
 import { enqueueEmail } from "./email/queue";
 import { emails, link } from "./email/templates";
@@ -13,17 +13,17 @@ export function newInvitationToken() {
   return { token, tokenHash: hashToken(token) };
 }
 
-/** Where an invitation's link goes: the web app's invitation page. */
 export const invitationUrl = (webOrigin: string, token: string) =>
   link(webOrigin, "/invitation", { token });
 
-/** YNAB Together reminds an invitee this long before their invitation expires. */
+/** An invitee is reminded this long before their invitation expires. */
 export const REMINDER_DAYS = 3;
 
 /**
  * The `invitations.remind` job (hourly): one reminder for each pending invitation with
- * `REMINDER_DAYS` or less left, unless the owner shares its link themselves. Only the token's hash is stored, so the reminder carries a new
- * link that replaces the first one (as a resend does); the expiry stays. Each invitation is
+ * `REMINDER_DAYS` or less left, unless the owner shares its link themselves. Only the token's hash
+ * is stored, so the reminder carries a new link that replaces the first one (as a resend does);
+ * the expiry stays. Each invitation is
  * claimed and its email queued in one transaction, so overlapping runs can't send two.
  */
 export const remindInvitations: JobHandler<"invitations.remind"> = async (deps) => {

@@ -1,4 +1,4 @@
-import { sql } from "@everycent/db";
+import { sql } from "@strictbudget/db";
 import {
   budgetAccount,
   type ClearedState,
@@ -8,7 +8,7 @@ import {
   payee,
   subTransaction,
   transaction,
-} from "@everycent/db/schema";
+} from "@strictbudget/db/schema";
 import {
   ACCOUNT_TYPES,
   type CurrencyCode,
@@ -17,7 +17,7 @@ import {
   parseSearch,
   type SearchSettings,
   type SearchTerm,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { and, asc, eq, inArray, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { AppError } from "../../lib/errors";
@@ -29,7 +29,7 @@ export type { SearchSettings };
 
 const ON_BUDGET_TYPES = ACCOUNT_TYPES.filter(isOnBudget);
 
-/** What a register can sort by: YNAB's sortable columns (Outflow and Inflow apart). */
+/** What a register can sort by (Outflow and Inflow apart). */
 export const SORT_COLUMNS = [
   "date",
   "account",
@@ -48,7 +48,7 @@ export interface SortField {
   dir: SortDir;
 }
 
-/** `payee:desc,date:asc`: YNAB's stacked sort, first field first. */
+/** `payee:desc,date:asc`: a stacked sort, first field first. */
 export const SORT_PATTERN = new RegExp(
   `^(${SORT_COLUMNS.join("|")}):(asc|desc)(,(${SORT_COLUMNS.join("|")}):(asc|desc))*$`,
 );
@@ -69,7 +69,7 @@ function formatSort(fields: readonly SortField[]) {
 
 export interface RegisterFilter {
   accountId?: string;
-  /** YNAB's search syntax (see `parseSearch`); split lines are matched one by one. */
+  /** The search syntax (see `parseSearch`); split lines are matched one by one. */
   q?: string;
   from?: string;
   to?: string;
@@ -107,8 +107,8 @@ function registerCte(db: Db, budgetId: string, accountId?: string) {
         payeeName: sql<string | null>`${payee.name}`.as("payee_name"),
         categoryId: transaction.categoryId,
         categoryName: sql<string | null>`${category.name}`.as("category_name"),
-        // YNAB's `Income:` search: Ready to Assign, which in YNAB also holds every budget
-        // account's Starting Balance (we leave card debt's uncategorized; Design notes).
+        // The `Income:` search: Ready to Assign, plus every budget account's Starting Balance
+        // (card debt's is left uncategorized, so it's matched by its payee).
         income: sql<boolean>`coalesce(${category.internalKind} = 'ready_to_assign', false) or (
           ${transaction.categoryId} is null and ${payee.internalKind} = 'starting_balance'
           and ${inArray(budgetAccount.type, ON_BUDGET_TYPES)}
@@ -120,7 +120,7 @@ function registerCte(db: Db, budgetId: string, accountId?: string) {
         importId: transaction.importId,
         importedPayee: transaction.importedPayee,
         matchedImport: transaction.matchedImport,
-        // YNAB's "This needs a category": left Uncategorized (see `needsCategorySql`).
+        // "This needs a category": left Uncategorized (see `needsCategorySql`).
         needsCategory: sql<boolean>`coalesce(${category.internalKind} = 'uncategorized', false)`.as(
           "needs_category",
         ),
@@ -180,9 +180,9 @@ interface Unit {
   memoLike: (pattern: string) => SQL;
   amount: SQL;
   isSplit: SQL;
-  /** In Ready to Assign (YNAB's `Income:`). */
+  /** In Ready to Assign (`Income:`). */
   income: SQL;
-  /** Left Uncategorized (YNAB's `Is: Needs Category`). */
+  /** Left Uncategorized (`Is: Needs Category`). */
   needsCategory: SQL;
 }
 
@@ -263,7 +263,7 @@ function allTerms(r: Register, unit: Unit, terms: readonly SearchTerm[], budgetI
 
 /**
  * The account's name `ilike` the pattern. Names are matched once in their own table rather than on
- * every row (a search that matches nothing reads every row: EVERYCENT-33); the same for payees
+ * every row (a search that matches nothing reads every row); the same for payees
  * and categories below.
  */
 function accountLike(r: Register, budgetId: string, pattern: string) {
@@ -299,8 +299,8 @@ function lineUnit(r: Register): Unit {
     amount: sql`st.amount`,
     isSplit: sql`false`,
     income: sql`coalesce(sc.internal_kind = 'ready_to_assign', false)`,
-    // An approved split with an uncategorized line still needs a category in YNAB, and its
-    // search shows only that line (2026-10-17, EVERYCENT-179).
+    // An approved split with an uncategorized line still needs a category, and its search shows
+    // only that line.
     needsCategory: sql`coalesce(sc.internal_kind = 'uncategorized', false)`,
   };
 }
@@ -322,7 +322,7 @@ function lineMatches(r: Register, budgetId: string, condition: SQL) {
 }
 
 /**
- * The search's terms. A month without a year is the user's current year (YNAB, 2026-10-15), so
+ * The search's terms. A month without a year is the user's current year, so
  * the register matches the scheduled section around New Year; partial dates are completed from
  * the user's today too.
  */
@@ -338,7 +338,7 @@ function searchTerms(filter: RegisterFilter, settings: SearchSettings): SearchTe
 /**
  * How a register reads its search: the budget's formats, in the register's account's currency.
  * All accounts list `currencies`, every currency the budget's accounts use: each row's amounts
- * are then read in its own (EVERYCENT-193).
+ * are then read in its own.
  */
 export interface RegisterSearch extends SearchSettings {
   currencies?: readonly CurrencyCode[];
@@ -372,8 +372,8 @@ function setsWhere(r: Register, unit: Unit, sets: readonly TermSet[], budgetId: 
 }
 
 /**
- * A transaction shows when it, or one of its split lines, matches every search term (YNAB then
- * shows only the lines that match). Dates and reconciled rows are the View menu's.
+ * A transaction shows when it, or one of its split lines, matches every search term (only the
+ * lines that match are shown). Dates and reconciled rows are the View menu's.
  */
 function filterWhere(
   r: Register,
@@ -430,12 +430,12 @@ function sortKey(r: Register, column: SortColumn): { key: SQL; cast: SQL } {
       return { key: sql`lower(coalesce(${r.categoryName}, ''))`, cast: text };
     case "memo":
       return { key: sql`lower(${r.memo})`, cast: text };
-    // Each amount column on its own: the other side's rows count as zero (YNAB, 2026-10-15).
+    // Each amount column on its own: the other side's rows count as zero.
     case "outflow":
       return { key: sql`greatest(-${r.amount}, 0)`, cast: bigint };
     case "inflow":
       return { key: sql`greatest(${r.amount}, 0)`, cast: bigint };
-    // YNAB's order, ascending: no flag, then the flag menu's colors.
+    // Ascending: no flag, then the flag menu's colors.
     case "flag":
       return {
         key: sql`(case ${r.flag} when 'red' then 1 when 'orange' then 2 when 'yellow' then 3
@@ -602,7 +602,7 @@ export interface TransferSide {
   flag: FlagColor | null;
   approved: boolean;
   categoryId: string | null;
-  /** Its own amount in its account's currency (its own between currencies; EVERYCENT-55). */
+  /** Its own amount in its account's currency (its own between currencies). */
   amount: string;
   currency: CurrencyCode;
 }
@@ -679,8 +679,8 @@ function selectPage(db: Db, r: Register) {
 }
 
 /**
- * `matching`: under a search, the ids of the split lines that matched it, by transaction (YNAB
- * shows only those). Null when there's no search.
+ * `matching`: under a search, the ids of the split lines that matched it, by transaction (only
+ * those are shown). Null when there's no search.
  */
 async function toJson(
   db: Db,
@@ -770,7 +770,7 @@ export function registerPageQuery(
   const r = registerCte(db, budgetId, filter.accountId);
   const keys = page.sort.map((f) => ({ ...sortKey(r, f.column), dir: f.dir }));
   // After the sort's fields, ties break by date, then amount (newest first, a day's largest
-  // outflow on top, as YNAB sorts by default), then creation, then id, so the order is total and
+  // outflow on top), then creation, then id, so the order is total and
   // keyset paging never skips or repeats a row.
   const tie = sql`(-${r.amount})`;
   const tail = sql`(${r.date}, ${tie}, ${r.createdAt}::timestamptz, ${r.id})`;
@@ -899,7 +899,7 @@ async function someHidden(
  * register's order (date, then inflows first and outflows from smallest to largest, then
  * creation). The sum before the earliest of the rows' dates comes from one index range, and the
  * window runs over the dates the rows span only, so a page of recent rows costs the same however
- * long the account's history is (EVERYCENT-33).
+ * long the account's history is.
  */
 async function runningBalances(db: Db, ids: readonly string[]): Promise<Map<string, string>> {
   if (ids.length === 0) return new Map();

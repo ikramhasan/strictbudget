@@ -122,7 +122,7 @@ describe("TransactionEditor", () => {
     );
   });
 
-  it("lists the selected category and the payee's other recent ones first (YNAB)", async () => {
+  it("lists the selected category and the payee's other recent ones first", async () => {
     renderEditor();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Payee"), "Market");
@@ -134,22 +134,19 @@ describe("TransactionEditor", () => {
     expect(groups[1]).toHaveTextContent(/^Suggested\s*Rent \(Bills\)$/);
     expect(groups[2]).toHaveTextContent(/^Inflow/);
 
-    // Picking a suggestion files it under the real category.
     await user.click(screen.getByRole("option", { name: "Rent (Bills)" }));
     expect(screen.getByLabelText("Category")).toHaveValue("Rent");
 
-    // Typing shows the matches only.
     await user.clear(screen.getByLabelText("Category"));
     await user.type(screen.getByLabelText("Category"), "Gro");
     expect(screen.queryByText("Suggested")).not.toBeInTheDocument();
     expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["Groceries"]);
   });
 
-  it("lists the selected category without a payee too (YNAB, 2026-10-17)", async () => {
+  it("lists the selected category without a payee too", async () => {
     renderEditor();
     const user = userEvent.setup();
     await user.click(screen.getByLabelText("Category"));
-    // Nothing chosen yet: no sections.
     expect(within(screen.getByRole("listbox")).getAllByRole("group")[0]).toHaveTextContent(
       /^Inflow/,
     );
@@ -158,7 +155,7 @@ describe("TransactionEditor", () => {
     const groups = within(screen.getByRole("listbox")).getAllByRole("group");
     expect(groups[0]).toHaveTextContent(/^Selected\s*Rent \(Bills\)$/);
     expect(groups[1]).toHaveTextContent(/^Inflow/);
-    // Ticked in both places (YNAB, EVERYCENT-181).
+    // Ticked in both places.
     expect(screen.getByRole("option", { name: "Rent (Bills)" })).toHaveAttribute(
       "aria-selected",
       "true",
@@ -170,7 +167,7 @@ describe("TransactionEditor", () => {
     );
   });
 
-  it("suggests a split line's categories from its own payee only (YNAB, 2026-10-17)", async () => {
+  it("suggests a split line's categories from its own payee only", async () => {
     renderEditor();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Payee"), "Market");
@@ -197,7 +194,7 @@ describe("TransactionEditor", () => {
     expect(groups[1]).toHaveTextContent(/^Suggested\s*Rent \(Bills\)$/);
   });
 
-  it("offers Save and add another on a new row, and Enter does it (YNAB)", async () => {
+  it("offers Save and add another on a new row, and Enter does it", async () => {
     const { onSave, onSaveAndAddAnother } = renderEditor("checking", { another: true });
     const user = userEvent.setup();
     expect(screen.getByRole("button", { name: "Save and add another" })).toBeInTheDocument();
@@ -237,7 +234,6 @@ describe("TransactionEditor", () => {
         </tbody>
       </table>,
     );
-    // YNAB, 2026-10-15 (EVERYCENT-146).
     expect(screen.getByRole("button", { name: "Cleared" })).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("Account"), "checking");
     expect(screen.getByRole("button", { name: "Uncleared" })).toBeInTheDocument();
@@ -256,14 +252,13 @@ describe("TransactionEditor", () => {
     const { onSave } = renderEditor();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Payee"), "Bakery");
-    // YNAB (2026-10-17): with no match, Create on top and a line saying what will happen.
     expect(screen.getByRole("button", { name: "Create “Bakery” Payee" })).toBeInTheDocument();
     expect(screen.getByText("“Bakery” will be created as a payee.")).toBeInTheDocument();
     await user.keyboard("{Enter}");
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ payeeName: "Bakery" }), null);
   });
 
-  it("lists the chosen payee under Selected when the field is opened again (YNAB)", async () => {
+  it("lists the chosen payee under Selected when the field is opened again", async () => {
     renderEditor();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Payee"), "Market");
@@ -283,7 +278,6 @@ describe("TransactionEditor", () => {
     expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["Market"]);
     await user.click(screen.getByRole("button", { name: "Create “Mar” Payee" }));
     expect(screen.getByLabelText("Payee")).toHaveValue("Mar");
-    // A new payee has no category to fill in.
     expect(screen.getByLabelText("Category")).toHaveValue("");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ payeeName: "Mar" }), null);
@@ -321,7 +315,7 @@ describe("TransactionEditor", () => {
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Payee"), "savings");
     await user.keyboard("{Enter}");
-    // No amount yet, so YNAB's "To/From" wording (2026-10-15).
+    // No amount yet, so the "To/From" wording.
     expect(screen.getByLabelText("Payee")).toHaveValue("To/From savings");
     expect(screen.getByText("Category not needed")).toBeInTheDocument();
 
@@ -346,7 +340,7 @@ describe("TransactionEditor", () => {
     expect(screen.getByRole("option", { name: "To/From savings" })).toBeInTheDocument();
   });
 
-  it("shows a card payment's category and offers the card's Payment to (YNAB, 2026-10-15)", async () => {
+  it("shows a card payment's category and offers the card's Payment to", async () => {
     renderEditor("visa");
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Inflow"), "5");
@@ -365,7 +359,7 @@ describe("TransactionEditor", () => {
     expect(screen.getByLabelText("Category")).toHaveValue("");
   });
 
-  it("words transfers by the amount's direction (YNAB, 2026-10-15)", async () => {
+  it("words transfers by the amount's direction", async () => {
     renderEditor();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Outflow"), "5");
@@ -376,7 +370,7 @@ describe("TransactionEditor", () => {
     expect(screen.getByLabelText("Payee")).toHaveValue("Transfer to savings");
   });
 
-  it("lists transfers first until something is typed (YNAB, 2026-10-16)", async () => {
+  it("lists transfers first until something is typed", async () => {
     renderEditor();
     const user = userEvent.setup();
     const headings = () =>
@@ -389,7 +383,7 @@ describe("TransactionEditor", () => {
     expect(headings()).toEqual(["Saved Payees", "Payments and Transfers"]);
   });
 
-  it("offers Payment/Transfer in the category list, back to the payee list (YNAB, 2026-10-16)", async () => {
+  it("offers Payment/Transfer in the category list, back to the payee list", async () => {
     renderEditor();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Payee"), "Market{Enter}");
@@ -430,7 +424,7 @@ describe("TransactionEditor", () => {
     );
   });
 
-  it("asks what to do with a split that doesn't add up, as YNAB does", async () => {
+  it("asks what to do with a split that doesn't add up", async () => {
     const { onSave, onCancel } = renderEditor();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Outflow"), "10");
@@ -446,12 +440,11 @@ describe("TransactionEditor", () => {
       "The total is -$10.00, but the splits add up to -$7.00. How would you like to handle " +
         "the unassigned -$3.00?",
     );
-    // Esc closes the prompt, not the row.
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(onCancel).not.toHaveBeenCalled();
 
-    // Auto-Distribute: 3 and 4 share the $3 (YNAB: 4.29 and 5.71); the row stays open.
+    // Auto-Distribute: 3 and 4 share the $3; the row stays open.
     await user.click(screen.getByRole("button", { name: "Save" }));
     await user.click(await screen.findByRole("button", { name: "Auto-Distribute" }));
     expect(screen.getByLabelText("Outflow, line 1")).toHaveValue("4.29");
@@ -508,7 +501,7 @@ describe("TransactionEditor", () => {
   });
 });
 
-describe("TransactionEditor, stacked for a phone's drawer (EVERYCENT-93)", () => {
+describe("TransactionEditor, stacked for a phone's drawer", () => {
   it("names each field, opens without focusing one, and saves", async () => {
     const onSave = vi.fn();
     render(

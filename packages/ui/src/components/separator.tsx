@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Separator as SeparatorPrimitive } from "radix-ui";
 import * as React from "react";
 

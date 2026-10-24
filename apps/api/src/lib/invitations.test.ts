@@ -1,5 +1,5 @@
-import { sql } from "@everycent/db";
-import { budgetInvitation } from "@everycent/db/schema";
+import { sql } from "@strictbudget/db";
+import { budgetInvitation } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -57,7 +57,7 @@ async function remind() {
   await runJobs(app);
 }
 
-describe("invitation reminder (EVERYCENT-125)", () => {
+describe("invitation reminder", () => {
   it("emails once when 3 days are left, with a new link that replaces the first", async () => {
     const { owner, email, id, first } = await invited();
 

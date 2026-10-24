@@ -1,12 +1,12 @@
-import { newId, sql } from "@everycent/db";
+import type { RouteHandler } from "@hono/zod-openapi";
+import { newId, sql } from "@strictbudget/db";
 import {
   budget,
   budgetView,
   category,
   MAX_CUSTOM_VIEWS,
   PRESET_BUDGET_VIEWS,
-} from "@everycent/db/schema";
-import type { RouteHandler } from "@hono/zod-openapi";
+} from "@strictbudget/db/schema";
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError } from "../../lib/errors";
@@ -20,10 +20,6 @@ type Env = AppEnv & AuthedEnv;
 /** Views are part of the plan's setup, which everyone it's shared with can change. */
 const EDIT = { category: ["update"] } as const;
 
-/**
- * The preset views' names. YNAB refuses a custom view named like any view, ignoring case
- * ("ALL", "Snoozed", "overfunded" were refused, 2026-10-14).
- */
 const PRESET_NAMES = [
   "All",
   "Overspent",
@@ -59,7 +55,7 @@ function toView(row: ViewRow, existing?: ReadonlySet<string>) {
 
 /**
  * The rearrangeable views in order: the stored order's known entries, then any it lacks (presets
- * in YNAB's order, then custom views oldest first), so a new view goes last.
+ * in their default order, then custom views oldest first), so a new view goes last.
  */
 function effectiveOrder(stored: readonly string[] | null, viewIds: readonly string[]) {
   const all = [...PRESET_BUDGET_VIEWS, ...viewIds];
@@ -80,7 +76,6 @@ async function viewList(db: Db, budgetId: string, stored: readonly string[] | nu
   };
 }
 
-/** Throws unless every id is a regular (or payment) category of the budget. */
 async function checkCategories(db: Db, budgetId: string, ids: readonly string[]) {
   const unique = [...new Set(ids)];
   if (unique.length === 0) return unique;
@@ -100,7 +95,6 @@ async function checkCategories(db: Db, budgetId: string, ids: readonly string[])
   return unique;
 }
 
-/** Throws when another view (preset or custom) has this name, ignoring case. */
 async function checkName(db: Db, budgetId: string, name: string, exceptId?: string) {
   const lower = name.toLowerCase();
   const taken =
@@ -168,7 +162,6 @@ export const createViewHandler: RouteHandler<typeof createView, Env> = async (c)
       .values({ id: newId(), budgetId, name, categoryIds: ids })
       .returning();
     if (!created) throw new Error("insert returned nothing");
-    // A stored order gets the new view at its end.
     if (locked?.viewOrder) {
       await tx
         .update(budget)

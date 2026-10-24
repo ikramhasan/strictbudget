@@ -1,4 +1,4 @@
-import type { BudgetMonth } from "@everycent/engine";
+import type { BudgetMonth } from "@strictbudget/engine";
 import type { QueueOptions } from "pg-boss";
 
 /**
@@ -17,13 +17,13 @@ export const QUEUES = {
     deleteAfterSeconds: 60,
     retentionSeconds: 7 * 24 * 60 * 60,
   },
-  /** Hourly: reminds invitees whose invitation has 3 days left (EVERYCENT-125). */
+  /** Hourly: reminds invitees whose invitation has 3 days left. */
   "invitations.remind": { retryLimit: 3, retryDelay: 60, expireInSeconds: 300 },
-  /** Today's exchange rates, fetched ahead of reads (EVERYCENT-192). */
+  /** Today's exchange rates, fetched ahead of reads. */
   "fx.prefetch": { retryLimit: 2, retryDelay: 300, expireInSeconds: 300 },
   /** Deletes the files of deleted attachments from object storage (`storage_deletion`). */
   "storage.purge": { retryLimit: 3, retryDelay: 60, expireInSeconds: 300 },
-  /** Monthly: queues each budget's summary for the month just ended (EVERYCENT-241). */
+  /** Monthly: queues each budget's summary for the month just ended. */
   "summaries.monthly": { retryLimit: 3, retryDelay: 300, expireInSeconds: 600 },
   /** One budget's monthly summary: its numbers, its AI overview, an email to each member. */
   "summaries.budget": {

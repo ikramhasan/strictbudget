@@ -102,14 +102,14 @@ async function setup() {
   };
 }
 
-describe("unapproved transactions (EVERYCENT-65)", () => {
+describe("unapproved transactions", () => {
   it("count in the account's balance, and are flagged for review", async () => {
     const { checking, add, accounts } = await setup();
     const t = await add({ approved: false, amount: "-1200" });
     expect(t.approved).toBe(false);
     expect(t.needsCategory).toBe(false);
     const account = (await accounts()).find((a) => a.id === checking.id);
-    // YNAB counts an unapproved transaction everywhere (2026-10-16).
+    // An unapproved transaction counts everywhere.
     expect(account?.balances.working).toBe("-1200");
     expect(account?.toReview).toBe(1);
   });
@@ -195,7 +195,7 @@ describe("unapproved transactions (EVERYCENT-65)", () => {
   it("approves on any edit but a flag, unless the edit says otherwise", async () => {
     const { add, patch } = await setup();
     const t = await add({ approved: false });
-    // YNAB: setting a flag leaves it unapproved; saving it or clicking cleared approves it.
+    // Setting a flag leaves it unapproved; saving it or clicking cleared approves it.
     expect((await patch(t.id, { flag: "red" })).approved).toBe(false);
     expect((await patch(t.id, { memo: "x", approved: false })).approved).toBe(false);
     expect((await patch(t.id, { memo: "edited" })).approved).toBe(true);
@@ -250,7 +250,7 @@ describe("unapproved transactions (EVERYCENT-65)", () => {
     ]);
   });
 
-  it("counts an approved split with an uncategorized line as needing a category (EVERYCENT-179)", async () => {
+  it("counts an approved split with an uncategorized line as needing a category", async () => {
     const { add, rows, accounts, checking, groceries } = await setup();
     const split = await add({
       memo: "split",

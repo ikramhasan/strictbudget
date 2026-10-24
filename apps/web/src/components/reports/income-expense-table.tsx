@@ -1,5 +1,5 @@
-import { type BudgetMonth, money } from "@everycent/engine";
-import { cn } from "@everycent/ui/lib/utils";
+import { type BudgetMonth, money } from "@strictbudget/engine";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ChevronDown } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { useBudget } from "@/lib/budget-context";
@@ -14,7 +14,6 @@ import { monthLabel } from "@/lib/reports";
 /** Which cell was clicked: a month, or the whole range (Average and Total). */
 export type CellColumn = BudgetMonth | "range";
 
-/** What a clickable row stands for, for its drill-down. */
 export type RowTarget =
   | { kind: "income"; payeeId?: string | null }
   | { kind: "spending"; categoryId?: string; groupId?: string };
@@ -28,11 +27,8 @@ export interface CellPick {
 const STICKY = "sticky left-0 z-10 bg-background";
 
 /**
- * YNAB's Income v Expense table (2026-10-17): Income by payee, Expense by group and category,
- * Net Income; a column per month, Average and Total. Sections, All Income Sources and groups fold
- * (remembered by the browser); a folded group shows its totals on its own row. Every amount but
- * Net Income opens its transactions. everycent adds the savings rate under Net Income and the
- * opt-in heat shading of expense cells against their row's average.
+ * Sections, All Income Sources and groups fold (remembered by the browser); a folded group shows
+ * its totals on its own row. Every amount but Net Income opens its transactions.
  */
 export function IncomeExpenseTable({
   table,

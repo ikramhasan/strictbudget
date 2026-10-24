@@ -30,7 +30,7 @@ const common = {
 
 const FORMAT =
   "Comma-separated, or tab-separated when the budget's number format uses a comma as its decimal " +
-  "mark (YNAB). Text cells are quoted; amounts are bare, in the budget's number format with no " +
+  "mark. Text cells are quoted; amounts are bare, in the budget's number format with no " +
   "group separator. Lines end with CRLF. Streamed.";
 
 export const exportPlan = createRoute({
@@ -40,7 +40,7 @@ export const exportPlan = createRoute({
   tags: ["Export"],
   security: authSecurity,
   middleware: [requireAuth] as const,
-  summary: "The plan file of YNAB's Export Plan: every category's month, from the first month on",
+  summary: "The plan file: every category's month, from the first month on",
   description:
     "Columns: Month, Category Group/Category, Category Group, Category, Assigned, Activity, " +
     "Available; one row per category and month, visible categories first, then hidden ones " +
@@ -56,7 +56,7 @@ export const exportRegister = createRoute({
   tags: ["Export"],
   security: authSecurity,
   middleware: [requireAuth] as const,
-  summary: "The register file of YNAB's Export Plan: every transaction, newest first",
+  summary: "The register file: every transaction, newest first",
   description:
     "Columns: Account, Flag, Date, Payee, Category Group/Category, Category Group, Category, " +
     "Memo, Outflow, Inflow, Cleared, plus Currency, FX Rate, Base Outflow and Base Inflow when " +
@@ -73,7 +73,7 @@ export const exportSelectedTransactions = createRoute({
   tags: ["Export"],
   security: authSecurity,
   middleware: [requireAuth] as const,
-  summary: 'YNAB\'s "Export # Transactions": the register file for the selected transactions',
+  summary: "Export # Transactions: the register file for the selected transactions",
   description: `The register file's layout for a selection, with no byte-order mark. ${FORMAT}`,
   request: {
     params: BudgetParams,

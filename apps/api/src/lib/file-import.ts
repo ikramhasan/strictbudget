@@ -1,4 +1,4 @@
-import { newId, sql } from "@everycent/db";
+import { newId, sql } from "@strictbudget/db";
 import {
   accountImportId,
   budgetAccount,
@@ -7,8 +7,8 @@ import {
   payeeRule,
   subTransaction,
   transaction,
-} from "@everycent/db/schema";
-import { type ImportRow, importIds, isOnBudget, matchPayeeRule } from "@everycent/engine";
+} from "@strictbudget/db/schema";
+import { type ImportRow, importIds, isOnBudget, matchPayeeRule } from "@strictbudget/engine";
 import { and, asc, eq, inArray, isNull, max, min, ne } from "drizzle-orm";
 import { keepAttachment } from "../routes/transactions/attachments";
 import {
@@ -24,8 +24,8 @@ import { type Db, findOrCreatePayee, insertTransaction, internalCategoryId } fro
 import { payeeCategories } from "./payee-categories";
 
 /**
- * Where a file import's "dated before the account's start date or last reconciliation" line falls
- * (EVERYCENT-66): the account's oldest transaction, or the newest reconciled one if that's later.
+ * Where a file import's "dated before the account's start date or last reconciliation" line falls:
+ * the account's oldest transaction, or the newest reconciled one if that's later.
  * Rows dated before it are skipped unless the import includes them.
  */
 export async function importCutoff(db: Db, accountId: string) {
@@ -42,20 +42,18 @@ export async function importCutoff(db: Db, accountId: string) {
 }
 
 export interface ImportResult {
-  /** The new transactions, in the file's order. */
   transactionIds: string[];
-  /** Entered transactions the file's rows were matched to (EVERYCENT-68). */
+  /** Entered transactions the file's rows were matched to. */
   matchedIds: string[];
   /** Rows the account had already taken in (same import id), so skipped. */
   duplicates: number;
 }
 
 /**
- * Adds a bank file's rows to `account` as YNAB's File Import does (2026-10-17, EVERYCENT-66):
- * cleared and unapproved, with the memo kept. A row whose import id the account has seen before
- * (`account_import_id`, deleted transactions included) is skipped. The payee goes through the
- * plan's renaming rules (EVERYCENT-174), and the category is the payee's usual one; an inflow from
- * a payee without one goes to Ready to Assign in a cash account, as YNAB did with a new payee.
+ * Adds a bank file's rows to `account`, cleared and unapproved, with the memo kept. A row whose
+ * import id the account has seen before (`account_import_id`, deleted transactions included) is
+ * skipped. The payee goes through the budget's renaming rules, and the category is the payee's
+ * usual one; an inflow from a payee without one goes to Ready to Assign in a cash account.
  */
 export async function importTransactions(
   tx: Db,
@@ -86,7 +84,7 @@ export async function importTransactions(
   });
   if (fresh.length === 0) return { transactionIds: [], matchedIds: [], duplicates: rows.length };
 
-  // Matches first (YNAB's auto-match, EVERYCENT-68), so matched rows make no payees.
+  // Matches first, so matched rows make no payees.
   const dates = fresh.map(({ row }) => row.date).sort();
   const candidates = await matchCandidates(
     tx,
@@ -175,7 +173,7 @@ export async function importTransactions(
   return { transactionIds, matchedIds, duplicates: rows.length - fresh.length };
 }
 
-/** How far apart an import and an entered transaction may be dated and still match (YNAB). */
+/** How far apart an import and an entered transaction may be dated and still match. */
 const MATCH_DAYS = 10;
 
 type TransactionRow = typeof transaction.$inferSelect;
@@ -191,7 +189,7 @@ interface ImportedSide {
 }
 
 /**
- * Entered transactions in the account an import could match (EVERYCENT-68): not imported, not
+ * Entered transactions in the account an import could match: not imported, not
  * matched already, not reconciled, dated within ten days of `from`…`to`.
  */
 async function matchCandidates(tx: Db, accountId: string, from: string, to: string) {
@@ -214,8 +212,8 @@ const dayNumber = (iso: string) =>
   Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 86_400_000;
 
 /**
- * The entered transaction an imported row matches, as YNAB's auto-match picks it (2026-10-17):
- * the exact amount, dated within ten days; the nearest date wins, then the oldest entry.
+ * The entered transaction an imported row matches: the exact amount, dated within ten days; the
+ * nearest date wins, then the oldest entry.
  */
 function pickMatch(candidates: readonly TransactionRow[], row: ImportRow, taken: Set<string>) {
   let best: TransactionRow | undefined;
@@ -241,7 +239,7 @@ async function isSplit(tx: Db, transactionId: string) {
 }
 
 /**
- * Folds an imported transaction into an entered one (YNAB's match, 2026-10-17): the entered date,
+ * Folds an imported transaction into an entered one: the entered date,
  * payee, memo and category stay, the bank's amount is taken, and the result is cleared and
  * approved. What the entered one was is kept for Unmatch.
  */
@@ -290,7 +288,7 @@ async function foldImport(tx: Db, target: TransactionRow, imported: ImportedSide
 }
 
 /**
- * YNAB's manual Match (2026-10-17): an imported transaction that isn't matched yet and an
+ * Manual Match: an imported transaction that isn't matched yet and an
  * entered one in the same account become one, the entered one keeping its details with the
  * bank's amount. Returns the merged transaction's id (the entered one's).
  */
@@ -347,7 +345,7 @@ export async function matchTransactions(tx: Db, budgetId: string, ids: readonly 
 }
 
 /**
- * YNAB's Unmatch (2026-10-17): the imported transaction comes back on its own (its date, amount,
+ * Unmatch: the imported transaction comes back on its own (its date, amount,
  * payee and memo, cleared, unapproved, Uncategorized) and the entered one returns to its amount,
  * cleared state and approval from before the match. Returns both ids.
  */
@@ -413,7 +411,7 @@ export async function unmatchTransaction(tx: Db, budgetId: string, id: string) {
 }
 
 /**
- * YNAB's automatic renaming rule (2026-10-17, EVERYCENT-174): changing an imported transaction's
+ * The automatic renaming rule: changing an imported transaction's
  * payee adds "Is <imported name>" to the new payee's renaming rules, unless it has that rule or
  * the new payee is the imported name itself.
  */
@@ -443,7 +441,7 @@ export async function rememberRename(
 }
 
 /**
- * YNAB's "Don't Rename as <payee>" (Bank Import Details, 2026-10-17): the transaction goes back to
+ * "Don't Rename as <payee>" (Bank Import Details): the transaction goes back to
  * its imported payee name, and the payee's "Is <imported name>" rule is removed.
  */
 export async function dontRename(tx: Db, budgetId: string, transactionId: string) {

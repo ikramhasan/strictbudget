@@ -1,5 +1,5 @@
-import { budgetAccount } from "@everycent/db/schema";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { budgetAccount } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { assertNotFuture, latestTransactionDate } from "../../lib/dates";

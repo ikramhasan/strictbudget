@@ -5,10 +5,10 @@ import {
   isOnBudget,
   money,
   monthsIn,
-} from "@everycent/engine";
-import { Label } from "@everycent/ui/components/label";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { Switch } from "@everycent/ui/components/switch";
+} from "@strictbudget/engine";
+import { Label } from "@strictbudget/ui/components/label";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { Switch } from "@strictbudget/ui/components/switch";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -33,7 +33,7 @@ import {
 import { useReportState } from "@/lib/use-report";
 
 const searchSchema = reportSearchSchema.extend({
-  /** everycent's opt-in heat shading of expense cells. */
+  /** Opt-in heat shading of expense cells. */
   heat: z.boolean().optional().catch(undefined),
 });
 
@@ -42,7 +42,6 @@ export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/income-
   component: Report,
 });
 
-/** YNAB's Income v Expense report (EVERYCENT-80), with everycent's chart and extras. */
 function Report() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -51,7 +50,7 @@ function Report() {
   const { budget, formatAmount } = useBudget();
   const state = useReportState(search, "last_3_months");
   const { budgetId, range } = state;
-  // YNAB: the account filter applies to income and expenses, the category filter to expenses.
+  // The account filter applies to income and expenses, the category filter to expenses only.
   const accountFilter = state.filters.accountIds ? { accountIds: state.filters.accountIds } : {};
   const expenseFilter = {
     ...accountFilter,
@@ -136,7 +135,7 @@ function Report() {
       budget.numberFormat,
       delimiter,
     );
-    const name = `everycent-reflect-income-expense-${todayIso()}.${delimiter === "," ? "csv" : "tsv"}`;
+    const name = `strictbudget-reflect-income-expense-${todayIso()}.${delimiter === "," ? "csv" : "tsv"}`;
     return [{ name, text }];
   };
 

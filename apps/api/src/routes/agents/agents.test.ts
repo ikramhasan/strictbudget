@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { newId } from "@everycent/db";
-import { auditEvent, connectedAgent, oauthResource } from "@everycent/db/schema";
+import { newId } from "@strictbudget/db";
+import { auditEvent, connectedAgent, oauthResource } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
@@ -84,7 +84,7 @@ async function registerClient() {
 
 async function connectMcpClient(
   cookie: string,
-  scope = "everycent:read everycent:write",
+  scope = "strictbudget:read strictbudget:write",
   existingClientId?: string,
 ) {
   const clientId = existingClientId ?? (await registerClient());
@@ -242,7 +242,6 @@ describe("MCP server", () => {
     expect(txn.enteredBy?.userId).toBe((await getMe(owner.cookie)).id);
     expect(txn.enteredBy?.agent).toMatchObject({ name: "Test Agent", kind: "mcp" });
 
-    // An attachment, base64 through the tool.
     const attached = await callTool(accessToken, "uploadAttachment", {
       budgetId: budget.id,
       transactionId: txn.id,
@@ -270,7 +269,6 @@ describe("MCP server", () => {
     expect(edited.enteredBy?.agent?.name).toBe("Test Agent");
     expect(edited.changedBy?.agent).toBeNull();
 
-    // The change log says who: the person, through the agent.
     const events = await db.select().from(auditEvent).where(eq(auditEvent.rowId, txn.id));
     const insert = one(events.find((e) => e.op === "insert"));
     expect(insert.actorUserId).toBeTruthy();
@@ -308,7 +306,7 @@ describe("MCP server", () => {
 
   it("gives read-only access only the operations that change nothing", async () => {
     const { owner, budget, account } = await setup();
-    const { accessToken } = await connectMcpClient(owner.cookie, "everycent:read");
+    const { accessToken } = await connectMcpClient(owner.cookie, "strictbudget:read");
     const tools = await rpc<{ result: { tools: { name: string }[] } }>(
       await mcp(accessToken, "tools/list"),
     );
@@ -342,7 +340,6 @@ describe("MCP server", () => {
       (await json<{ agents: unknown[] }>(await send("GET", "/v1/me/agents", owner.cookie))).agents,
     ).toEqual([]);
 
-    // Connecting again works (a new consent).
     const again = await connectMcpClient(owner.cookie, undefined, clientId);
     expect((await mcp(again.accessToken, "tools/list")).status).toBe(200);
     const [row] = await db.select().from(connectedAgent);
@@ -475,7 +472,6 @@ describe("Agent Auth", () => {
       400,
     );
 
-    // Disconnecting revokes the agent.
     const agents = await json<{ agents: { id: string; kind: string; permissions: string[] }[] }>(
       await send("GET", "/v1/me/agents", owner.cookie),
     );

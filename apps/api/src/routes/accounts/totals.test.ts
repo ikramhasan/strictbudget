@@ -2,8 +2,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 import type { FakeFxProvider } from "../../lib/fx/fake";
 
-// EVERYCENT-57: account totals and net worth in the budget's currency or the user's display
-// currency, at today's known rates.
+// Account totals and net worth in the budget's currency or the user's display currency, at
+// today's known rates.
 const { app, db, close, fxProviders } = createTestApp();
 const fx = fxProviders[0] as FakeFxProvider;
 beforeEach(async () => {

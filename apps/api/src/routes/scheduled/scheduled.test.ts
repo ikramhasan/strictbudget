@@ -93,7 +93,11 @@ async function setup() {
   const list = async (query = "") =>
     (
       await json<{ scheduledTransactions: Scheduled[] }>(
-        await send("GET", `${base}/scheduled-transactions?${query}`, cookie),
+        await send(
+          "GET",
+          `${base}/scheduled-transactions?${query.includes("today=") ? "" : `today=${TODAY}&`}${query}`,
+          cookie,
+        ),
       )
     ).scheduledTransactions;
   const enterNow = async (id: string, today = TODAY) => {
@@ -163,7 +167,7 @@ describe("scheduled transactions", () => {
     expect(await ctx.list(`accountId=${checking.id}`)).toHaveLength(1);
   });
 
-  it("enters a due occurrence on its own date, unapproved, every missed one (YNAB)", async () => {
+  it("enters a due occurrence on its own date, unapproved, every missed one", async () => {
     const ctx = await setup();
     const checking = await ctx.addAccount("Checking", "checking");
     const { scheduledTransaction: s } = await ctx.schedule({
@@ -243,7 +247,7 @@ describe("scheduled transactions", () => {
     expect((await ctx.list()).map((r) => r.payeeName)).toEqual(["Gym"]);
   });
 
-  it("starts a past-dated repeat after today, entering only the date given (YNAB)", async () => {
+  it("starts a past-dated repeat after today, entering only the date given", async () => {
     const ctx = await setup();
     const checking = await ctx.addAccount("Checking", "checking");
     const written = await ctx.schedule({
@@ -422,7 +426,7 @@ describe("scheduled transactions", () => {
       dateFirst: "2026-11-15",
       dateNext: "2026-11-15",
     });
-    // YNAB: a past date resets the first date, enters that occurrence and moves on.
+    // A past date resets the first date, enters that occurrence and moves on.
     const past = await ctx.patch(id, { date: "2026-10-08" });
     expect(past.scheduledTransaction).toMatchObject({
       dateFirst: "2026-10-08",
@@ -549,8 +553,6 @@ describe("scheduled transactions", () => {
     expect((await json<ErrorBody>(res)).error.code).toBe("ACCOUNT_CLOSED");
   });
 
-  // YNAB's Undo brings a deleted scheduled transfer back into an account closed since
-  // (2026-10-14, EVERYCENT-133).
   it("restores a deleted scheduled transfer to an account closed since (undo)", async () => {
     const ctx = await setup();
     const checking = await ctx.addAccount("Checking", "checking");
@@ -645,7 +647,6 @@ describe("scheduled transactions", () => {
     }
     const names = async (q: string, today = TODAY) =>
       (await ctx.list(`q=${encodeURIComponent(q)}&today=${today}`)).map((r) => r.payeeName);
-    // YNAB, 2026-10-15 (EVERYCENT-114).
     expect(await names("Income: October 2026")).toEqual(["Pay Oct"]);
     expect(await names("Income: nov")).toEqual(["Pay Nov"]);
     expect(await names("Income: nov", "2027-01-10")).toEqual([]);
@@ -677,7 +678,7 @@ describe("scheduled transactions", () => {
     expect(transaction.date).toBe(TODAY);
   });
 
-  it("catches up every missed date when a closed account is reopened (YNAB, EVERYCENT-115)", async () => {
+  it("catches up every missed date when a closed account is reopened", async () => {
     const ctx = await setup();
     const old = await ctx.addAccount("Old", "checking", "0");
     await ctx.schedule({

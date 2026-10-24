@@ -33,7 +33,7 @@ describe("ReviewCell", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("reads YNAB's pill", () => {
+  it("reads the pill", () => {
     render(<NeedsCategoryPill />);
     expect(screen.getByText("This needs a category")).toBeVisible();
   });
@@ -54,7 +54,7 @@ describe("ReviewBanner", () => {
   });
 });
 
-describe("matched transactions (EVERYCENT-68)", () => {
+describe("matched transactions", () => {
   it("shows both sides behind the link icon and unmatches", async () => {
     const onUnmatch = vi.fn();
     render(

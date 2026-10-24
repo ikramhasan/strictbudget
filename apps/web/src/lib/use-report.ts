@@ -1,4 +1,4 @@
-import type { BudgetMonth, ReportPreset } from "@everycent/engine";
+import type { BudgetMonth, ReportPreset } from "@strictbudget/engine";
 import { useQuery } from "@tanstack/react-query";
 import { useBudget } from "./budget-context";
 import {

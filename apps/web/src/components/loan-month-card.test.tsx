@@ -48,7 +48,6 @@ function renderCard(m: LoanMonthData, items: LoanUpcoming[]) {
   return { onOpenUpcoming };
 }
 
-// YNAB, 2026-10-17 (EVERYCENT-176): x-142 Loan Old and x-c12-169 Loan.
 describe("loan month card: upcoming payments", () => {
   it("replaces No payments this month with the upcoming line", () => {
     renderCard(month(), [upcoming("2026-10-25", "100", "d")]);

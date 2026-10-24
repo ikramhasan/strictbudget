@@ -1,11 +1,11 @@
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { PageHeader } from "@/components/page-header";
 import { PageTitle } from "@/components/page-title";
 import { useBudget } from "@/lib/budget-context";
 
-/** YNAB's five Reflect reports, in its tab order (2026-10-14). */
+/** The five main reports, in tab order. */
 export const PARITY_REPORTS = [
   { to: "/budgets/$budgetId/reports/spending-breakdown", label: "Spending Breakdown" },
   { to: "/budgets/$budgetId/reports/spending-trends", label: "Spending Trends" },
@@ -14,7 +14,6 @@ export const PARITY_REPORTS = [
   { to: "/budgets/$budgetId/reports/age-of-money", label: "Age of Money" },
 ] as const;
 
-/** YNAB's report tabs, kept reachable from every report. */
 export function ReportsNav() {
   const { budget } = useBudget();
   return (
@@ -53,7 +52,6 @@ export function ReportsNav() {
   );
 }
 
-/** A report's frame: the tabs, its title with actions (Export) and filters, then its content. */
 export function ReportPage({
   title,
   actions,
@@ -68,8 +66,7 @@ export function ReportPage({
   className?: string;
 }) {
   return (
-    // The app shell already pads the page; this only spaces the report. Full width, like the
-    // budget and account pages.
+    // The app shell already pads the page; this only spaces the report.
     <div className={cn("grid w-full content-start gap-4", className)}>
       <PageTitle name={title} />
       <PageHeader title={title} actions={actions} />

@@ -1,5 +1,5 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from "@everycent/ui/components/tooltip";
-import { cn } from "@everycent/ui/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@strictbudget/ui/components/tooltip";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Bot } from "lucide-react";
 import { $api } from "@/lib/api";
 import { useOptionalBudget } from "@/lib/budget-context";
@@ -8,9 +8,8 @@ import { pictureSrc } from "@/lib/pictures";
 import { useOptionalQueryClient } from "@/lib/query-client";
 
 /**
- * YNAB's six member avatar colours (avatar-one … avatar-six, checked 2026-10-16 on a shared plan,
- * EVERYCENT-166): the owner ("manager") is #545BFE with white text, everyone else black text. The
- * API numbers them 1–6 (the owner 1, the others by when they joined).
+ * The owner is #545BFE with white text, everyone else black text. The API numbers them 1–6 (the
+ * owner 1, the others by when they joined).
  */
 const AVATAR_COLORS: Record<number, string> = {
   1: "bg-[#545BFE] text-white",
@@ -22,10 +21,10 @@ const AVATAR_COLORS: Record<number, string> = {
 };
 
 /**
- * With Differentiate Without Color, YNAB tells apart members whose names start with the same
- * character (exactly, so "i" and "I" differ): the first in member order gets no pattern, the next
- * pattern 1, then 2 … 5 (seen 2026-10-17, EVERYCENT-202). Members are in the API's order, the
- * owner first and then by when they joined. Returns 0 for no pattern.
+ * With Differentiate Without Color, members whose names start with the same character (exactly,
+ * so "i" and "I" differ) are told apart: the first in member order gets no pattern, the next
+ * pattern 1, then 2 … 5. Members are in the API's order, the owner first and then by when they
+ * joined. Returns 0 for no pattern.
  */
 export function avatarPattern(
   members: readonly { userId: string; name: string }[],
@@ -39,9 +38,8 @@ export function avatarPattern(
 }
 
 /**
- * YNAB's five avatar patterns (/images/avatar/pattern-one … five.svg): black at 15% over the
- * colour. One is the left half, two opposite quarters, three diagonal stripes, four the bottom
- * half, five a checker grid.
+ * Black at 15% over the colour. One is the left half, two opposite quarters, three diagonal
+ * stripes, four the bottom half, five a checker grid.
  */
 function AvatarPattern({ pattern }: { pattern: number }) {
   if (pattern < 1) return null;
@@ -78,7 +76,6 @@ function AvatarPattern({ pattern }: { pattern: number }) {
   );
 }
 
-/** The pattern for this member, when Differentiate Without Color is on. */
 function usePattern(userId: string | null, active: boolean) {
   const [strong] = useDifferentiateWithoutColor();
   const budgetId = useOptionalBudget()?.budget.id ?? "";
@@ -94,7 +91,7 @@ function usePattern(userId: string | null, active: boolean) {
   return on && userId ? avatarPattern(members.data?.members ?? [], userId) : 0;
 }
 
-/** An avatar's tooltip, as YNAB words it: "Pat", "Pat (you)", "Pat (removed)", "Inactive Member". */
+/** "Pat", "Pat (you)", "Pat (removed)", "Inactive Member". */
 export function memberTooltip(
   userId: string | null,
   userName: string | null,
@@ -107,10 +104,8 @@ export function memberTooltip(
 }
 
 /**
- * Who made a change, as YNAB marks a money move: a small round avatar with the first letter of the
- * name in the member's colour and the name as its tooltip. Someone no longer on the budget gets the
- * grey inactive avatar (#DBD7CC): with their initial and "(removed)" while their user exists, empty
- * with "Inactive Member" once it's deleted.
+ * Someone no longer on the budget gets the grey inactive avatar: with their initial and
+ * "(removed)" while their user exists, empty with "Inactive Member" once it's deleted.
  */
 export function MemberAvatar({
   userId,
@@ -127,7 +122,7 @@ export function MemberAvatar({
   userName: string | null;
   /** 1–6 from the API; null once they've left the budget. */
   avatarColor: number | null;
-  /** Their profile picture's URL (EVERYCENT-229), shown instead of the initial. */
+  /** Shown instead of the initial. */
   picture?: string | null;
   currentUserId: string | undefined;
   /** Around the name in the tooltip: "Entered by " … ", last changed by Sam". */

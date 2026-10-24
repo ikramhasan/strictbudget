@@ -1,14 +1,14 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@everycent/ui/components/card";
-import { Checkbox } from "@everycent/ui/components/checkbox";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
+} from "@strictbudget/ui/components/card";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
 import {
   Item,
   ItemActions,
@@ -17,9 +17,9 @@ import {
   ItemGroup,
   ItemMedia,
   ItemTitle,
-} from "@everycent/ui/components/item";
-import { Spinner } from "@everycent/ui/components/spinner";
-import { TabsContent } from "@everycent/ui/components/tabs";
+} from "@strictbudget/ui/components/item";
+import { Spinner } from "@strictbudget/ui/components/spinner";
+import { TabsContent } from "@strictbudget/ui/components/tabs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Monitor, Smartphone, Tablet } from "lucide-react";
@@ -117,7 +117,7 @@ function AccountPage() {
   );
 }
 
-/** An optional profile picture (EVERYCENT-229): cropped to a square, shown as a circle. */
+/** Cropped to a square, shown as a circle. */
 function ProfilePictureCard() {
   const queryClient = useQueryClient();
   const user = useQuery(sessionQueryOptions).data?.user;
@@ -326,7 +326,6 @@ function PasswordCard() {
 
 const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
-/** How many devices the list shows before "Show all". */
 const DEVICES_SHOWN = 5;
 
 function DevicesCard() {

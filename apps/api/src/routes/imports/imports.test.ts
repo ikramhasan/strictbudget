@@ -89,7 +89,7 @@ const coffee = { date: "2026-10-10", amount: "-450", payee: "x Coffee Shop", mem
 const pay = { date: "2026-10-11", amount: "120000", payee: "x Employer", memo: "paycheck" };
 const zero = { date: "2026-10-12", amount: "0", payee: "x Zero", memo: "" };
 
-describe("file import (EVERYCENT-66)", () => {
+describe("file import", () => {
   it("adds rows cleared and unapproved, keeping memos and $0 rows", async () => {
     const { importFile, rows, base, owner } = await setup();
     const result = await importFile([coffee, pay, zero]);
@@ -150,9 +150,8 @@ describe("file import (EVERYCENT-66)", () => {
     expect(await importFile([coffee], {}, savings.id)).toMatchObject({ imported: 1 });
   });
 
-  it("renames payees by the plan's rules and uses the payee's usual category (EVERYCENT-174)", async () => {
+  it("renames payees by the plan's rules and uses the payee's usual category", async () => {
     const { importFile, rows, base, owner, checking, groceries } = await setup();
-    // A payee with a rule and a categorized history.
     const res = await send("POST", `${base}/transactions`, owner.cookie, {
       accountId: checking.id,
       date: "2026-10-02",
@@ -212,11 +211,10 @@ describe("file import (EVERYCENT-66)", () => {
     expect(await context()).toMatchObject({ startDate: "2026-10-01", csvSettings: settings });
     await importFile([{ ...pay, date: "2026-09-20" }]);
     expect((await context()).startDate).toBe("2026-09-20");
-    // Left out keeps them; null forgets them.
     expect((await context()).csvSettings).toEqual(settings);
     await importFile([], { csvSettings: null });
     expect((await context()).csvSettings).toBeNull();
-    // OFX/QIF options are kept apart (EVERYCENT-67).
+    // OFX/QIF options are kept apart.
     const statement = { importMemos: false, swapPayeeMemo: true, swapInflowOutflow: false };
     await importFile([], { statementSettings: statement });
     expect(await context()).toMatchObject({ csvSettings: null, statementSettings: statement });
@@ -236,7 +234,7 @@ describe("file import (EVERYCENT-66)", () => {
   });
 });
 
-describe("matching imports (EVERYCENT-68)", () => {
+describe("matching imports", () => {
   type Row = Txn & {
     imported: boolean;
     importedPayee: string | null;
@@ -264,7 +262,7 @@ describe("matching imports (EVERYCENT-68)", () => {
       )
     ).transactions.filter((t) => t.payeeName !== "Starting Balance");
 
-  it("matches an entered transaction of the same amount within ten days, as YNAB does", async () => {
+  it("matches an entered transaction of the same amount within ten days", async () => {
     const s = await setup();
     const a = await entered(s, {
       date: "2026-10-10",
@@ -302,7 +300,6 @@ describe("matching imports (EVERYCENT-68)", () => {
       "Mine C",
       "Mine Far",
     ]);
-    // No payee is made for the matched row.
     const payees = await json<{ payees: { name: string }[] }>(
       await send("GET", `${s.base}/payees`, s.owner.cookie),
     );
@@ -377,7 +374,6 @@ describe("matching imports (EVERYCENT-68)", () => {
       approved: true,
       matched: { date: "2026-10-01", amount: "-4100", payee: "BANK C", memo: "bank C" },
     });
-    // The balance follows the bank's amount.
     const accounts = await json<{ accounts: { id: string; balances: { working: string } }[] }>(
       await send("GET", `${s.base}/accounts`, s.owner.cookie),
     );
@@ -403,7 +399,6 @@ describe("matching imports (EVERYCENT-68)", () => {
       categoryName: "Uncategorized",
       imported: true,
     });
-    // Unmatching again, or matching two entered transactions, is refused.
     expect(
       (await send("POST", `${s.base}/transactions/${c.id}/unmatch`, s.owner.cookie)).status,
     ).toBe(400);
@@ -481,7 +476,7 @@ describe("matching imports (EVERYCENT-68)", () => {
   });
 });
 
-describe("renaming imported payees (EVERYCENT-174)", () => {
+describe("renaming imported payees", () => {
   it("makes an Is rule when an imported transaction's payee changes, and Don't Rename undoes it", async () => {
     const s = await setup();
     const [id] = (
@@ -506,7 +501,6 @@ describe("renaming imported payees (EVERYCENT-174)", () => {
     // Changing it again, or to the same payee, adds nothing more.
     await send("PATCH", `${s.base}/transactions/${id}`, s.owner.cookie, { memo: "x" });
     expect(await rules()).toHaveLength(1);
-    // The next import of that name lands on the renamed payee.
     await s.importFile([
       { date: "2026-10-12", amount: "-600", payee: "SQ *CORNER CAFE", memo: "" },
     ]);

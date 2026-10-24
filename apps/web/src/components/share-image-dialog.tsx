@@ -1,22 +1,21 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Label } from "@everycent/ui/components/label";
-import { Switch } from "@everycent/ui/components/switch";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dialog";
+import { Label } from "@strictbudget/ui/components/label";
+import { Switch } from "@strictbudget/ui/components/switch";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { domToPng } from "modern-screenshot";
 import { type ReactNode, useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
 /**
- * YNAB's share formats (2026-10-13, the same on Net Worth 2026-10-17). Each card is laid out at a
- * fixed size in CSS pixels, so its content fits the same way whatever room the preview has, then
- * exported at `out` pixels wide.
+ * Each card is laid out at a fixed size in CSS pixels, so its content fits the same way whatever
+ * room the preview has, then exported at `out` pixels wide.
  */
 const FORMATS = [
   { id: "portrait", label: "Portrait (4:5)", width: 400, height: 500, out: 1080 },
@@ -26,12 +25,6 @@ const FORMATS = [
 ] as const;
 type Format = (typeof FORMATS)[number]["id"];
 
-/**
- * YNAB's "Download and Share" (Share Your Progress on a loan, 2026-10-13, and on Net Worth,
- * 2026-10-17): pick a format, show or hide the tagline and the amounts, and download the picture.
- * `children` draws the card's content, with or without amounts. YNAB's card carries its logo;
- * ours carries the app's name.
- */
 export function ShareImageDialog({
   open,
   onOpenChange,
@@ -97,7 +90,7 @@ export function ShareImageDialog({
             <p className="font-semibold text-sm">Format</p>
             <div className="grid gap-2" role="radiogroup" aria-label="Format">
               {FORMATS.map((f) => (
-                // biome-ignore lint/a11y/useSemanticElements: a button group styled like YNAB's
+                // biome-ignore lint/a11y/useSemanticElements: a styled button group
                 <button
                   key={f.id}
                   type="button"
@@ -155,7 +148,7 @@ export function ShareImageDialog({
                     >
                       {children({ showAmounts, layout })}
                     </div>
-                    <p className="text-center font-bold text-lg tracking-tight">everycent</p>
+                    <p className="text-center font-bold text-lg tracking-tight">strictbudget</p>
                   </div>
                 </div>
               </div>

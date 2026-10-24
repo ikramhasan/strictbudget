@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@everycent/ui/components/button";
-import { cn } from "@everycent/ui/lib/utils";
+import { Button } from "@strictbudget/ui/components/button";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import * as React from "react";

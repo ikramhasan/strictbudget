@@ -1,5 +1,5 @@
-import { CONNECTED_AGENT_KINDS } from "@everycent/db/schema";
 import { createRoute, z } from "@hono/zod-openapi";
+import { CONNECTED_AGENT_KINDS } from "@strictbudget/db/schema";
 import { jsonError } from "../../lib/errors";
 import { requireSession, sessionSecurity } from "../../middleware/require-auth";
 

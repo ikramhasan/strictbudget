@@ -4,14 +4,12 @@ import {
   category,
   type FlagColor,
   transaction,
-} from "@everycent/db/schema";
-import { isOnBudget, usesCategory as usesAccountCategory } from "@everycent/engine";
+} from "@strictbudget/db/schema";
+import { isOnBudget, usesCategory as usesAccountCategory } from "@strictbudget/engine";
 import { and, eq } from "drizzle-orm";
 import { budgetCurrencyOf, type FxDeps, otherSideAmount, syncBases } from "../../lib/base-amount";
 import { AppError } from "../../lib/errors";
 import { type Db, insertTransaction, internalCategoryId, transferPayeeId } from "../../lib/ledger";
-
-/** The rules transactions, transfers and split lines share. */
 
 export type AccountRow = typeof budgetAccount.$inferSelect;
 
@@ -39,9 +37,9 @@ export function usesCategory(account: AccountRow, transferTo: AccountRow | null)
 }
 
 /**
- * The category a transaction in `account` (a transfer if `transferTo` is set) is stored with,
- * following YNAB: budget accounts fall back to Uncategorized, and payment categories only receive
- * money by assigning (phase 7), never from a transaction.
+ * The category a transaction in `account` (a transfer if `transferTo` is set) is stored with:
+ * budget accounts fall back to Uncategorized, and payment categories only receive money by
+ * assigning, never from a transaction.
  */
 export async function resolveCategory(
   db: Db,
@@ -80,7 +78,7 @@ export async function resolveCategory(
 
 /**
  * Whether `account` may transfer to `transferTo`: not itself. Transfers between currencies are
- * fine (EVERYCENT-55), except where `sameCurrency` asks (scheduled transfers).
+ * fine, except where `sameCurrency` asks (scheduled transfers).
  */
 export function assertTransferPair(
   account: AccountRow,
@@ -121,9 +119,7 @@ export function assertOnePayee(body: { payeeName?: string | null; transferAccoun
 
 /**
  * How a new transaction starts out in `account`: uncleared, except in cash accounts, where it's
- * cleared. Each side of a transfer follows its own account, whichever side it was entered from
- * (YNAB's web app, 2026-10-11 for scheduled entries and 2026-10-15 for new transactions; its
- * public API doesn't do this).
+ * cleared. Each side of a transfer follows its own account, whichever side it was entered from.
  */
 export function clearedOnEntry(account: Pick<AccountRow, "type">): ClearedState {
   return account.type === "cash" ? "cleared" : "uncleared";
@@ -147,8 +143,8 @@ export interface OtherSideOptions {
 }
 
 /**
- * A deleted transfer's other side as it was, so an undo brings it back exactly (YNAB's Undo
- * restores both sides' own cleared state and flag, 2026-10-14).
+ * A deleted transfer's other side as it was, so an undo brings it back exactly (both sides keep
+ * their own cleared state and flag).
  */
 export interface TransferSideInput {
   memo: string;
@@ -196,7 +192,6 @@ export function checkTransferAmount(
   return value;
 }
 
-/** Adds the other side of a new transfer, in `transferTo`, and links the two. */
 export async function insertOtherSide(
   tx: Db,
   side: { id: string; budgetId: string; date: string; amount: bigint; memo: string },
@@ -284,7 +279,7 @@ export async function lockTransaction(tx: Db, budgetId: string, id: string) {
   return row;
 }
 
-/** YNAB can't unreconcile a transaction; its cleared state is fixed once reconciled. */
+/** A transaction's cleared state is fixed once reconciled. */
 export function reconciledStays(): never {
   throw new AppError(
     409,

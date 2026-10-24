@@ -1,6 +1,6 @@
-import { newId, sql } from "@everycent/db";
-import { budget, budgetInvitation, budgetMember, user } from "@everycent/db/schema";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { newId, sql } from "@strictbudget/db";
+import { budget, budgetInvitation, budgetMember, user } from "@strictbudget/db/schema";
 import { and, asc, count, desc, eq } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { deliverEmail } from "../../lib/email/deliver";
@@ -80,7 +80,7 @@ const FULL = () =>
     `A budget can be shared with up to ${MAX_BUDGET_PEOPLE - 1} people`,
   );
 
-/** The budget's members, the owner first, then by when they joined (YNAB's avatar order). */
+/** The owner first, then by when they joined (the avatar order). */
 async function listedMembers(db: Db, budgetId: string) {
   const members = await db
     .select({
@@ -164,7 +164,6 @@ export const createInvitationHandler: RouteHandler<typeof createInvitation, Env>
         "That address already has an invitation. Resend it instead.",
       );
     }
-    // An expired invitation to the same address is replaced.
     if (waiting) {
       await tx
         .update(budgetInvitation)

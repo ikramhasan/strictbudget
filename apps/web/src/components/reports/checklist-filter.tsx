@@ -1,16 +1,15 @@
-import { Button } from "@everycent/ui/components/button";
-import { Checkbox } from "@everycent/ui/components/checkbox";
-import { Input } from "@everycent/ui/components/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
+import { Button } from "@strictbudget/ui/components/button";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
+import { Input } from "@strictbudget/ui/components/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { ChevronDown, EyeOff, Search } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 export interface ChecklistItem {
   id: string;
   label: string;
-  /** Hidden categories stay listed with an eye icon (YNAB's report filter). */
+  /** Hidden categories stay listed with an eye icon. */
   hidden?: boolean;
-  /** Shown before the label (a flag's colour). */
   icon?: ReactNode;
 }
 
@@ -21,10 +20,7 @@ export interface ChecklistSection {
   items: ChecklistItem[];
 }
 
-/**
- * YNAB's report filter list (2026-10-17): a search field, items under their sections with a
- * checkbox per section, Select All / Select None, Cancel / Done. `selected` undefined means all.
- */
+/** `selected` undefined means all. */
 export function ChecklistFilter({
   allLabel,
   noun,
@@ -45,7 +41,6 @@ export function ChecklistFilter({
   const [open, setOpen] = useState(false);
   const all = sections.flatMap((s) => s.items.map((i) => i.id));
   const count = selected?.filter((id) => all.includes(id)).length ?? all.length;
-  // YNAB, 2026-10-17: "No Categories Selected" / "No Accounts Selected" for an empty selection.
   const label =
     count === all.length
       ? allLabel

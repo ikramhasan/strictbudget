@@ -1,4 +1,4 @@
-import { budget, budgetMonthlySummary } from "@everycent/db/schema";
+import { budget, budgetMonthlySummary } from "@strictbudget/db/schema";
 import { fakeText } from "@tanstack/ai/testing";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -36,7 +36,6 @@ function send(method: string, path: string, cookie: string, body?: unknown) {
 }
 const json = async <T>(res: Response) => (await res.json()) as T;
 
-/** Runs the monthly job for September 2026, then the jobs it queues. */
 async function runSummaries() {
   await jobs.send(db, "summaries.monthly", { month: "2026-09" });
   await runJobs(app);
@@ -127,7 +126,7 @@ describe("monthly summary email", () => {
 
     const [mail, ...more] = await emailsTo(app, owner.email, "monthly-summary");
     expect(more).toEqual([]);
-    expect(mail?.subject).toBe("Your September in everycent: Home");
+    expect(mail?.subject).toBe("Your September in strictbudget: Home");
     const text = mail?.text ?? "";
     expect(text).toContain("Home · September 2026");
     expect(text).toContain("You spent $1,750.00, $50.00 more than you assigned.");
@@ -144,7 +143,6 @@ describe("monthly summary email", () => {
     // Last month's spending (August, $40) is the comparison.
     expect(mail?.html).toContain("vs Aug");
     expect(mail?.html).toContain("Cash overspending comes out of October");
-    // No AI on this budget.
     expect(mail?.html).not.toContain("Overview by your AI assistant");
     expect(mail?.headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     expect(mail?.headers?.["List-Unsubscribe"]).toMatch(
@@ -316,7 +314,6 @@ describe("notification settings", () => {
       await send("GET", "/v1/me/notifications", owner.cookie),
     );
     expect(prefs.monthlySummary).toBe(false);
-    // The web page's link carries the same token.
     const page = mail?.text.match(/http:\/\/localhost:5173\/unsubscribe#token=(\S+)/)?.[1];
     expect(decodeURIComponent(page ?? "")).toBe(new URL(oneClick).searchParams.get("token"));
   });

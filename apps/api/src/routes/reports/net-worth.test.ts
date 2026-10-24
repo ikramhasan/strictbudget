@@ -2,7 +2,6 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 import type { FakeFxProvider } from "../../lib/fx/fake";
 
-// EVERYCENT-79: YNAB's Net Worth report (2026-10-17).
 const { app, db, close, fxProviders } = createTestApp();
 const fx = fxProviders[0] as FakeFxProvider;
 beforeEach(async () => {
@@ -170,7 +169,7 @@ describe("net worth report", () => {
     const oldRow = r.accounts.find((a) => a.id === old.id);
     expect(oldRow).toMatchObject({ closed: true, onBudget: true, firstMonth: "2026-07" });
     expect(oldRow?.balances.map((b) => b.native)).toEqual(["3000", "3000", "3000", "0"]);
-    // Accounts come in the order they were made (YNAB's export order).
+    // Accounts come in the order they were made.
     expect(r.accounts.map((a) => a.name)).toEqual([
       "Checking",
       "Visa",

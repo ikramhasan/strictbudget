@@ -38,7 +38,7 @@ function account(id: string, type: Account["type"], working: string, closed = fa
 }
 
 describe("sidebarSections", () => {
-  it("groups accounts like YNAB's sidebar, with totals", () => {
+  it("groups accounts for the sidebar, with totals", () => {
     const sections = sidebarSections(
       [
         account("checking", "checking", "150000"),
@@ -57,7 +57,6 @@ describe("sidebarSections", () => {
     ]);
   });
 
-  // YNAB, 2026-10-15 (EVERYCENT-149).
   it("puts starred open cash and credit accounts first, in their own order", () => {
     const star = (a: Account, order: number) => ({ ...a, starredOrder: order });
     const sections = sidebarSections(
@@ -122,7 +121,7 @@ describe("sidebarSections with accounts in other currencies", () => {
   });
 });
 
-describe("sidebarSections with converted totals (EVERYCENT-57)", () => {
+describe("sidebarSections with converted totals", () => {
   const total = (amount: string, converted: boolean, missing: string[] = [], currency = "USD") => ({
     currency: currency as Account["currency"],
     amount,
@@ -178,7 +177,6 @@ describe("sidebarSections with converted totals (EVERYCENT-57)", () => {
 });
 
 describe("closeAccountNotice", () => {
-  // Read off YNAB's Close Account dialog (EVERYCENT-129 and the credit-card findings).
   it.each([
     ["cash account with money (Wallet)", "checking", 92400n, -92400n, true],
     ["card above zero (Card P)", "credit_card", 1000n, -1000n, true],

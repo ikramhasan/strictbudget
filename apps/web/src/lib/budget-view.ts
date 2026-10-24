@@ -1,10 +1,9 @@
-import { targetPercent } from "@everycent/engine";
+import { targetPercent } from "@strictbudget/engine";
 import { useCallback, useState } from "react";
 import { useProgressBarsSetting } from "./display-options";
 import type { BudgetMonthData, MonthTotals } from "./months";
 import type { TargetNeed } from "./targets";
 
-/** YNAB's views above the budget list, in its order. */
 export const BUDGET_FILTERS = [
   "all",
   "overspent",
@@ -15,15 +14,13 @@ export const BUDGET_FILTERS = [
 ] as const;
 export type BudgetFilter = (typeof BUDGET_FILTERS)[number];
 
-/** The id the Uncategorized Transactions row is selected under. */
 export const UNCATEGORIZED = "uncategorized";
 
 /**
  * Whether a category's numbers belong in a view: Overspent is below zero, Money Available above;
  * Underfunded is anything Underfunded would add to (overspending included), Overfunded anything
- * Reduce Overfunding would take from (YNAB, YNAB findings "Underfunded and Reduce Overfunding").
- * Uncategorized, with no Auto-Assign, counts as underfunded while it's negative. Snoozed is a
- * target snoozed this month.
+ * Reduce Overfunding would take from. Uncategorized, with no Auto-Assign, counts as underfunded
+ * while it's negative. Snoozed is a target snoozed this month.
  */
 export function matchesFilter(
   filter: BudgetFilter,
@@ -51,7 +48,6 @@ export function matchesFilter(
   }
 }
 
-/** What each view says when nothing is in it (YNAB's wording). */
 export const EMPTY_VIEW: Record<Exclude<BudgetFilter, "all">, string> = {
   overspent: "That's a win! You've knocked out all overspent categories.",
   underfunded: "Cheers! You don't currently have any underfunded categories.",
@@ -61,8 +57,8 @@ export const EMPTY_VIEW: Record<Exclude<BudgetFilter, "all">, string> = {
 };
 
 /**
- * The categories a view shows, visible ones only (YNAB leaves hidden categories out of every view
- * but All), plus Uncategorized when it matches.
+ * Visible categories only (hidden ones are left out of every view but All), plus Uncategorized when
+ * it matches.
  */
 export function filteredIds(
   filter: BudgetFilter,
@@ -78,8 +74,8 @@ export function filteredIds(
 }
 
 /**
- * Whether all of the month's overspending is credit overspending, which YNAB draws the Overspent
- * view in yellow for; any cash overspending makes it red (support.ynab.com "Focused Views").
+ * Whether all of the month's overspending is credit overspending, which draws the Overspent view in
+ * yellow; any cash overspending makes it red.
  */
 export function overspentOnlyCredit(month: BudgetMonthData, visible: ReadonlySet<string>) {
   const cash = [
@@ -89,21 +85,13 @@ export function overspentOnlyCredit(month: BudgetMonthData, visible: ReadonlySet
   return !cash && overspentCount(month, visible) > 0;
 }
 
-/** How many categories are overspent this month (YNAB's "3 Overspent"). */
 export function overspentCount(month: BudgetMonthData, visible: ReadonlySet<string>) {
   return filteredIds("overspent", month, visible).size;
 }
 
 /**
- * Whether YNAB draws a category's Available yellow: overspent with credit only (any uncovered cash
- * part keeps it red), or a payment category that doesn't cover what its card owes (or, with a
- * target, what the target asks). YNAB shows the
- * payment's Underfunded alert only from the current month on; earlier months stay green
- * (support.ynab.com, YNAB findings phase 7c).
- */
-/**
- * What a category's upcoming scheduled transactions need beyond Available (YNAB's negative
- * "Available After Upcoming"); zero when it covers them or nothing is coming.
+ * What a category's upcoming scheduled transactions need beyond Available (a negative "Available
+ * After Upcoming"); zero when it covers them or nothing is coming.
  */
 export function upcomingShortfall(totals: {
   available: string;
@@ -114,6 +102,13 @@ export function upcomingShortfall(totals: {
   return after < 0n && BigInt(totals.upcoming.amount) < 0n ? -after : 0n;
 }
 
+/**
+ * Whether a category's Available is yellow: overspent with credit only (any uncovered cash part
+ * keeps it red), not enough for what's scheduled later in the month (snoozed or not), an
+ * underfunded target that isn't snoozed, or a payment category that doesn't cover what its card
+ * owes (or, with a target, what the target asks). A payment's Underfunded shows only from the
+ * current month on, and paying more than was set aside is red.
+ */
 export function isCaution(
   totals: Pick<MonthTotals, "available" | "cashOverspent"> & {
     payment?: { underfunded: string } | null;
@@ -123,29 +118,23 @@ export function isCaution(
   month: string,
   current: string,
 ) {
-  // Not enough for what's scheduled later in the month is yellow, snoozed or not
-  // (support.ynab.com "Colors and Icons"; YNAB, 2026-10-12: U10 A–D, F, I).
   const scheduledShort = !totals.available.startsWith("-") && upcomingShortfall(totals) > 0n;
   if (totals.payment) {
-    // Paying more than was set aside is red (YNAB findings, phase 7d).
     if (totals.available.startsWith("-")) return false;
     if (scheduledShort) return true;
-    // With a target, its own status decides, as for any target (YNAB, 2026-10-08: Card E1 on
-    // track was green with a part-filled pie, underfunded yellow).
+    // With a target, its own status decides, as for any target.
     if (totals.target) return totals.target.underfunded !== "0";
     return totals.payment.underfunded !== "0" && month >= current;
   }
   if (totals.available.startsWith("-")) return totals.cashOverspent === "0";
   if (scheduledShort) return true;
-  // An underfunded target is yellow in any month it applies to (YNAB findings, phase 8a), unless
-  // it's snoozed: then green or grey (support.ynab.com "Snooze a Target").
   return Boolean(totals.target && totals.target.underfunded !== "0" && !totals.target.snoozed);
 }
 
 /**
  * The icon on a category's Available pill: a target's pie filled to the funded percentage while
- * underfunded, a check when met (YNAB, YNAB findings "Monthly targets"), Zz when snoozed, and a
- * calendar when scheduled transactions later in the month aren't covered.
+ * underfunded, a check when met, Zz when snoozed, and a calendar when scheduled transactions later
+ * in the month aren't covered.
  */
 export type TargetMark =
   | { kind: "met" }
@@ -154,10 +143,8 @@ export type TargetMark =
   | { kind: "upcoming" };
 
 /**
- * The icon a category's Available pill shows: the calendar when its upcoming scheduled
- * transactions aren't covered, over its target's pie or check (YNAB, 2026-10-12: U10 D's unmet
- * target and U10 I's met one showed the calendar); a snoozed target keeps its Zz
- * (support.ynab.com "Colors and Icons"). Payment categories keep their target's mark.
+ * The calendar when upcoming scheduled transactions aren't covered wins over a target's pie or
+ * check; a snoozed target keeps its Zz. Payment categories keep their target's mark.
  */
 export function availableMark(totals: {
   available: string;
@@ -171,26 +158,23 @@ export function availableMark(totals: {
   return targetMark(totals.target);
 }
 
-/** The mark a category's target puts on its Available pill, if it has one this month. */
 export function targetMark(target: TargetNeed | null | undefined): TargetMark | undefined {
   if (!target) return undefined;
   if (target.snoozed) return { kind: "snoozed" };
   const needed = BigInt(target.needed);
   const funded = BigInt(target.funded);
-  // Met shows a check; underfunded and "on track" show a pie filled to the share of the total.
   return funded >= needed
     ? { kind: "met" }
     : { kind: "underfunded", percent: targetPercent({ needed, funded }) };
 }
 
 export interface Breakdown {
-  /** Left over from last month (what the categories carried in). */
   carried: bigint;
   assigned: bigint;
   activity: bigint;
-  /** The part of activity in cash accounts (YNAB's Cash Spending). */
+  /** The part of activity in cash accounts (Cash Spending). */
   cashActivity: bigint;
-  /** The part of activity in credit accounts (YNAB's Credit Spending). */
+  /** The part of activity in credit accounts (Credit Spending). */
   creditActivity: bigint;
   available: bigint;
   /** The cash part of a negative Available (taken from next month's Ready to Assign). */
@@ -199,7 +183,6 @@ export interface Breakdown {
   creditOverspent: bigint;
 }
 
-/** What a category carried in from last month: Available less this month's assigned and activity. */
 export function breakdown(totals: MonthTotals): Breakdown {
   const assigned = BigInt(totals.assigned);
   const activity = BigInt(totals.activity);
@@ -216,11 +199,6 @@ export function breakdown(totals: MonthTotals): Breakdown {
   };
 }
 
-/**
- * The inspector's month summary over the given categories (`UNCATEGORIZED` included), as YNAB adds
- * up the rows in view: every category, hidden ones too, under All.
- */
-/** A {@link Breakdown} back in the API's shape, for a row's totals. */
 export function toTotals(b: Breakdown): MonthTotals {
   return {
     assigned: b.assigned.toString(),
@@ -233,6 +211,10 @@ export function toTotals(b: Breakdown): MonthTotals {
   };
 }
 
+/**
+ * The inspector's month summary over the given categories (`UNCATEGORIZED` included), adding up
+ * the rows in view: every category, hidden ones too, under All.
+ */
 export function summarize(month: BudgetMonthData, ids: Iterable<string>): Breakdown {
   const byId = new Map(month.categories.map((c) => [c.categoryId, c]));
   const sum: Breakdown = {
@@ -264,7 +246,6 @@ export function summarize(month: BudgetMonthData, ids: Iterable<string>): Breakd
   return sum;
 }
 
-/** Whether `view` is one of YNAB's preset views rather than a custom view's id. */
 export function isPresetFilter(view: string): view is BudgetFilter {
   return (BUDGET_FILTERS as readonly string[]).includes(view);
 }
@@ -278,12 +259,11 @@ function readFilter(key: string): string {
 }
 
 /**
- * The budget list's view: a preset (`BudgetFilter`) or a custom view's id. YNAB keeps it across
- * reloads and months, in the browser, per plan (`{plan}_active_budget_view` in localStorage, a
- * custom view by its id; checked 2026-10-11 and 2026-10-14).
+ * The budget list's view: a preset (`BudgetFilter`) or a custom view's id, kept across reloads and
+ * months in this browser, per budget.
  */
 export function useBudgetFilter(budgetId: string) {
-  const key = `everycent:budget-filter:${budgetId}`;
+  const key = `strictbudget:budget-filter:${budgetId}`;
   const [filter, setFilter] = useState<string>(() => readFilter(key));
   const update = useCallback(
     (next: string) => {
@@ -299,18 +279,17 @@ export function useBudgetFilter(budgetId: string) {
   return { filter, setFilter: update };
 }
 
-/** YNAB's Progress Bars On/Off (Display Options), kept in this browser. On unless turned off. */
 export function useProgressBars() {
   const [progressBars, setProgressBars] = useProgressBarsSetting();
   return { progressBars, setProgressBars };
 }
 
 /**
- * Whether the view at `index` on YNAB's views bar (All is 0) fits a `viewportWidth`-pixel window.
- * YNAB decides it with fixed breakpoints, not by measuring the buttons (its stylesheet, read
- * 2026-10-15, EVERYCENT-164): below 20rem only the selected view shows; from 20rem views 0 and 2
- * do, view 1 from 29.875rem, and each later view 9.875rem after the one before (view i from
- * 20 + (i - 2) × 9.875rem). The rest go into the Views Menu; the selected view always stays.
+ * Whether the view at `index` on the views bar (All is 0) fits a `viewportWidth`-pixel window, by
+ * fixed breakpoints rather than measuring the buttons: below 20rem only the selected view shows;
+ * from 20rem views 0 and 2 do, view 1 from 29.875rem, and each later view 9.875rem after the one
+ * before (view i from 20 + (i - 2) × 9.875rem). The rest go into the Views Menu; the selected view
+ * always stays.
  */
 export function fitsViewsBar(index: number, viewportWidth: number) {
   const rem = viewportWidth / 16;

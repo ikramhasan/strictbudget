@@ -4,9 +4,9 @@ import {
   AutocompleteInput,
   AutocompleteItem,
   AutocompleteList,
-} from "@everycent/ui/components/autocomplete";
-import { InputGroupAddon, InputGroupButton } from "@everycent/ui/components/input-group";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/autocomplete";
+import { InputGroupAddon, InputGroupButton } from "@strictbudget/ui/components/input-group";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Bookmark, CalendarDays, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FLAG_CLASS } from "@/lib/flags";
@@ -21,18 +21,13 @@ import {
 /** A suggestion, carrying the whole text the box has once it's picked. */
 type Item = Suggestion & { value: string };
 
-/**
- * YNAB's register search: one box, everything else hidden. Typing suggests terms ("Payee:",
- * "Is: Cleared", "Outflow: >=25", …); picking one, or pressing Enter for free text, adds it to
- * the box and searches. Terms are comma separated and all must match.
- */
+/** Terms are comma separated and all must match. */
 export function RegisterSearchBox({
   value,
   onCommit,
   placeholder,
   sources,
 }: {
-  /** The search applied now. */
   value: string;
   onCommit: (text: string) => void;
   placeholder: string;

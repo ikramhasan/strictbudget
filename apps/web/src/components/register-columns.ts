@@ -28,7 +28,6 @@ interface ColumnSpec {
   /** Fixed width; the memo column takes what's left. */
   width?: string;
   align?: "right" | "center";
-  /** Header read by screen readers only. */
   srOnly?: boolean;
 }
 
@@ -53,16 +52,16 @@ export const COLUMN_SPECS: Record<ColumnId, ColumnSpec> = {
 };
 
 /**
- * All-accounts view adds the account and drops the running balance (YNAB does the same). The flag
- * comes first, before the date, as in YNAB.
+ * All-accounts view adds the account and drops the running balance. The flag comes first, before
+ * the date.
  */
 export function registerColumns(allAccounts: boolean): ColumnId[] {
   return [
     "select",
-    // YNAB's info column; the register shows it only while a row needs approval or a category.
+    // Shown only while a row needs approval or a category.
     "review",
     "flag",
-    // YNAB's photo column, right after the flag (EVERYCENT-31; photos and PDFs here).
+    // Photos and PDFs, right after the flag.
     "attachment",
     ...(allAccounts ? (["account"] as const) : []),
     "date",
@@ -72,7 +71,7 @@ export function registerColumns(allAccounts: boolean): ColumnId[] {
     "outflow",
     "inflow",
     ...(allAccounts ? [] : (["balance"] as const)),
-    // An everycent extra (EVERYCENT-89), off unless the View menu turns it on.
+    // Off unless the View menu turns it on.
     "enteredBy",
     "cleared",
     "actions",
@@ -127,19 +126,17 @@ export function pinned(
   };
 }
 
-/** The pinned columns among these, left to right. */
 export const pinnedColumns = (columns: readonly ColumnId[]) =>
   columns.filter((c) => PINNED.includes(c));
 
-/** How wide the pinned columns are together, as CSS. */
 export const pinnedWidth = (columns: readonly ColumnId[]) =>
   `calc(0rem${pinnedColumns(columns)
     .map((c) => ` + ${COLUMN_SPECS[c].width}`)
     .join("")})`;
 
 /**
- * Columns whose width can be dragged, as YNAB's can (2026-10-18). Memo takes what's left, so it
- * grows and shrinks as the others are dragged; the icon columns stay as they are.
+ * Memo takes what's left, so it grows and shrinks as the others are dragged; the icon columns stay
+ * as they are.
  */
 export const RESIZABLE: readonly ColumnId[] = [
   "account",
@@ -150,20 +147,18 @@ export const RESIZABLE: readonly ColumnId[] = [
   "inflow",
   "balance",
 ];
-/** YNAB lets a column shrink to about 30px. */
 export const MIN_COLUMN_PX = 30;
 
 export type ColumnWidths = Partial<Record<ColumnId, number>>;
 
-/** A column's CSS width: the one dragged to, else its default. */
 export function columnWidth(widths: ColumnWidths, id: ColumnId): string | undefined {
   const dragged = widths[id];
   return dragged === undefined ? COLUMN_SPECS[id].width : `${dragged}px`;
 }
 
-/** Dragged widths per register (an account's, or All Accounts'), kept in this browser as YNAB's are. */
+/** Dragged widths per register (an account's, or All Accounts'), kept in this browser. */
 export function useColumnWidths(register: string) {
-  const key = `everycent:register-columns:${register}`;
+  const key = `strictbudget:register-columns:${register}`;
   const [widths, setWidths] = useState<ColumnWidths>(() => readWidths(key));
   const [loadedKey, setLoadedKey] = useState(key);
   if (loadedKey !== key) {

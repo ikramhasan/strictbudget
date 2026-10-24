@@ -1,10 +1,7 @@
 import { addDays, addMonths, addYears, format, getDaysInMonth, parseISO } from "date-fns";
 import { z } from "zod";
 
-/**
- * How often a scheduled transaction repeats: YNAB's "Repeat:" options, in its order. "never" is a
- * one-off future transaction.
- */
+/** How often a scheduled transaction repeats, in display order. "never" is a one-off. */
 export const SCHEDULE_FREQUENCIES = [
   "never",
   "daily",
@@ -24,7 +21,6 @@ export type ScheduleFrequency = (typeof SCHEDULE_FREQUENCIES)[number];
 
 export const zScheduleFrequency = z.enum(SCHEDULE_FREQUENCIES);
 
-/** The labels YNAB's date picker uses. */
 export const SCHEDULE_FREQUENCY_LABELS: Record<ScheduleFrequency, string> = {
   never: "Never",
   daily: "Daily",
@@ -74,8 +70,6 @@ function onDay(date: Date, count: number, day: number) {
 /**
  * The occurrence after `current` of a schedule that started on `dateFirst`, or null for a one-off
  * ("never"). `current` is one of its occurrences (editing the date restarts the schedule there).
- * As YNAB does it (checked through its API on 2026-10-11, YNAB findings "Scheduled
- * transactions"):
  *
  * - daily and the week-based ones step by a fixed number of days;
  * - month-based ones (monthly to twice a year) count from `dateFirst` and fall on its day, or the
@@ -104,7 +98,6 @@ export function nextOccurrence(
     (after.getFullYear() - first.getFullYear()) * 12 + after.getMonth() - first.getMonth();
   const months = MONTH_STEPS[frequency];
   if (months !== undefined) {
-    // The first occurrence later than `current`, counted from `dateFirst`.
     for (let n = Math.max(0, Math.floor(monthsSince / months)); ; n++) {
       const candidate = onDay(first, n * months, day);
       if (candidate > after) return toIso(candidate);
@@ -134,7 +127,8 @@ export function firstOccurrenceAfter(
 
 /**
  * The schedule's occurrences dated after `after` and up to `until` (both YYYY-MM-DD), in order,
- * starting from its pending `dateNext`. YNAB lists these as a category's upcoming transactions.
+ * starting from its pending `dateNext`: a category's upcoming transactions.
+
  */
 export function occurrencesBetween(
   schedule: { frequency: ScheduleFrequency; dateFirst: string; dateNext: string },

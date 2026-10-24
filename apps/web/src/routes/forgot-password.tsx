@@ -1,7 +1,7 @@
-import { Button } from "@everycent/ui/components/button";
-import { Field, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { Spinner } from "@everycent/ui/components/spinner";
+import { Button } from "@strictbudget/ui/components/button";
+import { Field, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { AuthCard } from "@/components/auth-card";
@@ -50,7 +50,7 @@ function ForgotPasswordPage() {
         footer={footer}
       >
         <p className="text-muted-foreground text-sm">
-          Ask the person who runs this everycent server to reset your password.
+          Ask the person who runs this strictbudget server to reset your password.
         </p>
       </AuthCard>
     );

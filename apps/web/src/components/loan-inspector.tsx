@@ -1,5 +1,5 @@
-import { paidOffSavings } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
+import { paidOffSavings } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -16,7 +16,6 @@ import { MessageLine } from "./loan-progress";
 import { AvailableButton, type MoveActions } from "./move-money";
 import { PayoffSimulator } from "./payoff-simulator";
 
-/** The loan paired with `categoryId`, if any. */
 export function usePairedLoan(categoryId: string | undefined): Account | undefined {
   const { budget } = useBudget();
   const accounts = useQuery(accountsQueryOptions(budget.id));
@@ -25,13 +24,6 @@ export function usePairedLoan(categoryId: string | undefined): Account | undefin
     : undefined;
 }
 
-/**
- * A paired category's loan section in the inspector (YNAB, 2026-10-13): once paid off, "You did
- * it! …"; "Available for Payment", Record Payment (prefilled with what's available) or, when the
- * payment took more than was assigned, Cover Payment with YNAB's warning; Open Payoff Simulator
- * (not once paid off); and "$200.00 paid this month", "Last Paid on September 20" or "No payments
- * recorded yet".
- */
 export function PairedLoanSection({
   loan,
   categoryId,
@@ -75,7 +67,7 @@ export function PairedLoanSection({
     <div className="grid gap-2 rounded-md bg-muted/50 p-3 text-center">
       {cheer && (
         <div className="rounded-md bg-emerald-500/15 p-2 text-sm">
-          {/* YNAB runs both lines together here: "… in 3 months . You saved $2.10 …". */}
+          {/* Both lines run together here: "… in 3 months . You saved $2.10 …". */}
           <MessageLine
             parts={cheer.lines.flatMap((line, i) => (i === 0 ? line : [" ", ...line]))}
           />
@@ -162,7 +154,6 @@ export function PairedLoanSection({
   );
 }
 
-/** "Paired with L7 Neg Account" under the category's name. */
 export function PairedWith({ loan }: { loan: Account }) {
   const { budget } = useBudget();
   return (

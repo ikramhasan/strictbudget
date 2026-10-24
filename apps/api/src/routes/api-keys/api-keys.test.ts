@@ -1,4 +1,4 @@
-import { apiKey, throttle } from "@everycent/db/schema";
+import { apiKey, throttle } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {

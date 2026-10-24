@@ -158,7 +158,7 @@ describe("AutoAssignPanel", () => {
     const plan = [short("rent", "6000", 3), short("food", "500", 1), visa];
     const named = new Map([...names, ["visa", { name: "Visa", group: "Credit Card Payments" }]]);
 
-    it("previews funding in YNAB's order up to Ready to Assign, cards needing attention apart", async () => {
+    it("previews funding in order up to Ready to Assign, cards needing attention apart", async () => {
       const user = userEvent.setup();
       const onApply = vi.fn().mockResolvedValue(undefined);
       render(

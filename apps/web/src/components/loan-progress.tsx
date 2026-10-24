@@ -1,6 +1,6 @@
-import { NUMBER_FORMAT_SPECS, paidOffSavings } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { cn } from "@everycent/ui/lib/utils";
+import { NUMBER_FORMAT_SPECS, paidOffSavings } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import confetti from "canvas-confetti";
 import {
@@ -50,8 +50,8 @@ export function useWholeFormat() {
 type BannerName = "simulator" | "paidOff";
 
 /**
- * The banners' dismissals, kept on the plan as YNAB keeps them (checked 2026-10-14): hidden at
- * once, then saved; every loan's data is refetched, as the simulator one covers them all.
+ * Hidden at once, then saved on the budget; every loan's data is refetched, as the simulator
+ * dismissal covers them all.
  */
 function useDismissed(budgetId: string, accountId: string, saved: LoanBannerState | undefined) {
   const queryClient = useQueryClient();
@@ -95,8 +95,6 @@ function Banner({
     <section
       aria-label={title}
       className={cn(
-        // Phones stack the text over a full-width button, with × in the corner; wider screens
-        // keep one row.
         "relative grid gap-3 rounded-lg border px-4 py-3 sm:flex sm:items-center sm:gap-4 sm:pr-14",
         tone === "primary"
           ? "border-primary/40 bg-primary/10"
@@ -129,9 +127,8 @@ function Banner({
 }
 
 /**
- * YNAB's loan page banners (2026-10-13): the payoff simulator ("Try It Now"), and, once the loan is
- * paid off, "Another debt bites the dust." with confetti. Dismissing the simulator one hides it on
- * every loan; the paid-off one goes per loan. Both stay dismissed for everyone on the plan.
+ * Dismissing the simulator banner hides it on every loan; the paid-off one goes per loan. Both
+ * stay dismissed for everyone on the budget.
  */
 export function LoanBanners({
   budgetId,
@@ -181,7 +178,6 @@ export function LoanBanners({
   );
 }
 
-/** A message with YNAB's highlighted amounts. */
 export function MessageLine({ parts }: { parts: MessagePart[] }) {
   return (
     <p>
@@ -235,7 +231,6 @@ export function MessageBox({
   );
 }
 
-/** The series a plan draws, in YNAB's legend order. */
 export function planSeries(plan: LoanPlan): LoanSeries[] {
   const { tracks } = plan;
   const series: LoanSeries[] = [];
@@ -246,7 +241,6 @@ export function planSeries(plan: LoanPlan): LoanSeries[] {
   return series;
 }
 
-/** YNAB's Current Track hint depends on whether a target drives it. */
 export function seriesHints(plan: LoanPlan) {
   return {
     ...SERIES_HINTS,
@@ -257,11 +251,6 @@ export function seriesHints(plan: LoanPlan) {
   };
 }
 
-/**
- * YNAB's "Your Loan's Progress" card (2026-10-13): Balance Remaining with its share of the starting
- * balance, Share Your Progress, Open Payoff Simulator (not once paid off), the chart and the
- * message under it.
- */
 export function LoanProgressCard({
   plan,
   onShare,
@@ -271,12 +260,12 @@ export function LoanProgressCard({
   onBaseOriginal,
 }: {
   plan: LoanPlan;
-  /** Undefined for a closed loan (YNAB: sharing "isn't available if you've closed your loan"). */
+  /** Undefined for a closed loan: it can't be shared. */
   onShare?: () => void;
   onSimulate?: () => void;
   onIncreaseTarget?: () => void;
   onIncreaseMinimum?: () => void;
-  /** YNAB's "Base the Original Payment Schedule on this Past Balance". */
+  /** "Base the Original Payment Schedule on this Past Balance". */
   onBaseOriginal?: (month: string) => void;
 }) {
   const { budget, formatAmount } = useBudget();
@@ -366,11 +355,6 @@ export function LoanProgressCard({
   );
 }
 
-/**
- * What YNAB shows on clicking a Past Balance point (2026-10-14): the month, the original
- * schedule's and the past balance there, and "Base the Original Payment Schedule on this Past
- * Balance".
- */
 function PastBalancePopover({
   plan,
   month,

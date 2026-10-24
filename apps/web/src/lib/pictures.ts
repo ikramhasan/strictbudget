@@ -51,7 +51,6 @@ function pictureForm(blob: Blob): FormData {
   return form;
 }
 
-/** Sends a cropped profile picture; throws with the API's message. */
 export async function uploadProfilePicture(blob: Blob): Promise<string> {
   const { data, error } = await apiClient.PUT("/v1/me/picture", {
     body: { file: blob as unknown as string },
@@ -66,7 +65,6 @@ export async function deleteProfilePicture(): Promise<void> {
   if (error) throw new Error(apiErrorMessage(error, "Couldn't remove the picture."));
 }
 
-/** Sends a cropped account logo; throws with the API's message. */
 export async function uploadAccountLogo(
   budgetId: string,
   accountId: string,
@@ -92,7 +90,7 @@ export async function deleteAccountLogo(budgetId: string, accountId: string): Pr
  * A picture chosen at sign-up waits in this browser until the account is confirmed and signed in
  * (sign-up gives no session to upload with), then `takePendingPicture` hands it over once.
  */
-const PENDING_KEY = "everycent:pending-picture";
+const PENDING_KEY = "strictbudget:pending-picture";
 
 export async function savePendingPicture(email: string, blob: Blob): Promise<void> {
   const dataUrl = await new Promise<string>((resolve, reject) => {

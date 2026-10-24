@@ -1,8 +1,8 @@
 "use client";
 
-import { buttonVariants } from "@everycent/ui/components/button";
-import { useTheme } from "@everycent/ui/lib/theme";
-import { cn } from "@everycent/ui/lib/utils";
+import { buttonVariants } from "@strictbudget/ui/components/button";
+import { useTheme } from "@strictbudget/ui/lib/theme";
+import { cn } from "@strictbudget/ui/lib/utils";
 import {
   CircleCheckIcon,
   InfoIcon,

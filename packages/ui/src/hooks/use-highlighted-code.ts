@@ -1,4 +1,4 @@
-import { loadHighlighter } from "@everycent/ui/lib/highlighter";
+import { loadHighlighter } from "@strictbudget/ui/lib/highlighter";
 import * as React from "react";
 
 export function useHighlightedCode(value: string, language: string) {

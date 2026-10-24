@@ -1,13 +1,13 @@
-import { formatDate, money, SCHEDULE_FREQUENCY_LABELS, usesCategory } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { Checkbox } from "@everycent/ui/components/checkbox";
+import { formatDate, money, SCHEDULE_FREQUENCY_LABELS, usesCategory } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@everycent/ui/components/dropdown-menu";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dropdown-menu";
+import { cn } from "@strictbudget/ui/lib/utils";
 import {
   ArrowLeftRight,
   CalendarClock,
@@ -50,11 +50,9 @@ const SCHEDULED_ROW =
   "*:bg-[color-mix(in_oklab,var(--muted)_40%,var(--background))] data-selected:*:bg-[color-mix(in_oklab,var(--primary)_10%,var(--background))] data-selected:hover:*:bg-[color-mix(in_oklab,var(--primary)_14%,var(--background))]";
 
 /**
- * YNAB's "Scheduled Transactions" section at the top of a register: one row per schedule (its
- * next occurrence), newest first, plus the other account's side of scheduled transfers. It
- * collapses (remembered per register), and each row can be edited (it and every later
- * occurrence), entered now or deleted. A split's transfer line in the other account is only
- * entered from there; it's edited and deleted through its split, as YNAB does.
+ * One row per schedule (its next occurrence), plus the other account's side of scheduled
+ * transfers. Editing a row changes it and every later occurrence. A split's transfer line in the
+ * other account is only entered from there; it's edited and deleted through its split.
  */
 export function ScheduledSection({
   rows,
@@ -81,13 +79,11 @@ export function ScheduledSection({
   flags: readonly Flag[];
   onRenameFlags: (changes: Flag[]) => Promise<void>;
   today: string;
-  /** Refetch what a change touches (registers, balances, the plan). */
   onChanged: () => Promise<void>;
-  /** Ticked rows, for the action bar (by row id). */
   selected: ReadonlySet<string>;
   onSelect: (id: string, on: boolean, shift: boolean) => void;
 }) {
-  // A viewer (EVERYCENT-88) sees the schedules but can't change or enter them.
+  // A viewer sees the schedules but can't change or enter them.
   const { budget, formatAmount, readOnly: viewer } = useBudget();
   const history = useUndo();
   const [editing, setEditing] = useState<{ id: string; draft: Draft } | null>(null);
@@ -110,7 +106,6 @@ export function ScheduledSection({
     "/v1/budgets/{budgetId}/transactions/{transactionId}",
   );
   const accountById = new Map(accounts.map((a) => [a.id, a]));
-  /** An amount in the schedule's own currency (its account's). */
   const show = (amount: bigint, currency: string) =>
     formatAmount(money(amount, inCurrency(budget, currency).currency));
   const path = (scheduledTransactionId: string) => ({

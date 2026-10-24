@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { FreshStartDialog } from "./fresh-start-dialog";
 
-// YNAB, 2026-10-15 (EVERYCENT-151): "New Plan Name" starts empty; Continue needs a name.
 describe("FreshStartDialog", () => {
   it("asks for the new budget's name before continuing", async () => {
     const onContinue = vi.fn().mockResolvedValue(undefined);
