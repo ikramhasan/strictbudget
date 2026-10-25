@@ -2,8 +2,7 @@
 
 Plane is the source of truth for what's planned, in progress and done: project **Everycent**
 (identifier `EVERYCENT`, id `69479a76-b0fc-4151-a446-8d3d13980081`), workspace `ikram-hasan`.
-The README roadmap is not used to track status. Use the Plane
-MCP tools (`workitem`, `workitem_comment`, `cycle`, `state`, …) for everything below.
+Use the Plane MCP tools (`workitem`, `workitem_comment`, `cycle`, `state`, …) for everything below.
 
 ## Rules
 

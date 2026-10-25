@@ -1,351 +1,166 @@
+<p align="center">
+  <img src="docs/brand/banner@2x.png" alt="strictbudget: every cent gets a job" width="100%">
+</p>
+
 # strictbudget
 
-Zero-based budgeting — every cent gets a job. Envelope budgeting with first-class
-multi-currency support.
+strictbudget is an open-source, self-hostable zero-based budgeting app. You give every cent a job:
+money that comes in goes to Ready to Assign, you assign it to categories (envelopes), and you spend
+from what each one has available. If you've used YNAB, you already know how it works.
 
-## Stack
+What sets it apart is that it's yours to run, and it handles money in more than one currency
+properly: each account can be in its own currency, and its activity is converted into the budget's
+currency at locked-in rates.
 
-| Layer | Tech |
+- **The full budgeting loop**: Ready to Assign, Assigned / Activity / Available, rollover, moving
+  money, overspending, Auto-Assign, undo/redo.
+- **Targets**: weekly, monthly, yearly or by a date, savings balances, credit card and loan
+  payments, Underfunded at a glance.
+- **Accounts**: cash, checking, savings, credit cards with automatic payment categories, loans with
+  interest, escrow and a payoff planner, and tracking accounts for assets and debts.
+- **Transactions**: splits, transfers, scheduled transactions, flags, bulk edit, reconciliation,
+  payee rules, receipt attachments, and file import (CSV, OFX, QFX, QIF) with duplicate matching.
+- **Multi-currency**: around 150 currencies, daily market rates with per-budget overrides,
+  cross-currency transfers, revaluation of foreign balances, and targets in a foreign currency.
+- **Reports**: Spending Breakdown, Spending Trends, Net Worth, Income v Expense, Age of Money,
+  Budget vs Actual, Spending Pace and Credit Card Health, with drill-down and CSV export.
+- **Sharing**: invite up to 5 more people to a budget as editors or read-only viewers, with live
+  updates and a change history that shows who did what.
+- **Your data**: import from YNAB, export to CSV, and full JSON backups you can restore.
+- **Automation**: a REST API with scoped personal API keys, and an MCP server so AI agents (Claude
+  Code, Cursor, …) can work with your budget once you approve them.
+- **Optional AI assistant**: ask questions about your budget, read receipts and statements, and
+  propose changes you approve. Off by default; it needs an Anthropic API key on the server.
+
+## Screenshots
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/budget-dark.webp">
+  <img src="docs/screenshots/budget.webp" alt="The budget screen: categories with Assigned, Activity and Available, and All Money Assigned">
+</picture>
+
+A euro account in a US dollar budget: amounts in euros, each with its dollar value, and the
+unrealized gain or loss at today's rate.
+
+![An account register in EUR, each amount with its USD value, and the unrealized FX gain or loss](docs/screenshots/multi-currency.webp)
+
+| Reports overview | Spending Breakdown |
 | --- | --- |
-| Monorepo | pnpm workspaces (catalogs) + Turborepo, Biome |
-| API (`apps/api`) | Hono + @hono/zod-openapi on Node, Better Auth, Scalar docs |
-| Web (`apps/web`) | Vite + React 19, TanStack Router + Query, Tailwind v4, shadcn/ui |
-| DB (`packages/db`) | PostgreSQL 17 + Drizzle ORM |
-| Engine (`packages/engine`) | Money: exact bigint minor-unit arithmetic, ISO 4217, FX |
-| API client (`packages/api-client`) | Generated from OpenAPI (openapi-typescript + openapi-fetch) |
-| UI (`packages/ui`) | Shared shadcn/ui components, styled after [ui.ikramhasan.com](https://ui.ikramhasan.com) |
+| ![The reports overview: spending, net worth, savings rate and observations](docs/screenshots/reports.webp) | ![Spending Breakdown report with a donut chart and a list of categories](docs/screenshots/spending-breakdown.webp) |
 
-## Getting started
+## How it differs from YNAB
 
-Requirements: Node ≥ 24, pnpm (auto-selected via `packageManager` — root `.npmrc` sets
-`manage-package-manager-versions=true`), Docker.
+The budgeting method and its rules are YNAB's, so habits carry over: Ready to Assign, Available
+rolling over month to month, credit card payment categories, targets and Age of Money all work the
+way you expect. The differences are in who runs it and what it adds.
 
-    cp .env.example .env            # then set BETTER_AUTH_SECRET (openssl rand -base64 32)
-    pnpm install
-    pnpm db:up && pnpm db:migrate
-    pnpm db:seed                    # optional demo user: demo@strictbudget.app / strictbudget-demo
-    pnpm dev
+| | strictbudget | YNAB |
+| --- | --- | --- |
+| Source code | Open source (AGPL-3.0) | Closed |
+| Where it runs | On your own server | YNAB's cloud only |
+| Cost | Free | Subscription |
+| Currencies | Every account can have its own currency; the budget converts | One currency per plan |
+| Sharing | Up to 6 people per budget, with owner, editor and viewer roles | Up to 6 people, all with the same access |
+| History | A change log of every edit, and who entered each transaction | Who moved money, only |
+| Backups | Full JSON backup and restore, CSV export | CSV export |
+| AI agents | MCP server, scoped API keys | REST API |
+| Bank sync | Not yet: import bank files (CSV, OFX, QFX, QIF) | Direct Import |
+| Mobile | Responsive web app, no native apps yet | iOS and Android apps |
 
-- Web: http://localhost:5173
-- API: http://localhost:3000 — docs at http://localhost:3000/docs, spec at `/openapi.json`
-
-## Commands
-
-| Command | What it does |
-| --- | --- |
-| `pnpm dev` | Postgres + API (watch) + web |
-| `pnpm check` | lint + typecheck + test + build — run before every commit |
-| `pnpm generate` | Re-emit `openapi.json` and regenerate the typed API client |
-| `pnpm db:generate` | Create a SQL migration from schema changes |
-| `pnpm db:migrate` / `db:studio` / `db:seed` | Apply migrations / browse data / seed demo user |
-| `pnpm format` | Biome format + safe fixes |
-| `pnpm --filter @strictbudget/api preview:emails <dir>` | Render every email with sample data as HTML files |
-
-## Adding an API endpoint
-
-1. Add `apps/api/src/routes/<feature>/{routes,handlers,index}.ts` using `createRouter()`.
-2. Mount it in `apps/api/src/app.ts` under `/v1`.
-3. `pnpm generate` → commit `openapi.json` and `schema.gen.ts`.
-4. Use it in the web app via `$api.useQuery("get", "/v1/...")`.
-
-## Roadmap
-
-Goal: complete zero-based budgeting, plus first-class multi-currency, extensive reports and opt-in AI.
-Phases are ordered by dependency — build top to bottom. Tick items off as they land.
-Items marked **(extra)** go beyond core zero-based budgeting.
-
-### 0. Foundation
-
-- [x] Monorepo, tooling, CI-style `pnpm check`
-- [x] `@strictbudget/engine`: bigint minor units, ISO 4217 exponents, parse/format, allocation, rounding, FX primitives
-- [x] API skeleton: `createRouter()`, `AppError`, OpenAPI + Scalar docs, generated typed client
-- [x] PostgreSQL + Drizzle, UUIDv7 ids, migrations, test DB harness
-- [x] Better Auth email/password sign-up, sign-in, sign-out; `/v1/me`
-- [x] Web SPA shell: TanStack Router, auth-guarded routes, light/dark theme, shared shadcn UI
-
-### 1. Account & security basics
-
-- [x] Transactional email (Resend; console in development) with per-address throttling
-- [x] Email verification
-- [x] Forgot / reset password
-- [x] Change email and password
-- [x] Active sessions list and revoke
-- [x] Two-factor auth (TOTP + recovery codes)
-- [ ] Sign in with Google and Apple
-- [x] Delete account (with full data purge)
-- [ ] User preferences: locale, date format, number format, first day of week
-
-### 2. Budgets (plans)
-
-- [x] Create / rename / delete a budget
-- [x] Multiple budgets per user, budget switcher, last-used budget remembered
-- [x] Budget base currency + currency display settings (symbol position, separators)
-- [x] Budget date format and number format settings
-- [x] Shared-budget foundation: `budget_member` roles (owner, editor) on the Better Auth
-      organization plugin, ready for phase 16
-
-Moved to the phases that unblock them: the default category template (phase 4), and onboarding
-and fresh start (after phase 5 core).
-
-### 3. Accounts
-
-- [x] Budget account types: cash, checking, savings
-- [x] Credit accounts: credit card, line of credit
-- [x] Loan accounts: mortgage, auto loan, student loan, personal loan, medical debt, other debt
-      (interest rate, minimum payment and escrow, kept per month; see phase 7f)
-- [x] Tracking (off-budget) accounts: asset, liability
-- [x] Starting balance transaction on creation
-- [x] Per-account currency (any currency but loans since phase 11)
-- [x] Balances: cleared, uncleared, working
-- [x] Account notes / nickname
-- [x] Reorder accounts, sidebar grouped by type with group totals
-- [x] Close / reopen accounts (a non-zero balance is zeroed with a Manual Balance
-      Adjustment; closed accounts move to a "Closed" section)
-- [x] Delete accounts (only with no history beyond the starting balance; otherwise close)
-
-### 4. Categories
-
-- [x] Category groups: create, rename, reorder, hide, delete
-- [x] Categories: create, rename, reorder (drag and drop), move between groups, hide/unhide, delete
-- [x] Reassign a deleted category's history to another category (transactions now; assigned
-      amounts join in phase 6)
-- [x] Category notes
-- [x] Internal categories: Inflow: Ready to Assign, Uncategorized
-- [x] Auto-created credit card payment categories (one per credit account)
-- [x] Hidden categories section
-- [ ] Category emoji / icons **(extra)**
-- [x] Default category template on budget creation (starter groups) — moved from phase 2
-
-### 5. Transactions & register
-
-- [x] Account register: date, payee, category, memo, outflow, inflow, cleared
-- [x] All-accounts register view
-- [x] Add / edit / delete transactions inline (keyboard-first entry: Tab, Enter saves, Esc
-      cancels; the full shortcut set is in phase "Keyboard shortcuts")
-- [x] Math in amount fields (`230+30`, `12.50*3`), exact and rounded once
-- [x] Payees: create on the fly, autocomplete, remember last category per payee
-- [x] Cleared / uncleared / reconciled states, toggle cleared
-- [x] Transfers between accounts (linked pair, transfer payees, on-/off-budget rules)
-- [x] Split transactions (multiple categories; split transfers)
-- [x] Flags (colors) with custom flag names
-- [x] Running balance column
-- [x] Sort, search and filter (date range, payee, category, memo, amount, flag, cleared)
-- [x] Server-side paging of the register (keyset cursors; balances over the whole account)
-- [x] Multi-select + bulk edit: selection, select all matching, total, cleared, flag, categorize,
-      memo, move to account, delete, duplicate, enter now, make repeating
-- [x] Approve / reject imported transactions (unapproved state)
-- [x] Future-dated transactions (excluded from balances until the date)
-- [ ] Tags on transactions **(extra)**
-- [ ] Photos on transactions
-
-#### Budget onboarding (moved from phase 2; needs phases 3–5 core)
-
-- [x] Onboarding flow for a new budget (pick categories, add first account)
-- [x] Fresh start (archive the old budget, start a new one with the same categories, accounts and
-      partners)
-
-### 6. Budget screen (the core loop)
-
-- [x] Month view: Assigned, Activity, Available per category, group subtotals
-- [x] Ready to Assign calculation (inflows − assigned, across months)
-- [x] Assign money to categories; math in the amount field (`+`, `-`, `*`, `/`)
-- [x] Available rolls over month to month
-- [x] Cash overspending (reduces next month's Ready to Assign) — highlighted red
-- [x] Move money between categories (and back to Ready to Assign), with Recent Moves
-- [x] Cover overspending flow
-- [x] Over-assigned warning (Ready to Assign negative)
-- [x] Month navigation, budgeting in future months, "assigned in future" indicator
-- [x] Income for future months (assign next month's income): there's no separate next-month
-      income; money is assigned in future months instead
-- [x] Auto-assign / quick budget: underfunded, assigned last month, spent last month, average
-      assigned, average spent, reduce overfunding, reset available, reset assigned
-- [x] Category inspector: balance breakdown (cash left over, assigned, activity), notes (the
-      target part comes with phase 8)
-- [x] Category activity drill-down (transactions for category + month)
-- [x] Collapse/expand groups, filters (underfunded, overspent, money available, snoozed)
-- [x] Undo / redo for budget and transaction edits
-
-### 7. Credit cards & debt
-
-7a–7g are built — what's left is in Plane (cycles from 10 on).
-
-- [x] Spending on a credit card moves funds into its payment category automatically
-- [x] Credit overspending (becomes new debt, shown yellow)
-- [x] Payment category shows amount available to pay the card
-- [x] Existing credit card debt handling (starting negative balance, paying down debt)
-- [x] Credit card payment transfers reduce the payment category
-- [x] Credit card returns / refunds
-- [x] Positive card balances, closing a card (7e)
-- [x] Loan accounts (7f): payments split into escrow, interest and principal; monthly interest
-      estimated from the previous month's balance (exact, half-up); editable and recorded
-      interest and escrow; credits, charges, Update Balance; paired plan category
-- [x] Loan planner (7g): Payoff Date, Your Loan's Progress (chart with past balance, original
-      schedule, minimum and current track, with progress messages), the Loan Payoff Simulator (monthly
-      payment ↔ payoff date, one-time extra, "Copy and go to my plan"), Share Your Progress
-      (downloadable picture), the paid-off celebration
-
-### 8. Targets (goals)
-
-Done (8a–8f, and loan debt targets with 7g) — what's left is in Plane (cycles from 10 on).
-
-- [x] Needed for spending — weekly (by day), monthly (by date), yearly, custom
-      (every N months/years), by a specific date; refill vs set aside another
-- [x] Savings balance (custom "Have a balance of", optionally by a month)
-- [x] Monthly savings builder: covered by monthly "Set aside another"
-- [x] Credit card payment targets: Pay Specific Amount Monthly, Pay Off Balance by Date (8e)
-- [x] Loan Monthly Debt Payment targets on a paired category (7g)
-- [x] Target progress bars and status (funded, underfunded, overspent, on track)
-- [x] Underfunded total + "Assign underfunded" button (Auto-Assign Underfunded and Reduce
-      Overfunding, Underfunded/Overfunded views, the month's targets total; 8c)
-- [x] Snooze a target for a month
-- [x] Repeat on/off (8b), target history across months (8f: a changed target starts in the month
-      it's saved from)
-- [x] Targets overview (total needed this month vs next month: Cost to Be Me, 8c; expected income,
-      8f)
-
-### 9. Reconciliation
-
-- [x] Reconcile flow: confirm cleared balance or enter bank balance
-- [x] Automatic balance adjustment transaction
-- [x] Lock reconciled transactions (warn before editing)
-- [x] Last reconciled date per account
-
-### 10. Scheduled transactions
-
-- [x] Repeat frequencies: once, daily, weekly, every other week, twice a month, every 4 weeks,
-      monthly, every other month, every 3/4 months, twice a year, yearly, every other year
-- [x] Upcoming transactions list in register, enter now / skip / edit
-- [x] Auto-entry on the due date (when the plan is opened, by the device's date)
-- [x] Scheduled splits and transfers
-- [ ] Bills calendar view **(extra)**
-- [ ] Upcoming bill reminders (email / push) **(extra)**
-
-### 11. Multi-currency **(extra)**
-
-- [x] Accounts in any currency; register shows native amounts
-- [x] Budget in the base currency; foreign-account activity converted into category activity
-- [x] FX rate source (daily rates provider) + manual rate overrides
-- [x] Per-transaction rate lock (store original amount, currency and applied rate)
-- [x] Cross-currency transfers (two amounts, implied rate, fee)
-- [x] Unrealized FX gain/loss on foreign balances; revaluation adjustments
-- [x] Net worth and account totals in base currency and/or any display currency
-- [x] Categories/targets with a native currency (e.g. a holiday fund in EUR)
-- [ ] Currency-aware reports and CSV export
-
-### 12. Payees & rules
-
-- [x] Payee management: rename, combine/merge, delete, hide
-- [x] Payee default category / auto-categorization
-- [x] Renaming rules for imported payees (contains / is)
-- [ ] Payee location (lat/long) for mobile suggestions
-- [ ] Advanced rules engine: match on payee/amount/account/memo → set category, flag, tags, memo **(extra)**
-
-### 13. File import & export
-
-- [x] Import CSV (column mapping, date/amount format detection), OFX, QFX, QIF
-- [x] Duplicate detection and match-to-existing (import ID + fuzzy date/amount)
-- [x] Imported transactions land as unapproved, with suggested category from payee
-- [x] Import from YNAB (API token or exported budget) **(extra)**
-- [x] Export budget + registers to CSV
-- [x] Full data export (JSON) and re-import / backup
-
-### 14. Bank sync (direct import)
-
-- [ ] Provider abstraction (e.g. Plaid, GoCardless/Nordigen, SimpleFIN)
-- [ ] Link account, pick accounts, choose start date
-- [ ] Background sync + manual "import now"
-- [ ] Matching against manually entered / scheduled transactions
-- [ ] Balance mismatch warnings; reconnect flow for expired connections
-- [ ] Unlink / relink
-
-### 15. Reports
-
-Core:
-
-- [x] Spending breakdown (by category group / category / payee, donut + table)
-- [x] Spending trends (over time, by category/payee)
-- [x] Net worth (assets vs debts over time)
-- [x] Income vs expense (monthly table)
-- [x] Age of Money
-- [x] Report filters: date range, accounts, categories, payees; export to CSV
-- [x] Budget-screen reflection stats (month summary: assigned, spent, avg, cost to be me)
-
-Extras:
-
-- [ ] Budget vs actual (per category, per month, variance)
-- [ ] Cash-flow forecast using scheduled transactions + targets
-- [ ] Category history (assigned / activity / available over time)
-- [ ] Payee report (top payees, frequency, average spend)
-- [ ] Tag report
-- [ ] Savings rate and income breakdown
-- [ ] Debt payoff progress / projected debt-free date
-- [ ] Currency exposure report (balances by currency, FX impact)
-- [ ] Year in review
-- [ ] Custom saved reports, dashboard of pinned report widgets
-- [ ] Export reports to PDF
-
-### 16. Sharing
-
-- [x] Invite members to a budget by email (up to N members)
-- [x] Roles: owner, editor, viewer **(extra)**
-- [x] Per-member activity attribution ("entered by")
-- [x] Leave budget / remove member / transfer ownership
-- [x] Real-time updates across clients (WebSocket / SSE) **(extra)**
-
-### 17. UX polish
-
-- [x] Keyboard shortcuts across budget and register (with a cheat-sheet)
-- [ ] Command palette **(extra)**
-- [x] Responsive layout for phones and tablets
-- [ ] Installable PWA with offline entry queue and sync
-- [x] Accessibility pass (screen readers, focus order, contrast)
-- [x] Display Options: theme, progress bars, Differentiate Without Color; resizable sidebar,
-      inspector and register columns
-- [ ] Internationalization (UI translations)
-- [ ] Hide amounts
-- [ ] In-app notifications center (overspending, sync issues, upcoming bills)
-
-### 18. AI assistant (opt-in) **(extra)**
-
-Off by default, per-user toggle, clear data-usage notice, no data sent unless enabled.
-
-- [ ] Opt-in settings + provider/model configuration, usage limits, audit log of AI calls
-- [ ] Auto-categorization suggestions for new / imported transactions (learns from history)
-- [ ] Payee cleanup (normalize messy bank payee strings)
-- [ ] Natural-language transaction entry ("coffee 4.50 yesterday on Visa")
-- [ ] Receipt scanning (photo → amount, payee, date, splits)
-- [ ] Chat with your budget ("how much did I spend on dining in Q2?") with cited transactions
-- [ ] Budget assignment suggestions based on targets and history
-- [ ] Anomaly / subscription detection (price hikes, duplicate charges, forgotten subscriptions)
-- [ ] Monthly narrative summary of spending and progress
-- [ ] Forecasting ("will I hit my vacation target by June?")
-
-### 19. Platform & ops
-
-- [ ] Public REST API with personal access tokens + rate limits
-- [ ] Webhooks for transaction / budget changes **(extra)**
-- [x] Audit log / change history per budget
-- [ ] Automated backups and point-in-time restore
-- [x] Observability: structured logs, metrics, error tracking
-- [x] Deployment: Docker images, production config, migrations on deploy
-- [ ] Native mobile apps (or Capacitor wrapper around the PWA)
-- [ ] Billing / subscriptions (if hosted as a service)
+Coming from YNAB? Use **Import** on the budgets page. It accepts a YNAB personal access token or
+the files from YNAB's Export Plan.
 
 ## Self-hosting
 
-The Docker image (`Dockerfile`) runs the API and the web app on one origin and migrates the
-database on deploy (`node dist/migrate.mjs`). It needs `DATABASE_URL`, `BETTER_AUTH_SECRET`,
-`BETTER_AUTH_URL` and `WEB_ORIGIN`; everything else in `.env.example` is optional.
+strictbudget ships as one Docker image that serves the web app and the API from the same address
+and applies database migrations when it starts. `docker-compose.prod.yml` runs it together
+with PostgreSQL.
 
-- **Email is optional.** With `RESEND_API_KEY` and `FROM_EMAIL`, strictbudget confirms addresses,
-  sends password reset links and emails invitations. Without them it sends nothing: accounts are
-  usable straight after sign-up, an email change applies at once, and invitations are links you
-  share yourself (owners can also share links on a server that sends email).
-- `STRICTBUDGET_DEPLOYMENT` stays unset (`self-hosted`). `cloud` is the hosted strictbudget, which
-  requires email.
+**You need** Docker with Compose, and outbound HTTPS from the server. New passwords are checked
+against [Have I Been Pwned](https://haveibeenpwned.com/Passwords), and sign-up refuses while the
+check can't be reached. Exchange rates are fetched daily.
+
+### Quick start
+
+```sh
+git clone https://github.com/ikramhasan/strictbudget.git
+cd strictbudget
+echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> .env
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Open http://localhost:3000 and create your account. Without email set up (below) there's no
+confirmation step: you're signed in straight away. If you'll open it at another address (the
+server's IP or hostname), set `STRICTBUDGET_URL` to that address first: signing in only works
+at the address it's set to.
+
+### Configuration
+
+Settings go in the `.env` file next to `docker-compose.prod.yml`. Only `BETTER_AUTH_SECRET` is
+required.
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `BETTER_AUTH_SECRET` | (required) | Signs sessions. At least 32 characters; keep it secret and don't change it |
+| `STRICTBUDGET_URL` | `http://localhost:3000` | The address people open strictbudget at |
+| `STRICTBUDGET_PORT` | `3000` | The port published on the host |
+| `POSTGRES_PASSWORD` | `strictbudget` | The database password. Set it before the first start; letters and digits only |
+| `RESEND_API_KEY`, `FROM_EMAIL` | (none) | Email through [Resend](https://resend.com) (see below) |
+| `AI_API_KEY`, `AI_MODEL` | (none) | An Anthropic API key turns on the AI assistant. Each budget still opts in under Budget settings → AI |
+| `TRUSTED_PROXIES` or `CLIENT_IP_HEADER` | (none) | Behind a reverse proxy: its CIDRs, or the header it sets to the client's IP, so rate limits see real clients |
+
+After changing `.env`, apply it with the same `docker compose … up -d` command.
+
+**Email is optional.** With Resend set up, strictbudget confirms addresses, sends password reset
+links and monthly summaries, and emails invitations. Without it, it sends nothing: accounts work
+straight after sign-up, an email change applies at once, there's no password reset by email, and
+invitations are links you share yourself.
+
+### Putting it online
+
+To use strictbudget away from home, put it behind a reverse proxy with HTTPS (Caddy, nginx,
+Traefik, a Cloudflare Tunnel, …) and set `STRICTBUDGET_URL` to the public address, for example
+`https://budget.example.com`. With the proxy on the same machine, also set
+`STRICTBUDGET_PORT=127.0.0.1:3000` so only the proxy can reach the app (Docker's published ports
+get past firewalls like ufw). Anyone who can open that address can create an account, so keep it
+private (a VPN, or the proxy's own sign-in) if you don't want that.
+
+### Updating
+
+```sh
+git pull
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+New database migrations are applied when the container starts.
+
+### Backups
+
+Your data lives in two Docker volumes: `db` (PostgreSQL) and `data` (receipt attachments). To dump
+the database:
+
+```sh
+docker compose -f docker-compose.prod.yml exec -T db pg_dump -U strictbudget strictbudget > strictbudget.sql
+```
+
+Each budget can also be downloaded as a JSON backup under Budget settings → Backup & data, and
+restored with **Import → Restore a strictbudget backup…** on the budgets page.
+
+### Other platforms
+
+The image runs anywhere that can run a container: Railway, Coolify, Fly.io, Kubernetes, and so on.
+Build it with `docker build -t strictbudget .`, and run `node dist/migrate.mjs` in it before each
+new version starts (the compose file does this for you). It needs `DATABASE_URL` (PostgreSQL 17),
+`BETTER_AUTH_SECRET`, and `BETTER_AUTH_URL` and `WEB_ORIGIN`, both set to the public address.
+Attachments go to an S3-compatible bucket (`S3_*`) or a directory (`STORAGE_DIR`); with neither,
+they're turned off. Every option is described in [`.env.example`](.env.example).
+
+## Contributing
+
+See [docs/development.md](docs/development.md) to run strictbudget from source.
 
 ## License
 
 strictbudget is free software under the [GNU Affero General Public License v3.0 only](LICENSE)
-(`AGPL-3.0-only`). You can use, change and self-host it; if you run a changed version as a service
+(`AGPL-3.0-only`). You can use, change and self-host it. If you run a changed version as a service
 for others, you have to offer them its source under the same licence.
