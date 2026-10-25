@@ -24,6 +24,9 @@ COPY --from=build /repo/apps/api/dist ./dist
 # dist/migrate.mjs reads them from ../migrations.
 COPY --from=build /repo/packages/db/migrations ./migrations
 COPY --from=build /repo/apps/web/dist ./web
+# Attachments on disk when there's no S3 bucket (STORAGE_DIR=/data); a volume mounted here keeps
+# the node user as its owner.
+RUN mkdir /data && chown node:node /data
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
