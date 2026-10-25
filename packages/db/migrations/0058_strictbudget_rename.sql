@@ -30,29 +30,6 @@ BEGIN
   END LOOP;
 END $$;
 --> statement-breakpoint
-UPDATE oauth_client SET scopes = array_replace(array_replace(scopes,
-  'everycent:read', 'strictbudget:read'), 'everycent:write', 'strictbudget:write')
-WHERE scopes && ARRAY['everycent:read', 'everycent:write'];
---> statement-breakpoint
-UPDATE oauth_consent SET scopes = array_replace(array_replace(scopes,
-  'everycent:read', 'strictbudget:read'), 'everycent:write', 'strictbudget:write')
-WHERE scopes && ARRAY['everycent:read', 'everycent:write'];
---> statement-breakpoint
-UPDATE oauth_refresh_token SET scopes = array_replace(array_replace(scopes,
-  'everycent:read', 'strictbudget:read'), 'everycent:write', 'strictbudget:write')
-WHERE scopes && ARRAY['everycent:read', 'everycent:write'];
---> statement-breakpoint
-UPDATE oauth_access_token SET scopes = array_replace(array_replace(scopes,
-  'everycent:read', 'strictbudget:read'), 'everycent:write', 'strictbudget:write')
-WHERE scopes && ARRAY['everycent:read', 'everycent:write'];
---> statement-breakpoint
-UPDATE ai_chat_thread
-SET messages = replace(messages::text, 'everycent-attachment:', 'strictbudget-attachment:')::jsonb
-WHERE messages::text LIKE '%everycent-attachment:%';
---> statement-breakpoint
 UPDATE oauth_resource SET allowed_scopes = array_replace(array_replace(allowed_scopes,
   'everycent:read', 'strictbudget:read'), 'everycent:write', 'strictbudget:write')
 WHERE allowed_scopes && ARRAY['everycent:read', 'everycent:write'];
---> statement-breakpoint
-UPDATE budget SET import_source = regexp_replace(import_source, '^ynab(-files)?:', 'external\1:')
-WHERE import_source ~ '^ynab(-files)?:';

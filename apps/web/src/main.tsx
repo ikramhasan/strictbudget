@@ -6,12 +6,10 @@ import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { startErrorReporting } from "./lib/error-reporting";
-import { migrateLegacyStorage } from "./lib/legacy-storage";
 import { createAppRouter } from "./router";
 import "./styles.css";
 
 startErrorReporting();
-migrateLegacyStorage();
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },

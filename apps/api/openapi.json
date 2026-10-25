@@ -1224,8 +1224,7 @@
           "format": {
             "type": "string",
             "enum": [
-              "strictbudget-backup",
-              "everycent-backup"
+              "strictbudget-backup"
             ]
           },
           "version": {

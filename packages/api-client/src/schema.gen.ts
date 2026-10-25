@@ -2771,7 +2771,7 @@ export interface components {
         };
         BudgetBackup: {
             /** @enum {string} */
-            format: "strictbudget-backup" | "everycent-backup";
+            format: "strictbudget-backup";
             /** @enum {number} */
             version: 1;
             /** Format: date-time */

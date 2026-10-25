@@ -8,7 +8,7 @@ import { createHmac, hkdfSync, timingSafeEqual } from "node:crypto";
 const PURPOSE = "email.unsubscribe";
 
 function mac(userId: string, secret: string) {
-  const key = Buffer.from(hkdfSync("sha256", secret, "everycent.unsubscribe", PURPOSE, 32));
+  const key = Buffer.from(hkdfSync("sha256", secret, "strictbudget.unsubscribe", PURPOSE, 32));
   return createHmac("sha256", key).update(userId).digest();
 }
 

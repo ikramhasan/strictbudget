@@ -308,16 +308,6 @@ describe("budget backup", () => {
     expect(budget.id).not.toBe(second.budget.id);
   });
 
-  it("imports a backup written under the former product name", async () => {
-    const { cookie, base } = await richBudget();
-    const backup = await ok<Record<string, unknown>>(send("GET", `${base}/backup`, cookie));
-    const imported = await ok<Imported>(
-      send("POST", "/v1/budgets/import", cookie, { ...backup, format: "everycent-backup" }),
-      201,
-    );
-    expect(imported.counts.transactions).toBe((backup.transactions as unknown[]).length);
-  });
-
   it("keeps file imports' ids, settings and matches", async () => {
     const { cookie } = await signUp(app);
     const budget = await createBudget(app, cookie, { name: "Imports" });

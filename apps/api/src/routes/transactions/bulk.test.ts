@@ -131,7 +131,10 @@ describe("bulk edit", () => {
     expect((await all()).find((t) => t.id === a.id)?.flag).toBeNull();
   });
 
-  it("selects everything a filter matches, minus unticked rows, without paging", async () => {
+  // 120 transactions entered one by one, to go past a page: slow on a busy CI runner.
+  it("selects everything a filter matches, minus unticked rows, without paging", {
+    timeout: 60_000,
+  }, async () => {
     const { checking, add, bulk, summary, all } = await setup();
     const costco: Txn[] = [];
     for (let i = 0; i < 120; i++) costco.push(await add({ payeeName: "Costco", amount: "-250" }));

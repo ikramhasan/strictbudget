@@ -36,8 +36,6 @@ import {
  * whoever had them).
  */
 export const BACKUP_FORMAT = "strictbudget-backup";
-/** Backups written before the rename. */
-const LEGACY_BACKUP_FORMAT = "everycent-backup";
 export const BACKUP_VERSION = 1;
 
 const Id = z.string().min(1).max(200);
@@ -264,7 +262,7 @@ const FxOverrideSchema = z.object({ date: Day, currency: zCurrencyCode, rate: De
 
 export const BackupSchema = z
   .object({
-    format: z.enum([BACKUP_FORMAT, LEGACY_BACKUP_FORMAT]),
+    format: z.literal(BACKUP_FORMAT),
     version: z.literal(BACKUP_VERSION),
     exportedAt: z.iso.datetime({ offset: true }),
     budget: BudgetSchema,

@@ -27,5 +27,5 @@ export function unseal<T>(sealed: string, secret: string, purpose: string): T {
 }
 
 function key(secret: string, purpose: string): Buffer {
-  return Buffer.from(hkdfSync("sha256", secret, "everycent.sealed", purpose, 32));
+  return Buffer.from(hkdfSync("sha256", secret, "strictbudget.sealed", purpose, 32));
 }
