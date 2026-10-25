@@ -1,11 +1,11 @@
 # strictbudget — agent guide
 
-Read `README.md` and `docs/development.md` (stack, commands) first, then `docs/plane.md` (how
-work is tracked in Plane: no deferring what you can settle, test what you build, a ticket for
-anything you can't, keep cycles and tickets current, single-line HTML). Plane holds everything
-that isn't code: open work is tickets, and deliberate differences and simplifications are on the
-Plane page "Design notes and known differences". Read the pages for the area you're working on
-before starting; there are no tracking files in the repo.
+Read `README.md` and `docs/development.md` (stack, commands) first, then `docs/issues.md` (how
+work is tracked in GitHub Issues and the strictbudget project: no deferring what you can settle,
+test what you build, an issue for anything you can't, keep milestones and issues current). Open
+work is issues; deliberate decisions and simplifications are in `docs/design-notes/`, and the
+order of upcoming work is `docs/roadmap.md`. Read the design notes for the area you're working on
+before starting.
 
 ## Checking UI changes
 
