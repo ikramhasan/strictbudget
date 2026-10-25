@@ -18,7 +18,7 @@ import {
  * PR environments (served only on their own Railway domain) take their URL from
  * RAILWAY_PUBLIC_DOMAIN instead (`isPreviewDeploy` in apps/api/src/env.ts).
  */
-const PUBLIC_URL = "https://everycent.ikramhasan.com";
+const PUBLIC_URL = "https://web.strictbudget.app";
 
 export default defineRailway(() => {
   const db = postgres("postgres");
