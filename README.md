@@ -90,7 +90,9 @@ docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 Open http://localhost:3000 and create your account. Without email set up (below) there's no
-confirmation step: you're signed in straight away.
+confirmation step: you're signed in straight away. If you'll open it at another address (the
+server's IP or hostname), set `STRICTBUDGET_URL` to that address first: signing in only works
+at the address it's set to.
 
 ### Configuration
 
