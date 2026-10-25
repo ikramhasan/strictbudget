@@ -1,5 +1,5 @@
 /**
- * Personal API keys (EVERYCENT-230), on Better Auth's api-key plugin. A key acts as its owner,
+ * Personal API keys, on Better Auth's api-key plugin. A key acts as its owner,
  * narrowed by its scope: read-only or read & write, on every budget or a chosen few. Keys reach
  * budget data and GET /v1/me only; account and security routes take a signed-in session
  * (`requireSession`), so a leaked key can't change a password, an email or another key.

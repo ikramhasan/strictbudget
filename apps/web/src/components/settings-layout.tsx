@@ -5,9 +5,9 @@ import {
   AutocompleteInput,
   AutocompleteItem,
   AutocompleteList,
-} from "@everycent/ui/components/autocomplete";
-import { InputGroupAddon } from "@everycent/ui/components/input-group";
-import { Tabs, TabsList, TabsTrigger } from "@everycent/ui/components/tabs";
+} from "@strictbudget/ui/components/autocomplete";
+import { InputGroupAddon } from "@strictbudget/ui/components/input-group";
+import { Tabs, TabsList, TabsTrigger } from "@strictbudget/ui/components/tabs";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { Search } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";

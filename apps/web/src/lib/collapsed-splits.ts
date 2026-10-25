@@ -1,11 +1,7 @@
 import { useCallback, useState } from "react";
 
-/**
- * YNAB shows a split's lines under it and lets you fold them away with the arrow by its
- * category; the browser remembers which splits are folded, by transaction id, in one entry for
- * every plan and register (`.collapsedSplits`, checked 2026-10-15).
- */
-const STORAGE_KEY = "everycent:collapsed-splits";
+/** Which splits are folded away, by transaction id, in one entry for every budget and register. */
+const STORAGE_KEY = "strictbudget:collapsed-splits";
 /** Folds kept; the oldest go first, so deleted transactions' ids don't pile up for good. */
 const MAX_FOLDED = 500;
 

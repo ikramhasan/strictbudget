@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import {
   type BudgetMonth,
   type DelimitedCell,
@@ -7,7 +7,7 @@ import {
   type NumberFormat,
   percentOf,
   plainAmount,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { $api } from "./api";
 import type { CategoryList } from "./categories";
 import { todayIso } from "./dates";
@@ -25,7 +25,7 @@ export const budgetVsActualOptions = (budgetId: string, range: MonthRange) =>
 
 /**
  * Where spending ended against what was assigned: under (spent less), on (exactly what was
- * assigned) or over plan. Exact: no tolerance either way (EVERYCENT-83).
+ * assigned) or over plan. Exact: no tolerance either way.
  */
 export type PlanStatus = "under" | "on" | "over";
 
@@ -55,7 +55,6 @@ export interface VarianceRow {
   overMonths: number;
   /** How many of those 12 months the plan has (fewer for a young plan). */
   historyMonths: number;
-  /** The heatmap's months. */
   cells: HeatCell[];
 }
 
@@ -84,10 +83,10 @@ const byVariance = (
 ) => (variance(b) > variance(a) ? 1 : variance(b) < variance(a) ? -1 : 0);
 
 /**
- * The report's rows for `range` (EVERYCENT-83): each listed category's Assigned and spending summed
- * over the range, grouped by category group (Uncategorized first, then groups and the categories
- * in them most over plan first, ties in plan order), the heatmap's cells and the over-plan count
- * of the last 12 months. `categoryIds` narrows the rows (undefined: all).
+ * The report's rows for `range`: each listed category's Assigned and spending summed over the
+ * range, grouped by category group (Uncategorized first, then groups and the categories in them
+ * most over plan first, ties in plan order), the heatmap's cells and the over-plan count of the
+ * last 12 months. `categoryIds` narrows the rows (undefined: all).
  */
 export function budgetVsActual(
   report: BudgetVsActualReport,
@@ -254,6 +253,5 @@ export function exportRows(
   return rows;
 }
 
-/** The export's file name, like YNAB's report exports but everycent's (`everycent-…`). */
 export const exportName = (today: string, delimiter: string) =>
-  `everycent-budget-vs-actual-${today}.${delimiter === "\t" ? "tsv" : "csv"}`;
+  `strictbudget-budget-vs-actual-${today}.${delimiter === "\t" ? "tsv" : "csv"}`;

@@ -1,5 +1,5 @@
-import { BUDGET_MONTH_PATTERN, zMinorUnits } from "@everycent/engine";
 import { createRoute, z } from "@hono/zod-openapi";
+import { BUDGET_MONTH_PATTERN, zMinorUnits } from "@strictbudget/engine";
 import { jsonError } from "../../lib/errors";
 import { authSecurity, requireAuth } from "../../middleware/require-auth";
 import { CategoryListSchema } from "../categories/routes";
@@ -43,7 +43,7 @@ export const listCategoryTemplates = createRoute({
   tags: ["Categories"],
   security: authSecurity,
   middleware: [requireAuth] as const,
-  summary: "YNAB's category template gallery, with amounts in the budget's currency",
+  summary: "The category template gallery, with amounts in the budget's currency",
   request: { params: BudgetParams },
   responses: {
     200: {
@@ -67,7 +67,7 @@ export const importCategoryTemplate = createRoute({
   tags: ["Categories"],
   security: authSecurity,
   middleware: [requireAuth] as const,
-  summary: "Add a template's picked categories to the budget (YNAB's Import Category Template)",
+  summary: "Add a template's picked categories to the budget",
   description:
     "Nothing already there changes: a group the budget has (by name) takes the categories it's " +
     "missing at its top; the rest become new groups at the bottom. Categories the group already " +

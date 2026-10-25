@@ -5,7 +5,7 @@ import { requestLog } from "./middleware/request-log";
 import { telemetryConfigured } from "./telemetry";
 import type { AppEnv } from "./types";
 
-describe("telemetry (EVERYCENT-106)", () => {
+describe("telemetry", () => {
   it("starts only when an OTEL exporter or endpoint is set", () => {
     expect(telemetryConfigured({})).toBe(false);
     expect(telemetryConfigured({ OTEL_SERVICE_NAME: "x" })).toBe(false);

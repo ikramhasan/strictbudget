@@ -6,7 +6,7 @@ import {
   isCurrencyCode,
   MoneyParseError,
   money,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 
 export interface MoneySettings extends BudgetFormatSettings {
   currency: CurrencyCode;
@@ -43,7 +43,6 @@ export function parseMoneyInput(text: string, settings: MoneySettings): bigint |
   }
 }
 
-/** Formats minor units for an input field (no symbol), e.g. "1,234.56". */
 export function toMoneyInput(amount: string | bigint | null, settings: MoneySettings) {
   if (amount === null) return "";
   return formatAmount(money(BigInt(amount), settings.currency), {

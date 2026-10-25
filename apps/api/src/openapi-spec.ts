@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { createDb } from "@everycent/db";
+import { createDb } from "@strictbudget/db";
 import { createApp } from "./app";
 import { parseEnv } from "./env";
 import { createAuth } from "./lib/auth";

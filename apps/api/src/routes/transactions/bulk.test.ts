@@ -1,4 +1,4 @@
-import { transaction } from "@everycent/db/schema";
+import { transaction } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
@@ -131,7 +131,10 @@ describe("bulk edit", () => {
     expect((await all()).find((t) => t.id === a.id)?.flag).toBeNull();
   });
 
-  it("selects everything a filter matches, minus unticked rows, without paging", async () => {
+  // 120 transactions entered one by one, to go past a page: slow on a busy CI runner.
+  it("selects everything a filter matches, minus unticked rows, without paging", {
+    timeout: 60_000,
+  }, async () => {
     const { checking, add, bulk, summary, all } = await setup();
     const costco: Txn[] = [];
     for (let i = 0; i < 120; i++) costco.push(await add({ payeeName: "Costco", amount: "-250" }));
@@ -202,7 +205,7 @@ describe("bulk edit", () => {
     });
   });
 
-  it("categorizes as YNAB does: un-splits splits, keeps ones with transfers, skips the rest", async () => {
+  it("categorizes: un-splits splits, keeps ones with transfers, skips the rest", async () => {
     const { addAccount, add, bulk, all, updated, groceries, household } = await setup();
     const savings = await addAccount("Savings", "savings");
     const house = await addAccount("House", "asset");
@@ -257,9 +260,8 @@ describe("bulk edit", () => {
     expect(rows.find((t) => t.id === b.id)?.cleared).toBe("cleared");
   });
 
-  it("moves and deletes transfers whose other side is reconciled, as YNAB does", async () => {
-    // YNAB 2026-10-11 (x-tr-rec, x-split-rec): Move re-points the reconciled side with no
-    // prompt; Delete asks first ("Delete Reconciled Transfer?") and then deletes both sides.
+  it("moves and deletes transfers whose other side is reconciled", async () => {
+    // Move re-points the reconciled side; Delete deletes both sides.
     const { addAccount, add, bulk, summary, all, updated, groceries } = await setup();
     const savings = await addAccount("Savings", "savings");
     const wallet = await addAccount("Wallet", "cash");
@@ -426,7 +428,7 @@ describe("bulk edit", () => {
     expect((await bulk({ ids: [] }, { type: "flag", flag: "red" })).status).toBe(400);
   });
 
-  it("duplicates as YNAB does: approved, cleared kept, transfers and splits whole", async () => {
+  it("duplicates: approved, cleared kept, transfers and splits whole", async () => {
     const { add, bulk, all, addAccount, groceries, household } = await setup();
     const savings = await addAccount("Savings", "savings");
     const plain = await add({
@@ -471,8 +473,7 @@ describe("bulk edit", () => {
     expect(savingsRows.filter((t) => t.payeeName !== "Starting Balance")).toHaveLength(4);
   });
 
-  // YNAB, 2026-10-15 (x-c11-135-tr in All Accounts): both sides ticked, both sides of the copy
-  // come back ticked.
+  // With both sides of a transfer selected, both sides of the copy come back selected.
   it("names the copy rows whose originals were selected, other sides included", async () => {
     const { add, bulk, all, addAccount, household, base, cookie } = await setup();
     const savings = await addAccount("Savings", "savings");

@@ -1,4 +1,4 @@
-import { transaction } from "@everycent/db/schema";
+import { transaction } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
@@ -231,7 +231,7 @@ describe("split transactions", () => {
     expect(await code(await patch(otherId, { amount: "5000" }))).toBe("TRANSFER_IN_SPLIT");
     expect(await code(await patch(otherId, { date: "2026-10-05" }))).toBe("TRANSFER_IN_SPLIT");
     expect((await patch(otherId, { memo: "mine", cleared: "cleared" })).status).toBe(200);
-    // The memo is the line's too (YNAB, EVERYCENT-158).
+    // The memo is the line's too.
     expect((await find(split.id))?.subtransactions[1]?.memo).toBe("mine");
     expect(await code(await send("DELETE", `${base}/transactions/${otherId}`, cookie))).toBe(
       "TRANSFER_IN_SPLIT",
@@ -280,7 +280,6 @@ describe("split transactions", () => {
   });
 
   it("changes a transfer line whose other side is reconciled, which stays reconciled", async () => {
-    // YNAB 2026-10-11 (x-split-rec): no warning for a split; the other side follows.
     const { addAccount, post, patch, find, groceries } = await setup();
     const checking = await addAccount("Checking", "checking", "100000");
     const savings = await addAccount("Savings", "savings");

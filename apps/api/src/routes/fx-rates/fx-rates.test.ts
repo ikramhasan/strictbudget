@@ -1,4 +1,4 @@
-import { fxRate } from "@everycent/db/schema";
+import { fxRate } from "@strictbudget/db/schema";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 import { FakeFxProvider } from "../../lib/fx/fake";
@@ -127,7 +127,6 @@ describe("FX rate lookup", () => {
       rateDate: "2025-03-03",
       source: "market",
     });
-    // The inverse pair falls back too.
     expect((await rate("from=USD&to=EUR&date=2025-03-10")).rate).toBe("0.954016409082");
     warn.mockRestore();
   });
@@ -177,7 +176,6 @@ describe("FX rate lookup", () => {
       source: "override",
     });
     expect((await rate("from=USD&to=EUR&date=2025-05-02")).rate).toBe("0.8");
-    // Another day still uses the market.
     expect(await rate("from=EUR&date=2025-05-05")).toMatchObject({
       rate: "1.13",
       source: "market",
@@ -241,7 +239,6 @@ describe("FX rate overrides", () => {
     const same = await putOverride({ date: "2025-06-01", currency: "USD", rate: "1" });
     expect(same.status).toBe(400);
     expect((await json<{ error: { code: string } }>(same)).error.code).toBe("SAME_CURRENCY");
-    // Twelve decimals is fine.
     expect(
       (await putOverride({ date: "2025-06-01", currency: "EUR", rate: "1.123456789012" })).status,
     ).toBe(200);

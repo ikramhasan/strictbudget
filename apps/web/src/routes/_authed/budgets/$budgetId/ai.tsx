@@ -1,14 +1,19 @@
-import { Button } from "@everycent/ui/components/button";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@everycent/ui/components/drawer";
+import { Button } from "@strictbudget/ui/components/button";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from "@strictbudget/ui/components/drawer";
 import {
   Empty,
   EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-} from "@everycent/ui/components/empty";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { useIsMobile } from "@everycent/ui/hooks/use-mobile";
+} from "@strictbudget/ui/components/empty";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { useIsMobile } from "@strictbudget/ui/hooks/use-mobile";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { History, SquarePen } from "lucide-react";
 import { useEffect, useState } from "react";

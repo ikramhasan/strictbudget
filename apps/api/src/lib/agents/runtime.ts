@@ -10,7 +10,6 @@ import {
 } from "./operations";
 import { AGENT_PRINCIPAL, type AgentPrincipal } from "./principal";
 
-/** What an operation answered, ready for an MCP tool result or an Agent Auth execute response. */
 export type OperationResult =
   | { ok: boolean; status: number; kind: "json"; data: unknown }
   | { ok: boolean; status: number; kind: "text"; contentType: string; text: string }

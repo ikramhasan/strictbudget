@@ -1,5 +1,11 @@
-import { addMonths, type BudgetMonth, money, monthsOfRunway, percentOf } from "@everycent/engine";
-import { Skeleton } from "@everycent/ui/components/skeleton";
+import {
+  addMonths,
+  type BudgetMonth,
+  money,
+  monthsOfRunway,
+  percentOf,
+} from "@strictbudget/engine";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bar, BarChart, ResponsiveContainer, XAxis } from "recharts";
@@ -21,9 +27,8 @@ export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/")({
 });
 
 /**
- * The Reports home (EVERYCENT-184, an everycent extra; YNAB has none): key numbers with their
- * change and a 12-month sparkline, a live preview per question, and rule-based observations, each
- * opening the report that shows it.
+ * The Reports home: key numbers with their change and a 12-month sparkline, a live preview per
+ * question, and rule-based observations, each opening the report that shows it.
  */
 function ReportsHome() {
   const { budget, formatAmount } = useBudget();

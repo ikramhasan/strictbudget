@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { distributeSplit } from "./distribute-split";
 
-/** The lines after Auto-Distribute, as YNAB showed them (cents). */
+/** The lines after Auto-Distribute (cents). */
 function after(total: bigint, lines: bigint[]) {
   const remaining = total - lines.reduce((a, b) => a + b, 0n);
   const added = distributeSplit(remaining, lines);
   return added && lines.map((line, i) => line + (added[i] ?? 0n));
 }
 
-describe("distributeSplit (YNAB's Auto-Distribute, 2026-10-15)", () => {
+describe("distributeSplit", () => {
   it("spreads what's unassigned in proportion to the lines", () => {
     expect(after(-1000n, [-300n, -400n])).toEqual([-429n, -571n]);
     expect(after(-1000n, [-100n, -100n, -100n])).toEqual([-334n, -333n, -333n]);

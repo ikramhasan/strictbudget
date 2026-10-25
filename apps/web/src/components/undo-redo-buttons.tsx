@@ -1,11 +1,10 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import { Redo2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiErrorMessage } from "@/lib/budgets";
 import { useCommand } from "@/lib/commands";
 import { useUndo, useUndoShortcuts } from "@/lib/undo";
 
-/** The local budget history controls shared by the Plan and every account register. */
 export function UndoRedoButtons() {
   const history = useUndo();
   const report = (error: unknown) =>

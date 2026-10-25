@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Per-budget display settings (YNAB-style presets). Keys are persisted in the database, so an
+ * Per-budget display settings. Keys are persisted in the database, so an
  * existing key must never be renamed or change meaning.
  */
 export const NUMBER_FORMATS = [

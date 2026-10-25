@@ -1,24 +1,24 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createTestApp, resetDatabase, signUp, type TestBudget } from "../../../test/helpers";
-import { httpYnabClient } from "../../lib/ynab/client";
-import { YNAB_ACCOUNT_TYPES } from "../../lib/ynab/convert";
-import { type YnabPlan, YnabPlanSchema } from "../../lib/ynab/types";
+import { httpExternalClient } from "../../lib/external-import/client";
+import { EXTERNAL_ACCOUNT_TYPES } from "../../lib/external-import/convert";
+import { type ExternalPlan, ExternalPlanSchema } from "../../lib/external-import/types";
 
 /**
- * A real YNAB test plan ("ihni7's Plan", read through YNAB's API on 2026-10-17, renamed and
- * stripped of import data; month categories keep only non-zero budgeted, activity and balance).
- * Its months carry the numbers YNAB computed: the import must give the same.
+ * A real plan read through the source's API, renamed and stripped of import data (month
+ * categories keep only non-zero budgeted, activity and balance). Its months carry the numbers the
+ * source computed: the import must give the same.
  */
 const FIXTURE = JSON.parse(
-  readFileSync(new URL("../../../test/fixtures/ynab-test-plan.json", import.meta.url), "utf8"),
-) as { data: { budget: YnabPlan } };
+  readFileSync(new URL("../../../test/fixtures/external-test-plan.json", import.meta.url), "utf8"),
+) as { data: { budget: ExternalPlan } };
 const PLAN = FIXTURE.data.budget;
 const TOKEN = "test-token";
-/** The day the fixture was read: YNAB's numbers are as of then. */
+/** The day the fixture was read: the source's numbers are as of then. */
 const TODAY = "2026-10-17";
 
-/** YNAB's API over the fixture, with no network: a wrong token is refused as YNAB does. */
+/** The source's API over the fixture, with no network: a wrong token is refused. */
 const requests: string[] = [];
 const fakeFetch = (async (input: string | URL | Request, init?: RequestInit) => {
   const url = String(input);
@@ -38,7 +38,7 @@ const fakeFetch = (async (input: string | URL | Request, init?: RequestInit) => 
   return Response.json({ error: { id: "404" } }, { status: 404 });
 }) as typeof fetch;
 
-const { app, db, close } = createTestApp({ ynab: httpYnabClient(fakeFetch) });
+const { app, db, close } = createTestApp({ externalPlans: httpExternalClient(fakeFetch) });
 beforeEach(() => resetDatabase(db));
 afterAll(close);
 
@@ -66,7 +66,7 @@ function send(method: string, path: string, cookie: string, body?: unknown) {
 const cents = (milli: number) => String(milli / 10);
 
 async function importPlan(cookie: string, extra: Record<string, unknown> = {}) {
-  const res = await send("POST", "/v1/budgets/import/ynab", cookie, {
+  const res = await send("POST", "/v1/budgets/import/external", cookie, {
     token: TOKEN,
     planId: PLAN.id,
     ...extra,
@@ -74,7 +74,7 @@ async function importPlan(cookie: string, extra: Record<string, unknown> = {}) {
   return { status: res.status, body: (await res.json()) as Report };
 }
 
-/** The YNAB category ids, keyed as `key` says, against the imported budget's categories. */
+/** The source's category ids, keyed as `key` says, against the imported budget's categories. */
 async function compareMonths(
   base: string,
   cookie: string,
@@ -112,13 +112,13 @@ async function compareMonths(
       mismatches.push(`${month} Uncategorized ${JSON.stringify(json.uncategorized)}`);
     }
     const figures = new Map(json.categories.map((c) => [c.categoryId, c]));
-    const ynab = new Map(m.categories.map((c) => [c.id, c]));
+    const source = new Map(m.categories.map((c) => [c.id, c]));
     for (const c of PLAN.categories) {
       const id = idOf.get(c.id);
       if (!id) continue;
       const ours = figures.get(id);
       if (!ours) continue;
-      const theirs = ynab.get(c.id) ?? { budgeted: 0, activity: 0, balance: 0 };
+      const theirs = source.get(c.id) ?? { budgeted: 0, activity: 0, balance: 0 };
       compared++;
       for (const [field, value] of [
         ["assigned", theirs.budgeted],
@@ -134,7 +134,7 @@ async function compareMonths(
   return { mismatches, compared };
 }
 
-/** EVERYCENT-208: two cards' share of 2026-10-03's funded spending; nothing else differs. */
+/** Known gap: two cards' share of 2026-10-03's funded spending; nothing else differs. */
 const KNOWN = [
   "2026-11 Visa available 2600 != 2800",
   "2026-11 Amex available 1000 != 800",
@@ -144,37 +144,37 @@ const KNOWN = [
   "2026-10 Amex available 1000 != 800",
 ];
 
-describe("import from YNAB's API", () => {
+describe("import through the source's API", () => {
   it("keeps the currency format's example, which tells Indian grouping apart", () => {
     const format = { ...PLAN.currency_format, example_format: "1,23,456.78" };
-    const parsed = YnabPlanSchema.parse({ ...PLAN, currency_format: format });
+    const parsed = ExternalPlanSchema.parse({ ...PLAN, currency_format: format });
     expect(parsed.currency_format?.example_format).toBe("1,23,456.78");
   });
 
   it("lists the token's plans", async () => {
     const { cookie } = await signUp(app);
-    const res = await send("POST", "/v1/budgets/import/ynab/plans", cookie, { token: TOKEN });
+    const res = await send("POST", "/v1/budgets/import/external/plans", cookie, { token: TOKEN });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       plans: [{ id: PLAN.id, name: "Test Plan", lastModifiedOn: "2026-10-17T02:09:12Z" }],
     });
   });
 
-  it("refuses a token YNAB doesn't accept", async () => {
+  it("refuses a token the source doesn't accept", async () => {
     const { cookie } = await signUp(app);
-    const res = await send("POST", "/v1/budgets/import/ynab/plans", cookie, { token: "nope" });
+    const res = await send("POST", "/v1/budgets/import/external/plans", cookie, { token: "nope" });
     expect(res.status).toBe(400);
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
-      "YNAB_TOKEN_INVALID",
+      "EXTERNAL_TOKEN_INVALID",
     );
-    const missing = await send("POST", "/v1/budgets/import/ynab", cookie, {
+    const missing = await send("POST", "/v1/budgets/import/external", cookie, {
       token: TOKEN,
       planId: "missing",
     });
     expect(missing.status).toBe(404);
   });
 
-  it("gives every month's Ready to Assign and category balances YNAB computed", async () => {
+  it("gives every month's Ready to Assign and category balances the source computed", async () => {
     const { cookie } = await signUp(app);
     const { status, body } = await importPlan(cookie);
     expect(status, JSON.stringify(body)).toBe(201);
@@ -231,18 +231,17 @@ describe("import from YNAB's API", () => {
       budgets: { id: string }[];
     };
     expect(list.budgets.map((b) => b.id)).toEqual([fresh.body.budget.id]);
-    // Another user importing the same plan gets their own budget.
     const other = await signUp(app);
     expect((await importPlan(other.cookie)).status).toBe(201);
   });
 });
 
-describe("import from YNAB's Export Plan files", () => {
+describe("import from the export files", () => {
   // Rebuilds a whole real plan twice over: seconds alone, much longer under a parallel run.
-  it("rebuilds the plan from its two files: YNAB's numbers again", async () => {
+  it("rebuilds the plan from its two files: the same numbers again", async () => {
     const { cookie } = await signUp(app);
     const { body } = await importPlan(cookie);
-    // The plan as YNAB's Export Plan writes it (EVERYCENT-70's export follows its layout).
+    // The budget export writes the source's export layout.
     const base = `/v1/budgets/${body.budget.id}`;
     const file = async (path: string) =>
       new TextDecoder("utf-8", { ignoreBOM: true }).decode(
@@ -260,7 +259,7 @@ describe("import from YNAB's Export Plan files", () => {
       dateFormat: "MM/DD/YYYY",
     };
 
-    const preview = await send("POST", "/v1/budgets/import/ynab-files", cookie, {
+    const preview = await send("POST", "/v1/budgets/import/external-files", cookie, {
       ...settings,
       dryRun: true,
     });
@@ -275,8 +274,8 @@ describe("import from YNAB's Export Plan files", () => {
       guessed: true,
     });
 
-    const types = Object.fromEntries(live.map((a) => [a.name, YNAB_ACCOUNT_TYPES[a.type]]));
-    const res = await send("POST", "/v1/budgets/import/ynab-files", cookie, {
+    const types = Object.fromEntries(live.map((a) => [a.name, EXTERNAL_ACCOUNT_TYPES[a.type]]));
+    const res = await send("POST", "/v1/budgets/import/external-files", cookie, {
       ...settings,
       accountTypes: types,
     });
@@ -295,8 +294,7 @@ describe("import from YNAB's Export Plan files", () => {
     expect(compared).toBeGreaterThan(1000);
     expect(mismatches).toEqual(KNOWN);
 
-    // The same files again: the same budget.
-    const again = await send("POST", "/v1/budgets/import/ynab-files", cookie, {
+    const again = await send("POST", "/v1/budgets/import/external-files", cookie, {
       ...settings,
       accountTypes: types,
     });
@@ -304,9 +302,9 @@ describe("import from YNAB's Export Plan files", () => {
     expect(((await again.json()) as Report).budget.id).toBe(report.budget.id);
   }, 60_000);
 
-  it("refuses files that aren't YNAB's", async () => {
+  it("refuses files that aren't export files", async () => {
     const { cookie } = await signUp(app);
-    const res = await send("POST", "/v1/budgets/import/ynab-files", cookie, {
+    const res = await send("POST", "/v1/budgets/import/external-files", cookie, {
       plan: "a,b\n1,2",
       register: "a,b\n1,2",
       name: "x",
@@ -317,7 +315,7 @@ describe("import from YNAB's Export Plan files", () => {
     });
     expect(res.status).toBe(400);
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
-      "YNAB_FILE_INVALID",
+      "EXTERNAL_FILE_INVALID",
     );
   });
 });

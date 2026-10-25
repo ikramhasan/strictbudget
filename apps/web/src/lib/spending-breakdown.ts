@@ -12,7 +12,7 @@ import {
   plainAmount,
   shareLabel,
   splitSpending,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { z } from "zod";
 import type { CategoryList } from "./categories";
 import { COLOR_LABEL, type Flag, type FlagColor } from "./flags";
@@ -27,8 +27,8 @@ import {
 } from "./reports";
 
 /**
- * What Spending Breakdown's rows are: YNAB's Categories / Groups toggle, plus everycent's payee,
- * account and flag breakdowns.
+ * What Spending Breakdown's rows are: categories or groups, or the payee, account and flag
+ * breakdowns.
  */
 export const BREAKDOWN_BY = ["category", "group", "payee", "account", "flag"] as const;
 export type BreakdownBy = (typeof BREAKDOWN_BY)[number];
@@ -41,7 +41,6 @@ export const BREAKDOWN_LABELS: Record<BreakdownBy, { one: string; many: string }
   flag: { one: "Flag", many: "Flags" },
 };
 
-/** The report's URL: the shared report filters, the breakdown, the chart and the opened group. */
 export const spendingBreakdownSearchSchema = reportSearchSchema.extend({
   by: z.enum(BREAKDOWN_BY).optional().catch(undefined),
   chart: z.enum(["donut", "treemap"]).optional().catch(undefined),
@@ -54,7 +53,6 @@ export type SpendingBreakdownSearch = z.infer<typeof spendingBreakdownSearchSche
 export const UNCATEGORIZED_GROUP = "uncategorized";
 export const NONE = "none";
 
-/** One row of the breakdown: what it is, how it's shown, and what it netted. */
 export interface BreakdownRow {
   key: string;
   name: string;
@@ -68,7 +66,6 @@ export interface BreakdownRow {
   count: number;
 }
 
-/** Names for the rows' keys. */
 export interface BreakdownNames {
   categories: CategoryList | undefined;
   payees: readonly { id: string; name: string }[];
@@ -185,7 +182,7 @@ export function breakdownRows(
   });
 }
 
-// Plain code-point comparison: YNAB orders ties L1, T5, 😌, 🩺 (2026-10-17).
+// Plain code-point comparison, so ties order L1, T5, 😌, 🩺.
 const byName = (a: BreakdownRow, b: BreakdownRow) =>
   a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
 const cmp = (a: bigint, b: bigint) => (a < b ? -1 : a > b ? 1 : 0);
@@ -193,7 +190,7 @@ const cmp = (a: bigint, b: bigint) => (a < b ? -1 : a > b ? 1 : 0);
 export interface Breakdown {
   /** Rows that spent or broke even, most spent first (ties by name). */
   spending: BreakdownRow[];
-  /** Rows whose inflows beat their outflows, smallest first (ties by name), as YNAB lists them. */
+  /** Rows whose inflows beat their outflows, smallest first (ties by name). */
   positive: BreakdownRow[];
   grossOutflows: bigint;
   positiveInflows: bigint;
@@ -201,7 +198,6 @@ export interface Breakdown {
   total: bigint;
 }
 
-/** Spending Breakdown's lists and total (YNAB, 2026-10-17). */
 export function breakdownOf(rows: readonly BreakdownRow[]): Breakdown {
   const split = splitSpending(rows.map((r) => ({ key: r, net: r.net })));
   return {
@@ -213,7 +209,7 @@ export function breakdownOf(rows: readonly BreakdownRow[]): Breakdown {
   };
 }
 
-/** Days in the range's months, whole months even mid-month (YNAB's Average Daily Spending). */
+/** Days in the range's months, whole months even mid-month (for Average Daily Spending). */
 export function daysIn(range: MonthRange): number {
   return monthsIn(range).reduce((days, m) => days + Number(monthBounds(m).end.slice(8)), 0);
 }
@@ -226,7 +222,6 @@ export interface BreakdownStats {
   mostFrequent: BreakdownRow | undefined;
 }
 
-/** The header's stats (YNAB, 2026-10-17: Oct 2026 $3,601.00, $116.16 a day). */
 export function breakdownStats(breakdown: Breakdown, range: MonthRange): BreakdownStats {
   const rows = [...breakdown.spending, ...breakdown.positive];
   const mostFrequent = rows.reduce<BreakdownRow | undefined>(
@@ -248,7 +243,7 @@ export function breakdownStats(breakdown: Breakdown, range: MonthRange): Breakdo
   };
 }
 
-/** A row's share labels: of the gross outflows (YNAB's) and of income (everycent's). */
+/** A row's share labels: of the gross outflows and of income. */
 export function shares(row: BreakdownRow, breakdown: Breakdown, income: bigint | undefined) {
   const spent = -row.net;
   return {
@@ -280,9 +275,6 @@ export function rowChange(row: BreakdownRow, previous: Map<string, bigint>) {
   const before = previous.get(row.key) ?? 0n;
   return { before, ...changeOf(-row.net, before) };
 }
-
-// ---------------------------------------------------------------------------------------------
-// Export (YNAB, 2026-10-17): a zip of the summary and the transactions.
 
 /**
  * The summary file's rows: header "Category Group","Category", one column per month, "Average",
@@ -333,9 +325,9 @@ const CLEARED_LABELS = {
 } as const;
 
 /**
- * The transactions file's rows (YNAB's columns): Account, Flag (the colour's name), Date (the
- * plan's format), Payee, "Group: Category", Group, Category (all empty when uncategorized), Memo,
- * Outflow and Inflow (formatted with the symbol), Cleared.
+ * The transactions file's rows: Account, Flag (the colour's name), Date (the budget's format),
+ * Payee, "Group: Category", Group, Category (all empty when uncategorized), Memo, Outflow and Inflow
+ * (formatted with the symbol), Cleared.
  */
 export function transactionsExportRows(
   lines: readonly ReportTransaction[],
@@ -380,9 +372,8 @@ export function transactionsExportRows(
   return rows;
 }
 
-/** The export's file names: everycent's prefix in YNAB's shape. */
 export const exportNames = (today: string) => ({
-  summary: `everycent-spending-breakdown-${today}.csv`,
-  transactions: `everycent-spending-breakdown-${today}-transactions.csv`,
-  zip: `everycent-spending-breakdown-${today}.zip`,
+  summary: `strictbudget-spending-breakdown-${today}.csv`,
+  transactions: `strictbudget-spending-breakdown-${today}-transactions.csv`,
+  zip: `strictbudget-spending-breakdown-${today}.zip`,
 });

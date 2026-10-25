@@ -33,7 +33,6 @@ function send(method: string, path: string, cookie: string, body?: unknown) {
 }
 const json = async <T>(res: Response) => (await res.json()) as T;
 
-/** A USD budget. */
 async function setup() {
   const { cookie } = await signUp(app);
   const budget = await createBudget(app, cookie);

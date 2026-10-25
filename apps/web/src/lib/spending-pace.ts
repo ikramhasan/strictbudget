@@ -1,5 +1,5 @@
-import type { components } from "@everycent/api-client";
-import { BUDGET_MONTH_PATTERN, type BudgetMonth, type PaceStatus } from "@everycent/engine";
+import type { components } from "@strictbudget/api-client";
+import { BUDGET_MONTH_PATTERN, type BudgetMonth, type PaceStatus } from "@strictbudget/engine";
 import { format, parseISO } from "date-fns";
 import { z } from "zod";
 import { $api } from "./api";
@@ -36,7 +36,6 @@ export const STATUS_LABELS: Record<PaceStatus, string> = {
   behind: "Behind",
 };
 
-/** Text colour for a status: green ahead, red behind. */
 export const STATUS_TONES: Record<PaceStatus, string> = {
   ahead: "text-green-700 dark:text-green-400",
   on_pace: "text-muted-foreground",

@@ -1,4 +1,4 @@
-import { toDelimited } from "@everycent/engine";
+import { toDelimited } from "@strictbudget/engine";
 import { describe, expect, it } from "vitest";
 import {
   type BudgetVsActualReport,
@@ -107,12 +107,10 @@ describe("budgetVsActual", () => {
     const result = budgetVsActual(report, list, { from: "2026-09", to: "2026-10" });
     expect(result.groups.map((g) => [g.name, g.assigned, g.spent, g.status])).toEqual([
       ["Uncategorized", 0n, 500n, "over"],
-      // Needs: 80,000 assigned, 95,000 spent: 15,000 over; Bills: 1,000 under.
       ["Needs", 80000n, 95000n, "over"],
       ["Bills", 205000n, 204000n, "under"],
     ]);
     const bills = result.groups[2]?.rows ?? [];
-    // Rent is on plan (variance 0), Phone 1,000 under: Rent first.
     expect(bills.map((r) => [r.name, r.status, r.hidden])).toEqual([
       ["Rent", "on", false],
       ["Phone", "under", true],

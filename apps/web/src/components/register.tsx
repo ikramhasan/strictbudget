@@ -1,5 +1,5 @@
-import type { components } from "@everycent/api-client";
-import { money, usesCategory } from "@everycent/engine";
+import type { components } from "@strictbudget/api-client";
+import { money, usesCategory } from "@strictbudget/engine";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,34 +9,34 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Button } from "@everycent/ui/components/button";
-import { Checkbox } from "@everycent/ui/components/checkbox";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Button } from "@strictbudget/ui/components/button";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
 import {
   Drawer,
   DrawerContent,
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
-} from "@everycent/ui/components/drawer";
+} from "@strictbudget/ui/components/drawer";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@everycent/ui/components/dropdown-menu";
+} from "@strictbudget/ui/components/dropdown-menu";
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@everycent/ui/components/empty";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { ScrollArea } from "@everycent/ui/components/scroll-area";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { Table, TableHeader } from "@everycent/ui/components/table";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/empty";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { ScrollArea } from "@strictbudget/ui/components/scroll-area";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { Table, TableHeader } from "@strictbudget/ui/components/table";
+import { cn } from "@strictbudget/ui/lib/utils";
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -178,7 +178,7 @@ import { UndoRedoButtons } from "./undo-redo-buttons";
 /** The tray's colour, on the scroll area and its sticky header cells (which must be opaque). */
 const REGISTER_TRAY = "bg-muted dark:bg-[color-mix(in_oklch,var(--background),black_20%)]";
 
-/** Columns a header click sorts by (YNAB's: Outflow and Inflow apart, the flag too). */
+/** Columns a header click sorts by (Outflow and Inflow apart, the flag too). */
 const SORTABLE: Partial<Record<ColumnId, SortColumn>> = {
   flag: "flag",
   account: "account",
@@ -228,13 +228,13 @@ type Item =
 interface EditingSplit {
   id: string;
   draft: Draft;
-  /** Opened with YNAB's S key, which starts in the memo. */
+  /** Opened with the S key, which starts in the memo. */
   fromKey?: boolean;
 }
 
 /**
  * An account's register, or all accounts' (`accountId` left out), newest first unless sorted.
- * New transactions get a full row; existing ones are edited a cell at a time, as in YNAB.
+ * New transactions get a full row; existing ones are edited a cell at a time.
  * The server filters, sorts and pages (`search`, kept in the address by the page); more pages
  * load as you scroll, and rows are virtualized so long histories stay fast. `focusId` scrolls to
  * that transaction and highlights it (the other side of a transfer, when jumping to it).
@@ -262,9 +262,9 @@ export function Register({
   focusId?: string;
   search: RegisterSearch;
   onSearchChange: (patch: Partial<RegisterSearch>, replace?: boolean) => void;
-  /** A credit card's Record Payment: the new row it opens (YNAB's toolbar button). */
+  /** A credit card's Record Payment: the new row it opens (the toolbar button). */
   recordPayment?: () => Draft;
-  /** Open Record Payment's row now (the payment inspector's button, YNAB 2026-10-15). */
+  /** Open Record Payment's row now (the payment inspector's button). */
   openRecordPayment?: boolean;
   onRecordPaymentOpened?: () => void;
 }) {
@@ -348,7 +348,7 @@ export function Register({
     [transactions.data],
   );
   const someHidden = transactions.data?.pages[0]?.someHidden ?? false;
-  // YNAB hides its info column when no row in view needs approval or a category.
+  // The info column hides when no row in view needs approval or a category.
   const needsReview = useMemo(() => loaded.some((t) => !t.approved || t.needsCategory), [loaded]);
   // Rows read in the running balance's order only when the date comes first.
   const dateOrder = view.sort[0]?.column === "date";
@@ -361,7 +361,7 @@ export function Register({
   const flagList = useQuery(flagsQueryOptions(budget.id));
   const renameFlagMutation = $api.useMutation("put", "/v1/budgets/{budgetId}/flags/{color}");
   const create = $api.useMutation("post", "/v1/budgets/{budgetId}/transactions");
-  // Every edit's own version steps go into the undo history (EVERYCENT-36).
+  // Every edit's own version steps go into the undo history.
   const update = $api.useMutation("patch", "/v1/budgets/{budgetId}/transactions/{transactionId}", {
     onSuccess: (row) => history.noteSave(row.previousVersions, versionsOf(row)),
   });
@@ -394,15 +394,15 @@ export function Register({
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const session = useQuery(sessionQueryOptions);
   const [editing, setEditing] = useState<EditingCell | null>(null);
-  // The row whose Matched Transactions popover is open (EVERYCENT-68).
+  // The row whose Matched Transactions popover is open.
   const [matchFor, setMatchFor] = useState<string | null>(null);
-  // The info column also shows while a matched row is edited: its link icon (EVERYCENT-68).
+  // The info column also shows while a matched row is edited: its link icon.
   const reviewing =
     needsReview || loaded.some((t) => t.matched && (t.id === editing?.id || t.id === matchFor));
   const [editingSplit, setEditingSplit] = useState<EditingSplit | null>(null);
   const [splitError, setSplitError] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection>(NOTHING);
-  /** A change waiting on YNAB's reconciled-transaction warning. */
+  /** A change waiting on the reconciled-transaction warning. */
   const [warning, setWarning] = useState<{
     warning: ReconciledWarning;
     proceed: () => void;
@@ -439,7 +439,7 @@ export function Register({
   const allAccounts = accountId === undefined;
   const { widths, setWidth } = useColumnWidths(accountId ?? "all");
   // Narrower than lg (a phone, a tablet upright) the register is cards, edited in a drawer: the
-  // table's columns don't fit and the amounts would scroll out of sight (EVERYCENT-93).
+  // table's columns don't fit and the amounts would scroll out of sight.
   const phone = useViewportWidth() < 1024;
   const columnIds = useMemo(
     () =>
@@ -449,7 +449,7 @@ export function Register({
           (c !== "flag" || view.showFlags) &&
           (c !== "attachment" || view.showAttachments) &&
           (c !== "enteredBy" || view.showEnteredBy) &&
-          // A viewer (EVERYCENT-88) can't select, approve or change rows.
+          // A viewer can't select, approve or change rows.
           (c !== "select" || !readOnly) &&
           (c !== "review" || (reviewing && !readOnly)),
       ),
@@ -482,8 +482,8 @@ export function Register({
       : undefined;
   };
   /**
-   * A foreign-currency amount with what the plan counts under it, in the budget's currency
-   * (EVERYCENT-54), and its rate on hover.
+   * A foreign-currency amount with what the plan counts under it, in the budget's currency,
+   * and its rate on hover.
    */
   const withBase = (
     native: string,
@@ -498,7 +498,7 @@ export function Register({
       >
         <span>
           {native}
-          {/* All accounts mixes currencies: name the row's, which a symbol may not (EVERYCENT-193). */}
+          {/* All accounts mixes currencies: name the row's, which a symbol may not. */}
           {!accountId && <span className="ml-1 text-muted-foreground text-xs">{t.currency}</span>}
         </span>
         <span className="text-muted-foreground text-xs">{show(base < 0n ? -base : base)}</span>
@@ -507,7 +507,7 @@ export function Register({
   };
   /** The currency of the register's own account (the budget's for all accounts). */
   const registerSettings = settingsOf(accountId);
-  /** A new transaction in `id`, starting cleared in a cash account (YNAB). */
+  /** A new transaction in `id`, starting cleared in a cash account. */
   const newDraft = (id: string, date: string) => emptyDraft(id, date, accountById.get(id)?.type);
   const openAccounts = accountList.filter((a) => !a.closed);
   const account = accountId ? accountById.get(accountId) : undefined;
@@ -543,7 +543,7 @@ export function Register({
     () =>
       rows.flatMap(({ original: t }): Item[] => [
         { kind: "transaction", key: t.id, t },
-        // Under a search, YNAB shows only the lines that match it, folded or not.
+        // Under a search, only the lines that match it show, folded or not.
         ...t.subtransactions
           .filter((line) =>
             t.matchingLineIds === null
@@ -581,8 +581,8 @@ export function Register({
   const focused = useRef<string | null>(null);
   useEffect(() => {
     if (!focusId || focused.current === focusId) return;
-    // A scheduled row (from an Activity popover's upcoming list) is selected, as YNAB does
-    // (2026-10-17, EVERYCENT-176); it's at the top, so there's nothing to load. Until the
+    // A scheduled row (from an Activity popover's upcoming list) is selected; it's at the top,
+    // so there's nothing to load. Until the
     // scheduled rows are in, the id could be either.
     if (scheduled.isPending) return;
     if (scheduledRows.some((row) => row.id === focusId)) {
@@ -635,8 +635,7 @@ export function Register({
   const selectionSummary = isEmpty(selection) ? NO_SUMMARY : summary.data;
   const selectedScheduled = scheduledRows.filter((row) => scheduledSelection.has(row.id));
   const scheduledTotal = selectedScheduled.reduce((sum, row) => sum + BigInt(row.amount), 0n);
-  // Amounts in different currencies don't add up, so a mixed selection shows no total
-  // (converted totals: EVERYCENT-57).
+  // Amounts in different currencies don't add up, so a mixed selection shows no total.
   const selectedCurrencies = new Set<string | null>(selectedScheduled.map((row) => row.currency));
   if (selectionSummary && selectionSummary.count > 0) {
     selectedCurrencies.add(selectionSummary.currency);
@@ -673,7 +672,7 @@ export function Register({
     setScheduledSelection(NO_ROWS);
   }
   /**
-   * YNAB's Match (2026-10-17, EVERYCENT-68): one imported transaction that isn't matched yet and
+   * Match: one imported transaction that isn't matched yet and
    * one entered transaction in the same account. Null when the selection isn't such a pair.
    */
   const pickedRows =
@@ -706,9 +705,9 @@ export function Register({
   }
 
   /**
-   * Bank Import Details' "Don't Rename as …" (EVERYCENT-174): back to the imported payee, and
+   * Bank Import Details' "Don't Rename as …": back to the imported payee, and
    * the payee's rule for that name goes. Undo puts back the payee, its approval and the same rule
-   * (so it keeps its precedence); undo and redo check the row's version (EVERYCENT-212).
+   * (so it keeps its precedence); undo and redo check the row's version.
    */
   async function dontRename(t: Transaction) {
     const payeeId = t.payeeId;
@@ -808,7 +807,7 @@ export function Register({
 
   /**
    * One action on the selected transactions and scheduled rows, undone as one. Duplicate selects
-   * the copies and Enter Now the entered transactions, as YNAB does.
+   * the copies and Enter Now the entered transactions.
    */
   async function applyBulk(
     action: BulkAction,
@@ -871,8 +870,7 @@ export function Register({
         });
       }
       await refresh();
-      // Actions that leave the rows in the register keep them selected, as YNAB's do
-      // (2026-10-18), so C can toggle them back.
+      // Actions that leave the rows in the register keep them selected, so C can toggle them back.
       // Only the selection the user made: Shift+L's "every row shown" isn't kept.
       const keep =
         sel === selection &&
@@ -1075,7 +1073,7 @@ export function Register({
 
   /**
    * Undo for a single edit: puts the row back as it was, unless a partner changed it since
-   * (`expectedVersion`; the API refuses with STALE_VERSION, EVERYCENT-36).
+   * (`expectedVersion`; the API refuses with STALE_VERSION).
    */
   function recordUpdate(label: string, before: Transaction, after: Transaction) {
     // The version this command last left the row at; the tab's own steps lead on from it.
@@ -1097,7 +1095,7 @@ export function Register({
     history.record({ label, undo: () => replay(before), redo: () => replay(after) });
   }
 
-  /** A transfer's payee as YNAB's register words it ("Payment: X" / "Transfer: X"). */
+  /** A transfer's payee as the register words it ("Payment: X" / "Transfer: X"). */
   function rowPayee(
     accountId: string,
     transferAccountId: string | null,
@@ -1132,7 +1130,7 @@ export function Register({
     return usesCategory(type, transferType);
   }
 
-  /** A saved row's category cell; "Category not needed" in muted text as YNAB shows it. */
+  /** A saved row's category cell; "Category not needed" in muted text. */
   function rowCategory(t: Transaction): ReactNode {
     const notNeeded = categoryNotNeeded({
       accountType: accountById.get(t.accountId)?.type ?? "checking",
@@ -1233,7 +1231,7 @@ export function Register({
   }
 
   /**
-   * YNAB's Make Repeating: a new scheduled row prefilled from `t`, a month later and repeating
+   * Make Repeating: a new scheduled row prefilled from `t`, a month later and repeating
    * monthly; saving it creates the schedule and leaves `t` as it is.
    */
   function makeRepeating(t: Transaction) {
@@ -1242,8 +1240,8 @@ export function Register({
   }
 
   /**
-   * After a save: close the new row, or (YNAB's "Save and add another") open a fresh one that
-   * keeps the date, in the register's own account (2026-10-15).
+   * After a save: close the new row, or ("Save and add another") open a fresh one that keeps the
+   * date, in the register's own account.
    */
   function afterNewSaved(draft: Draft, another: boolean) {
     if (another && defaultAccountId) startAdding(newDraft(defaultAccountId, draft.date), false);
@@ -1253,7 +1251,7 @@ export function Register({
   async function saveNew(draft: Draft, another = false, file: File | null = null) {
     if (!draft.date) return setNewError("Enter a date.");
     if (isScheduled(draft, today)) {
-      // YNAB: a scheduled transaction can't have an attachment.
+      // A scheduled transaction can't have an attachment.
       if (file) {
         return setNewError(
           "Scheduled transactions can't have attachments. Remove the file, or date it today or earlier.",
@@ -1332,7 +1330,7 @@ export function Register({
   }
 
   /**
-   * A new transaction that repeats or is dated ahead is a scheduled one (YNAB). A past date with
+   * A new transaction that repeats or is dated ahead is a scheduled one. A past date with
    * a repeat enters that one transaction and starts the schedule after today.
    */
   async function saveNewScheduled(draft: Draft, another = false) {
@@ -1382,7 +1380,7 @@ export function Register({
   }
 
   /**
-   * Moving a transaction's date into the future makes it a scheduled transaction (YNAB), its
+   * Moving a transaction's date into the future makes it a scheduled transaction, its
    * transfer's other side included. Undo brings the transaction back.
    */
   async function reschedule(t: Transaction, draft: Draft) {
@@ -1503,7 +1501,7 @@ export function Register({
     setWarning({
       warning: found,
       proceed: () => void save(),
-      // Back to the cell, as YNAB leaves the row open on Cancel.
+      // Back to the cell: Cancel leaves the row open.
       cancel: () => setEditing({ id: t.id, column: cell }),
     });
   }
@@ -1561,7 +1559,7 @@ export function Register({
     }
   }
 
-  /** YNAB's Approve on one row; undone as an edit (a transfer's other side follows). */
+  /** Approve on one row; undone as an edit (a transfer's other side follows). */
   async function approveRow(t: Transaction) {
     try {
       const after = await update.mutateAsync({
@@ -1584,7 +1582,7 @@ export function Register({
     else void deleteRow(t);
   }
 
-  /** Delete, or YNAB's Reject (which deletes an unapproved transaction it didn't import). */
+  /** Delete, or Reject (which deletes an unapproved transaction it didn't import). */
   async function deleteRow(t: Transaction, reject = false) {
     try {
       await remove.mutateAsync({
@@ -1641,7 +1639,7 @@ export function Register({
     // biome-ignore lint/correctness/useExhaustiveDependencies: startAdding is a plain function
   }, [openRecordPayment, startPayment, onRecordPaymentOpened]);
 
-  // YNAB's register shortcuts (seen 2026-10-18); the selection bar binds the ones on a selection.
+  // The register's shortcuts; the selection bar binds the ones on a selection.
   const rootRef = useRef<HTMLDivElement>(null);
   const idle = !adding && editing === null && editingSplit === null;
   function stepRows(direction: 1 | -1, extend: boolean) {
@@ -1673,7 +1671,6 @@ export function Register({
   useShortcut("deselectAll", clearSelection, {
     enabled: idle && (!isEmpty(selection) || scheduledSelection.size > 0),
   });
-  // Shift+N opens the new row with its calendar open, as YNAB does.
   useShortcut("addTransaction", () => startAdding(null, true), {
     enabled: !readOnly && canAdd && idle,
   });
@@ -1689,8 +1686,7 @@ export function Register({
     },
     { enabled: idle && single !== undefined },
   );
-  // Enter edits the one selected transaction from the keyboard, as a click on a cell does: an
-  // everycent addition for keyboard and screen reader users (EVERYCENT-95).
+  // Enter edits the one selected transaction from the keyboard, as a click on a cell does.
   const shortcutsOn = useShortcutsEnabled();
   useHotkeys(
     "enter",
@@ -1885,7 +1881,7 @@ export function Register({
         return t.memo;
       case "outflow":
       case "inflow": {
-        // An FX revaluation has no native amount: its side is its base amount's (EVERYCENT-56).
+        // An FX revaluation has no native amount: its side is its base amount's.
         const sign = amount === 0n ? BigInt(t.baseAmount) : amount;
         if (id === "outflow" ? sign >= 0n : sign <= 0n) return "";
         return withBase(show(amount < 0n ? -amount : amount, t.currency), t);
@@ -2184,7 +2180,7 @@ export function Register({
         // the header and squares off its corner.
         <ScrollArea
           viewportRef={scrollRef}
-          // A query container: the editor's footer sizes to its visible width (EVERYCENT-194).
+          // A query container: the editor's footer sizes to its visible width.
           viewportClassName="@container max-h-[70vh]"
           scrollbars="both"
           className={cn("rounded-xl ring-1 ring-border", REGISTER_TRAY)}
@@ -2256,7 +2252,7 @@ export function Register({
                             }
                             disabled={loaded.length === 0 && scheduledRows.length === 0}
                             onCheckedChange={() => {
-                              // Select all takes the scheduled rows along, as YNAB's does.
+                              // Select all takes the scheduled rows along.
                               if (selection.mode === "all") return clearSelection();
                               setSelection({ mode: "all", except: new Set() });
                               setScheduledSelection(new Set(scheduledRows.map((row) => row.id)));
@@ -2433,7 +2429,6 @@ export function Register({
                       // A quick hover; a row jumped to glows, then fades out.
                       "duration-100 data-highlighted:animate-[row-highlight_2.5s_ease-out]",
                       future && "text-muted-foreground italic",
-                      // YNAB sets unapproved rows in bold.
                       !t.approved && "font-semibold",
                     )}
                     title={future ? "Upcoming: not in the balance until its date" : undefined}
@@ -2507,7 +2502,7 @@ export function Register({
         </ScrollArea>
       )}
       {phone && defaultAccountId && (
-        // A phone adds and edits in a full-height drawer (everycent's own layout, EVERYCENT-93).
+        // A phone adds and edits in a full-height drawer.
         <Drawer
           open={adding || editingSplit !== null}
           onOpenChange={(open) => {
@@ -2641,7 +2636,7 @@ export function Register({
 }
 
 /**
- * The running balance is always in date order. Sorted by anything else, YNAB keeps the column
+ * The running balance is always in date order. Sorted by anything else, the column stays
  * and explains: clicking it goes back to the default order.
  */
 function BalanceHeader({ sorted, onResetSort }: { sorted: boolean; onResetSort: () => void }) {
@@ -2677,7 +2672,7 @@ function editorAccounts(accounts: readonly Account[], current: string) {
 }
 
 /**
- * A header cell's right edge, dragged to widen or narrow its column as in YNAB's register (Memo,
+ * A header cell's right edge, dragged to widen or narrow its column (Memo,
  * which takes what's left, gives or takes the difference). Arrow keys move it 8px.
  * Hand-rolled: the register is a plain table with a colgroup, not a table library's columns.
  */
@@ -2729,8 +2724,7 @@ function ColumnResizer({
 
 /**
  * A phone's register: each transaction a card, a thumb's height or more, with its payee and
- * amount on top and its category, date and memo under them (everycent's own layout,
- * EVERYCENT-93). A tap opens it in the drawer; the checkbox selects it for the selection bar.
+ * amount on top and its category, date and memo under them. A tap opens it in the drawer; the checkbox selects it for the selection bar.
  * Upcoming scheduled transactions come first, as on the wide register.
  */
 function PhoneTransactions({

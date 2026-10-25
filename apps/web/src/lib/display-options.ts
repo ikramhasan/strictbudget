@@ -1,9 +1,9 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 /**
- * YNAB's Display Options that live in the browser (localStorage, seen 2026-10-18): Progress Bars
- * and Balance Style. One store per key, so every component reading a setting follows a change made
- * anywhere (the Display Options dialog, another tab).
+ * Display Options kept in the browser (localStorage): Progress Bars and Balance Style. One store
+ * per key, so every component reading a setting follows a change made anywhere (the Display Options
+ * dialog, another tab).
  */
 function localSetting<T>(
   key: string,
@@ -52,20 +52,19 @@ function localSetting<T>(
   };
 }
 
-/** YNAB's Progress Bars On/Off; they "reset when cookies or local storage are cleared". */
 export const useProgressBarsSetting = localSetting(
-  "everycent:progress-bars",
+  "strictbudget:progress-bars",
   true,
   (raw) => raw !== "off",
   (on) => (on ? "on" : "off"),
 );
 
 /**
- * YNAB's Balance Style: "Differentiate Without Color" gives the overspent and cautious Available
- * pills stronger fills and a border, and patterns avatars that share an initial.
+ * "Differentiate Without Color" gives the overspent and cautious Available pills stronger fills and
+ * a border, and patterns avatars that share an initial.
  */
 export const useDifferentiateWithoutColor = localSetting(
-  "everycent:differentiate-without-color",
+  "strictbudget:differentiate-without-color",
   false,
   (raw) => raw === "true",
   (on) => String(on),

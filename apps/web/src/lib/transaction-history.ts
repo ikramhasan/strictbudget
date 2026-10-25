@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import type { Transaction } from "./transactions";
 
 export type CreateTransactionBody = components["schemas"]["CreateTransaction"];
@@ -6,9 +6,9 @@ export type UpdateTransactionBody = components["schemas"]["UpdateTransaction"];
 
 /**
  * A complete transaction representation accepted by the create endpoint, to bring a deleted one
- * back (undo) or create it again (redo). As YNAB's Undo does (2026-10-14), a transfer's other
- * side comes back with its own memo, cleared state, flag and approval, and a transfer to an
- * account closed since still comes back (`restore`).
+ * back (undo) or create it again (redo). A transfer's other side comes back with its own memo,
+ * cleared state, flag and approval, and a transfer to an account closed since still comes back
+ * (`restore`).
  */
 export function createBodyFromTransaction(transaction: Transaction): CreateTransactionBody {
   return {
@@ -62,7 +62,7 @@ function sideInput(side: Side): NonNullable<CreateTransactionBody["transferSide"
   return input;
 }
 
-/** The other side's own amount when it's in another currency (EVERYCENT-55). */
+/** The other side's own amount when it's in another currency. */
 function crossAmount(currency: string, side: Side | null) {
   return side && side.currency !== currency ? { transferAmount: side.amount } : {};
 }
@@ -84,7 +84,7 @@ export function updateBodyFromTransaction(transaction: Transaction): UpdateTrans
     // A reconciled transaction stays reconciled; its cleared state can't be set.
     ...(transaction.cleared === "reconciled" ? {} : { cleared: transaction.cleared }),
     flag: transaction.flag,
-    // Edits approve an unapproved transaction (as in YNAB), so an undo puts its approval back.
+    // Edits approve an unapproved transaction, so an undo puts its approval back.
     approved: transaction.approved,
     // The rate as it was: typed, or the date's (null), which the restored date gives back.
     ...(transaction.currency !== undefined && transaction.fxRate !== null

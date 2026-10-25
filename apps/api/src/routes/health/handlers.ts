@@ -1,5 +1,5 @@
-import { sql } from "@everycent/db";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { sql } from "@strictbudget/db";
 import { errorBody } from "../../lib/errors";
 import { log } from "../../lib/log";
 import type { AppEnv } from "../../types";

@@ -12,12 +12,12 @@ import {
   money,
   NUMBER_FORMATS,
   type NumberFormat,
-} from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { Spinner } from "@everycent/ui/components/spinner";
+} from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { type FormEvent, useState } from "react";
 import { todayIso } from "@/lib/dates";
 import { CurrencyPicker, currencyName } from "./currency-picker";
@@ -50,7 +50,6 @@ export function BudgetForm({
   currencyLocked?: boolean;
   submitLabel: string;
   pendingLabel: string;
-  /** Resolves to an error message to show, or null on success. */
   onSubmit: (values: BudgetFormValues) => Promise<string | null>;
 }) {
   const [values, setValues] = useState(defaultValues);

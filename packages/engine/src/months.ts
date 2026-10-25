@@ -4,7 +4,6 @@ import { divideRounded } from "./rounding";
 /** A budget month, "YYYY-MM". */
 export type BudgetMonth = string;
 
-/** Matches a budget month, "YYYY-MM". */
 export const BUDGET_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 
 export const zBudgetMonth = z
@@ -31,8 +30,7 @@ export function addMonths(month: BudgetMonth, count: number): BudgetMonth {
 
 /**
  * An account's balance at the end of each month from its first transaction's month through its
- * last's, newest first (YNAB's "Original Tracking Account History" on a loan made from a tracking
- * account lists them so). Empty without transactions.
+ * last's, newest first. Empty without transactions.
  */
 export function monthEndBalances(
   entries: ReadonlyArray<{ date: string; amount: bigint }>,
@@ -54,18 +52,15 @@ export function monthEndBalances(
   return result.reverse();
 }
 
-/** First and last calendar day of a month, YYYY-MM-DD. */
 export function monthBounds(month: BudgetMonth): { start: string; end: string } {
   const [year, m] = month.split("-").map(Number) as [number, number];
   const lastDay = new Date(Date.UTC(year, m, 0)).getUTCDate();
   return { start: `${month}-01`, end: `${month}-${String(lastDay).padStart(2, "0")}` };
 }
 
-/** The months a budget can show (YNAB, checked in its web app on 2026-10-02). */
+/** The months a budget can show. */
 export function budgetMonthRange(input: {
-  /** The user's current month. */
   current: BudgetMonth;
-  /** Month of the budget's oldest transaction, if any. */
   earliestTransaction: BudgetMonth | null;
   /** Latest month money was ever assigned in (a $0 assignment counts), if any. */
   latestAssigned: BudgetMonth | null;
@@ -99,13 +94,13 @@ export interface CategoryMonth {
   carried: bigint;
   assigned: bigint;
   activity: bigint;
-  /** The month's activity in cash accounts (YNAB's Cash Spending). */
+  /** The month's activity in cash accounts (Cash Spending). */
   cashActivity: bigint;
-  /** The month's activity in credit accounts (YNAB's Credit Spending). */
+  /** The month's activity in credit accounts (Credit Spending). */
   creditActivity: bigint;
-  /** Payment categories: money moved in this month for funded card spending (YNAB's Funded Spending). */
+  /** Payment categories: money moved in this month for funded card spending. */
   fundedSpending: bigint;
-  /** Payment categories: this month's card payments, negative (YNAB's Payments Made). */
+  /** Payment categories: this month's card payments, negative. */
   payments: bigint;
   available: bigint;
   /**
@@ -118,10 +113,10 @@ export interface CategoryMonth {
 }
 
 /**
- * How a month's overspending divides between cash and credit (YNAB, checked in its web app on
- * 2026-10-03): cash spending is funded first, so the cash shortfall is cash overspending (as much
- * of the negative Available as the cash spending accounts for) and the rest is credit. R2: Wallet
- * −$3 and Citi −$2 with $0 → $3 cash, $2 credit; with $2 → $1 cash, $2 credit; with $4 → $1 credit.
+ * How a month's overspending divides between cash and credit: cash spending is funded first, so
+ * the cash shortfall is cash overspending (as much of the negative Available as the cash spending
+ * accounts for) and the rest is credit. E.g. −$3 cash and −$2 card spending with $0 → $3 cash,
+ * $2 credit; with $2 → $1 cash, $2 credit; with $4 → $1 credit.
  */
 export function splitOverspending(
   available: bigint,
@@ -138,10 +133,9 @@ export function splitOverspending(
  * available rolls into the next month; a negative balance (overspending) doesn't, the category
  * starts the next month at zero.
  *
- * Activity is also split by how it was paid, as YNAB's inspector shows it (checked in its web app
- * on 2026-10-03): Cash Spending is the net of the month's activity in cash accounts and Credit
- * Spending the net in credit accounts, refunds included (−$4 and +$10 in cash showed as $6.00).
- * The split changes nothing else here; how credit spending moves money is phase 7b.
+ * Activity is also split by how it was paid: Cash Spending is the net of the month's activity in
+ * cash accounts and Credit Spending the net in credit accounts, refunds included (−$4 and +$10 in
+ * cash is $6.00). The split changes nothing else here.
  */
 export function categoryMonth(history: readonly MonthFigures[], month: BudgetMonth): CategoryMonth {
   const sorted = [...history].filter((h) => h.month <= month).sort(byMonth);
@@ -198,10 +192,8 @@ export function categoryMonth(history: readonly MonthFigures[], month: BudgetMon
     payments,
     available,
     // What it had before card spending: carried in, assigned and cash activity. A payment category
-    // paid below zero is cash overspending (YNAB: red, deducted from next month), and so is one a
-    // card return took below zero: returns moving money out aren't card spending (YNAB, 2026-10-14,
-    // x128 Card A: a $5 uncategorized return left the payment category at −$4, deducted from
-    // November).
+    // paid below zero is cash overspending (deducted from next month), and so is one a card return
+    // took below zero: returns moving money out aren't card spending.
     ...splitOverspending(
       available,
       available - creditActivity - (fundedSpending > 0n ? fundedSpending : 0n),
@@ -220,7 +212,7 @@ export interface MonthAmount {
 
 /**
  * What a category overspent in cash in each month: the cash part of its negative Available at the
- * end of the month (YNAB's cash overspending, which comes out of the next month's Ready to Assign).
+ * end of the month (it comes out of the next month's Ready to Assign).
  * Credit overspending is new card debt and isn't listed. Only months with activity or assignments
  * can end negative, because what a category carries in is never negative.
  */
@@ -243,10 +235,9 @@ export interface ReadyToAssign {
 }
 
 /**
- * Ready to Assign for `month`, as YNAB computes it (checked in its web app on 2026-10-02):
- * income categorized to Ready to Assign up to the month, less every month's assigned money up to
- * it, less cash overspending of the months before it. Money assigned in later months takes from
- * what's left, but never pushes the month below zero.
+ * Ready to Assign for `month`: income categorized to Ready to Assign up to the month, less every
+ * month's assigned money up to it, less cash overspending of the months before it. Money assigned
+ * in later months takes from what's left, but never pushes the month below zero.
  */
 export function readyToAssign(input: {
   month: BudgetMonth;
@@ -268,7 +259,7 @@ export function readyToAssign(input: {
   return { readyToAssign: base - taken, assignedInFuture };
 }
 
-/** The lines of YNAB's "Ready to Assign Breakdown" for a month; minus lines are negative. */
+/** The lines of the Ready to Assign breakdown for a month; minus lines are negative. */
 export interface ReadyToAssignBreakdown {
   /** "Ready to Assign left over from <last month>": last month's, before later months' assigning. */
   leftOver: bigint;
@@ -287,12 +278,9 @@ export interface ReadyToAssignBreakdown {
 }
 
 /**
- * Ready to Assign for `month` line by line, as YNAB's breakdown shows it (checked 2026-10-14 in
- * "ihni7's Plan" and "x132 Order"): October in ihni7's read left over from September −$508.06,
- * inflows +$12,085.00, Inflow from Debt Account +$89.00, cash overspending in September
- * −$2,700.00, assigned −$2,570.37, total $6,395.57. Assigned in Future only takes what keeps the
- * total at zero (x132: $3.00 assigned in November showed −$1.00), and the next month's left over is
- * the month's total before it (+$1.00). `debt` is the part of `income` from credit accounts.
+ * Ready to Assign for `month` line by line. Assigned in Future only takes what keeps the total at
+ * zero (with $1.00 left, $3.00 assigned next month shows −$1.00), and the next month's left over
+ * is the month's total before it (+$1.00). `debt` is the part of `income` from credit accounts.
  */
 export function readyToAssignBreakdown(input: {
   month: BudgetMonth;
@@ -325,13 +313,12 @@ export function readyToAssignBreakdown(input: {
 }
 
 /**
- * Whether a negative Ready to Assign is an overdraft (YNAB's "Overdraft? We can help with that!")
- * rather than money assigned beyond what there is ("You assigned more than you have" with Fix
- * This): even taking back every category's cash wouldn't bring it to zero. A category's cash is its
+ * Whether a negative Ready to Assign is an overdraft rather than money assigned beyond what there
+ * is: even taking back every category's cash wouldn't bring it to zero. A category's cash is its
  * Available with credit overspending left out (cash overspending counts against it; overspent
  * amounts are negative, so it's `available - creditOverspent`); every category counts, payment
- * and hidden ones included, but not Uncategorized. Checked in YNAB on 2026-10-11 (YNAB findings):
- * the month on screen doesn't matter, and exactly zero isn't one.
+ * and hidden ones included, but not Uncategorized. The month on screen doesn't matter, and exactly
+ * zero isn't one.
  */
 export function isOverdraft(
   readyToAssign: bigint,
@@ -343,7 +330,7 @@ export function isOverdraft(
   return cash < 0n;
 }
 
-/** YNAB's Auto-Assign options, in its order. */
+/** Auto-Assign options, in display order. */
 export const AUTO_ASSIGN_OPTIONS = [
   "underfunded",
   "assignedLastMonth",
@@ -361,23 +348,20 @@ export type HistoryAutoAssignOption = Exclude<
   "underfunded" | "reduceOverfunding"
 >;
 
-/** How many months YNAB's averages look back (its help center: "up to the last 12 months"). */
 const AVERAGE_MONTHS = 12;
 
 /**
- * What each Auto-Assign option would set a category's Assigned to in `month`, from its history
- * (support.ynab.com "Auto-Assign", checked in YNAB's web app on 2026-10-03):
+ * What each Auto-Assign option would set a category's Assigned to in `month`, from its history:
  * - Assigned Last Month: last month's Assigned.
  * - Spent Last Month: last month's spending (outflows less refunds, never below zero).
  * - Average Assigned / Average Spent: the average over up to the last 12 months before `month`,
- *   from the first of them in which the category had money assigned or spent (YNAB showed $15 for
- *   $30 assigned in September and spending in August).
+ *   from the first of them in which the category had money assigned or spent ($30 assigned in
+ *   September and spending in August averages to $15).
  * - Reset Available: Assigned changes so Available ends at zero, both ways: money goes back to
- *   Ready to Assign, and an overspent category is covered from it (YNAB: Utilities, $25.00
- *   overspent, went to $25.00 assigned).
+ *   Ready to Assign, and an overspent category is covered from it.
  * - Reset Assigned: zero.
- * Averages are rounded to the minor unit, halves away from zero (YNAB, checked 2026-10-11:
- * $0.05 over two months is $0.03, −$0.05 is −$0.03, $0.07 over three is $0.02).
+ * Averages are rounded to the minor unit, halves away from zero ($0.05 over two months is $0.03,
+ * −$0.05 is −$0.03, $0.07 over three is $0.02).
  */
 export function autoAssignAmounts(
   history: readonly MonthFigures[],

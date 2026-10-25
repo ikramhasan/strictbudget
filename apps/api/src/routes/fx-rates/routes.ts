@@ -1,5 +1,5 @@
-import { zCurrencyCode } from "@everycent/engine";
 import { createRoute, z } from "@hono/zod-openapi";
+import { zCurrencyCode } from "@strictbudget/engine";
 import { IsoDate } from "../../lib/dates";
 import { jsonError } from "../../lib/errors";
 import { zFxRate } from "../../lib/fx/rate-schema";

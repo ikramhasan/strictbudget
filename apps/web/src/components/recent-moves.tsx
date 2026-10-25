@@ -1,10 +1,10 @@
-import type { BudgetMonth } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { Spinner } from "@everycent/ui/components/spinner";
-import { ToggleGroup, ToggleGroupItem } from "@everycent/ui/components/toggle-group";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@everycent/ui/components/tooltip";
+import type { BudgetMonth } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { Spinner } from "@strictbudget/ui/components/spinner";
+import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@strictbudget/ui/components/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { format as formatDay } from "date-fns";
 import {
@@ -40,10 +40,8 @@ type Filter = "all" | "moved" | "assigned";
 export type OpenCategory = (categoryId: string, month: BudgetMonth) => void;
 
 /**
- * YNAB's "Recent Moves": every change to assigned money of the last 34 days, newest first, by day.
- * "Assigned" lists money assigned and removed (Auto-Assign included); "Moved" money moved between
- * categories and what deleting a category moved (with a trash icon). A deleted category keeps its
- * name. Clicking a category opens it in that month.
+ * Every change to assigned money of the last 34 days, newest first, by day. "Moved" includes what
+ * deleting a category moved. A deleted category keeps its name.
  */
 export function RecentMoves({
   budgetId,
@@ -144,7 +142,7 @@ export function RecentMoves({
 const isMovedEntry = (e: MoveEntry) =>
   e.type === "move" && (e.move.kind === "moved" || e.move.deletion);
 
-/** The moves grouped by day, each worded as YNAB's ("ihni7 assigned $30.00 to x-142 C"). */
+/** The moves grouped by day ("Pat assigned $30.00 to Rent"). */
 export function RecentMovesList({
   moves,
   filter,
@@ -181,7 +179,7 @@ export function RecentMovesList({
     return <p className="text-center text-muted-foreground text-sm">No moves yet.</p>;
   }
 
-  /** A category with its month, as YNAB's pill; a live category opens it in that month. */
+  /** A category with its month; a live category opens it in that month. */
   const pill = (id: string | null, deleted: string | null, month: BudgetMonth) => {
     const body = (
       <>
@@ -263,7 +261,7 @@ function EntryCard({
           <strong className="tabular-nums">{format(entry.total.toString())}</strong>
         </span>
         {entry.moves.length === 1 && only ? (
-          // One category: YNAB names it, with no method or details.
+          // One category: named, with no method or details.
           line(
             direction,
             direction === "to"

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_VIEW, rangeDates } from "./register-view";
 
 describe("register view", () => {
-  it("turns YNAB's date presets into whole months", () => {
+  it("turns the date presets into whole months", () => {
     const at = (range: (typeof DEFAULT_VIEW)["range"]) =>
       rangeDates({ ...DEFAULT_VIEW, range }, "2026-03-15");
     expect(at("all")).toEqual({});
@@ -17,14 +17,13 @@ describe("register view", () => {
     });
   });
 
-  it("hides reconciled transactions and the running balance by default, as YNAB does", () => {
+  it("hides reconciled transactions and the running balance by default", () => {
     expect(DEFAULT_VIEW).toEqual({
       range: "all",
       showReconciled: false,
       showRunningBalance: false,
       showFlags: true,
       showAttachments: true,
-      // An everycent extra (EVERYCENT-89), off like YNAB, which has none.
       showEnteredBy: false,
       scheduledCollapsed: false,
       sort: [{ column: "date", dir: "desc" }],

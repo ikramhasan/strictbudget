@@ -1,6 +1,6 @@
-import { addMonths } from "@everycent/engine";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { cn } from "@everycent/ui/lib/utils";
+import { addMonths } from "@strictbudget/engine";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { CircleCheck, CircleMinus, CirclePlus, Info, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import { type BudgetMonthData, monthName } from "@/lib/months";
@@ -9,9 +9,8 @@ import { TargetPie } from "./move-money";
 type Breakdown = BudgetMonthData["readyToAssignBreakdown"];
 
 /**
- * The lines of YNAB's "Ready to Assign Breakdown" for `month`, in its order: what adds to Ready to
- * Assign, then what takes from it. Lines at zero are left out (YNAB, 2026-10-14: November with no
- * inflows listed only the left over and the overspending).
+ * The breakdown's lines for `month`: what adds to Ready to Assign, then what takes from it. Lines at
+ * zero are left out.
  */
 export function breakdownSections(b: Breakdown, month: string) {
   const last = monthName(addMonths(month, -1));
@@ -35,14 +34,10 @@ export function breakdownSections(b: Breakdown, month: string) {
 const sum = (lines: { amount: string }[]) =>
   lines.reduce((total, l) => total + BigInt(l.amount), 0n).toString();
 
-/** YNAB writes positive breakdown amounts with a plus sign. */
+/** Positive breakdown amounts get a plus sign. */
 const signed = (format: (minorUnits: string) => string, amount: string) =>
   `${BigInt(amount) > 0n ? "+" : ""}${format(amount)}`;
 
-/**
- * YNAB's "Ready to Assign Breakdown", opened from the banner's amount (seen 2026-10-14). The help
- * links ("how to fix this", "YNAB Checkup") wait for everycent's help content (EVERYCENT-117).
- */
 function BreakdownContent({
   breakdown,
   month,
@@ -114,8 +109,7 @@ function BreakdownContent({
 }
 
 /**
- * YNAB's Ready to Assign banner: green with money to assign, grey once it's all assigned, red when
- * it's negative: "You assigned more than you have" (with Fix This) while categories could cover it,
+ * Red when negative: "You assigned more than you have" while categories could cover it,
  * "Overdraft? We can help with that!" once even their cash couldn't (the API's `overdraft`).
  */
 export function ReadyToAssignBanner({
@@ -129,9 +123,9 @@ export function ReadyToAssignBanner({
   amount: string;
   overdraft: boolean;
   format: (minorUnits: string) => string;
-  /** A button for money assigned beyond what there is (YNAB's "Fix This"). */
+  /** A button for money assigned beyond what there is (Fix This). */
   action?: ReactNode;
-  /** YNAB's Assign button, while there's money to assign. */
+  /** The Assign button, while there's money to assign. */
   assign?: ReactNode;
   /** The month's breakdown, opened by clicking the amount. */
   breakdown?: { lines: Breakdown; month: string };
@@ -182,10 +176,9 @@ export function ReadyToAssignBanner({
 }
 
 /**
- * YNAB's "Assigned in Future Months" panel: what later months already hold, by month. YNAB shows
- * it in the current month and lists the next month even when nothing is assigned there. When a
+ * Shown in the current month; lists the next month even when nothing is assigned there. When a
  * later month is over-assigned the heading gets a warning sign and a red line names the first such
- * month (YNAB, 2026-10-12, "C5 First FS": "Ready to Assign in November is −$50.00").
+ * month.
  */
 export function FutureMonthsPanel({
   data,
@@ -230,9 +223,8 @@ export function FutureMonthsPanel({
 }
 
 /**
- * How much of a later month's targets is funded, by the month in Assigned in Future Months: a blue
- * pie filling up, a check once they're all funded; no icon for a month without targets (YNAB,
- * 2026-10-14, "x132 Order": Groceries' $5.00 target with $3.00 in November, then $5.00).
+ * How much of a later month's targets is funded: a blue pie filling up, a check once they're all
+ * funded; no icon for a month without targets.
  */
 export function FutureTargetIcon({ targets }: { targets: { needed: string; funded: string } }) {
   const needed = BigInt(targets.needed);

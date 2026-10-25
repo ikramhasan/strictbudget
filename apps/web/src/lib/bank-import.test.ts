@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { storeOrderLink } from "./bank-import";
 
-describe("Bank Import Details store links (EVERYCENT-155)", () => {
-  it("links the stores YNAB links, ignoring case and punctuation", () => {
+describe("Bank Import Details store links", () => {
+  it("links the known stores, ignoring case and punctuation", () => {
     expect(storeOrderLink("AMAZON MKTPL*X1 Amzn.com/bill", -1100n, "USD")).toEqual({
       label: "Amazon.com Order History",
       url: "https://www.amazon.com/cpe/yourpayments/transactions#:~:text=11.00",

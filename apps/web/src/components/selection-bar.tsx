@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,15 +8,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Button } from "@everycent/ui/components/button";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
+} from "@strictbudget/ui/components/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,17 +27,17 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@everycent/ui/components/dropdown-menu";
-import { Input } from "@everycent/ui/components/input";
-import { Kbd } from "@everycent/ui/components/kbd";
-import { Label } from "@everycent/ui/components/label";
+} from "@strictbudget/ui/components/dropdown-menu";
+import { Input } from "@strictbudget/ui/components/input";
+import { Kbd } from "@strictbudget/ui/components/kbd";
+import { Label } from "@strictbudget/ui/components/label";
 import {
   Popover,
   PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
-} from "@everycent/ui/components/popover";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/popover";
+import { cn } from "@strictbudget/ui/lib/utils";
 import {
   ArrowRightLeft,
   Bookmark,
@@ -86,12 +86,9 @@ const FLAG_ITEM =
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /**
- * Shown while transactions are selected, like YNAB's action bar: how many and their total, then
- * Categorize, Flag, Clear and More, each offered only when it applies to the selection. With
- * unapproved rows selected it's Approve, Reject, Categorize and More, Flag and the cleared
- * states moving into More (YNAB, 2026-10-16).
- * Scheduled rows count too: Enter Now shows when only scheduled rows are selected, and Make
- * Repeating when one plain transaction is (both as YNAB offers them).
+ * Each action is offered only when it applies to the selection. With unapproved rows selected,
+ * Flag and the cleared states move into More. Enter Now shows when only scheduled rows are
+ * selected, and Make Repeating when one plain transaction is.
  */
 export function SelectionBar({
   summary,
@@ -113,7 +110,7 @@ export function SelectionBar({
   onExport,
   onCategorizeKey,
 }: {
-  /** The selected transactions' summary; undefined while it loads. */
+  /** Undefined while it loads. */
   summary: Summary | undefined;
   total: string | null;
   allMatching: boolean;
@@ -127,19 +124,17 @@ export function SelectionBar({
   moveTargets: readonly { id: string; name: string }[];
   pending: boolean;
   onAction: (action: BulkAction) => void;
-  /** Selected scheduled rows. */
   scheduledCount?: number;
   /** The selected scheduled splits (see `scheduledSplits`), counted in the un-split warning. */
   scheduledSplits?: { splits: number; splitsWithTransfers: number };
   /** Set when exactly one plain transaction is selected. */
   onMakeRepeating?: () => void;
-  /** Set when the selection is one imported and one entered transaction (YNAB's Match). */
+  /** Set when the selection is one imported and one entered transaction. */
   onMatch?: () => void;
-  /** Set when every selected transaction is matched (YNAB's Unmatch). */
+  /** Set when every selected transaction is matched. */
   onUnmatch?: () => void;
-  /** YNAB's "Export # Transactions": downloads the selected transactions. */
   onExport?: () => void;
-  /** K with one transaction selected opens its category list instead of the menu (YNAB). */
+  /** K with one transaction selected opens its category list instead of the menu. */
   onCategorizeKey?: () => void;
 }) {
   const [flagOpen, setFlagOpen] = useState(false);
@@ -158,9 +153,8 @@ export function SelectionBar({
   const count = summary ? summary.count + scheduledCount : null;
   const s = summary;
   const onlyScheduled = s?.count === 0 && scheduledCount > 0;
-  // YNAB's Clear shows when every selected row is uncleared (checked 2026-10-11); otherwise the
-  // states that apply ("Mark as Cleared", "Mark as Uncleared") are in More. Scheduled rows have
-  // no cleared state.
+  // Clear shows when every selected row is uncleared; otherwise the states that apply are in
+  // More. Scheduled rows have no cleared state.
   const reviewing = (s?.unapproved ?? 0) > 0;
   const toggle =
     s && s.count > 0 && scheduledCount === 0 && s.uncleared === s.count && !reviewing
@@ -168,9 +162,8 @@ export function SelectionBar({
       : null;
   const markCleared = !toggle && s ? s.uncleared > 0 : false;
   const markUncleared = !toggle && s ? s.cleared > 0 : false;
-  // Splits without a transfer line get un-split; YNAB asks first. Its warning counts every
-  // selected split, scheduled ones too, and mentions transfers when any has a transfer line
-  // (checked 2026-10-15, EVERYCENT-136).
+  // Splits without a transfer line get un-split, after a warning. It counts every selected split,
+  // scheduled ones too, and mentions transfers when any has a transfer line.
   const splits = (s?.splits ?? 0) + scheduledSplits.splits;
   const splitsWithTransfers = (s?.splitsWithTransfers ?? 0) + scheduledSplits.splitsWithTransfers;
   const unsplits = splits - splitsWithTransfers;
@@ -184,7 +177,6 @@ export function SelectionBar({
   const unsplitName = categories.find((c) => c.id === unsplitFor);
   const unsplitLabel = unsplitName ? categoryLabel(unsplitName) : "";
 
-  // YNAB's keys for the selection (seen 2026-10-18), each where its button or menu item is.
   const ready = !pending && s !== undefined;
   const canCategorize = s !== undefined && (s.categorizable > 0 || scheduledCount > 0);
   const transactions = s !== undefined && s.count > 0 && scheduledCount === 0;
@@ -211,7 +203,7 @@ export function SelectionBar({
   useShortcut("match", () => onMatch?.(), { enabled: ready && !!onMatch });
   useShortcut("unmatch", () => onUnmatch?.(), { enabled: ready && !!onUnmatch });
 
-  /** Shift+F's menu takes YNAB's digits: 1–6 a colour in order, 0 no flag. */
+  /** Shift+F's menu takes digits: 1–6 a colour in order, 0 no flag. */
   function flagByDigit(e: React.KeyboardEvent) {
     if (!/^[0-6]$/.test(e.key)) return;
     const flag = e.key === "0" ? null : flags[Number(e.key) - 1]?.color;
@@ -224,7 +216,7 @@ export function SelectionBar({
   return (
     <section
       aria-label="Selected transactions"
-      // Floats at the bottom like YNAB's, so the rows don't jump when it appears.
+      // Floats at the bottom, so the rows don't jump when it appears.
       className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 md:bottom-6 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center gap-2 rounded-lg border bg-popover px-3 py-2 text-sm shadow-lg duration-200 ease-out-quint animate-in fade-in-0 slide-in-from-bottom-2 motion-reduce:slide-in-from-bottom-0"
     >
       {/* The count is read out as it changes; the X beside it clears the selection. */}
@@ -283,9 +275,8 @@ export function SelectionBar({
           </>
         )}
         {s && (s.categorizable > 0 || scheduledCount > 0) && (
-          // YNAB's Categorize is a menu of category groups, each opening its categories (checked
-          // 2026-10-15, EVERYCENT-134): Inflow → Ready to Assign first, then the visible groups
-          // in plan order, without payment or hidden categories, and no search box.
+          // Inflow → Ready to Assign first, then the visible groups in plan order, without payment
+          // or hidden categories.
           <DropdownMenu open={categorizeOpen} onOpenChange={setCategorizeOpen}>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="ghost" size="sm" disabled={pending}>
@@ -308,10 +299,7 @@ export function SelectionBar({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        {/*
-         * The Flag menu. With unapproved rows selected YNAB moves Flag into More; Shift+F still
-         * opens this menu, anchored to More then.
-         */}
+        {/* With unapproved rows selected Flag is in More; Shift+F still opens this menu, anchored to More. */}
         <Popover open={flagOpen} onOpenChange={setFlagOpen}>
           {!reviewing && (
             <PopoverTrigger asChild>
@@ -376,13 +364,11 @@ export function SelectionBar({
           </Button>
         )}
         {onMatch && (
-          // YNAB (2026-10-17, EVERYCENT-68): "… · Categorize · Match · More".
           <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={onMatch}>
             <Link2 /> Match
           </Button>
         )}
         {onUnmatch && (
-          // YNAB: "1 Transaction · Categorize · Flag · Unmatch · More".
           <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={onUnmatch}>
             <Unlink /> Unmatch
           </Button>
@@ -429,7 +415,7 @@ export function SelectionBar({
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
             )}
-            {/* YNAB lists Match and Unmatch here too, greyed when they don't apply (2026-10-18). */}
+            {/* Match and Unmatch are listed here too, greyed when they don't apply. */}
             <DropdownMenuItem disabled={!onMatch} onSelect={() => onMatch?.()}>
               <Link2 /> Match
               <DropdownMenuShortcut>M</DropdownMenuShortcut>
@@ -573,7 +559,7 @@ export function groupOptions(options: readonly CategoryOption[]) {
   return groups;
 }
 
-/** YNAB's "Edit Memo (N Transactions)": the memo replaces each selected transaction's. */
+/** The memo replaces each selected transaction's. */
 function MemoDialog({
   open,
   count,

@@ -1,10 +1,11 @@
+import { z } from "@hono/zod-openapi";
 import {
   CLEARED_STATES,
   FLAG_COLORS,
   INTERNAL_CATEGORY_KINDS,
   INTERNAL_PAYEE_KINDS,
   PACE_SETTINGS,
-} from "@everycent/db/schema";
+} from "@strictbudget/db/schema";
 import {
   ACCOUNT_TYPES,
   AUTO_ASSIGN_OPTIONS,
@@ -21,21 +22,20 @@ import {
   TARGET_REPEAT_UNITS,
   zCurrencyCode,
   zMinorUnits,
-} from "@everycent/engine";
-import { z } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 
 /**
- * everycent's own backup file (EVERYCENT-71): one budget, every table that belongs to it, as JSON.
- * The layout is versioned and independent of the database's: a later everycent reads every
+ * strictbudget's own backup file: one budget, every table that belongs to it, as JSON.
+ * The layout is versioned and independent of the database's: a later strictbudget reads every
  * version it ever wrote. Ids are only references inside the file; an import gives every row a new
  * id. Money is an integer string of minor units next to its currency, never a number.
  *
  * Not in a backup: the budget's members and invitations (people belong to an instance), its change
  * history, the shared market FX rate cache (the budget's own rate overrides are in), transaction
- * attachments (files in object storage, not JSON; EVERYCENT-31), and AI conversations (private to
+ * attachments (files in object storage, not JSON), and AI conversations (private to
  * whoever had them).
  */
-export const BACKUP_FORMAT = "everycent-backup";
+export const BACKUP_FORMAT = "strictbudget-backup";
 export const BACKUP_VERSION = 1;
 
 const Id = z.string().min(1).max(200);
@@ -106,7 +106,7 @@ const AccountSchema = z.object({
   pairedCategoryId: Ref,
   paidOffBannerDismissed: z.boolean(),
   migratedToAccountId: Ref,
-  /** File import's remembered settings (EVERYCENT-66/67), as stored. */
+  /** File import's remembered settings, as stored. */
   csvImportSettings: ImportSettings,
   statementImportSettings: ImportSettings,
 });
@@ -140,7 +140,7 @@ const PayeeSchema = z.object({
   categorization: z.enum(PAYEE_CATEGORIZATIONS),
   defaultCategoryId: Ref,
   carriedCategoryId: Ref,
-  /** The stored auto-categorization default (EVERYCENT-182). */
+  /** The stored auto-categorization default. */
   autoCategoryId: Ref.optional(),
   autoCategorySaved: z.boolean().optional(),
 });
@@ -213,7 +213,7 @@ const TransactionSchema = z.object({
   approved: z.boolean(),
   transferTransactionId: Ref,
   transferSubTransactionId: Ref,
-  /** File import (EVERYCENT-66/68): its import id, the payee as the file named it, a match. */
+  /** File import: its import id, the payee as the file named it, a match. */
   importId: z.string().max(300).nullish(),
   importedPayee: Text.nullish(),
   matchedImport: z.looseObject({}).nullish(),

@@ -1,4 +1,4 @@
-import { formatAmount, money } from "@everycent/engine";
+import { formatAmount, money } from "@strictbudget/engine";
 import { describe, expect, it } from "vitest";
 import {
   chargeNote,
@@ -37,7 +37,7 @@ const month = (patch: Partial<LoanMonthData>): LoanMonthData => ({
   ...patch,
 });
 
-describe("loan page wording (YNAB, 2026-10-13)", () => {
+describe("loan page wording", () => {
   it("notes estimated, partly covered, edited and reconciled charges", () => {
     expect(chargeNote("interest", charge({ total: "42708", applied: "42708" }), usd)).toBe(
       "Estimated",
@@ -74,7 +74,7 @@ describe("loan page wording (YNAB, 2026-10-13)", () => {
     ).toBe("covered");
   });
 
-  it("joins dates and names as YNAB does", () => {
+  it("joins dates and names", () => {
     expect(joinAnd(["F Card", "L7 Chk"])).toBe("F Card and L7 Chk");
     expect(joinAnd(["a", "b", "c"])).toBe("a, b and c");
     expect(

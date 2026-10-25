@@ -29,7 +29,7 @@ export default defineConfig({
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
-  // Source maps for reading minified stacks from error reports (EVERYCENT-106), without the
+  // Source maps for reading minified stacks from error reports, without the
   // `sourceMappingURL` comment that would make browsers fetch them.
   build: { sourcemap: "hidden" },
   server: {

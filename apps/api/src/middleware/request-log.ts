@@ -4,7 +4,7 @@ import { log } from "../lib/log";
 import type { AppEnv } from "../types";
 
 /**
- * One structured line per request (EVERYCENT-106): method, the matched route pattern (not the
+ * One structured line per request: method, the matched route pattern (not the
  * raw path, which carries ids), status, latency, request id, and the budget it touched. Nothing
  * from the body or query: no amounts, names or emails.
  */

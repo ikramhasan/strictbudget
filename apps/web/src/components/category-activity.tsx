@@ -1,8 +1,8 @@
-import { money } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { cn } from "@everycent/ui/lib/utils";
+import { money } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { $api } from "@/lib/api";
@@ -17,11 +17,10 @@ export interface CardSummary {
   paymentsMade: string;
 }
 
-/** Which Activity to list: a category's, a group's or Uncategorized's. */
 export type ActivityTarget = { categoryId: string } | { groupId: string } | { uncategorized: true };
 
 /**
- * An Activity amount that opens YNAB's Activity popover: the month's transactions behind it.
+ * An Activity amount that opens the Activity popover: the month's transactions behind it.
  * Clicking one opens its account's register on that transaction.
  */
 export function ActivityButton({
@@ -46,7 +45,7 @@ export function ActivityButton({
   card?: CardSummary;
 }) {
   const [open, setOpen] = useState(false);
-  // YNAB disables the button when there's no activity.
+  // No button when there's no activity.
   if (amount === "0") return <span className={className}>{format(amount)}</span>;
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -153,7 +152,7 @@ function ActivityList({
             <thead className="text-muted-foreground text-xs uppercase tracking-wide">
               <tr>
                 {/* A card's window lists its own transactions, so it shows their categories
-                    instead of the account (YNAB's Card T5 and Visa windows, 2026-10-11). */}
+                    instead of the account. */}
                 {!card && <th className="px-4 py-2 text-left font-medium">Account</th>}
                 <th className={cn("py-2 text-left font-medium", card ? "px-4" : "px-2")}>Date</th>
                 <th className="px-2 py-2 text-left font-medium">Payee</th>
@@ -221,7 +220,7 @@ function ActivityList({
 }
 
 /**
- * The numbers of YNAB's card Activity window. Spending is the card's outflows; Returns its
+ * The numbers of a card's Activity window. Spending is the card's outflows; Returns its
  * inflows other than payments (returns and statement credits). Funded Spending is what moved into
  * the payment category; returns that moved money back out are listed with Payments & Returns, so
  * a month whose returns outweigh its funded spending shows them there instead.
@@ -236,9 +235,9 @@ export function cardActivity(card: CardSummary) {
 }
 
 /**
- * YNAB's card Activity window header (support.ynab.com "Credit Card Activity"): Total Spending
- * (the card's outflows and inflows other than payments) beside Total Activity (Funded Spending
- * and Payments & Returns, what moved in and out of the payment category).
+ * A card's Activity window header: Total Spending (the card's outflows and inflows other than
+ * payments) beside Total Activity (Funded Spending and Payments & Returns, what moved in and out
+ * of the payment category).
  */
 function CardActivitySummary({
   card,

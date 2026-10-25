@@ -1,8 +1,8 @@
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
 import * as React from "react";
 
-// everycent: `viewportRef`/`viewportClassName`/`viewportProps` expose the scrolling element (for
+// strictbudget: `viewportRef`/`viewportClassName`/`viewportProps` expose the scrolling element (for
 // virtualized rows, a sticky header, the router's scroll reset), and `scrollbars` adds the
 // horizontal bar for wide content.
 function ScrollArea({
@@ -57,7 +57,7 @@ function ScrollBar({
       className={cn(
         // A 6px thumb centered in a 10px track; it widens to 8px while hovered
         // or dragged. The 2px end gap keeps its round ends inside a rounded-lg
-        // corner. everycent: Radix marks the axis with data-orientation="…", not the bare
+        // corner. strictbudget: Radix marks the axis with data-orientation="…", not the bare
         // data-horizontal / data-vertical attributes.
         "group/scrollbar flex touch-none p-0.5 transition-[padding] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] select-none data-[orientation=horizontal]:h-2.5 data-[orientation=horizontal]:flex-col data-[orientation=vertical]:h-full data-[orientation=vertical]:w-2.5 data-[orientation=horizontal]:hover:py-px data-[orientation=horizontal]:has-active:py-px data-[orientation=vertical]:hover:px-px data-[orientation=vertical]:has-active:px-px motion-reduce:transition-none",
         className,

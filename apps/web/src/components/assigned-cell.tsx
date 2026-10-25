@@ -1,6 +1,6 @@
-import { Input } from "@everycent/ui/components/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { cn } from "@everycent/ui/lib/utils";
+import { Input } from "@strictbudget/ui/components/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Calculator, Divide, Minus, Plus, X } from "lucide-react";
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -15,15 +15,13 @@ const OPERATORS = [
 export interface AssignActions {
   /** Reads typed text (math allowed, e.g. "200+50") into minor units, or explains why not. */
   parse: (text: string) => bigint | string;
-  /** Minor units as an input value, without the currency symbol. */
   toInput: (amount: string) => string;
-  /** Saves the new Assigned amount. */
   assign: (categoryId: string, amount: bigint) => Promise<void>;
 }
 
 /**
- * A category's Assigned amount, edited in place as in YNAB: click to type a new amount (math
- * works), Enter or clicking away saves, Esc cancels.
+ * A category's Assigned amount, edited in place: click to type a new amount (math works), Enter
+ * or clicking away saves, Esc cancels.
  */
 export function AssignedCell({
   categoryId,
@@ -41,7 +39,7 @@ export function AssignedCell({
   format: (minorUnits: string) => string;
   actions: AssignActions;
   className?: string;
-  /** Opens in edit mode (once), as YNAB's "Copy and go to my plan" leaves it. */
+  /** Opens in edit mode (once), as "Copy and go to my plan" leaves it. */
   startEditing?: boolean;
   /** Told when `startEditing` has been used, so a later remount doesn't open it again. */
   onStartedEditing?: () => void;
@@ -77,7 +75,7 @@ export function AssignedCell({
     if (parsed !== BigInt(amount)) await actions.assign(categoryId, parsed);
   }
 
-  /** YNAB's calculator: an operator goes on the end of the amount, the cursor after it. */
+  /** The calculator: an operator goes on the end of the amount, the cursor after it. */
   function addOperator(operator: string) {
     setText((t) => t + operator);
     setCalculator(false);

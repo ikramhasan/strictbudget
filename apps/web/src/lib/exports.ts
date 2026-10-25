@@ -1,11 +1,11 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import {
   exportDateStamp,
   exportSeparator,
   type NumberFormat,
   planExportNames,
   selectedExportName,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { zipSync } from "fflate";
 import { apiClient } from "./api";
 import { todayIso } from "./dates";
@@ -25,10 +25,7 @@ async function bytes(response: Response): Promise<Uint8Array<ArrayBuffer>> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-/**
- * YNAB's Export Plan (EVERYCENT-70): the plan file and the register file, zipped, named "as of"
- * the local time.
- */
+/** Export Plan: the plan file and the register file, zipped, named "as of" the local time. */
 export async function exportPlan(budget: ExportBudget, now = new Date()) {
   const path = { budgetId: budget.id };
   const [plan, register] = await Promise.all([
@@ -53,7 +50,6 @@ export async function exportPlan(budget: ExportBudget, now = new Date()) {
   saveBlob(new Blob([zip], { type: "application/zip" }), names.zip);
 }
 
-/** everycent's backup of the whole budget (EVERYCENT-71), named by the server. */
 export async function downloadBackup(budget: { id: string; name: string }) {
   const { response } = await apiClient.GET("/v1/budgets/{budgetId}/backup", {
     params: { path: { budgetId: budget.id } },
@@ -61,11 +57,10 @@ export async function downloadBackup(budget: { id: string; name: string }) {
   });
   const disposition = response.headers.get("content-disposition") ?? "";
   const encoded = /filename\*=UTF-8''([^;]+)/.exec(disposition)?.[1];
-  const name = encoded ? decodeURIComponent(encoded) : `${budget.name}.everycent.json`;
+  const name = encoded ? decodeURIComponent(encoded) : `${budget.name}.strictbudget.json`;
   saveBlob(new Blob([await bytes(response)], { type: "application/json" }), name);
 }
 
-/** YNAB's "Export # Transactions": the selected transactions as one file. */
 export async function exportSelected(budget: ExportBudget, selection: Selection, now = new Date()) {
   const { response } = await apiClient.POST("/v1/budgets/{budgetId}/export/transactions", {
     params: { path: { budgetId: budget.id } },

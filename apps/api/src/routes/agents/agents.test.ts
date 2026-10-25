@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { newId } from "@everycent/db";
-import { auditEvent, connectedAgent, oauthResource } from "@everycent/db/schema";
+import { newId } from "@strictbudget/db";
+import { auditEvent, connectedAgent, oauthResource } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
@@ -84,7 +84,7 @@ async function registerClient() {
 
 async function connectMcpClient(
   cookie: string,
-  scope = "everycent:read everycent:write",
+  scope = "strictbudget:read strictbudget:write",
   existingClientId?: string,
 ) {
   const clientId = existingClientId ?? (await registerClient());
@@ -100,11 +100,9 @@ async function connectMcpClient(
     code_challenge_method: "S256",
     resource: MCP_URL,
   });
-  // Signed out, the person is sent to the web app's sign-in step first.
   const signedOut = await app.request(`/api/auth/oauth2/authorize?${authorize}`);
   expect(signedOut.status).toBe(302);
   expect(signedOut.headers.get("location")).toMatch(`${env.WEB_ORIGIN}/oauth/authorize?`);
-  // Signed in, to the consent page.
   const authorized = await app.request(`/api/auth/oauth2/authorize?${authorize}`, {
     headers: { cookie },
   });
@@ -242,7 +240,6 @@ describe("MCP server", () => {
     expect(txn.enteredBy?.userId).toBe((await getMe(owner.cookie)).id);
     expect(txn.enteredBy?.agent).toMatchObject({ name: "Test Agent", kind: "mcp" });
 
-    // An attachment, base64 through the tool.
     const attached = await callTool(accessToken, "uploadAttachment", {
       budgetId: budget.id,
       transactionId: txn.id,
@@ -270,7 +267,6 @@ describe("MCP server", () => {
     expect(edited.enteredBy?.agent?.name).toBe("Test Agent");
     expect(edited.changedBy?.agent).toBeNull();
 
-    // The change log says who: the person, through the agent.
     const events = await db.select().from(auditEvent).where(eq(auditEvent.rowId, txn.id));
     const insert = one(events.find((e) => e.op === "insert"));
     expect(insert.actorUserId).toBeTruthy();
@@ -296,11 +292,9 @@ describe("MCP server", () => {
     expect((await callTool(accessToken, "deleteBudget", { budgetId: madeId })).isError).toBeFalsy();
     expect((await send("GET", `/v1/budgets/${madeId}`, owner.cookie)).status).toBe(404);
 
-    // A missing path parameter is refused before anything runs.
     const blank = await callTool(accessToken, "listAccounts", { budgetId: "" });
     expect(toolJson<{ error: { code: string } }>(blank).error.code).toBe("INVALID_ARGUMENTS");
 
-    // Errors come back as the API's own, as tool errors.
     const missing = await callTool(accessToken, "getBudget", { budgetId: "nope" });
     expect(missing.isError).toBe(true);
     expect(toolJson<{ error: { code: string } }>(missing).error.code).toBeTruthy();
@@ -308,7 +302,7 @@ describe("MCP server", () => {
 
   it("gives read-only access only the operations that change nothing", async () => {
     const { owner, budget, account } = await setup();
-    const { accessToken } = await connectMcpClient(owner.cookie, "everycent:read");
+    const { accessToken } = await connectMcpClient(owner.cookie, "strictbudget:read");
     const tools = await rpc<{ result: { tools: { name: string }[] } }>(
       await mcp(accessToken, "tools/list"),
     );
@@ -335,7 +329,6 @@ describe("MCP server", () => {
       "describeOperation",
       "callOperation",
     ]);
-    // The default endpoint still lists one tool per operation.
     const full = await rpc<{ result: { tools: unknown[] } }>(await mcp(accessToken, "tools/list"));
     expect(full.result.tools.length).toBeGreaterThan(50);
 
@@ -384,7 +377,7 @@ describe("MCP server", () => {
 
   it("keeps read-only access read-only in compact mode", async () => {
     const { owner, budget, account } = await setup();
-    const { accessToken } = await connectMcpClient(owner.cookie, "everycent:read");
+    const { accessToken } = await connectMcpClient(owner.cookie, "strictbudget:read");
     const compact = "?tools=compact";
     const found = toolJson<{ operations: { name: string }[] }>(
       await callTool(
@@ -431,13 +424,11 @@ describe("MCP server", () => {
 
     const id = one(listed.agents[0]).id;
     expect((await send("DELETE", `/v1/me/agents/${id}`, owner.cookie)).status).toBe(204);
-    // The access token it still holds is refused from now on.
     expect((await mcp(accessToken, "tools/list")).status).toBe(401);
     expect(
       (await json<{ agents: unknown[] }>(await send("GET", "/v1/me/agents", owner.cookie))).agents,
     ).toEqual([]);
 
-    // Connecting again works (a new consent).
     const again = await connectMcpClient(owner.cookie, undefined, clientId);
     expect((await mcp(again.accessToken, "tools/list")).status).toBe(200);
     const [row] = await db.select().from(connectedAgent);
@@ -506,7 +497,6 @@ describe("Agent Auth", () => {
     }>(registered);
     expect(reg.approval.verification_uri_complete).toContain(`${env.WEB_ORIGIN}/agents/approve?`);
 
-    // The approval page shows what it asks for, given the code.
     const wrong = await send(
       "GET",
       `/v1/me/agent-approvals/${reg.agent_id}?code=AAAA-AAAA`,
@@ -565,12 +555,10 @@ describe("Agent Auth", () => {
     const txn = (await json<{ data: Txn }>(created)).data;
     expect(txn.enteredBy?.agent).toMatchObject({ name: "Budget Bot", kind: "agent_auth" });
 
-    // Not granted: refused by the plugin.
     expect((await execute("deleteBudget", { budgetId: budget.id })).status).toBeGreaterThanOrEqual(
       400,
     );
 
-    // Disconnecting revokes the agent.
     const agents = await json<{ agents: { id: string; kind: string; permissions: string[] }[] }>(
       await send("GET", "/v1/me/agents", owner.cookie),
     );

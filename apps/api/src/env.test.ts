@@ -34,15 +34,15 @@ describe("parseEnv: email", () => {
   });
 
   it("is self-hosted unless told otherwise", () => {
-    expect(parseEnv(valid).EVERYCENT_DEPLOYMENT).toBe("self-hosted");
-    expect(parseEnv({ ...valid, EVERYCENT_DEPLOYMENT: "" }).EVERYCENT_DEPLOYMENT).toBe(
+    expect(parseEnv(valid).STRICTBUDGET_DEPLOYMENT).toBe("self-hosted");
+    expect(parseEnv({ ...valid, STRICTBUDGET_DEPLOYMENT: "" }).STRICTBUDGET_DEPLOYMENT).toBe(
       "self-hosted",
     );
-    expect(parseEnv({ ...valid, EVERYCENT_DEPLOYMENT: "cloud" }).EVERYCENT_DEPLOYMENT).toBe(
+    expect(parseEnv({ ...valid, STRICTBUDGET_DEPLOYMENT: "cloud" }).STRICTBUDGET_DEPLOYMENT).toBe(
       "cloud",
     );
-    expect(() => parseEnv({ ...valid, EVERYCENT_DEPLOYMENT: "hosted" })).toThrow(
-      /EVERYCENT_DEPLOYMENT/,
+    expect(() => parseEnv({ ...valid, STRICTBUDGET_DEPLOYMENT: "hosted" })).toThrow(
+      /STRICTBUDGET_DEPLOYMENT/,
     );
   });
 
@@ -51,7 +51,7 @@ describe("parseEnv: email", () => {
   });
 
   it("requires the Resend key and sender in cloud production", () => {
-    const cloud = { ...valid, NODE_ENV: "production", EVERYCENT_DEPLOYMENT: "cloud" };
+    const cloud = { ...valid, NODE_ENV: "production", STRICTBUDGET_DEPLOYMENT: "cloud" };
     expect(() => parseEnv(cloud)).toThrow(/RESEND_API_KEY[\s\S]*FROM_EMAIL/);
     expect(parseEnv({ ...cloud, RESEND_API_KEY: "re_x", FROM_EMAIL: "a.dev" }).NODE_ENV).toBe(
       "production",
@@ -70,16 +70,16 @@ describe("parseEnv: email", () => {
 describe("parseEnv: Railway PR environments", () => {
   const railway = {
     ...valid,
-    BETTER_AUTH_URL: "https://everycent.example.com",
-    WEB_ORIGIN: "https://everycent.example.com",
+    BETTER_AUTH_URL: "https://strictbudget.example.com",
+    WEB_ORIGIN: "https://strictbudget.example.com",
     RAILWAY_ENVIRONMENT_ID: "env-1",
-    RAILWAY_PUBLIC_DOMAIN: "everycent-pr-7.up.railway.app",
+    RAILWAY_PUBLIC_DOMAIN: "strictbudget-pr-7.up.railway.app",
   };
 
   it("serves a PR branch's deploy on its own Railway domain", () => {
     const env = parseEnv({ ...railway, RAILWAY_GIT_BRANCH: "feature/x" });
-    expect(env.BETTER_AUTH_URL).toBe("https://everycent-pr-7.up.railway.app");
-    expect(env.WEB_ORIGIN).toBe("https://everycent-pr-7.up.railway.app");
+    expect(env.BETTER_AUTH_URL).toBe("https://strictbudget-pr-7.up.railway.app");
+    expect(env.WEB_ORIGIN).toBe("https://strictbudget-pr-7.up.railway.app");
   });
 
   it("keeps the configured URLs for main, manual deploys and other hosts", () => {

@@ -3,7 +3,6 @@ import { type HotkeyCallback, type Options, useHotkeys } from "react-hotkeys-hoo
 import { useCommand } from "./commands";
 import { useShortcutsEnabled } from "./preferences";
 
-/** The sections of YNAB's Keyboard Shortcuts dialog, in its order (seen 2026-10-18). */
 export const SHORTCUT_SECTIONS = [
   "Universal",
   "Plan Actions",
@@ -12,7 +11,7 @@ export const SHORTCUT_SECTIONS = [
 ] as const;
 export type ShortcutSection = (typeof SHORTCUT_SECTIONS)[number];
 
-/** A key cap in the dialog: "mod" reads ⌘ on a Mac and ctrl elsewhere, as YNAB's do. */
+/** A key cap in the dialog: "mod" reads ⌘ on a Mac and ctrl elsewhere. */
 export type KeyCap = string;
 
 export interface ShortcutDef {
@@ -35,9 +34,8 @@ export interface ShortcutDef {
 }
 
 /**
- * Every shortcut YNAB's "?" dialog lists, in its order, and the keys everycent binds for each. The
- * dialog is built from this list, and the hooks below read their keys from it, so the two can't
- * drift apart.
+ * Every shortcut the "?" dialog lists, in its order, and the keys bound for each. The dialog is
+ * built from this list, and the hooks below read their keys from it, so the two can't drift apart.
  */
 export const SHORTCUTS = {
   help: {
@@ -48,7 +46,6 @@ export const SHORTCUTS = {
     useKey: true,
     command: "Keyboard shortcuts",
   },
-  // everycent's own (YNAB has no command palette): Cmd/Ctrl+K, as most apps open theirs.
   palette: {
     label: "Open command palette",
     section: "Universal",
@@ -245,12 +242,11 @@ export type BoundShortcutId = {
   [K in ShortcutId]: (typeof SHORTCUTS)[K] extends { keys: string } ? K : never;
 }[ShortcutId];
 
-/** Whether this is a Mac, where YNAB's caps read ⌘ for ctrl. */
+/** Whether this is a Mac, where caps read ⌘ for ctrl. */
 export function isMac() {
   return typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 }
 
-/** A cap as the dialog shows it. */
 export function capLabel(cap: KeyCap, mac = isMac()) {
   return cap === "mod" ? (mac ? "⌘" : "ctrl") : cap;
 }
@@ -273,8 +269,8 @@ export interface ShortcutOptions {
   /** Off while the screen has nothing for it to act on. */
   enabled?: boolean;
   /**
-   * Also fires from these fields, for the few YNAB keeps working while one is focused (Shift+Z
-   * in the Assigned input). Returns true for a focused element the shortcut may act from.
+   * Also fires from these fields, for the few shortcuts that keep working while one is focused
+   * (Shift+Z in the Assigned input). Returns true for a focused element the shortcut may act from.
    */
   allowIn?: (target: Element) => boolean;
   /** Leaves the browser's own handling alone (the default prevents it). */
@@ -285,7 +281,7 @@ export interface ShortcutOptions {
 const FROM_PALETTE: Parameters<HotkeyCallback>[1] = { hotkey: "", keys: [] };
 
 /**
- * Binds one of YNAB's shortcuts. Every shortcut honours the account's "Enable keyboard shortcuts"
+ * Binds a shortcut. Every shortcut honours the account's "Enable keyboard shortcuts"
  * setting, skips text fields, dialogs and menus, and prevents the browser's default for the key.
  * One with a `command` name is offered in the command palette too while `enabled` (whatever that
  * setting says: the palette isn't a shortcut).

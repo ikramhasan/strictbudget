@@ -1,4 +1,4 @@
-import { budget, budgetMember } from "@everycent/db/schema";
+import { budget, budgetMember } from "@strictbudget/db/schema";
 import { and, eq } from "drizzle-orm";
 import type { Context } from "hono";
 import type { AuthedEnv } from "../../middleware/require-auth";
@@ -8,7 +8,7 @@ import { createFilledBudget } from "../backup/new-budget";
 import { deleteBudgetRow } from "../delete-budget";
 import type { Conversion } from "./from-api";
 
-export interface YnabImportResult {
+export interface ExternalImportResult {
   budgetId: string;
   /** The budget an earlier import of the same source made, returned instead of a second copy. */
   reused: boolean;
@@ -17,8 +17,8 @@ export interface YnabImportResult {
 }
 
 /**
- * Imports a converted YNAB plan as a new budget owned by the caller. The same source imported
- * again (`source`: "ynab:<plan id>", or a hash of the files) finds the budget the earlier import
+ * Imports a converted plan as a new budget owned by the caller. The same source imported
+ * again (`source`: "external:<plan id>", or a hash of the files) finds the budget the earlier import
  * made instead of making another; `replace` deletes that one and imports afresh.
  */
 export async function importConverted(
@@ -26,7 +26,7 @@ export async function importConverted(
   c: Context<AppEnv & AuthedEnv, any, any>,
   conversion: Conversion,
   options: { source: string; name?: string; replace?: boolean },
-): Promise<YnabImportResult> {
+): Promise<ExternalImportResult> {
   const { db } = c.var.deps;
   const [earlier] = await db
     .select({ id: budget.id })

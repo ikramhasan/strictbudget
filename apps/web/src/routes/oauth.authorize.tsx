@@ -1,4 +1,4 @@
-import { Spinner } from "@everycent/ui/components/spinner";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AuthCard } from "@/components/auth-card";

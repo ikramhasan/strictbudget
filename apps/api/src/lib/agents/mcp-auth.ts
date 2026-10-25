@@ -1,5 +1,5 @@
-import type { Database } from "@everycent/db";
-import { oauthClient } from "@everycent/db/schema";
+import type { Database } from "@strictbudget/db";
+import { oauthClient } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { createLocalJWKSet, type JSONWebKeySet, type JWTPayload, jwtVerify } from "jose";
 import type { Env } from "../../env";
@@ -7,10 +7,10 @@ import { type AgentPrincipal, agentUser, connectAgent } from "./principal";
 
 /**
  * What an MCP client may ask for: reading the person's budgets, and changing them. Consent can
- * grant read alone; every write operation needs `everycent:write`.
+ * grant read alone; every write operation needs `strictbudget:write`.
  */
-export const MCP_READ_SCOPE = "everycent:read";
-export const MCP_WRITE_SCOPE = "everycent:write";
+export const MCP_READ_SCOPE = "strictbudget:read";
+export const MCP_WRITE_SCOPE = "strictbudget:write";
 export const MCP_SCOPES = [MCP_READ_SCOPE, MCP_WRITE_SCOPE] as const;
 
 /** The MCP endpoint's URL: the OAuth resource its access tokens are issued for. */
@@ -70,7 +70,10 @@ export class McpAuth {
     const header = request.headers.get("authorization") ?? "";
     const token = /^Bearer\s+(.+)$/i.exec(header)?.[1]?.trim();
     if (!token) {
-      return { ok: false, response: this.#challenge(401, "invalid_token", "Sign in to everycent") };
+      return {
+        ok: false,
+        response: this.#challenge(401, "invalid_token", "Sign in to strictbudget"),
+      };
     }
     let claims: JWTPayload;
     try {
@@ -89,7 +92,11 @@ export class McpAuth {
     if (!scopes.has(MCP_READ_SCOPE) && !scopes.has(MCP_WRITE_SCOPE)) {
       return {
         ok: false,
-        response: this.#challenge(403, "insufficient_scope", "Access to everycent wasn't granted"),
+        response: this.#challenge(
+          403,
+          "insufficient_scope",
+          "Access to strictbudget wasn't granted",
+        ),
       };
     }
     const user = await agentUser(this.db, claims.sub);
@@ -113,7 +120,11 @@ export class McpAuth {
     if (!agent) {
       return {
         ok: false,
-        response: this.#challenge(401, "invalid_token", "This app was disconnected from everycent"),
+        response: this.#challenge(
+          401,
+          "invalid_token",
+          "This app was disconnected from strictbudget",
+        ),
       };
     }
     return { ok: true, principal: { user, agent, canWrite: scopes.has(MCP_WRITE_SCOPE) } };

@@ -1,4 +1,4 @@
-import type { CurrencyCode } from "@everycent/engine";
+import type { CurrencyCode } from "@strictbudget/engine";
 import {
   Table,
   TableBody,
@@ -6,14 +6,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@everycent/ui/components/table";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/table";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ArrowDown, ArrowUp, Info, Star } from "lucide-react";
 import { headline, monthRows, type NetWorthReport } from "@/lib/net-worth";
 import { monthLabel } from "@/lib/reports";
 import { useAmountFormat } from "./format";
 
-/** A change with YNAB's arrow and percent ("↓ −$15,966.74 (−5.2%)"). */
+/** A change with its arrow and percent ("↓ −$15,966.74 (−5.2%)"). */
 export function Change({
   amount,
   percent,
@@ -50,10 +50,7 @@ export function Change({
   );
 }
 
-/**
- * YNAB's headline (2026-10-17): Net Worth, Assets, Debts and Change in Net Worth (the last month
- * less the first in the range), plus everycent's change this month.
- */
+/** Change in Net Worth is the last month less the first in the range. */
 export function NetWorthHeadline({
   report,
   showAmounts = true,
@@ -127,7 +124,6 @@ export function NetWorthHeadline({
   );
 }
 
-/** YNAB's table: Month, Net Worth, Monthly Change, newest first (everycent adds the high mark). */
 export function NetWorthMonthTable({
   report,
 }: {

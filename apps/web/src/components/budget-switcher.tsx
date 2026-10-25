@@ -4,8 +4,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@everycent/ui/components/dropdown-menu";
-import { SidebarMenuButton } from "@everycent/ui/components/sidebar";
+} from "@strictbudget/ui/components/dropdown-menu";
+import { SidebarMenuButton } from "@strictbudget/ui/components/sidebar";
 import { Link } from "@tanstack/react-router";
 import {
   Bookmark,
@@ -46,7 +46,7 @@ export function BudgetSwitcher({
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-semibold">{current?.name ?? "Select a budget"}</span>
               <span className="truncate text-muted-foreground text-xs">
-                {current ? current.currency : "everycent"}
+                {current ? current.currency : "strictbudget"}
               </span>
             </div>
             <ChevronsUpDown className="ml-auto size-4" aria-hidden />
@@ -85,7 +85,6 @@ export function BudgetSwitcher({
               <DropdownMenuItem onSelect={() => setEditingFlags(true)}>
                 <Bookmark /> Edit Flags
               </DropdownMenuItem>
-              {/* After Edit Flags, as in YNAB's plan menu (2026-10-18). */}
               <DropdownMenuItem onSelect={() => setDisplayOptions(true)}>
                 <Palette /> Display Options
               </DropdownMenuItem>

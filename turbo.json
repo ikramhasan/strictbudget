@@ -14,8 +14,8 @@
       "dependsOn": ["^generate"],
       "outputs": ["src/*.gen.ts"]
     },
-    "@everycent/api-client#generate": {
-      "dependsOn": ["@everycent/api#openapi:emit"],
+    "@strictbudget/api-client#generate": {
+      "dependsOn": ["@strictbudget/api#openapi:emit"],
       "inputs": ["../../apps/api/openapi.json", "package.json"],
       "outputs": ["src/schema.gen.ts"]
     },

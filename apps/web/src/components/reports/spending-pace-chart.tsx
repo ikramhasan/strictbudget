@@ -1,5 +1,5 @@
-import { type CurrencyCode, money, NUMBER_FORMAT_SPECS } from "@everycent/engine";
-import { type ChartConfig, ChartContainer } from "@everycent/ui/components/chart";
+import { type CurrencyCode, money, NUMBER_FORMAT_SPECS } from "@strictbudget/engine";
+import { type ChartConfig, ChartContainer } from "@strictbudget/ui/components/chart";
 import {
   Table,
   TableBody,
@@ -7,7 +7,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@everycent/ui/components/table";
+} from "@strictbudget/ui/components/table";
 import {
   CartesianGrid,
   ComposedChart,

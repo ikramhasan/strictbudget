@@ -1,4 +1,4 @@
-import { ACCOUNT_TYPE_LABELS, type CurrencyCode, money } from "@everycent/engine";
+import { ACCOUNT_TYPE_LABELS, type CurrencyCode, money } from "@strictbudget/engine";
 import {
   Table,
   TableBody,
@@ -6,8 +6,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@everycent/ui/components/table";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/table";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { Line, LineChart, YAxis } from "recharts";
 import { useBudget } from "@/lib/budget-context";
@@ -38,11 +38,7 @@ function Sparkline({ values, negative }: { values: number[]; negative: boolean }
   );
 }
 
-/**
- * Every account with a balance in the range (an everycent extra): its month-end balance at the
- * range's end, the change over the range and a sparkline. Amounts in the budget's currency; a
- * foreign account also shows its own.
- */
+/** Every account with a balance in the range; a foreign account also shows its own currency. */
 export function NetWorthAccountsTable({
   report,
 }: {

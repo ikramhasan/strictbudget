@@ -1,3 +1,4 @@
+import { createRoute, type RouteHandler, z } from "@hono/zod-openapi";
 import {
   addDays,
   ageOfMoneyAt,
@@ -5,8 +6,7 @@ import {
   BUDGET_MONTH_PATTERN,
   monthOf,
   outflowAges,
-} from "@everycent/engine";
-import { createRoute, type RouteHandler, z } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { ageOfMoneyFlows } from "../../lib/age-of-money";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { jsonError } from "../../lib/errors";
@@ -25,7 +25,7 @@ export const getAgeOfMoney = createRoute({
   middleware: [requireAuth] as const,
   summary: "Age of Money now, 30 days ago, and at each month's end",
   description:
-    "YNAB's Age of Money: the average age in days of the last ten outflows from cash accounts " +
+    "Age of Money: the average age in days of the last ten outflows from cash accounts " +
     "(credit card payments and transfers to loan or tracking accounts included), each outflow's " +
     "money taken oldest first. Null when there have been fewer than ten outflows.",
   request: {

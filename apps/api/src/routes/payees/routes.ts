@@ -1,10 +1,10 @@
+import { createRoute, z } from "@hono/zod-openapi";
 import {
   zCurrencyCode,
   zMinorUnits,
   zPayeeCategorization,
   zPayeeRuleOperator,
-} from "@everycent/engine";
-import { createRoute, z } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { jsonError } from "../../lib/errors";
 import { authSecurity, requireAuth } from "../../middleware/require-auth";
 
@@ -65,7 +65,7 @@ const RuleText = z
   .min(1)
   .max(200)
   .refine((t) => t.trim().length > 0, "Rule text cannot be empty")
-  .describe("Kept as typed, surrounding spaces included (YNAB does the same)");
+  .describe("Kept as typed, surrounding spaces included");
 
 const PayeeRuleSchema = z
   .object({
@@ -167,7 +167,7 @@ export const updatePayee = createRoute({
     'built-in payees can\'t be changed (`PAYEE_LOCKED`). `categorization` "always" needs a ' +
     "`defaultCategoryId` (`CATEGORY_REQUIRED`): one of the budget's categories other than " +
     'Uncategorized and credit card payment ones (`INVALID_CATEGORY`). Switching to "auto" or ' +
-    '"never" forgets the chosen category, as YNAB does.',
+    '"never" forgets the chosen category.',
   request: {
     params: PayeeParams,
     body: body(
@@ -391,7 +391,7 @@ export const createPayeeRule = createRoute({
   operationId: "createPayeeRule",
   summary: "Add a renaming rule to a payee (a transfer payee too)",
   description:
-    "Added after the payee's other rules. The same rule twice is allowed, as in YNAB. Built-in " +
+    "Added after the payee's other rules. The same rule twice is allowed. Built-in " +
     "payees like Starting Balance take no rules (`PAYEE_LOCKED`).",
   request: {
     params: PayeeParams,

@@ -1,7 +1,7 @@
-import type { components } from "@everycent/api-client";
-import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPES, type AccountType } from "@everycent/engine";
-import { Alert, AlertDescription, AlertTitle } from "@everycent/ui/components/alert";
-import { Button } from "@everycent/ui/components/button";
+import type { components } from "@strictbudget/api-client";
+import { ACCOUNT_TYPE_LABELS, ACCOUNT_TYPES, type AccountType } from "@strictbudget/engine";
+import { Alert, AlertDescription, AlertTitle } from "@strictbudget/ui/components/alert";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +9,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { Spinner } from "@everycent/ui/components/spinner";
+} from "@strictbudget/ui/components/dialog";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useId, useState } from "react";
@@ -21,9 +21,9 @@ import { apiClient } from "@/lib/api";
 import { apiErrorMessage, invalidateBudgets } from "@/lib/budgets";
 import { BudgetForm, type BudgetFormValues } from "./budget-form";
 
-type Report = components["schemas"]["YnabImportReport"];
-type Plan = components["schemas"]["YnabPlanList"]["plans"][number];
-type PreviewAccount = components["schemas"]["YnabFilesPreview"]["accounts"][number];
+type Report = components["schemas"]["ExternalImportReport"];
+type Plan = components["schemas"]["ExternalPlanList"]["plans"][number];
+type PreviewAccount = components["schemas"]["ExternalFilesPreview"]["accounts"][number];
 
 const COUNT_LABELS: Record<string, string> = {
   accounts: "accounts",
@@ -34,7 +34,6 @@ const COUNT_LABELS: Record<string, string> = {
   targets: "targets",
 };
 
-/** What an import brought over, and what it couldn't, with a way into the new budget. */
 function ImportReport({
   report,
   onOpen,
@@ -98,11 +97,8 @@ function useOpenBudget(onDone: () => void) {
   };
 }
 
-/**
- * Import a YNAB plan through YNAB's API (EVERYCENT-69): the user's personal access token, sent
- * with each request and never kept, finds their plans; the chosen one becomes a new budget.
- */
-export function YnabApiImportDialog({
+/** The personal access token is sent with each request and never kept. */
+export function ExternalApiImportDialog({
   open,
   onOpenChange,
 }: {
@@ -131,7 +127,7 @@ export function YnabApiImportDialog({
     event.preventDefault();
     setPending(true);
     setError(null);
-    const { data, error } = await apiClient.POST("/v1/budgets/import/ynab/plans", {
+    const { data, error } = await apiClient.POST("/v1/budgets/import/external/plans", {
       body: { token: token.trim() },
     });
     setPending(false);
@@ -146,7 +142,7 @@ export function YnabApiImportDialog({
   async function runImport(replace = false) {
     setPending(true);
     setError(null);
-    const { data, error } = await apiClient.POST("/v1/budgets/import/ynab", {
+    const { data, error } = await apiClient.POST("/v1/budgets/import/external", {
       body: { token: token.trim(), planId, replace },
     });
     setPending(false);
@@ -192,8 +188,8 @@ export function YnabApiImportDialog({
                 required
               />
               <FieldDescription>
-                Make one in YNAB under Account Settings → Developer Settings. everycent uses it for
-                this import only and doesn't keep it.
+                Make one in YNAB under Account Settings → Developer Settings. strictbudget uses it
+                for this import only and doesn't keep it.
               </FieldDescription>
             </Field>
             {error && <FieldError>{error}</FieldError>}
@@ -249,11 +245,8 @@ const DEFAULT_SETTINGS: BudgetFormValues = {
   dateFormat: "MM/DD/YYYY",
 };
 
-/**
- * Import YNAB's Export Plan files (the fallback when there's no token): the plan and register
- * files, the plan's currency and formats, then each account's type, which the files don't say.
- */
-export function YnabFilesImportDialog({
+/** The export files don't say what type each account is, so the user picks it. */
+export function ExternalFilesImportDialog({
   open,
   onOpenChange,
 }: {
@@ -283,7 +276,7 @@ export function YnabFilesImportDialog({
 
   async function preview(values: BudgetFormValues): Promise<string | null> {
     if (!files.plan || !files.register) return "Choose both files first.";
-    const { data, error } = await apiClient.POST("/v1/budgets/import/ynab-files", {
+    const { data, error } = await apiClient.POST("/v1/budgets/import/external-files", {
       body: { ...values, plan: files.plan, register: files.register, dryRun: true },
     });
     if (!data || !("accounts" in data)) {
@@ -298,7 +291,7 @@ export function YnabFilesImportDialog({
     if (!settings || !accounts || !files.plan || !files.register) return;
     setPending(true);
     setError(null);
-    const { data, error } = await apiClient.POST("/v1/budgets/import/ynab-files", {
+    const { data, error } = await apiClient.POST("/v1/budgets/import/external-files", {
       body: {
         ...settings,
         plan: files.plan,

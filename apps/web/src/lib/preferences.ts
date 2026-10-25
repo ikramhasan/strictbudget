@@ -5,8 +5,8 @@ import { useOptionalQueryClient } from "./query-client";
 export const preferencesQueryOptions = () => $api.queryOptions("get", "/v1/me/preferences");
 
 /**
- * YNAB's "Enable keyboard shortcuts" (undo and redo included). On until the account's options
- * have loaded, as the setting defaults to on, and on where there's no query client to load them.
+ * "Enable keyboard shortcuts" (undo and redo included). On until the account's options have loaded,
+ * as the setting defaults to on, and on where there's no query client to load them.
  */
 export function useShortcutsEnabled() {
   const { client, present } = useOptionalQueryClient();

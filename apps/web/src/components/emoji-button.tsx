@@ -1,12 +1,12 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   EmojiPicker,
   EmojiPickerContent,
   EmojiPickerFooter,
   EmojiPickerSearch,
-} from "@everycent/ui/components/emoji-picker";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/emoji-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { SmilePlus } from "lucide-react";
 import { useState } from "react";
 

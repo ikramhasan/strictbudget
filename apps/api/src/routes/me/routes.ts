@@ -1,5 +1,5 @@
-import { zCurrencyCode } from "@everycent/engine";
 import { createRoute, z } from "@hono/zod-openapi";
+import { zCurrencyCode } from "@strictbudget/engine";
 import { jsonError } from "../../lib/errors";
 import {
   authSecurity,
@@ -175,7 +175,7 @@ export const disableTwoFactor = createRoute({
   tags: ["Users"],
   summary: "Turn off two-step verification with a code from the verification app",
   description:
-    'As YNAB\'s "Turn Off" asks: the current 6-digit code (`INVALID_CODE` when wrong). Attempts ' +
+    "Confirmed with the current 6-digit code (`INVALID_CODE` when wrong). Attempts " +
     "share the password-check limit (`RATE_LIMITED`).",
   security: sessionSecurity,
   middleware: [requireSession] as const,
@@ -204,7 +204,7 @@ const PreferencesSchema = z
   .object({
     openLastBudget: z
       .boolean()
-      .describe("Open the last used budget at start (else the budget list), as YNAB's option"),
+      .describe("Open the last used budget at start (else the budget list)"),
     keyboardShortcuts: z.boolean().describe("Keyboard shortcuts, undo and redo included"),
     displayCurrency: zCurrencyCode
       .nullable()
@@ -220,7 +220,7 @@ export const getPreferences = createRoute({
   path: "/me/preferences",
   operationId: "getPreferences",
   tags: ["Users"],
-  summary: "The account's options (YNAB's Account Settings → Options)",
+  summary: "The account's options (Account Settings → Options)",
   security: sessionSecurity,
   middleware: [requireSession] as const,
   responses: {
@@ -261,7 +261,7 @@ export const deleteAccount = createRoute({
   tags: ["Users"],
   summary: "Permanently delete the account and its data",
   description:
-    "As YNAB does: confirmed with the password (`INVALID_PASSWORD`; attempts share the " +
+    "Confirmed with the password (`INVALID_PASSWORD`; attempts share the " +
     "password-check limit), it deletes every budget the account owns, shared ones included, and " +
     "removes the account from budgets others shared with it. Logins, sessions, options and " +
     "two-step verification go too. Can't be undone.",

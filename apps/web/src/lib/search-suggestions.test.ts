@@ -47,7 +47,6 @@ describe("search suggestions", () => {
   });
 
   it("lists every option of a label typed", () => {
-    // YNAB's order (2026-10-16).
     expect(terms("is:").slice(0, 10)).toEqual([
       "Is: Uncleared",
       "Is: Cleared",
@@ -101,7 +100,6 @@ describe("search suggestions", () => {
     expect(terms("i", { ...sources, today: "2027-01-03" })[0]).toBe("Income: January 2027");
   });
 
-  // YNAB's web app, 2026-10-15/16 (EVERYCENT-167).
   it("completes partial dates and writes the full date", () => {
     expect(searchSuggestions("5", sources).slice(0, 3)).toEqual([
       { label: "On:", text: "On 05/01/2026", term: "On: 05/01/2026" },

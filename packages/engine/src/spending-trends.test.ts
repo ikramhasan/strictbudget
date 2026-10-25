@@ -8,8 +8,8 @@ import {
   trendMonths,
 } from "./spending-trends";
 
-// YNAB's test plan, Aug–Oct 2026 (2026-10-17), in cents: Sep spent $2,905.00 (Uncategorized
-// $2,900.00, Food $5.00) and a refund left "Test" $353.00 positive.
+// In cents: Sep spent $2,905.00 (Uncategorized $2,900.00, Food $5.00) and a refund left "Test"
+// $353.00 positive.
 const cells = [
   { month: "2026-08", key: "food", net: -300n },
   { month: "2026-09", key: "uncat", net: -290000n },

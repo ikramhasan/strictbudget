@@ -2,8 +2,8 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@everycent/ui/components/collapsible";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/collapsible";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ChevronRightIcon } from "lucide-react";
 import * as React from "react";
 

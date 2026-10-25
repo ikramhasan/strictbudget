@@ -1,5 +1,5 @@
-import { createDb } from "@everycent/db";
-import { budgetMember, user } from "@everycent/db/schema";
+import { createDb } from "@strictbudget/db";
+import { budgetMember, user } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { createApp } from "../app";
 import type { Env } from "../env";
@@ -10,8 +10,8 @@ import { ConsoleEmailSender } from "./email/sender";
 
 /** The dev and preview sign-in. Public on purpose: it only exists where anyone may use it. */
 export const DEMO_USER = {
-  email: "demo@everycent.dev",
-  password: "everycent-demo",
+  email: "demo@strictbudget.app",
+  password: "strictbudget-demo",
   name: "Demo User",
 };
 

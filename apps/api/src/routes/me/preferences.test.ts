@@ -14,7 +14,7 @@ function send(method: string, path: string, cookie: string, body?: unknown) {
 }
 
 describe("preferences", () => {
-  it("defaults to YNAB's: open the last budget, shortcuts on; changes one at a time", async () => {
+  it("defaults to opening the last budget with shortcuts on; changes one at a time", async () => {
     const user = await signUp(app);
     const read = async () => (await send("GET", "/v1/me/preferences", user.cookie)).json();
     expect(await read()).toEqual({
@@ -34,7 +34,6 @@ describe("preferences", () => {
       keyboardShortcuts: false,
       displayCurrency: null,
     });
-    // Another person's options are their own.
     const other = await signUp(app);
     expect(await (await send("GET", "/v1/me/preferences", other.cookie)).json()).toEqual({
       openLastBudget: true,

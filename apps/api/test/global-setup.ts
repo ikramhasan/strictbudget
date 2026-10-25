@@ -1,4 +1,4 @@
-import { createDb, runMigrations, sql } from "@everycent/db";
+import { createDb, runMigrations, sql } from "@strictbudget/db";
 import { JOBS_SCHEMA } from "../src/lib/jobs";
 import { installJobs } from "../src/lib/jobs/install";
 import { loadRootEnv } from "../src/load-env";

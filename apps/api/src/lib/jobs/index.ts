@@ -1,4 +1,4 @@
-import { sql } from "@everycent/db";
+import { sql } from "@strictbudget/db";
 import { fromDrizzle, type JobOptions, PgBoss } from "pg-boss";
 import type { AppDeps } from "../../types";
 import type { Db } from "../ledger";

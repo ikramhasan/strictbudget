@@ -1,12 +1,10 @@
-import { type Database, newId } from "@everycent/db";
-import { category, categoryGroup } from "@everycent/db/schema";
+import { type Database, newId } from "@strictbudget/db";
+import { category, categoryGroup } from "@strictbudget/db/schema";
 import type { Db } from "./ledger";
 
 /**
- * Categories a new budget starts with: a new YNAB plan's groups and categories, in order
- * (Create New Plan, checked 2026-10-17, EVERYCENT-180). YNAB's API reports $0 placeholder
- * targets on some of them, but its plan screen shows none, so they start without targets. The
- * setup flow lets people untick the ones they don't need.
+ * Categories a new budget starts with, in order, without targets. The setup flow lets people
+ * untick the ones they don't need.
  */
 export const STARTER_CATEGORIES: ReadonlyArray<{ group: string; categories: readonly string[] }> = [
   {
@@ -24,7 +22,7 @@ export const STARTER_CATEGORIES: ReadonlyArray<{ group: string; categories: read
       "🍿 Entertainment",
       "🏝️ Vacation",
       "❗️ Stuff I forgot to plan for",
-      "🌳 YNAB subscription",
+      "🌳 strictbudget subscription",
     ],
   },
 ];

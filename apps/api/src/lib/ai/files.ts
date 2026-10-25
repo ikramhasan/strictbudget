@@ -44,11 +44,9 @@ export const MAX_AI_IMAGE_BYTES = (5 * 1024 * 1024 * 3) / 4;
 /** Text past this many characters (about 50k tokens) is cut off, with a note saying so. */
 const MAX_TEXT_CHARS = 200_000;
 
-/** What the person is told an attachment can be. */
 export const AI_FILE_TYPES_MESSAGE =
   "The assistant can read photos (JPG, PNG, WebP, GIF), PDFs, Excel workbooks (.xlsx) and text files such as CSV, OFX, QIF or TXT";
 
-/** The files the app's file pickers offer. */
 export const AI_FILE_ACCEPT = [
   ...Object.keys(BINARY_TYPES),
   ...Object.keys(TEXT_TYPES).map((ext) => `.${ext}`),
@@ -188,7 +186,6 @@ export async function modelParts(file: {
   }
 }
 
-/** How the assistant reads a stored file of this type. */
 export function kindOf(contentType: string): AiFileKind {
   const binary = BINARY_TYPES[contentType];
   return binary ?? "text";

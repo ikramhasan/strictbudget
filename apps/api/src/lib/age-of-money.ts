@@ -1,11 +1,11 @@
-import { budgetAccount, payee, subTransaction, transaction } from "@everycent/db/schema";
+import { budgetAccount, payee, subTransaction, transaction } from "@strictbudget/db/schema";
 import {
   ACCOUNT_TYPES,
   type AgeOfMoneyPart,
   accountFamily,
   countedAmount,
   type MoneyFlow,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { and, asc, eq, inArray, lte } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "./ledger";

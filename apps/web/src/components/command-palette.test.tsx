@@ -63,7 +63,7 @@ function seed() {
       },
     ],
   } as never);
-  // A budget going back years, as one imported from YNAB can.
+  // A budget going back years, as an imported one can.
   queryClient.setQueryData(monthQueryOptions("b1", currentMonth()).queryKey, {
     firstMonth: "2016-01",
     lastMonth: currentMonth(),

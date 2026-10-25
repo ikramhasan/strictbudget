@@ -1,11 +1,11 @@
+import { createRoute, z } from "@hono/zod-openapi";
 import {
   zAccountType,
   zCurrencyCode,
   zCurrencySymbolPosition,
   zDateFormat,
   zNumberFormat,
-} from "@everycent/engine";
-import { createRoute, z } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { jsonError } from "../../lib/errors";
 import { requireSession, sessionSecurity } from "../../middleware/require-auth";
 import { BudgetSchema } from "../budgets/routes";
@@ -37,30 +37,30 @@ const ImportReportSchema = z
       .array(z.string())
       .describe("What couldn't come over as it was in YNAB, in plain words"),
   })
-  .openapi("YnabImportReport");
+  .openapi("ExternalImportReport");
 
-const ynabErrors = {
+const externalErrors = {
   400: jsonError(
-    "Invalid input, or YNAB refused the token (YNAB_TOKEN_INVALID) or the files aren't YNAB's " +
-      "(YNAB_FILE_INVALID)",
+    "Invalid input, or YNAB refused the token (EXTERNAL_TOKEN_INVALID) or the files aren't YNAB's " +
+      "(EXTERNAL_FILE_INVALID)",
   ),
   401: jsonError("Not signed in"),
   403: jsonError("The account's email address isn't confirmed"),
-  404: jsonError("YNAB has no such plan (YNAB_PLAN_NOT_FOUND)"),
+  404: jsonError("YNAB has no such plan (EXTERNAL_PLAN_NOT_FOUND)"),
   422: jsonError(
-    "The plan can't be converted exactly: a currency everycent doesn't have " +
-      "(YNAB_CURRENCY_UNSUPPORTED) or a fraction of the currency's smallest unit (YNAB_AMOUNT_INEXACT)",
+    "The plan can't be converted exactly: a currency strictbudget doesn't have " +
+      "(EXTERNAL_CURRENCY_UNSUPPORTED) or a fraction of the currency's smallest unit (EXTERNAL_AMOUNT_INEXACT)",
   ),
-  429: jsonError("YNAB's hourly request limit was reached (YNAB_RATE_LIMITED)"),
+  429: jsonError("YNAB's hourly request limit was reached (EXTERNAL_RATE_LIMITED)"),
   502: jsonError(
-    "YNAB couldn't be reached or answered unexpectedly (YNAB_UNAVAILABLE, YNAB_UNEXPECTED)",
+    "YNAB couldn't be reached or answered unexpectedly (EXTERNAL_UNAVAILABLE, EXTERNAL_UNEXPECTED)",
   ),
 };
 
-export const listYnabPlans = createRoute({
+export const listExternalPlans = createRoute({
   method: "post",
-  path: "/budgets/import/ynab/plans",
-  operationId: "listYnabPlans",
+  path: "/budgets/import/external/plans",
+  operationId: "listExternalPlans",
   tags: ["Budgets"],
   security: sessionSecurity,
   middleware: [requireSession] as const,
@@ -70,7 +70,7 @@ export const listYnabPlans = createRoute({
     body: {
       required: true,
       content: {
-        "application/json": { schema: z.object({ token: Token }).openapi("YnabToken") },
+        "application/json": { schema: z.object({ token: Token }).openapi("ExternalToken") },
       },
     },
   },
@@ -89,24 +89,24 @@ export const listYnabPlans = createRoute({
                 }),
               ),
             })
-            .openapi("YnabPlanList"),
+            .openapi("ExternalPlanList"),
         },
       },
     },
-    ...ynabErrors,
+    ...externalErrors,
   },
 });
 
-export const importYnabPlan = createRoute({
+export const importExternalPlan = createRoute({
   method: "post",
-  path: "/budgets/import/ynab",
-  operationId: "importYnabPlan",
+  path: "/budgets/import/external",
+  operationId: "importExternalPlan",
   tags: ["Budgets"],
   security: sessionSecurity,
   middleware: [requireSession] as const,
   summary: "Import a YNAB plan through YNAB's API, as a new budget",
   description:
-    "An everycent extra (EVERYCENT-69). Reads the whole plan with the caller's personal access " +
+    "Reads the whole plan with the caller's personal access " +
     "token and makes a new budget of it: accounts (with loan rates, minimum payments and " +
     "escrow), category groups and categories (hidden ones, notes, targets), credit card payment " +
     "categories, payees, every month's assigned amounts and notes, transactions (transfers, " +
@@ -126,7 +126,7 @@ export const importYnabPlan = createRoute({
               name: Name.optional().describe("The new budget's name; the plan's by default"),
               replace: z.boolean().optional(),
             })
-            .openapi("ImportYnabPlan"),
+            .openapi("ImportExternalPlan"),
         },
       },
     },
@@ -140,7 +140,7 @@ export const importYnabPlan = createRoute({
       description: "The new budget and the import report",
       content: { "application/json": { schema: ImportReportSchema } },
     },
-    ...ynabErrors,
+    ...externalErrors,
   },
 });
 
@@ -163,12 +163,12 @@ const CsvSchema = z
       .describe("Only read the files: return the accounts and their (guessed) types"),
     replace: z.boolean().optional(),
   })
-  .openapi("ImportYnabFiles");
+  .openapi("ImportExternalFiles");
 
-export const importYnabFiles = createRoute({
+export const importExternalFiles = createRoute({
   method: "post",
-  path: "/budgets/import/ynab-files",
-  operationId: "importYnabFiles",
+  path: "/budgets/import/external-files",
+  operationId: "importExternalFiles",
   tags: ["Budgets"],
   security: sessionSecurity,
   middleware: [requireSession] as const,
@@ -195,7 +195,7 @@ export const importYnabFiles = createRoute({
                   z.object({ name: z.string(), type: zAccountType, guessed: z.boolean() }),
                 ),
               })
-              .openapi("YnabFilesPreview"),
+              .openapi("ExternalFilesPreview"),
             ImportReportSchema,
           ]),
         },
@@ -205,6 +205,6 @@ export const importYnabFiles = createRoute({
       description: "The new budget and the import report",
       content: { "application/json": { schema: ImportReportSchema } },
     },
-    ...ynabErrors,
+    ...externalErrors,
   },
 });

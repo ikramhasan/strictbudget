@@ -1,4 +1,4 @@
-import { ThemeProvider } from "@everycent/ui/lib/theme";
+import { ThemeProvider } from "@strictbudget/ui/lib/theme";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,10 +33,9 @@ describe("DisplayOptionsDialog", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(pill("negative").className).toContain("bg-[#bf2e3b]");
     expect(pill("caution").className).toContain("border-black");
-    // Funded pills keep their look.
     expect(pill("positive").className).toContain("bg-green-100");
-    expect(localStorage.getItem("everycent:differentiate-without-color")).toBe("true");
-    expect(localStorage.getItem("everycent:progress-bars")).toBe("off");
+    expect(localStorage.getItem("strictbudget:differentiate-without-color")).toBe("true");
+    expect(localStorage.getItem("strictbudget:progress-bars")).toBe("off");
   });
 
   it("changes nothing on Cancel", async () => {
@@ -49,7 +48,7 @@ describe("DisplayOptionsDialog", () => {
   });
 });
 
-describe("AvailablePill in words (EVERYCENT-95)", () => {
+describe("AvailablePill in words", () => {
   it("says overspent, credit overspending or needs more, not only by colour", () => {
     render(
       <>

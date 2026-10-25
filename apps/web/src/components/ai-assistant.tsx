@@ -1,13 +1,13 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Drawer,
   DrawerContent,
   DrawerDescription,
   DrawerTitle,
-} from "@everycent/ui/components/drawer";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@everycent/ui/components/tooltip";
-import { useIsMobile } from "@everycent/ui/hooks/use-mobile";
+} from "@strictbudget/ui/components/drawer";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@strictbudget/ui/components/tooltip";
+import { useIsMobile } from "@strictbudget/ui/hooks/use-mobile";
 import { useMatchRoute } from "@tanstack/react-router";
 import { MessageCircle, Sparkles, SquarePen } from "lucide-react";
 import { useState } from "react";

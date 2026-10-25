@@ -1,5 +1,5 @@
-import { budgetAccount } from "@everycent/db/schema";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { budgetAccount } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { loadBudgetAccess } from "../../lib/budget-access";
@@ -116,7 +116,7 @@ async function versioned<T>(
   write: (tx: Tx) => Promise<T>,
 ) {
   return c.var.deps.db.transaction(async (tx) => {
-    // Undo and redo send the version they expect, as other edits do (EVERYCENT-212).
+    // Undo and redo send the version they expect, as other edits do.
     if (expectedVersion !== undefined) {
       const expected = { [transactionId]: expectedVersion };
       await assertTransactionVersions(tx, budgetId, expected, c.var.user.id);

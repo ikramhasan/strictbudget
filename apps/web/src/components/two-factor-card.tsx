@@ -1,11 +1,11 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@everycent/ui/components/card";
+} from "@strictbudget/ui/components/card";
 import {
   Dialog,
   DialogContent,
@@ -13,10 +13,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { Spinner } from "@everycent/ui/components/spinner";
+} from "@strictbudget/ui/components/dialog";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import QRCode from "react-qr-code";
@@ -27,10 +27,7 @@ import { authErrorMessage } from "@/lib/auth-errors";
 import { apiErrorMessage } from "@/lib/budgets";
 import { refreshSession } from "@/lib/session";
 
-/**
- * YNAB's Two-Step Verification: an authenticator app and one emergency backup code. Turning it on
- * signs out the account's other devices, as YNAB does; turning it off asks for a code.
- */
+/** Turning it on signs out the account's other devices; turning it off asks for a code. */
 export function TwoFactorCard() {
   const me = $api.useQuery("get", "/v1/me");
   const [dialog, setDialog] = useState<"setup" | "off" | null>(null);
@@ -40,8 +37,8 @@ export function TwoFactorCard() {
       <CardHeader>
         <CardTitle>Two-Step Verification</CardTitle>
         <CardDescription>
-          Increase your everycent login security by adding a second method of login: a code from a
-          verification app on your phone.
+          Increase your strictbudget login security by adding a second method of login: a code from
+          a verification app on your phone.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex items-center justify-between gap-4">
@@ -98,7 +95,7 @@ function SetUpDialog({ onClose }: { onClose: () => void }) {
       setPending(false);
       return setError("That code isn't right. Enter the current one your app shows.");
     }
-    // Turning it on replaced this device's session; sign the others out, as YNAB does.
+    // Turning it on replaced this device's session; sign the others out.
     await refreshSession(queryClient);
     try {
       await signOutOthers.mutateAsync({});
@@ -124,7 +121,7 @@ function SetUpDialog({ onClose }: { onClose: () => void }) {
             {state.step === "password"
               ? "Confirm your password to begin. You'll need a verification app such as Authy, Google Authenticator or a password manager."
               : state.step === "scan"
-                ? "Open your verification app and add everycent as a new account by scanning the QR code, then enter the 6-digit code it shows."
+                ? "Open your verification app and add strictbudget as a new account by scanning the QR code, then enter the 6-digit code it shows."
                 : "Two-step verification is on, and your other devices were signed out. Keep this emergency backup code somewhere safe: it gets you back in if you lose your phone, and it works once."}
           </DialogDescription>
         </DialogHeader>

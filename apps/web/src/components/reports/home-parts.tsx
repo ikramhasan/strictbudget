@@ -1,12 +1,11 @@
-import { addMonths, type BudgetMonth, type Observation } from "@everycent/engine";
-import { cn } from "@everycent/ui/lib/utils";
+import { addMonths, type BudgetMonth, type Observation } from "@strictbudget/engine";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import type { ReactNode } from "react";
 import { Line, LineChart, ResponsiveContainer, YAxis } from "recharts";
 import { monthLabel, type ReportSearch } from "@/lib/reports";
 
-/** A report route the home links into, with the search it opens with. */
 export type ReportTarget = {
   to:
     | "/budgets/$budgetId/reports/spending-breakdown"
@@ -40,10 +39,7 @@ export function Sparkline({ values, label }: { values: number[]; label: string }
   );
 }
 
-/**
- * A key number on the Reports home: the figure, its change since last month (an arrow, green when
- * the change is good, red when it isn't) and a 12-month sparkline; the whole tile opens its report.
- */
+/** The change arrow is green when the change is good and red when it isn't. */
 export function KeyTile({
   budgetId,
   label,
@@ -93,7 +89,6 @@ export function KeyTile({
   );
 }
 
-/** A preview card on the home: a title linking to its report and a small live chart. */
 export function PreviewCard({
   budgetId,
   title,
@@ -122,10 +117,7 @@ export function PreviewCard({
 
 const thisMonth = (month: BudgetMonth): ReportSearch => ({ from: month, to: month });
 
-/**
- * An observation in plain words, with the report that shows its evidence. Wording is factual and
- * never judgmental.
- */
+/** Wording is factual and never judgmental. */
 export function describeObservation(
   note: Observation,
   month: BudgetMonth,

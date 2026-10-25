@@ -3,7 +3,7 @@
  * signing in, or signing up and confirming the address (often in another tab), "/" brings the
  * person back to the invitation instead of their own budgets.
  */
-const KEY = "everycent:pending-invitation";
+const KEY = "strictbudget:pending-invitation";
 
 export function rememberInvitation(token: string) {
   try {

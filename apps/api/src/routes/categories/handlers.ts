@@ -1,7 +1,7 @@
-import { newId } from "@everycent/db";
-import { budgetAccount, category, categoryGroup, categoryTarget } from "@everycent/db/schema";
-import { monthOf } from "@everycent/engine";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { newId } from "@strictbudget/db";
+import { budgetAccount, category, categoryGroup, categoryTarget } from "@strictbudget/db/schema";
+import { monthOf } from "@strictbudget/engine";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError } from "../../lib/errors";
@@ -102,7 +102,6 @@ export const deleteCategoryGroupHandler: RouteHandler<typeof deleteCategoryGroup
       reassignToCategoryId,
       c.var.user.id,
     );
-    // Its categories cascade.
     await tx.delete(categoryGroup).where(eq(categoryGroup.id, groupId));
   });
   return c.body(null, 204);
@@ -116,7 +115,6 @@ export const moveCategoryGroupHandler: RouteHandler<typeof moveCategoryGroup, En
   await db.transaction(async (tx) => {
     const group = await findGroup(tx, budgetId, groupId);
     if (group.kind) throw managedError("The Credit Card Payments group always comes first");
-    // The pinned Credit Card Payments group isn't part of the movable order.
     const groups = await tx
       .select({ id: categoryGroup.id })
       .from(categoryGroup)
@@ -230,7 +228,6 @@ export const moveCategoryHandler: RouteHandler<typeof moveCategory, Env> = async
   return c.json(await listCategoryTree(db, budgetId), 200);
 };
 
-/** Whether a loan is paired with the category (YNAB's "Paired with … Account"). */
 async function pairedWithLoan(db: Db, categoryId: string) {
   const [loan] = await db
     .select({ id: budgetAccount.id })
@@ -241,10 +238,9 @@ async function pairedWithLoan(db: Db, categoryId: string) {
 }
 
 /**
- * A category paired with a loan takes only YNAB's "Monthly Debt Payment" target (its inspector
- * offers just that form), and only such categories take a new one (YNAB, 2026-10-13). One left
- * on a category whose loan was unpaired or closed can still be edited: YNAB keeps it, asking as
- * before, with an "Amount to Pay" form and "Pair with a Loan" (2026-10-14).
+ * A category paired with a loan takes only a Monthly Debt Payment target, and only such categories
+ * take a new one. One left on a category whose loan was unpaired or closed stays and can still be
+ * edited.
  */
 async function checkDebtTarget(
   db: Db,
@@ -267,8 +263,6 @@ export const setCategoryTargetHandler: RouteHandler<typeof setCategoryTarget, En
   const { db } = c.var.deps;
   const { budget } = await loadBudgetAccess(c, budgetId, { category: ["update"] });
   const row = await findCategory(db, budgetId, categoryId);
-  // A card's payment category takes only its own two targets (YNAB's target form there offers just
-  // these), and other categories can't take them.
   const paymentTarget = body.cadence === "payment_monthly" || body.cadence === "payoff_by_date";
   if (row.linkedAccountId && !paymentTarget) {
     throw managedError(
@@ -280,9 +274,8 @@ export const setCategoryTargetHandler: RouteHandler<typeof setCategoryTarget, En
   }
   const existing = await findTarget(db, categoryId);
   await checkDebtTarget(db, categoryId, body.cadence, existing);
-  // A target can be in its own currency, converted at today's rate in the month's math. Pay Off by
-  // Date has no amount (it pays off what the card owes) and a Monthly Debt Payment follows the
-  // loan's minimum payment, both in the budget's currency.
+  // Pay Off by Date has no amount (it pays off what the card owes) and a Monthly Debt Payment
+  // follows the loan's minimum payment, so both stay in the budget's currency.
   const currency = body.currency ?? budget.currency;
   if (
     currency !== budget.currency &&
@@ -302,22 +295,20 @@ export const setCategoryTargetHandler: RouteHandler<typeof setCategoryTarget, En
       : body.cadence === "payoff_by_date"
         ? `${body.dueMonth}-01`
         : body.cadence === "custom" && body.dueDate
-          ? // A balance target is due by a month (YNAB: "By Dec 2026").
+          ? // A balance target is due by a month.
             body.behavior === "balance"
             ? `${body.dueDate.slice(0, 7)}-01`
             : body.dueDate
           : null;
   const values = {
     cadence: body.cadence,
-    // Pay Specific Amount Monthly and Monthly Debt Payment ask like a monthly set aside; Pay Off
-    // by Date reaches a balance.
     behavior:
       body.cadence === "payment_monthly" || body.cadence === "debt_monthly"
         ? ("set_aside" as const)
         : body.cadence === "payoff_by_date"
           ? ("balance" as const)
           : body.behavior,
-    // Pay Off by Date pays off what the card owes, so it has no amount of its own (YNAB's API: 0).
+    // Pay Off by Date pays off what the card owes, so it has no amount of its own.
     amount: body.cadence === "payoff_by_date" ? 0n : BigInt(body.amount),
     currency,
     dueDay:
@@ -328,10 +319,8 @@ export const setCategoryTargetHandler: RouteHandler<typeof setCategoryTarget, En
     repeatEvery: repeat?.every ?? null,
     repeatUnit: repeat?.unit ?? null,
   };
-  // YNAB (YNAB findings "Targets overview and history"): a changed target starts in the month
-  // it's saved from, so earlier months show none; saving it unchanged only moves the start back.
-  // A new due day (or weekday) alone isn't a change (2026-10-12, "C5 First": F A moved from the
-  // end of the month to the 15th kept its September start).
+  // A changed target starts in the month it's saved from; saving it unchanged only moves the
+  // start back. A new due day (or weekday) alone isn't a change.
   const unchanged =
     existing &&
     existing.cadence === values.cadence &&
@@ -342,9 +331,8 @@ export const setCategoryTargetHandler: RouteHandler<typeof setCategoryTarget, En
     existing.repeatEvery === values.repeatEvery &&
     existing.repeatUnit === values.repeatUnit;
   const startMonth = unchanged && existing.startMonth < start ? existing.startMonth : start;
-  // YNAB, 2026-10-12 ("C5 First", "C4 Clean"): a target created as weekly, or made weekly, in the
-  // current month starts on the day it's saved (its earlier weeks aren't asked for); editing a
-  // weekly target keeps its start day while its start month stays.
+  // A target made weekly in the current month starts on the day it's saved (its earlier weeks
+  // aren't asked for); editing a weekly target keeps its start day while its start month stays.
   const today = body.today ?? serverToday();
   const startDay =
     values.cadence !== "weekly"
@@ -370,8 +358,8 @@ export const setCategoryTargetHandler: RouteHandler<typeof setCategoryTarget, En
 };
 
 /**
- * Undo and redo of target edits (YNAB's Undo covers them, YNAB findings): the target goes back
- * exactly as it was, start month and start day included, or away when there was none.
+ * Undo and redo of target edits: the target goes back exactly as it was, start month and start
+ * day included, or away when there was none.
  */
 export const restoreCategoryTargetHandler: RouteHandler<typeof restoreCategoryTarget, Env> = async (
   c,
@@ -391,7 +379,6 @@ export const restoreCategoryTargetHandler: RouteHandler<typeof restoreCategoryTa
     throw managedError("Payment categories take only payment targets, other categories none");
   }
   if (!row.linkedAccountId) {
-    // Undo puts back exactly what was there, an unpaired debt target included.
     await checkDebtTarget(db, categoryId, snapshot.cadence, snapshot);
   }
   const values = {
@@ -442,9 +429,7 @@ export const snoozeCategoryTargetHandler: RouteHandler<typeof snoozeCategoryTarg
   const row = await findCategory(db, budgetId, categoryId);
   const existing = await findTarget(db, categoryId);
   if (!existing) throw new AppError(404, "NOT_FOUND", "The category has no target");
-  // support.ynab.com "Paired Targets": "Credit card targets can't be snoozed."
   if (row.linkedAccountId) throw managedError("Credit card payment targets can't be snoozed");
-  // YNAB: "You can only snooze a target in the current month."
   if (month !== monthOf(today)) {
     throw new AppError(
       400,

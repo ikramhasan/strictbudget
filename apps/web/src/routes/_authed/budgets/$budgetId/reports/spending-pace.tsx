@@ -1,12 +1,12 @@
-import { addMonths, type BudgetMonth, money, monthOf } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
+import { addMonths, type BudgetMonth, money, monthOf } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   NativeSelect,
   NativeSelectOptGroup,
   NativeSelectOption,
-} from "@everycent/ui/components/native-select";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { Switch } from "@everycent/ui/components/switch";
+} from "@strictbudget/ui/components/native-select";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { Switch } from "@strictbudget/ui/components/switch";
 import {
   Table,
   TableBody,
@@ -14,8 +14,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@everycent/ui/components/table";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/table";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -44,9 +44,9 @@ export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/spendin
 });
 
 /**
- * Spending pace (EVERYCENT-239, an everycent extra; YNAB has nothing like it): this month's money
- * left to spend, day by day, against an even pace to zero, with where the pace so far ends up and
- * each category's pace. Past months show their finished burndown; future months have none.
+ * This month's money left to spend, day by day, against an even pace to zero, with where the pace
+ * so far ends up and each category's pace. Past months show their finished burndown; future months
+ * have none.
  */
 function Report() {
   const { budget, formatAmount } = useBudget();

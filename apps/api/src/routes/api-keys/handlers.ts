@@ -1,5 +1,5 @@
-import { apiKey, budgetMember } from "@everycent/db/schema";
 import type { RouteConfig, RouteHandler } from "@hono/zod-openapi";
+import { apiKey, budgetMember } from "@strictbudget/db/schema";
 import { and, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import { permissionsToScope, scopeToPermissions } from "../../lib/api-keys";
 import { AppError } from "../../lib/errors";

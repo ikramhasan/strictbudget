@@ -21,7 +21,7 @@ describe("plan export", () => {
     expect(exportSeparator("space_comma")).toBe("\t");
   });
 
-  it("quotes text and guards formulas like YNAB", () => {
+  it("quotes text and guards formulas", () => {
     expect(exportText('Say "hi"')).toBe('"Say ""hi"""');
     expect(exportSanitize("=SUM(A1)")).toBe("\\=SUM(A1)");
     expect(exportSanitize("  -5")).toBe("\\-5");
@@ -88,7 +88,7 @@ describe("plan export", () => {
 
   it("names the files", () => {
     expect(planExportNames("Bob's Plan", "2026-10-17 09-05", ",")).toEqual({
-      zip: "everycent Export - Bob s Plan as of 2026-10-17 09-05.zip",
+      zip: "strictbudget Export - Bob s Plan as of 2026-10-17 09-05.zip",
       plan: "Bob s Plan as of 2026-10-17 09-05 - Plan.csv",
       register: "Bob s Plan as of 2026-10-17 09-05 - Register.csv",
     });

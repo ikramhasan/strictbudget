@@ -1,5 +1,5 @@
-import { AUDIT_OPS } from "@everycent/db/schema";
 import { createRoute, z } from "@hono/zod-openapi";
+import { AUDIT_OPS } from "@strictbudget/db/schema";
 import { jsonError } from "../../lib/errors";
 import { zMemberRef } from "../../lib/member-colors";
 import { authSecurity, requireAuth } from "../../middleware/require-auth";
@@ -58,7 +58,7 @@ export const listActivity = createRoute({
   summary: "The budget's change history, newest first",
   description:
     "Every insert, update and delete of the budget's data, who made it and when, with the row " +
-    "before and after (EVERYCENT-108). Changes to bookkeeping columns alone aren't listed.",
+    "before and after. Changes to bookkeeping columns alone aren't listed.",
   request: {
     params: BudgetParams,
     query: z.object({

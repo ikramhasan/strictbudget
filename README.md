@@ -1,6 +1,6 @@
-# everycent
+# strictbudget
 
-Zero-based budgeting — every cent gets a job. YNAB-style envelope budgeting with first-class
+Zero-based budgeting — every cent gets a job. Envelope budgeting with first-class
 multi-currency support.
 
 ## Stack
@@ -23,7 +23,7 @@ Requirements: Node ≥ 24, pnpm (auto-selected via `packageManager` — root `.n
     cp .env.example .env            # then set BETTER_AUTH_SECRET (openssl rand -base64 32)
     pnpm install
     pnpm db:up && pnpm db:migrate
-    pnpm db:seed                    # optional demo user: demo@everycent.dev / everycent-demo
+    pnpm db:seed                    # optional demo user: demo@strictbudget.app / strictbudget-demo
     pnpm dev
 
 - Web: http://localhost:5173
@@ -39,7 +39,7 @@ Requirements: Node ≥ 24, pnpm (auto-selected via `packageManager` — root `.n
 | `pnpm db:generate` | Create a SQL migration from schema changes |
 | `pnpm db:migrate` / `db:studio` / `db:seed` | Apply migrations / browse data / seed demo user |
 | `pnpm format` | Biome format + safe fixes |
-| `pnpm --filter @everycent/api preview:emails <dir>` | Render every email with sample data as HTML files |
+| `pnpm --filter @strictbudget/api preview:emails <dir>` | Render every email with sample data as HTML files |
 
 ## Adding an API endpoint
 
@@ -50,14 +50,14 @@ Requirements: Node ≥ 24, pnpm (auto-selected via `packageManager` — root `.n
 
 ## Roadmap
 
-Goal: full YNAB feature parity, plus first-class multi-currency, extensive reports and opt-in AI.
+Goal: complete zero-based budgeting, plus first-class multi-currency, extensive reports and opt-in AI.
 Phases are ordered by dependency — build top to bottom. Tick items off as they land.
-Items marked **(extra)** go beyond what YNAB offers.
+Items marked **(extra)** go beyond core zero-based budgeting.
 
 ### 0. Foundation
 
 - [x] Monorepo, tooling, CI-style `pnpm check`
-- [x] `@everycent/engine`: bigint minor units, ISO 4217 exponents, parse/format, allocation, rounding, FX primitives
+- [x] `@strictbudget/engine`: bigint minor units, ISO 4217 exponents, parse/format, allocation, rounding, FX primitives
 - [x] API skeleton: `createRouter()`, `AppError`, OpenAPI + Scalar docs, generated typed client
 - [x] PostgreSQL + Drizzle, UUIDv7 ids, migrations, test DB harness
 - [x] Better Auth email/password sign-up, sign-in, sign-out; `/v1/me`
@@ -99,9 +99,9 @@ and fresh start (after phase 5 core).
 - [x] Balances: cleared, uncleared, working
 - [x] Account notes / nickname
 - [x] Reorder accounts, sidebar grouped by type with group totals
-- [x] Close / reopen accounts (YNAB-style: a non-zero balance is zeroed with a Manual Balance
+- [x] Close / reopen accounts (a non-zero balance is zeroed with a Manual Balance
       Adjustment; closed accounts move to a "Closed" section)
-- [x] Delete accounts (YNAB rule: only with no history beyond the starting balance; otherwise close)
+- [x] Delete accounts (only with no history beyond the starting balance; otherwise close)
 
 ### 4. Categories
 
@@ -114,7 +114,7 @@ and fresh start (after phase 5 core).
 - [x] Auto-created credit card payment categories (one per credit account)
 - [x] Hidden categories section
 - [ ] Category emoji / icons **(extra)**
-- [x] Default category template on budget creation (YNAB-style starter groups) — moved from phase 2
+- [x] Default category template on budget creation (starter groups) — moved from phase 2
 
 ### 5. Transactions & register
 
@@ -155,8 +155,8 @@ and fresh start (after phase 5 core).
 - [x] Cover overspending flow
 - [x] Over-assigned warning (Ready to Assign negative)
 - [x] Month navigation, budgeting in future months, "assigned in future" indicator
-- [x] Income for future months (assign next month's income): today's YNAB has no separate
-      next-month income; money is assigned in future months instead
+- [x] Income for future months (assign next month's income): there's no separate next-month
+      income; money is assigned in future months instead
 - [x] Auto-assign / quick budget: underfunded, assigned last month, spent last month, average
       assigned, average spent, reduce overfunding, reset available, reset assigned
 - [x] Category inspector: balance breakdown (cash left over, assigned, activity), notes (the
@@ -180,7 +180,7 @@ and fresh start (after phase 5 core).
       estimated from the previous month's balance (exact, half-up); editable and recorded
       interest and escrow; credits, charges, Update Balance; paired plan category
 - [x] Loan planner (7g): Payoff Date, Your Loan's Progress (chart with past balance, original
-      schedule, minimum and current track; YNAB's messages), the Loan Payoff Simulator (monthly
+      schedule, minimum and current track, with progress messages), the Loan Payoff Simulator (monthly
       payment ↔ payoff date, one-time extra, "Copy and go to my plan"), Share Your Progress
       (downloadable picture), the paid-off celebration
 
@@ -190,9 +190,8 @@ Done (8a–8f, and loan debt targets with 7g) — what's left is in Plane (cycle
 
 - [x] Needed for spending — weekly (by day), monthly (by date), yearly, custom
       (every N months/years), by a specific date; refill vs set aside another
-- [x] Savings balance (YNAB's custom "Have a balance of", optionally by a month)
-- [x] Monthly savings builder: YNAB's target form no longer offers it; monthly "Set aside
-      another" covers it
+- [x] Savings balance (custom "Have a balance of", optionally by a month)
+- [x] Monthly savings builder: covered by monthly "Set aside another"
 - [x] Credit card payment targets: Pay Specific Amount Monthly, Pay Off Balance by Date (8e)
 - [x] Loan Monthly Debt Payment targets on a paired category (7g)
 - [x] Target progress bars and status (funded, underfunded, overspent, on track)
@@ -200,7 +199,7 @@ Done (8a–8f, and loan debt targets with 7g) — what's left is in Plane (cycle
       Overfunding, Underfunded/Overfunded views, the month's targets total; 8c)
 - [x] Snooze a target for a month
 - [x] Repeat on/off (8b), target history across months (8f: a changed target starts in the month
-      it's saved from, as YNAB)
+      it's saved from)
 - [x] Targets overview (total needed this month vs next month: Cost to Be Me, 8c; expected income,
       8f)
 
@@ -261,7 +260,7 @@ Done (8a–8f, and loan debt targets with 7g) — what's left is in Plane (cycle
 
 ### 15. Reports
 
-YNAB parity:
+Core:
 
 - [x] Spending breakdown (by category group / category / payee, donut + table)
 - [x] Spending trends (over time, by category/payee)
@@ -285,10 +284,10 @@ Extras:
 - [ ] Custom saved reports, dashboard of pinned report widgets
 - [ ] Export reports to PDF
 
-### 16. Sharing (YNAB Together)
+### 16. Sharing
 
 - [x] Invite members to a budget by email (up to N members)
-- [x] Roles: owner, editor, viewer **(extra over YNAB's single role)**
+- [x] Roles: owner, editor, viewer **(extra)**
 - [x] Per-member activity attribution ("entered by")
 - [x] Leave budget / remove member / transfer ownership
 - [x] Real-time updates across clients (WebSocket / SSE) **(extra)**
@@ -297,7 +296,7 @@ Extras:
 
 - [x] Keyboard shortcuts across budget and register (with a cheat-sheet)
 - [ ] Command palette **(extra)**
-- [x] Responsive layout for phones and tablets **(our own design, not YNAB's)**
+- [x] Responsive layout for phones and tablets
 - [ ] Installable PWA with offline entry queue and sync
 - [x] Accessibility pass (screen readers, focus order, contrast)
 - [x] Display Options: theme, progress bars, Differentiate Without Color; resizable sidebar,
@@ -323,7 +322,7 @@ Off by default, per-user toggle, clear data-usage notice, no data sent unless en
 
 ### 19. Platform & ops
 
-- [ ] Public REST API with personal access tokens (YNAB API parity) + rate limits
+- [ ] Public REST API with personal access tokens + rate limits
 - [ ] Webhooks for transaction / budget changes **(extra)**
 - [x] Audit log / change history per budget
 - [ ] Automated backups and point-in-time restore
@@ -338,15 +337,15 @@ The Docker image (`Dockerfile`) runs the API and the web app on one origin and m
 database on deploy (`node dist/migrate.mjs`). It needs `DATABASE_URL`, `BETTER_AUTH_SECRET`,
 `BETTER_AUTH_URL` and `WEB_ORIGIN`; everything else in `.env.example` is optional.
 
-- **Email is optional.** With `RESEND_API_KEY` and `FROM_EMAIL`, everycent confirms addresses,
+- **Email is optional.** With `RESEND_API_KEY` and `FROM_EMAIL`, strictbudget confirms addresses,
   sends password reset links and emails invitations. Without them it sends nothing: accounts are
   usable straight after sign-up, an email change applies at once, and invitations are links you
   share yourself (owners can also share links on a server that sends email).
-- `EVERYCENT_DEPLOYMENT` stays unset (`self-hosted`). `cloud` is the hosted everycent, which
+- `STRICTBUDGET_DEPLOYMENT` stays unset (`self-hosted`). `cloud` is the hosted strictbudget, which
   requires email.
 
 ## License
 
-everycent is free software under the [GNU Affero General Public License v3.0 only](LICENSE)
+strictbudget is free software under the [GNU Affero General Public License v3.0 only](LICENSE)
 (`AGPL-3.0-only`). You can use, change and self-host it; if you run a changed version as a service
 for others, you have to offer them its source under the same licence.

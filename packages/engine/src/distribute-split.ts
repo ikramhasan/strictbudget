@@ -1,11 +1,11 @@
 /**
- * YNAB's "Auto-Distribute" for a split whose lines don't add up to its total (checked
- * 2026-10-15): what's unassigned (`remaining`, signed minor units) is spread over the lines in
+ * "Auto-Distribute" for a split whose lines don't add up to its total: what's unassigned
+ * (`remaining`, signed minor units) is spread over the lines in
  * proportion to their amounts. Every line but the first gets its share rounded to the minor unit
  * half up (signed: -2.5 → -2, 2.5 → 3), and the first takes what's left, so nothing is lost.
  * Lines at zero are skipped; when every line is zero the total is spread evenly over all of them.
  *
- * Not `allocate()`: YNAB's results differ from the largest-remainder method (-0.03 over lines of
+ * Not `allocate()`: the results differ from the largest-remainder method (-0.03 over lines of
  * 0.01, 0.01 and 0.03 gives 0.00, 0.01, 0.02 more, where largest remainder gives 0.01, 0.00,
  * 0.02).
  *

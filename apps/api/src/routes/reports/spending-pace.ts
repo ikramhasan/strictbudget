@@ -1,3 +1,4 @@
+import { createRoute, type RouteHandler, z } from "@hono/zod-openapi";
 import {
   category,
   categoryGroup,
@@ -5,7 +6,7 @@ import {
   PACE_SETTINGS,
   scheduledSubTransaction,
   scheduledTransaction,
-} from "@everycent/db/schema";
+} from "@strictbudget/db/schema";
 import {
   addActivity,
   BUDGET_MONTH_PATTERN,
@@ -17,8 +18,7 @@ import {
   spendingPace,
   zCurrencyCode,
   zMinorUnits,
-} from "@everycent/engine";
-import { createRoute, type RouteHandler, z } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { and, asc, eq, isNotNull, isNull } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError, jsonError } from "../../lib/errors";
@@ -76,7 +76,7 @@ export const getSpendingPace = createRoute({
   middleware: [requireAuth] as const,
   summary: "A month's spending pace: money left to spend day by day against an even pace",
   description:
-    "An everycent extra. Money to spend is each category's Available carried in plus the month's " +
+    "Money to spend is each category's Available carried in plus the month's " +
     "Assigned; spending is its net activity. The plan's line adds up the categories in pace: " +
     "card payment categories never are; by default bills (a monthly target due on a set day, a " +
     'dated yearly or custom target, a debt target), savings (a "Have a balance of" target), ' +
@@ -237,7 +237,7 @@ async function automaticReasons(db: Db, budgetId: string): Promise<Map<string, P
     if (s.categoryId) reasons.set(s.categoryId, "scheduled");
   }
   for (const t of targets) {
-    // "Have a balance of…" is saving up, not spending (until EVERYCENT-188's "counts as saving").
+    // "Have a balance of…" is saving up, not spending.
     if (t.behavior === "balance") {
       reasons.set(t.categoryId, "saving");
       continue;

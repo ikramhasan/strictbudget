@@ -1,4 +1,5 @@
-import { budgetAccount } from "@everycent/db/schema";
+import { createRoute, type RouteHandler, z } from "@hono/zod-openapi";
+import { budgetAccount } from "@strictbudget/db/schema";
 import {
   addMonths,
   BUDGET_MONTH_PATTERN,
@@ -9,8 +10,7 @@ import {
   monthOf,
   zCurrencyCode,
   zMinorUnits,
-} from "@everycent/engine";
-import { createRoute, type RouteHandler, z } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { and, asc, eq } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError, jsonError } from "../../lib/errors";
@@ -40,7 +40,7 @@ export const getCreditCardHealth = createRoute({
   summary:
     "Credit card health: each card's balance against what its payment category has set aside",
   description:
-    "An everycent extra. Per open credit card or line of credit: the balance owed, the payment " +
+    "Per open credit card or line of credit: the balance owed, the payment " +
     "category's Available, and the gap between them, which is the plan screen's Underfunded for " +
     "the card (so the numbers equal it). `status` is covered (nothing lacks), partial or unfunded " +
     "(none of the balance is set aside). The gap is split into this month's credit overspending " +
@@ -154,7 +154,6 @@ export const getCreditCardHealthHandler: RouteHandler<typeof getCreditCardHealth
     a.type === "credit_card" || a.type === "line_of_credit" ? [{ ...a, type: a.type }] : [],
   );
 
-  // One plan month at a time, oldest first, from the earliest month the budget shows.
   const count = query.months ?? 6;
   const states = [];
   for (let i = count - 1; i >= 0; i--) {

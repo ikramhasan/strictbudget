@@ -1,8 +1,8 @@
 import { move } from "@dnd-kit/helpers";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { Button } from "@everycent/ui/components/button";
-import { Checkbox } from "@everycent/ui/components/checkbox";
+import { Button } from "@strictbudget/ui/components/button";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -10,17 +10,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
+} from "@strictbudget/ui/components/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@everycent/ui/components/dropdown-menu";
-import { Input } from "@everycent/ui/components/input";
-import { Label } from "@everycent/ui/components/label";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dropdown-menu";
+import { Input } from "@strictbudget/ui/components/input";
+import { Label } from "@strictbudget/ui/components/label";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ChevronDown, GripVertical, ListPlus, Pencil, PlusCircle, Trash2 } from "lucide-react";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { type CustomView, MAX_CUSTOM_VIEWS, type ViewActions } from "@/lib/budget-views";
@@ -44,8 +44,8 @@ export type ViewDialog =
   | { kind: "edit"; view: CustomView | null; preselected?: readonly string[] };
 
 /**
- * YNAB's Views Menu after the views: the views that didn't fit the bar, then Manage Views and
- * New View (disabled at the limit).
+ * The Views Menu after the views: the views that didn't fit the bar, then Manage Views and New
+ * View (disabled at the limit).
  */
 export function ViewsMenu({
   full,
@@ -54,7 +54,7 @@ export function ViewsMenu({
   onManage,
   onNew,
 }: {
-  /** The budget has as many custom views as YNAB allows. */
+  /** The budget has as many custom views as allowed. */
   full: boolean;
   overflow?: readonly OverflowView[];
   onPick?: (key: string) => void;
@@ -64,7 +64,6 @@ export function ViewsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {/* A text tab like the views beside it: the views that didn't fit, Manage Views, New View. */}
         <Button
           variant="ghost"
           size="sm"
@@ -100,7 +99,6 @@ export function ViewsMenu({
   );
 }
 
-/** The views dialogs; `dialog` says which is open. */
 export function ViewDialogs({
   dialog,
   onDialogChange,
@@ -117,7 +115,7 @@ export function ViewDialogs({
   views: readonly CustomView[];
   categories: CategoryList;
   actions: ViewActions;
-  /** A new view was saved (YNAB switches to it). */
+  /** A new view was saved (the budget switches to it). */
   onCreated: (view: CustomView) => void;
   onDeleted: (viewId: string) => void;
 }) {
@@ -156,7 +154,7 @@ export function ViewDialogs({
 }
 
 /**
- * YNAB's "New Custom View" / "Edit Custom View": a name and the categories to include, listed by
+ * "New Custom View" / "Edit Custom View": a name and the categories to include, listed by
  * group. Hidden categories aren't offered (so saving drops any the view had); categories selected
  * on the budget screen start checked in a new view.
  */
@@ -280,7 +278,7 @@ export function ViewEditorDialog({
 }
 
 /**
- * YNAB's Manage Views: Underfunded, Overfunded, Money Available, Snoozed and the custom views in
+ * Manage Views: Underfunded, Overfunded, Money Available, Snoozed and the custom views in
  * one list to drag into order (All and Overspent stay first); custom views can be edited and
  * deleted (asked on the row), presets can't.
  */

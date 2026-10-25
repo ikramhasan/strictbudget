@@ -1,14 +1,12 @@
-import { Button } from "@everycent/ui/components/button";
-import { FieldDescription, FieldError } from "@everycent/ui/components/field";
-import { Spinner } from "@everycent/ui/components/spinner";
+import { Button } from "@strictbudget/ui/components/button";
+import { FieldDescription, FieldError } from "@strictbudget/ui/components/field";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
 
-/** Seconds before the resend button works again. */
 export const RESEND_COOLDOWN_SECONDS = 60;
 
-/** "Check your inbox" with a resend button that waits a minute between sends. */
 export function CheckInbox({ email }: { email: string }) {
   const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SECONDS);
   const [pending, setPending] = useState(false);

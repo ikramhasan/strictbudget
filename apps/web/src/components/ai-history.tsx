@@ -7,10 +7,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Button } from "@everycent/ui/components/button";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Button } from "@strictbudget/ui/components/button";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -29,10 +29,6 @@ function when(iso: string) {
   return date.toDateString() === new Date().toDateString() ? time.format(date) : day.format(date);
 }
 
-/**
- * The person's past conversations with the budget's assistant, newest first. Picking one opens
- * it; each can be deleted.
- */
 export function AiHistory({
   budgetId,
   activeId,

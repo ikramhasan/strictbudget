@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import { $api } from "./api";
 
 export type Category = components["schemas"]["Category"];
@@ -27,7 +27,7 @@ export function visibleLayout(list: CategoryList): VisibleLayout {
   };
 }
 
-/** YNAB's "Hidden Categories" section: hidden groups, plus hidden categories of visible groups. */
+/** The "Hidden Categories" section: hidden groups, plus hidden categories of visible groups. */
 export function hiddenItems(list: CategoryList) {
   return {
     groups: list.groups.filter((g) => g.hidden),
@@ -45,7 +45,6 @@ export function nextId(ids: readonly string[], id: string): string | null {
   return at === -1 ? null : (ids[at + 1] ?? null);
 }
 
-/** Where a category sits in a layout: its group and the category after it. */
 export function locateCategory(layout: VisibleLayout["items"], categoryId: string) {
   for (const [groupId, ids] of Object.entries(layout)) {
     if (ids.includes(categoryId)) return { groupId, beforeCategoryId: nextId(ids, categoryId) };

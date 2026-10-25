@@ -1,11 +1,11 @@
-// everycent: Frimousse's shadcn registry item (https://frimousse.liveblocks.io/r/emoji-picker),
+// strictbudget: Frimousse's shadcn registry item (https://frimousse.liveblocks.io/r/emoji-picker),
 // restyled to match our Command palette: a muted shell, the query typed into a recessed well,
 // and the active emoji lifted out as a raised key. Data comes from our own origin
 // (`EMOJIBASE_URL`), not a CDN.
-import { InputGroup, InputGroupAddon } from "@everycent/ui/components/input-group";
-import { Spinner } from "@everycent/ui/components/spinner";
-import { EMOJIBASE_URL } from "@everycent/ui/lib/emoji";
-import { cn } from "@everycent/ui/lib/utils";
+import { InputGroup, InputGroupAddon } from "@strictbudget/ui/components/input-group";
+import { Spinner } from "@strictbudget/ui/components/spinner";
+import { EMOJIBASE_URL } from "@strictbudget/ui/lib/emoji";
+import { cn } from "@strictbudget/ui/lib/utils";
 import {
   type EmojiPickerListCategoryHeaderProps,
   type EmojiPickerListEmojiProps,

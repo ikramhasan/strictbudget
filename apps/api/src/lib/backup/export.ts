@@ -18,7 +18,7 @@ import {
   scheduledTransaction,
   subTransaction,
   transaction,
-} from "@everycent/db/schema";
+} from "@strictbudget/db/schema";
 import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import type { BudgetRow } from "../budget-access";
 import type { Db } from "../ledger";
@@ -43,7 +43,6 @@ async function* once<T>(rows: Promise<T>) {
   yield await rows;
 }
 
-/** Pages through a query by id. */
 async function* paged<T extends { id: string }, R>(
   read: (after: string | null) => Promise<T[]>,
   map: (rows: T[]) => R,

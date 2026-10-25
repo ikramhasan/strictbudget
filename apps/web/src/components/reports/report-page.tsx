@@ -1,11 +1,10 @@
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { PageHeader } from "@/components/page-header";
 import { PageTitle } from "@/components/page-title";
 import { useBudget } from "@/lib/budget-context";
 
-/** YNAB's five Reflect reports, in its tab order (2026-10-14). */
 export const PARITY_REPORTS = [
   { to: "/budgets/$budgetId/reports/spending-breakdown", label: "Spending Breakdown" },
   { to: "/budgets/$budgetId/reports/spending-trends", label: "Spending Trends" },
@@ -14,14 +13,13 @@ export const PARITY_REPORTS = [
   { to: "/budgets/$budgetId/reports/age-of-money", label: "Age of Money" },
 ] as const;
 
-/** everycent's own reports, after YNAB's. */
 export const EXTRA_REPORTS = [
   { to: "/budgets/$budgetId/reports/budget-vs-actual", label: "Budget vs Actual" },
   { to: "/budgets/$budgetId/reports/spending-pace", label: "Spending Pace" },
   { to: "/budgets/$budgetId/reports/credit-card-health", label: "Credit Card Health" },
 ] as const;
 
-/** YNAB's report tabs and everycent's own, kept reachable from every report. */
+/** Every report's tab, kept reachable from every report. */
 export function ReportsNav() {
   const { budget } = useBudget();
   return (

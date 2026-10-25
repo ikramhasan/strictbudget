@@ -1,6 +1,6 @@
-import { FLAG_COLORS } from "@everycent/db/schema";
-import { SCHEDULE_FREQUENCIES, zCurrencyCode, zMinorUnits } from "@everycent/engine";
 import { createRoute, z } from "@hono/zod-openapi";
+import { FLAG_COLORS } from "@strictbudget/db/schema";
+import { SCHEDULE_FREQUENCIES, zCurrencyCode, zMinorUnits } from "@strictbudget/engine";
 import { jsonError } from "../../lib/errors";
 import { authSecurity, requireAuth } from "../../middleware/require-auth";
 import { TransactionSchema } from "../transactions/routes";
@@ -12,11 +12,11 @@ const Today = IsoDate.describe(
 const Frequency = z
   .enum(SCHEDULE_FREQUENCIES)
   .describe(
-    'YNAB\'s "Repeat:" options; `never` is a one-off. Month-based repeats fall on the first ' +
+    'The "Repeat:" options; `never` is a one-off. Month-based repeats fall on the first ' +
       "date's day (or a shorter month's last day) and count from `dateFirst`; yearly ones step " +
       "from the previous date; twice a month pairs the day with the day 15 later.",
   );
-const Flag = z.enum(FLAG_COLORS).nullable().describe("One of YNAB's six flag colors, or null");
+const Flag = z.enum(FLAG_COLORS).nullable().describe("One of the six flag colors, or null");
 const PayeeName = z.string().trim().min(1).max(200);
 const Memo = z.string().max(500);
 
@@ -113,8 +113,8 @@ const rules =
   "accounts and transfers between budget accounts take no category, payment categories can't " +
   "be used, and a split's lines (two or more) add up to its amount. A transfer's one category " +
   "is its budget side's, even when that's the other account. A `date` on or before `today` is " +
-  "entered right away (unapproved), and the schedule starts at its first date after today, as " +
-  "YNAB does when a past date is saved.";
+  "entered right away (unapproved), and the schedule starts at its first date after today, " +
+  "not before.";
 
 const EnteredSchema = z
   .object({
@@ -177,7 +177,7 @@ export const createScheduledTransaction = createRoute({
   summary: "Schedule a transaction (a future one-off or a repeating one)",
   description:
     `${rules} \`fromTransactionId\` replaces that transaction (and its transfer's other side) ` +
-    "with the schedule, as YNAB does when a transaction's date is moved into the future.",
+    "with the schedule, as when a transaction's date is moved into the future.",
   request: {
     params: BudgetParams,
     body: json(
@@ -203,7 +203,7 @@ export const createScheduledTransaction = createRoute({
             .optional()
             .describe(
               "An undo putting a schedule back as it was: its accounts may have been closed " +
-                "since, as YNAB's Undo allows",
+                "since, which Undo allows",
             ),
         })
         .openapi("CreateScheduledTransaction"),
@@ -232,7 +232,7 @@ export const updateScheduledTransaction = createRoute({
   middleware: [requireAuth] as const,
   summary: "Edit a scheduled transaction (it and all of its future occurrences)",
   description:
-    `${rules} A new \`date\` restarts the repeats there (YNAB resets the first date); a new ` +
+    `${rules} A new \`date\` restarts the repeats there (the first date is reset); a new ` +
     "`frequency` counts from the date shown. Setting `payeeName` turns a transfer into a normal " +
     "one, `subtransactions` replace a split's lines and a `categoryId` un-splits it.",
   request: {
@@ -257,7 +257,7 @@ export const updateScheduledTransaction = createRoute({
             .optional()
             .describe(
               "An undo putting a schedule back as it was: its accounts may have been closed " +
-                "since, as YNAB's Undo allows",
+                "since, which Undo allows",
             ),
         })
         .openapi("UpdateScheduledTransaction"),
@@ -302,7 +302,7 @@ export const enterScheduledTransaction = createRoute({
   middleware: [requireAuth] as const,
   summary: "Enter Now: the next occurrence, dated today",
   description:
-    "As YNAB's Enter Now: the transaction is dated `today` and approved (uncleared, or cleared " +
+    "Enter Now: the transaction is dated `today` and approved (uncleared, or cleared " +
     "in a cash account), and the schedule moves to its following date; a one-off is done. Works " +
     "in a closed account too.",
   request: {
@@ -352,7 +352,7 @@ export const bulkUpdateScheduledTransactions = createRoute({
     "its schedule, once). `enterNow` enters each as Enter Now does (a split's transfer line " +
     "enters its split). `duplicate` copies each schedule, starting at its next date. `flag`, " +
     "`memo`, `categorize`, `move` and `delete` work as on transactions. A scheduled split's " +
-    "transfer line in the other account is skipped by everything but `enterNow`, as YNAB does. " +
+    "transfer line in the other account is skipped by everything but `enterNow`. " +
     "One database transaction.",
   request: {
     params: BudgetParams,

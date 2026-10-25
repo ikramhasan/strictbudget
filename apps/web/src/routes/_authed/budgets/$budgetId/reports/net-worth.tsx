@@ -3,10 +3,10 @@ import {
   currencyExponent,
   exportDelimiter,
   isBudgetMonth,
-} from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@everycent/ui/components/toggle-group";
+} from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { ImageIcon } from "lucide-react";
@@ -29,7 +29,7 @@ import { type ReportSearch, rangeLabel, reportSearchSchema } from "@/lib/reports
 import { useReportState } from "@/lib/use-report";
 
 const searchSchema = reportSearchSchema.extend({
-  /** The main chart: assets and debts (YNAB's view) or the composition by account kind. */
+  /** The main chart: assets and debts or the composition by account kind. */
   chart: z.enum(["bars", "composition"]).optional().catch(undefined),
   /** The month "What changed this month" explains (the range's last by default). */
   month: z.string().refine(isBudgetMonth).optional().catch(undefined),
@@ -41,10 +41,9 @@ export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/net-wor
   component: Report,
 });
 
-/** YNAB's tagline on Net Worth's share picture (2026-10-17). */
+/** The tagline on Net Worth's share picture. */
 const TAGLINE = "From worried to worth it.";
 
-/** YNAB's Net Worth report (EVERYCENT-79), with everycent's charts. */
 function Report() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();

@@ -1,5 +1,5 @@
-import type { components } from "@everycent/api-client";
-import { BUDGET_MONTH_PATTERN, type BudgetMonth, type CardCoverage } from "@everycent/engine";
+import type { components } from "@strictbudget/api-client";
+import { BUDGET_MONTH_PATTERN, type BudgetMonth, type CardCoverage } from "@strictbudget/engine";
 import { z } from "zod";
 import { $api } from "./api";
 import { todayIso } from "./dates";
@@ -25,7 +25,6 @@ export const COVERAGE_LABELS: Record<CardCoverage, string> = {
   unfunded: "Unfunded debt",
 };
 
-/** What each status means and what to do, in plain words. */
 export const COVERAGE_HELP: Record<CardCoverage, string> = {
   covered:
     "The card's payment category has at least as much as the card owes, so you could pay it off today.",
@@ -35,7 +34,6 @@ export const COVERAGE_HELP: Record<CardCoverage, string> = {
     "Nothing is set aside for what the card owes. This is debt from before the budget, or spending the categories couldn't cover. Assigning money to the payment category sets it aside.",
 };
 
-/** Text colour for a status. */
 export const COVERAGE_TONES: Record<CardCoverage, string> = {
   covered: "text-green-700 dark:text-green-400",
   partial: "text-yellow-800 dark:text-yellow-300",

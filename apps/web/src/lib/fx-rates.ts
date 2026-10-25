@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import { $api } from "./api";
 
 export type FxRate = components["schemas"]["FxRate"];
@@ -14,5 +14,4 @@ export function isValidRate(text: string) {
   return /^\d+(\.\d{1,12})?$/.test(text) && /[1-9]/.test(text);
 }
 
-/** "1 EUR = 1.0842 USD". */
 export const rateLabel = (from: string, rate: string, to: string) => `1 ${from} = ${rate} ${to}`;

@@ -1,4 +1,4 @@
-import { newId, sql } from "@everycent/db";
+import { newId, sql } from "@strictbudget/db";
 import {
   accountImportId,
   budget,
@@ -24,8 +24,8 @@ import {
   scheduledTransaction,
   subTransaction,
   transaction,
-} from "@everycent/db/schema";
-import type { CurrencyCode } from "@everycent/engine";
+} from "@strictbudget/db/schema";
+import type { CurrencyCode } from "@strictbudget/engine";
 import { and, eq } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import { pauseAudit } from "../audit-context";

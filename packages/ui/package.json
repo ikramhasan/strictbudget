@@ -1,5 +1,5 @@
 {
-  "name": "@everycent/ui",
+  "name": "@strictbudget/ui",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -41,7 +41,7 @@
     "vaul": "catalog:"
   },
   "devDependencies": {
-    "@everycent/tsconfig": "workspace:*",
+    "@strictbudget/tsconfig": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "react": "catalog:",

@@ -129,7 +129,7 @@ describe("transaction history bodies", () => {
     expect(createBodyFromTransaction(transaction)).not.toHaveProperty("transferSide");
   });
 
-  it("brings back a cross-currency transfer's other amount (EVERYCENT-55)", () => {
+  it("brings back a cross-currency transfer's other amount", () => {
     const side = {
       id: "side",
       version: 1,
@@ -157,7 +157,7 @@ describe("transaction history bodies", () => {
     expect(updateBodyFromTransaction(same)).not.toHaveProperty("transferAmount");
   });
 
-  it("brings back a deleted FX Revaluation with its booked base amount (EVERYCENT-56)", () => {
+  it("brings back a deleted FX Revaluation with its booked base amount", () => {
     const revaluation: Transaction = {
       ...transaction,
       amount: "0",

@@ -1,4 +1,4 @@
-import { budgetAccount, payee, transaction } from "@everycent/db/schema";
+import { budgetAccount, payee, transaction } from "@strictbudget/db/schema";
 import {
   addMonths,
   allTimeHighs,
@@ -14,7 +14,7 @@ import {
   netWorthGroup,
   netWorthParts,
   netWorthTotals,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import type { FxDeps } from "./base-amount";
 import { AppError } from "./errors";
@@ -71,17 +71,17 @@ const ZERO_FLOWS: MonthFlows = { native: 0n, base: 0n, starting: 0n, transfers: 
 
 /**
  * The most months a report covers, and how far before its start the walk looks back for all-time
- * highs (EVERYCENT-244): a century, beyond any real history, while keeping a request's work bounded.
+ * highs: a century, beyond any real history, while keeping a request's work bounded.
  */
 export const NET_WORTH_MAX_MONTHS = 1200;
 
 /**
- * Month-end balances of a budget's accounts over `from`–`to` and the net worth they add up to
- * (EVERYCENT-79). As YNAB's Net Worth report (2026-10-17): every account, closed ones included;
- * the last day's working balance (uncleared included, a loan's interest and escrow for the month
- * included); the current month as of `today`. A foreign-currency balance converts at its
- * month-end's rate (`resolveRate`: the budget's override, the cached market rate, a provider, else
- * the nearest earlier rate); with none at all it's left out of the totals and listed in `missing`.
+ * Month-end balances of a budget's accounts over `from`–`to` and the net worth they add up to:
+ * every account, closed ones included; the last day's working balance (uncleared included, a
+ * loan's interest and escrow for the month included); the current month as of `today`. A
+ * foreign-currency balance converts at its month-end's rate (`resolveRate`: the budget's
+ * override, the cached market rate, a provider, else the nearest earlier rate); with none at all
+ * it's left out of the totals and listed in `missing`.
  * Flows for the waterfall are the transactions' base amounts (booked rates), revaluations left out.
  */
 export async function netWorthReport(
@@ -255,7 +255,7 @@ export async function netWorthReport(
   }
   for (const month of months.filter((m) => m >= from)) {
     // Only from a currency's first transaction on: earlier months have no balance to convert, and
-    // a rate for them could be a provider round-trip (EVERYCENT-245).
+    // a rate for them could be a provider round-trip.
     for (const [currency, first] of foreignFirst) {
       if (month >= first) rates.push(await rateFor(currency, month));
     }

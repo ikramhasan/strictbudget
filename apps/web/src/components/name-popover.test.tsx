@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { NamePopover, splitEmoji } from "./name-popover";
 
-// The picker loads Emojibase's data from our own origin; serve it from the package.
+// The picker loads Emojibase's data from the app's origin; serve it from the package.
 const require = createRequire(import.meta.url);
 vi.stubGlobal("fetch", async (url: string) => {
   const file = String(url).endsWith("messages.json") ? "messages.json" : "data.json";

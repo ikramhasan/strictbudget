@@ -73,7 +73,7 @@ describe("planColors", () => {
 });
 
 describe("report labels", () => {
-  it("writes months as YNAB's reports do", () => {
+  it("writes months as the reports do", () => {
     expect(monthLabel("2026-10")).toBe("Oct 2026");
     expect(monthLabel("2026-10", "long")).toBe("October 2026");
     expect(monthLabel("2026-08", "axis")).toBe("08/26");

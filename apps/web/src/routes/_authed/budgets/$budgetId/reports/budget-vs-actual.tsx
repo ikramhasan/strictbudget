@@ -4,8 +4,8 @@ import {
   exportDelimiter,
   money,
   toDelimited,
-} from "@everycent/engine";
-import { Skeleton } from "@everycent/ui/components/skeleton";
+} from "@strictbudget/engine";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -47,8 +47,7 @@ export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/budget-
 });
 
 /**
- * Budget vs Actual (EVERYCENT-83, an everycent extra; YNAB's reports never set spending against
- * the plan): each category's Assigned against what it spent, from the plan's own month numbers.
+ * Each category's Assigned against what it spent, from the plan's own month numbers.
  */
 function Report() {
   const search = Route.useSearch();

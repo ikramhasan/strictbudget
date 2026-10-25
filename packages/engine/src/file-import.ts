@@ -17,8 +17,8 @@ export interface ImportRow {
 }
 
 /**
- * The date formats YNAB's CSV import offers when it can't tell (2026-10-17, EVERYCENT-66), in its
- * order, with the date-fns pattern that reads each. Single-letter day and month tokens take one
+ * The date formats the CSV import offers when it can't tell, in display order, with the date-fns
+ * pattern that reads each. Single-letter day and month tokens take one
  * or two digits.
  */
 export const CSV_DATE_FORMATS = [
@@ -71,9 +71,8 @@ export function parseImportDate(value: string, format: CsvDateFormat): string | 
 }
 
 /**
- * The formats every one of these dates reads in. YNAB asks which one when there's more than one
- * ("The date format of … is unclear"), offering the readings of the first date, and lists every
- * format when none fits.
+ * The formats every one of these dates reads in. The import asks which one when there's more than
+ * one, offering the readings of the first date, and lists every format when none fits.
  */
 export function possibleDateFormats(values: readonly string[]): CsvDateFormat[] {
   const dates = values.map((v) => v.trim()).filter((v) => v !== "");
@@ -91,8 +90,8 @@ export function parseImportAmount(
   currency: CurrencyCode,
   numberFormat: NumberFormat,
 ): bigint | null {
-  // Accounting-style "(12.00)" isn't confirmed in YNAB: rather than read it as +12.00, it's left
-  // unreadable, so the row is reported instead of imported with the wrong sign.
+  // Accounting-style "(12.00)" is left unreadable rather than read as +12.00, so the row is
+  // reported instead of imported with the wrong sign.
   if (/\(.*\d.*\)/.test(value)) return null;
   const text = value.replace(/[^\d.,'’+-]/g, "");
   if (!/\d/.test(text)) return null;
@@ -106,15 +105,15 @@ export function parseImportAmount(
 }
 
 /**
- * A CSV (or TSV) file's cells. papaparse guesses the delimiter (comma, semicolon, tab, pipe) as
- * YNAB's import does; blank lines are dropped.
+ * A CSV (or TSV) file's cells. papaparse guesses the delimiter (comma, semicolon, tab, pipe);
+ * blank lines are dropped.
  */
 export function parseCsvText(text: string): string[][] {
   const result = Papa.parse<string[]>(text.replace(/^﻿/, ""), { skipEmptyLines: "greedy" });
   return result.data.map((row) => row.map((cell) => (cell ?? "").trim()));
 }
 
-/** Which column (0-based) feeds each of YNAB's fields; null when none does. */
+/** Which column (0-based) feeds each field; null when none does. */
 export interface CsvMapping {
   date: number | null;
   payee: number | null;
@@ -129,7 +128,7 @@ export interface CsvOptions {
   dateFormat: CsvDateFormat | null;
 }
 
-/** The column names YNAB's selects list: the header, lowercased, or A, B, C… without one. */
+/** The column names the selects list: the header, lowercased, or A, B, C… without one. */
 export function csvColumnNames(table: readonly string[][], noHeaderRow: boolean): string[] {
   const width = Math.max(0, ...table.map((r) => r.length));
   return Array.from({ length: width }, (_, i) =>
@@ -146,7 +145,7 @@ function columnLetter(i: number): string {
 }
 
 /**
- * YNAB's starting guess (2026-10-17): a header "date" is the Date, "payee" or "description" the
+ * The starting guess: a header "date" is the Date, "payee" or "description" the
  * Payee, "memo" the Memo. Nothing else is picked for you, amounts included.
  */
 export function guessCsvMapping(columnNames: readonly string[]): CsvMapping {
@@ -224,10 +223,9 @@ export function csvRows(
 const abs = (n: bigint) => (n < 0n ? -n : n);
 
 /**
- * YNAB-style import ids (`YNAB:<milliunits>:<date>:<occurrence>`, seen 2026-10-17), here in the
- * budget's minor units: amount, date, and which occurrence of that amount on that date it is
- * within the file. Importing the same file again gives the same ids, so its rows are skipped.
- * YNAB uses these for OFX files too, not the file's FITIDs (2026-10-17, EVERYCENT-67).
+ * Import ids in the budget's minor units: amount, date, and which occurrence of that amount on
+ * that date it is within the file. Importing the same file again gives the same ids, so its rows
+ * are skipped. OFX files use these too, not the file's FITIDs.
  */
 export function importIds(rows: readonly ImportRow[]): string[] {
   const seen = new Map<string, number>();

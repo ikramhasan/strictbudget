@@ -17,7 +17,7 @@ function send(method: string, path: string, cookie: string, body?: unknown) {
   });
 }
 
-/** Spending on a few days of two months (Spending Trends' calendar, EVERYCENT-78). */
+/** Spending on a few days of two months (Spending Trends' calendar). */
 async function setup() {
   const { cookie } = await signUp(app);
   const budget = await createBudget(app, cookie);

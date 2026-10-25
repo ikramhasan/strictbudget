@@ -20,13 +20,13 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_USER: everycent
-          POSTGRES_PASSWORD: everycent
-          POSTGRES_DB: everycent
+          POSTGRES_USER: strictbudget
+          POSTGRES_PASSWORD: strictbudget
+          POSTGRES_DB: strictbudget
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U everycent -d everycent"
+          --health-cmd "pg_isready -U strictbudget -d strictbudget"
           --health-interval 2s
           --health-timeout 3s
           --health-retries 20
@@ -42,7 +42,7 @@ jobs:
       # which point at them. Tests read the root .env: turbo's strict env mode drops job env vars.
       - name: Prepare database and .env
         run: |
-          PGPASSWORD=everycent psql -h localhost -U everycent -d everycent -c "CREATE DATABASE everycent_test OWNER everycent"
+          PGPASSWORD=strictbudget psql -h localhost -U strictbudget -d strictbudget -c "CREATE DATABASE strictbudget_test OWNER strictbudget"
           cp .env.example .env
       - run: pnpm check
         env:
@@ -50,7 +50,7 @@ jobs:
           API_TEST_WORKERS: 3
 
   # The production image (Dockerfile) builds, and its migrate step and server start on a
-  # fresh database. Publishing it is EVERYCENT-215.
+  # fresh database.
   image:
     runs-on: ubicloud-standard-2
     timeout-minutes: 20
@@ -58,27 +58,27 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_USER: everycent
-          POSTGRES_PASSWORD: everycent
-          POSTGRES_DB: everycent
+          POSTGRES_USER: strictbudget
+          POSTGRES_PASSWORD: strictbudget
+          POSTGRES_DB: strictbudget
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U everycent -d everycent"
+          --health-cmd "pg_isready -U strictbudget -d strictbudget"
           --health-interval 2s
           --health-timeout 3s
           --health-retries 20
     steps:
       - uses: actions/checkout@v5
-      - run: docker build -t everycent:ci .
+      - run: docker build -t strictbudget:ci .
       - name: Migrate and start
         run: |
-          DB=postgres://everycent:everycent@127.0.0.1:5432/everycent
-          docker run --rm --network host -e DATABASE_URL=$DB everycent:ci node dist/migrate.mjs
+          DB=postgres://strictbudget:strictbudget@127.0.0.1:5432/strictbudget
+          docker run --rm --network host -e DATABASE_URL=$DB strictbudget:ci node dist/migrate.mjs
           docker run -d --name app --network host -e DATABASE_URL=$DB \
             -e BETTER_AUTH_SECRET=ci-image-check-secret-that-is-long-enough \
             -e BETTER_AUTH_URL=http://127.0.0.1:3000 -e WEB_ORIGIN=http://127.0.0.1:3000 \
-            -e RESEND_API_KEY=re_ci_not_a_key -e FROM_EMAIL=example.com everycent:ci
+            -e RESEND_API_KEY=re_ci_not_a_key -e FROM_EMAIL=example.com strictbudget:ci
           for i in $(seq 30); do curl -sf http://127.0.0.1:3000/v1/health && break; sleep 1; done
           curl -sf http://127.0.0.1:3000/v1/health
           curl -sf http://127.0.0.1:3000/ | grep -q 'id="root"'

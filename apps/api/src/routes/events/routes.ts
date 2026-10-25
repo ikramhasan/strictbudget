@@ -11,7 +11,7 @@ export const budgetEvents = createRoute({
   middleware: [requireAuth] as const,
   summary: "Live changes to the budget (server-sent events)",
   description:
-    "An everycent extra (EVERYCENT-90; YNAB's web app re-syncs every 3 minutes). A " +
+    "A " +
     "`text/event-stream` that sends a `change` event, data `{ table, actorId, agentId, clientId }` (`agentId`: the connected agent that made it for the actor, or null), " +
     "after every committed change to the budget's data (a request's identical changes once), " +
     "so a client can refetch what it shows; `clientId` is the `X-Client-Id` of the tab that " +

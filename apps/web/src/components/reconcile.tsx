@@ -1,18 +1,18 @@
-import { isDebtAccount } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { Checkbox } from "@everycent/ui/components/checkbox";
-import { Field, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { Label } from "@everycent/ui/components/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
+import { isDebtAccount } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
+import { Field, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { Label } from "@strictbudget/ui/components/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { type FormEvent, useEffect, useId, useState } from "react";
 import type { Account } from "@/lib/accounts";
 import { type MoneySettings, parseMoneyInput } from "@/lib/money-input";
 
-// YNAB words the last reconciliation like moment's fromNow ("a few seconds ago", "9 days ago");
-// dayjs's relativeTime plugin gives the same wording.
+// The last reconciliation is worded like moment's fromNow ("a few seconds ago", "9 days ago"),
+// which dayjs's relativeTime plugin matches.
 dayjs.extend(relativeTime);
 
 /** The account header's "Reconciled 9 days ago", or "Not Yet Reconciled". */
@@ -21,8 +21,8 @@ export function reconciledLabel(lastReconciledAt: string | null, now = new Date(
   return `Reconciled ${dayjs(lastReconciledAt).from(now)}`;
 }
 
-/** YNAB keeps "Don't Show Again" for the difference explanation in the browser, for every plan. */
-const SKIP_EXPLANATION_KEY = "everycent:skipDifferenceExplanation";
+/** "Don't Show Again" for the difference explanation is kept in the browser, for every budget. */
+const SKIP_EXPLANATION_KEY = "strictbudget:skipDifferenceExplanation";
 
 function skipsExplanation() {
   try {
@@ -43,7 +43,7 @@ function setSkipsExplanation(skip: boolean) {
 
 /**
  * The bank balance typed for `account`. Debt accounts take what's owed, so "57" and "-57" both
- * mean a balance of −57 (YNAB, 2026-10-11: R9 Card and R9 Liab).
+ * mean a balance of −57.
  */
 export function bankBalance(text: string, account: Pick<Account, "type">, settings: MoneySettings) {
   const parsed = parseMoneyInput(text, settings);
@@ -55,9 +55,8 @@ export function bankBalance(text: string, account: Pick<Account, "type">, settin
 type Step = { kind: "confirm" } | { kind: "enter" } | { kind: "difference"; balance: bigint };
 
 /**
- * YNAB's Reconcile popover: "Is your current balance …?" Yes reconciles at the cleared balance;
- * No asks for the bank's balance, explains the difference (unless "Don't Show Again" was ticked)
- * and starts reconciling with the banner over the register.
+ * Yes reconciles at the cleared balance; No asks for the bank's balance, explains the difference
+ * (unless "Don't Show Again" was ticked) and starts reconciling.
  */
 export function ReconcilePopover({
   account,
@@ -160,13 +159,13 @@ export function ReconcilePopover({
               <span className="text-muted-foreground">Difference</span>
             </div>
             <p>
-              The balance recorded in everycent doesn't match the balance at your financial
+              The balance recorded in strictbudget doesn't match the balance at your financial
               institution.
             </p>
             <p>
-              <strong>To correct this</strong>, compare each unlocked transaction in everycent
-              against your account to make sure they match. everycent will keep track of the current
-              difference at the top of your register.
+              <strong>To correct this</strong>, compare each unlocked transaction in strictbudget
+              against your account to make sure they match. strictbudget will keep track of the
+              current difference at the top of your register.
             </p>
             <p>
               If you can't find the difference, that's okay! We'll make an adjustment transaction
@@ -199,10 +198,6 @@ export function ReconcilePopover({
   );
 }
 
-/**
- * Shown over the register while reconciling: how the cleared balance compares with the bank's,
- * live as rows are cleared, and the way to finish.
- */
 export function ReconcileBanner({
   difference,
   show,
@@ -224,7 +219,7 @@ export function ReconcileBanner({
       className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-primary/10 px-4 py-3 text-sm"
     >
       <p aria-live="polite">
-        This account's cleared balance in everycent is{" "}
+        This account's cleared balance in strictbudget is{" "}
         {same ? (
           <strong>the same</strong>
         ) : (

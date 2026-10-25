@@ -21,7 +21,6 @@ export function PageHeader({
   title: ReactNode;
   /** Beside the title: badges, a star, a short muted line. */
   meta?: ReactNode;
-  /** The page's buttons, at the bar's right end. */
   actions?: ReactNode;
 }) {
   const slot = useContext(PageHeaderSlot);

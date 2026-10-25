@@ -164,7 +164,7 @@ describe("PaymentInspector", () => {
       />,
     );
 
-  it("splits what's underfunded (YNAB's Card A)", () => {
+  it("splits what's underfunded", () => {
     show({
       balance: -10400n,
       underfunded: 9200n,
@@ -188,7 +188,7 @@ describe("PaymentInspector", () => {
     }
   });
 
-  it("offers Record Payment once Available covers the balance (YNAB, 2026-10-15)", async () => {
+  it("offers Record Payment once Available covers the balance", async () => {
     const record = (available: bigint, balance: bigint, warn = true) => {
       cleanup();
       const onRecordPayment = vi.fn();
@@ -232,7 +232,6 @@ describe("PaymentInspector", () => {
     expect(screen.getByText("Prior Balance")).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Current Balance" }));
     expect(screen.queryByText("Prior Balance")).not.toBeInTheDocument();
-    // The total stays in the folded header.
     expect(screen.getByRole("button", { name: "Current Balance" }).nextSibling).toHaveTextContent(
       "A-2900",
     );
@@ -249,7 +248,7 @@ describe("PaymentInspector", () => {
     expect(screen.getByText(/You need to assign A2900 more/)).toBeInTheDocument();
   });
 
-  it("warns when more was paid than set aside (YNAB's Citi)", () => {
+  it("warns when more was paid than set aside", () => {
     show(
       { balance: -600n, underfunded: 0n, overspentCategories: 0n, paymentsMade: -1600n },
       true,

@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { Select as SelectPrimitive } from "radix-ui";
 import * as React from "react";
@@ -122,7 +122,7 @@ function SelectItem({
       )}
       {...props}
     >
-      {/* everycent: the tick draws itself, like Checkbox and the Dropdown Menu. Radix's
+      {/* strictbudget: the tick draws itself, like Checkbox and the Dropdown Menu. Radix's
           ItemIndicator unmounts when deselected (it has no forceMount), so the tick is always
           rendered and follows the item's data-state instead. */}
       <span

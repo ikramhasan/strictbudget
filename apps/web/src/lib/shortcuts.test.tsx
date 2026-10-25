@@ -55,7 +55,7 @@ function setup(
 }
 
 describe("useShortcut", () => {
-  it("fires YNAB's letter and shift shortcuts", async () => {
+  it("fires the letter and shift shortcuts", async () => {
     const { onFire, user } = setup("snooze");
     await user.keyboard("z");
     expect(onFire).not.toHaveBeenCalled();
@@ -141,7 +141,7 @@ describe("useShortcut in the command palette", () => {
 });
 
 describe("SHORTCUTS", () => {
-  it("lists YNAB's dialog in its sections, plus everycent's command palette", () => {
+  it("lists the dialog in its sections, plus the command palette", () => {
     const sections = new Set(Object.values(SHORTCUTS).map((s) => s.section));
     expect([...sections]).toEqual(["Universal", "Plan Actions", "Account Actions", "Date Picker"]);
     expect(Object.keys(SHORTCUTS)).toHaveLength(41);

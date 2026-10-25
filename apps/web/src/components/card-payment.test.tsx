@@ -59,7 +59,7 @@ const account = (
 
 const format = (minorUnits: string) => `$${(Number(minorUnits) / 100).toFixed(2)}`;
 
-describe("a card's Record Payment (YNAB, 2026-10-14)", () => {
+describe("a card's Record Payment", () => {
   it("pays the lower of the payment Available and the cleared balance owed", () => {
     expect(cardPaymentAmount(300n, -100n)).toBe(100n);
     expect(cardPaymentAmount(200n, -500n)).toBe(200n);
@@ -106,7 +106,7 @@ describe("a card's Record Payment (YNAB, 2026-10-14)", () => {
     expect(draft).toMatchObject({ payeeName: "", transferAccountId: null, inflow: "" });
   });
 
-  it("prefills another card the card was last paid from (YNAB, 2026-10-15)", () => {
+  it("prefills another card the card was last paid from", () => {
     const other = account("x-c11-163 Card B", "credit_card");
     const card = account("Card", "credit_card", { lastPaymentFromAccountId: other.id }, "-100");
     const draft = cardPaymentDraft({
@@ -118,7 +118,7 @@ describe("a card's Record Payment (YNAB, 2026-10-14)", () => {
     });
     expect(draft).toMatchObject({
       transferAccountId: other.id,
-      // Nothing set aside, so no amount: YNAB reads "To/From" then.
+      // Nothing set aside, so no amount: the payee reads "To/From" then.
       payeeName: "To/From x-c11-163 Card B",
     });
   });
@@ -137,7 +137,7 @@ describe("a card's Record Payment (YNAB, 2026-10-14)", () => {
   });
 });
 
-describe("the card register's Payment figure (YNAB, 2026-10-14)", () => {
+describe("the card register's Payment figure", () => {
   it("is plain green when the payment is covered", () => {
     render(<PaymentFigure categoryId="pay" available={300n} caution={false} format={format} />);
     expect(screen.getByText("Payment")).toBeTruthy();
@@ -157,7 +157,7 @@ describe("the card register's Payment figure (YNAB, 2026-10-14)", () => {
   });
 });
 
-describe("the card register's Overspending figure (YNAB, 2026-10-15)", () => {
+describe("the card register's Overspending figure", () => {
   it("shows this month's credit overspending, labelled with the month", () => {
     render(<OverspendingFigure amount={200n} month="2026-10" format={format} />);
     expect(screen.getByText("Overspending (Oct)")).toBeTruthy();

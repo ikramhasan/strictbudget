@@ -6,9 +6,9 @@ import {
   money,
   percentTenths,
   type TrendMonth,
-} from "@everycent/engine";
-import { type ChartConfig, ChartContainer } from "@everycent/ui/components/chart";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/engine";
+import { type ChartConfig, ChartContainer } from "@strictbudget/ui/components/chart";
+import { cn } from "@strictbudget/ui/lib/utils";
 import type { ReactNode } from "react";
 import {
   Bar,
@@ -27,14 +27,12 @@ import { useBudget } from "@/lib/budget-context";
 import { chartNumber, monthLabel } from "@/lib/reports";
 import type { SeriesInfo } from "@/lib/spending-trends";
 
-/** What every Spending Trends chart draws from: exact amounts, keyed by month. */
 export interface TrendChartData {
   /** The range's months with their series (empty months included), oldest first. */
   months: TrendMonth<string>[];
   /** The series, in stack (plan) order. */
   keys: string[];
   info: (key: string) => SeriesInfo;
-  /** Average Monthly Spending over the range. */
   average: bigint;
   /** Each month's previous month's total (the month before the range included). */
   previous: Map<BudgetMonth, bigint>;
@@ -55,7 +53,6 @@ export interface TrendOverlays {
 /** A clicked mark: a series in a month (or the whole month when `key` is null). */
 export type TrendPick = (month: BudgetMonth, key: string | null) => void;
 
-/** Formats exact amounts in the budget's currency. */
 function useFormat() {
   const { budget, formatAmount } = useBudget();
   const currency = budget.currency as CurrencyCode;
@@ -138,7 +135,6 @@ export function DifferenceText({
   );
 }
 
-/** The month tooltip: YNAB's Total Spending breakdown plus everycent's comparisons and series. */
 function MonthTooltip({
   month,
   data,
@@ -216,16 +212,10 @@ function MonthTooltip({
 
 const monthTick = (m: string) => monthLabel(m, "axis");
 
-/** Reads the month a Recharts mark was drawn for. */
 const pickedMonth = (mark: unknown) =>
   (mark as { payload?: { month?: string } } | undefined)?.payload?.month as BudgetMonth | undefined;
 
-/**
- * YNAB's Spending Trends chart (2026-10-17): a bar per month with transactions, stacked by
- * series, positive-inflow series below zero, and the month's Total Spending as a line through
- * points. everycent adds the average line, the rolling 3-month average, the comparison as a ghost
- * bar (or line, for an average), and shades the months above the average.
- */
+/** Positive-inflow series stack below zero; months above the average are shaded. */
 export function TrendBarsChart({
   data,
   charted,
@@ -234,7 +224,7 @@ export function TrendBarsChart({
   className,
 }: {
   data: TrendChartData;
-  /** The months to draw (YNAB leaves out months without transactions). */
+  /** Months without transactions are left out. */
   charted: TrendMonth<string>[];
   overlays: TrendOverlays;
   onPick: TrendPick;
@@ -365,7 +355,7 @@ export function TrendBarsChart({
   );
 }
 
-/** Lines per series (everycent): the top spenders and Other, one line each, every month. */
+/** The top spenders and Other, one line each. */
 export function TrendLinesChart({ data, onPick }: { data: TrendChartData; onPick: TrendPick }) {
   const { format, tick, currency } = useFormat();
   const byMonth = new Map(data.months.map((m) => [m.month, m]));
@@ -427,10 +417,7 @@ export function TrendLinesChart({ data, onPick }: { data: TrendChartData; onPick
   );
 }
 
-/**
- * 100% share (everycent): each month's spending split by series, how the mix changes. Only what
- * was spent counts (a series with net inflows that month has no share).
- */
+/** Only what was spent counts: a series with net inflows that month has no share. */
 export function TrendShareChart({ data, onPick }: { data: TrendChartData; onPick: TrendPick }) {
   const { format, currency } = useFormat();
   const byMonth = new Map(data.months.map((m) => [m.month, m]));
@@ -511,10 +498,7 @@ export function TrendShareChart({ data, onPick }: { data: TrendChartData; onPick
   );
 }
 
-/**
- * Small multiples (everycent): a mini bar chart per series on one shared scale, the biggest
- * spenders first, to spot which one is trending up.
- */
+/** One shared scale across series, biggest spenders first. */
 export function TrendMultiples({ data, onPick }: { data: TrendChartData; onPick: TrendPick }) {
   const { format, currency } = useFormat();
   const totals = new Map(
@@ -597,7 +581,6 @@ export function TrendMultiples({ data, onPick }: { data: TrendChartData; onPick:
   );
 }
 
-/** The series' colours and names under a chart (clicking one drills into it). */
 export function TrendLegend({
   data,
   onPick,
@@ -639,7 +622,6 @@ export function TrendLegend({
   );
 }
 
-/** What the bar chart's extra marks mean (the shaded months, average lines, ghost bars). */
 export function TrendBarsKey({
   data,
   overlays,

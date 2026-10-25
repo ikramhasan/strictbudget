@@ -2,8 +2,7 @@ import { addMonths, type BudgetMonth, monthOf } from "./months";
 import { divideRounded } from "./rounding";
 
 /**
- * Loan activity (phase 7f), as YNAB's loan accounts work (checked in its web app, 2026-10-13,
- * YNAB findings "Loan activity"): each month that has payments is charged escrow first, then
+ * Loan activity: each month that has payments is charged escrow first, then
  * the month's interest, then the rest goes to principal. Interest and escrow aren't transactions;
  * they're worked out per month here and move the loan's balance.
  */
@@ -36,7 +35,7 @@ export type LoanChargeKind = (typeof LOAN_CHARGE_KINDS)[number];
 export const LOAN_CHARGE_STATUSES = ["edited", "reconciled"] as const;
 export type LoanChargeStatus = (typeof LOAN_CHARGE_STATUSES)[number];
 
-/** A month's interest or escrow set by hand ("Edited on …") or fixed by a reconcile. */
+/** A month's interest or escrow set by hand or fixed by a reconcile. */
 export interface LoanChargeOverride {
   month: BudgetMonth;
   kind: LoanChargeKind;
@@ -55,9 +54,7 @@ export interface LoanCharge {
 
 export interface LoanMonth {
   month: BudgetMonth;
-  /** Balance at the end of the previous month. */
   startBalance: bigint;
-  /** Total of the month's payments. */
   payments: bigint;
   /** Total of the month's other transactions (starting balance, credits, charges, adjustments). */
   other: bigint;
@@ -78,9 +75,9 @@ export function rateThousandths(rate: string): bigint {
 
 /**
  * One month's interest on `owed` (minor units, positive) at an annual `rate` in percent:
- * owed × rate ÷ 12 with exact math, rounded half up twice as YNAB does: to the milliunit (a
+ * owed × rate ÷ 12 with exact math, rounded half up twice: to the milliunit (a
  * thousandth of the currency's major unit), then to the minor unit. $10,001.00 at 6% is $50.01,
- * $7.00 at 6% is $0.04, and $2,074.97 at 6% ($10.37485) is $10.38, not $10.37 (YNAB, 2026-10-13).
+ * $7.00 at 6% is $0.04, and $2,074.97 at 6% ($10.37485) is $10.38, not $10.37.
  * `exponent` is the currency's (2 for USD); with 3 or more there's one rounding.
  */
 export function monthlyInterest(owed: bigint, rate: string | null, exponent: number): bigint {
@@ -93,8 +90,7 @@ export function monthlyInterest(owed: bigint, rate: string | null, exponent: num
 
 /**
  * The terms that apply in `month`: the latest entry from that month or before. Months before the
- * first entry use the first one (YNAB recomputed September at a rate set in October, the loan's
- * only entry).
+ * first entry use the first one.
  */
 export function termsFor(terms: readonly LoanTerms[], month: BudgetMonth): LoanTerms | null {
   let found: LoanTerms | null = null;
@@ -121,11 +117,10 @@ const sameRate = (a: string | null, b: string | null) =>
   a === null || b === null ? a === b : rateThousandths(a) === rateThousandths(b);
 
 /**
- * The `loan_terms` entries Update Balance's check step writes (YNAB, 2026-10-14, "ihni7's Plan"):
- * the new values from `month` on ("Your interest rate has been changed to 7% for October and going
- * forward."); with "Keep … going forward" unchecked ("… changed to 7% for October.") the old
- * value comes back the month after (YNAB's API then had rates {Oct: 7%, Nov: 6%}). Values equal
- * to the current ones aren't changes; with none, there's nothing to write.
+ * The `loan_terms` entries Update Balance's check step writes: the new values from `month` on;
+ * with "Keep … going forward" unchecked the old value comes back the month after (rates
+ * {Oct: 7%, Nov: 6%}). Values equal to the current ones aren't changes; with none, there's nothing
+ * to write.
  */
 export function loanTermsEntries(
   terms: readonly LoanTerms[],
@@ -216,8 +211,8 @@ export function loanMonths(input: {
     const own = lines.filter((l) => monthOf(l.date) === month);
     const payments = own.filter((l) => l.kind === "payment").reduce((s, l) => s + l.amount, 0n);
     const other = own.filter((l) => l.kind !== "payment").reduce((s, l) => s + l.amount, 0n);
-    // The month's own activity doesn't count, except the loan's starting balance (in its first
-    // month YNAB charged interest on it).
+    // The month's own activity doesn't count, except the loan's starting balance (its first month
+    // is charged interest on it).
     const base =
       balance + own.filter((l) => l.kind === "starting_balance").reduce((s, l) => s + l.amount, 0n);
     const term = termsFor(terms, month);

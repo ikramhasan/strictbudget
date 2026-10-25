@@ -1,5 +1,5 @@
-import { newId } from "@everycent/db";
-import { budgetMember, category } from "@everycent/db/schema";
+import { newId } from "@strictbudget/db";
+import { budgetMember, category } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
@@ -40,7 +40,7 @@ async function setup() {
 }
 
 describe("custom views", () => {
-  it("lists the presets in YNAB's order until views are added", async () => {
+  it("lists the presets in their default order until views are added", async () => {
     const { list } = await setup();
     expect(await list()).toEqual({ order: PRESETS, views: [] });
   });
@@ -59,7 +59,7 @@ describe("custom views", () => {
       await send("PATCH", path, owner.cookie, { name: "Fixed", categoryIds: [c] }),
     );
     expect(renamed).toEqual({ id: view.id, name: "Fixed", categoryIds: [c] });
-    // A view with no categories is allowed (YNAB saves it).
+    // A view with no categories is allowed.
     expect(
       (await json<View>(await send("PATCH", path, owner.cookie, { categoryIds: [] }))).categoryIds,
     ).toEqual([]);
@@ -113,8 +113,6 @@ describe("custom views", () => {
     expect((await list()).views).toHaveLength(12);
   });
 
-  // YNAB, 2026-10-15 (EVERYCENT-164): "x-c11-151 FS" → "FS2" kept x-c11-164 V1 and V2 and the
-  // Manage Views order (V2 moved first).
   it("comes along on a fresh start, onto the new categories and in the same order", async () => {
     const { base, ids, owner, budget, create } = await setup();
     const [a, b, c] = ids;

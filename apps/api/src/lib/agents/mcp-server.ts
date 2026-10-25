@@ -5,14 +5,13 @@ import type { AgentPrincipal } from "./principal";
 import type { AgentRuntime, OperationResult } from "./runtime";
 
 const INSTRUCTIONS =
-  "everycent is a zero-based (YNAB-style) budgeting app. Each tool is one operation of its REST " +
+  "strictbudget is a zero-based budgeting app. Each tool is one operation of its REST " +
   "API, run as the signed-in person (changes are attributed to this app on their behalf). Start " +
   "with listBudgets to find a budgetId; most tools are scoped to one budget. Money amounts are " +
   'integer strings in the currency\'s minor units (e.g. "-1250" is -12.50 USD). Months are ' +
   "YYYY-MM, dates YYYY-MM-DD. To attach a receipt to a transaction, call uploadAttachment with the file " +
   "base64-encoded in body.file. Errors come back as { error: { code, message } }.";
 
-/** An operation as an MCP tool. */
 function tool(op: AgentOperation) {
   return {
     name: op.name,
@@ -30,7 +29,7 @@ function tool(op: AgentOperation) {
 }
 
 const COMPACT_INSTRUCTIONS =
-  "everycent is a zero-based (YNAB-style) budgeting app. Its REST API operations are reached " +
+  "strictbudget is a zero-based budgeting app. Its REST API operations are reached " +
   "through three tools: searchOperations to find an operation, describeOperation for its " +
   "arguments, callOperation to run it by name, as the signed-in person (changes are attributed " +
   "to this app on their behalf). Start with the listBudgets operation to find a budgetId; most " +
@@ -46,7 +45,6 @@ const textResult = (data: unknown, isError = false) => ({
 });
 const failure = (code: string, message: string) => textResult({ error: { code, message } }, true);
 
-/** An operation's answer as an MCP tool result. */
 function toolResult(result: OperationResult) {
   const isError = !result.ok;
   switch (result.kind) {
@@ -65,7 +63,7 @@ function toolResult(result: OperationResult) {
             : {
                 type: "resource" as const,
                 resource: {
-                  uri: "everycent://download",
+                  uri: "strictbudget://download",
                   mimeType: result.contentType,
                   blob: result.base64,
                 },
@@ -90,7 +88,7 @@ function toolResult(result: OperationResult) {
 export function createMcpServer(runtime: AgentRuntime, version: string) {
   const build = (principal: AgentPrincipal, compact: boolean) => {
     const server = new Server(
-      { name: "everycent", title: "everycent", version },
+      { name: "strictbudget", title: "strictbudget", version },
       {
         capabilities: { tools: {} },
         instructions: compact ? COMPACT_INSTRUCTIONS + COMPACT_FORMATS : INSTRUCTIONS,

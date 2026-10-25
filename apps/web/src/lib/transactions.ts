@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import {
   type AccountType,
   accountFamily,
@@ -9,7 +9,7 @@ import {
   money,
   roundRate,
   type ScheduleFrequency,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import type { QueryClient } from "@tanstack/react-query";
 import { accountsQueryOptions } from "./accounts";
 import { $api } from "./api";
@@ -23,9 +23,9 @@ export type SubTransaction = components["schemas"]["SubTransaction"];
 export type Payee = components["schemas"]["Payee"];
 
 /**
- * The payee's recent categories for the category list's "Suggested" (YNAB lists none for a payee
- * set to "Do not auto-categorize", nor for transfers or a row without a known payee). A split
- * line goes by its own payee only, never its transaction's (2026-10-17, EVERYCENT-182).
+ * The payee's recent categories for the category list's "Suggested" (none for a payee set to "Do
+ * not auto-categorize", nor for transfers or a row without a known payee). A split line goes by its
+ * own payee only, never its transaction's.
  */
 export function payeeSuggestionIds(
   payees: readonly Payee[],
@@ -41,7 +41,6 @@ type CreateBody = components["schemas"]["CreateTransaction"];
 type UpdateBody = components["schemas"]["UpdateTransaction"];
 type LineBody = components["schemas"]["SubTransactionInput"];
 
-/** Rows per register page. */
 export const REGISTER_PAGE_SIZE = 100;
 
 /** Prefix of every register query (any budget, account, filter or sort). */
@@ -83,9 +82,9 @@ export interface CategoryOption {
 }
 
 /**
- * The categories a transaction can be filed under, as YNAB lists them: "Ready to Assign" for
- * income first, then the visible groups and categories. Payment categories only get money by
- * assigning, so they're left out.
+ * The categories a transaction can be filed under: "Ready to Assign" for income first, then the
+ * visible groups and categories. Payment categories only get money by assigning, so they're left
+ * out.
  */
 export function categoryOptions(list: CategoryList): CategoryOption[] {
   return [
@@ -100,7 +99,7 @@ export function categoryOptions(list: CategoryList): CategoryOption[] {
   ];
 }
 
-/** What the register shows for a category: income reads like YNAB's "Inflow: Ready to Assign". */
+/** What the register shows for a category: income reads "Inflow: Ready to Assign". */
 export function categoryLabel(option: CategoryOption) {
   return option.group === "Inflow" ? `Inflow: ${option.name}` : option.name;
 }
@@ -120,8 +119,8 @@ interface TransferAccount {
 }
 
 /**
- * Whether money moving from `from` to `to` is a payment in YNAB's wording (2026-10-15, "ihni7's
- * Plan"): into a loan, or into a credit account from a cash or asset account. Money between two
+ * Whether money moving from `from` to `to` is called a payment: into a loan, or into a credit
+ * account from a cash or asset account. Money between two
  * cards, into a cash account, or from a liability is a transfer.
  */
 function isPayment(from: AccountType, to: AccountType) {
@@ -130,8 +129,8 @@ function isPayment(from: AccountType, to: AccountType) {
 }
 
 /**
- * How YNAB's payee list names a transfer to or from `other` while editing in an `own` account
- * (2026-10-15): "Payment from Brac" / "Transfer from Card B" for an inflow, "Payment to Card A" /
+ * How the payee list names a transfer to or from `other` while editing in an `own` account:
+ * "Payment from Brac" / "Transfer from Card B" for an inflow, "Payment to Card A" /
  * "Transfer to Savings" for an outflow, "To/From X" before an amount is typed. A loan always reads
  * "Payment: X".
  */
@@ -150,15 +149,14 @@ export function transferChoiceLabel(
   return `To/From ${other.name}`;
 }
 
-/** The direction of a typed or saved amount. */
 export function directionOf(amount: bigint): TransferDirection {
   return amount > 0n ? "in" : amount < 0n ? "out" : null;
 }
 
 /**
- * How a register row names its transfer payee (YNAB, 2026-10-15, every register and All
- * Accounts): "Payment: X" on both sides of a payment (`isPayment`), "Transfer: X" otherwise. The
- * stored payee stays "Transfer : X", as in YNAB's own data.
+ * How a register row names its transfer payee (every register and All Accounts): "Payment: X" on
+ * both sides of a payment (`isPayment`), "Transfer: X" otherwise. The stored payee stays
+ * "Transfer : X".
  */
 export function transferRowLabel(own: AccountType, other: TransferAccount, amount: bigint) {
   const payment = amount > 0n ? isPayment(other.type, own) : isPayment(own, other.type);
@@ -167,8 +165,8 @@ export function transferRowLabel(own: AccountType, other: TransferAccount, amoun
 
 /**
  * A transfer between a credit and a cash account shows the card's payment category on both
- * sides, whichever way the money goes (YNAB, 2026-10-15: "Credit Card Payments: x-c11-163 Card A"
- * on a payment and on a cash advance). Returns the card, or null.
+ * sides, whichever way the money goes (on a payment and on a cash advance). Returns the card, or
+ * null.
  */
 export function paymentCategoryCard<A extends { type: AccountType }>(own: A, other: A): A | null {
   const pair = [own, other];
@@ -181,7 +179,7 @@ export function paymentCategoryCard<A extends { type: AccountType }>(own: A, oth
 export interface Draft {
   accountId: string;
   date: string;
-  /** YNAB's "Repeat:" in the date picker; new and scheduled transactions only. */
+  /** The date picker's "Repeat:"; new and scheduled transactions only. */
   frequency?: ScheduleFrequency;
   payeeName: string;
   /** Set when the payee is another account's "Transfer : <account>". */
@@ -201,7 +199,7 @@ export interface Draft {
   fxRate?: string;
   /**
    * A transfer to an account in another currency: what that account receives (or sends), in its
-   * currency, unsigned; empty for the date's rate (EVERYCENT-55).
+   * currency, unsigned; empty for the date's rate.
    */
   transferAmount?: string;
   /** A new transfer's fee, in the sending account's currency; empty for none. */
@@ -239,7 +237,7 @@ export function emptyLine(patch: Partial<LineDraft> = {}): LineDraft {
   };
 }
 
-/** YNAB's "Split": the current category moves to the first of two lines. */
+/** "Split": the current category moves to the first of two lines. */
 export function startSplit(draft: Draft): Draft {
   return {
     ...draft,
@@ -250,7 +248,7 @@ export function startSplit(draft: Draft): Draft {
 
 /**
  * How a new transaction starts in an account of `type`: cleared in a cash account, otherwise
- * uncleared (YNAB's web app, 2026-10-15; the editor re-applies it when the account changes).
+ * uncleared (the editor re-applies it when the account changes).
  */
 export function clearedFor(type: AccountType | undefined): Draft["cleared"] {
   return type === "cash" ? "cleared" : "uncleared";
@@ -379,7 +377,7 @@ function sides(amount: bigint, settings: MoneySettings): Pick<LineDraft, "outflo
 }
 
 /**
- * A split whose lines don't add up to its total, for YNAB's "Something Doesn't Add Up" prompt:
+ * A split whose lines don't add up to its total, for the "Something Doesn't Add Up" prompt:
  * the total, what the lines add up to and what's unassigned (total minus lines), all signed.
  * Null when it adds up or an amount can't be read.
  */
@@ -403,14 +401,14 @@ export function splitMismatch(draft: Draft, settings: MoneySettings) {
     distributed: added
       ? draft.lines.map((line, i) => {
           const amount = (amounts[i] as bigint) + (added[i] ?? 0n);
-          // A $0 line YNAB skips stays as it was (empty).
+          // A $0 line is skipped and stays as it was (empty).
           return added[i] === 0n ? line : { ...line, ...sides(amount, settings) };
         })
       : null,
   };
 }
 
-/** YNAB's "Update Total": the transaction takes what its lines add up to. */
+/** "Update Total": the transaction takes what its lines add up to. */
 export function withSplitTotal(draft: Draft, settings: MoneySettings): Draft {
   const mismatch = splitMismatch(draft, settings);
   return mismatch ? { ...draft, ...sides(mismatch.lines, settings) } : draft;
@@ -625,8 +623,7 @@ function amountAndLinesOf(draft: Draft, settings: MoneySettings) {
 
 /**
  * The accounts an existing transaction (or schedule) can be moved to: open ones in its currency,
- * since a move into another currency is refused (`CROSS_CURRENCY_MOVE`; EVERYCENT-193), plus the
- * one it's in.
+ * since a move into another currency is refused (`CROSS_CURRENCY_MOVE`), plus the one it's in.
  */
 export function movableAccounts<A extends { id: string; closed: boolean; currency: string }>(
   accounts: readonly A[],
@@ -635,7 +632,7 @@ export function movableAccounts<A extends { id: string; closed: boolean; currenc
   return accounts.filter((a) => a.id === t.accountId || (!a.closed && a.currency === t.currency));
 }
 
-/** The cells YNAB lets you edit in place on an existing transaction. */
+/** The cells editable in place on an existing transaction. */
 export type CellColumn = "account" | "date" | "payee" | "category" | "memo" | "outflow" | "inflow";
 
 /** A cell's starting text (or id, for account and category). */

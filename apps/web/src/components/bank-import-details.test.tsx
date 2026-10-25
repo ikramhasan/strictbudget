@@ -11,7 +11,7 @@ const payees = [
   },
 ] as unknown as Parameters<typeof PayeeField>[0]["payees"];
 
-describe("Bank Import Details (EVERYCENT-155/174)", () => {
+describe("Bank Import Details", () => {
   it("shows the payee as imported, the store link and Don't Rename", async () => {
     const onDontRename = vi.fn();
     render(

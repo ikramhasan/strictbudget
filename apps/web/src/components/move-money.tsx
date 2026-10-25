@@ -1,11 +1,11 @@
-import type { BudgetMonth } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { Field, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@everycent/ui/components/tabs";
-import { cn } from "@everycent/ui/lib/utils";
+import type { BudgetMonth } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { Field, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@strictbudget/ui/components/tabs";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { CalendarDays, ChevronDown, CircleCheck, Zap } from "lucide-react";
 import { type FormEvent, type ReactElement, type ReactNode, useState } from "react";
 import type { TargetMark } from "@/lib/budget-view";
@@ -29,7 +29,7 @@ export interface MoveActions {
     toCategoryId: string,
     amount: bigint,
   ) => Promise<void>;
-  /** The months "Cover overspending from" offers (YNAB: those Fix This offers). */
+  /** The months "Cover overspending from" offers (the same as Fix This). */
   coverMonths?: FixThisMonths;
   /** Covers in the month on screen from a category's Assigned in `fromMonth`. */
   moveFrom?: (
@@ -50,9 +50,9 @@ export const PILL = {
 };
 
 /**
- * Display Options → Differentiate Without Color: YNAB's stronger fills with a 1px border, black
- * in light and white in dark (its CSS variables, read 2026-10-18). The padding gives up the
- * border's pixel so the pill keeps its size. Positive and zero pills don't change.
+ * Display Options → Differentiate Without Color: stronger fills with a 1px border, black in light
+ * and white in dark. The padding gives up the border's pixel so the pill keeps its size. Positive
+ * and zero pills don't change.
  */
 export const STRONG_PILL = {
   caution:
@@ -62,9 +62,8 @@ export const STRONG_PILL = {
 };
 
 /**
- * Available as YNAB shows it: a pill, green with money, red when overspent, grey at zero. Yellow
- * ("cautious") is credit overspending, an underfunded target, and a payment category that doesn't
- * cover what the card owes.
+ * Green with money, red when overspent, grey at zero. Yellow ("cautious") is credit overspending,
+ * an underfunded target, and a payment category that doesn't cover what the card owes.
  */
 export function AvailablePill({
   amount,
@@ -107,7 +106,6 @@ export function AvailablePill({
         />
       )}
       {mark?.kind === "snoozed" && (
-        // YNAB's "Zz" snooze icon.
         <span
           className="shrink-0 font-semibold text-[0.65rem] leading-none"
           role="img"
@@ -127,7 +125,7 @@ export function AvailablePill({
   );
 }
 
-/** A small ring filled clockwise from the top to `percent` (YNAB's underfunded icon). */
+/** A small ring filled clockwise from the top to `percent` (the underfunded icon). */
 export function TargetPie({ percent, className }: { percent: number; className?: string }) {
   const angle = (Math.min(Math.max(percent, 0), 99.9) / 100) * 2 * Math.PI;
   const x = 8 + 6 * Math.sin(angle);
@@ -150,10 +148,6 @@ export function TargetPie({ percent, className }: { percent: number; className?:
   );
 }
 
-/**
- * A category's Available pill, which opens YNAB's money moves: "Move … To" when there's money,
- * "Cover overspending from" when it's overspent.
- */
 export function AvailableButton({
   categoryId,
   categoryName,
@@ -219,8 +213,6 @@ export function AvailableButton({
             key={month}
             label="Cover overspending from"
             aside={
-              // YNAB, 2026-10-14 ("x132 Order"): with money assigned in November, October's cover
-              // offers Oct 2026 and Nov 2026; November lists what's assigned there.
               months &&
               months.months.length > 1 && (
                 <NativeSelect
@@ -244,7 +236,7 @@ export function AvailableButton({
             onCancel={() => setOpen(false)}
             onPick={async (source) => {
               setOpen(false);
-              // YNAB covers as much as the source has, up to the overspending.
+              // Covers as much as the source has, up to the overspending.
               const amountToCover = minAmount(BigInt(source.available), -BigInt(amount));
               if (later && actions.moveFrom) {
                 await actions.moveFrom(month, source.id, categoryId, amountToCover);
@@ -341,14 +333,9 @@ function MoveForm({
   );
 }
 
-const ASSIGN_TAB_KEY = "everycent.assignTab";
+const ASSIGN_TAB_KEY = "strictbudget.assignTab";
 
-/**
- * The Ready to Assign banner's Assign button (YNAB, checked 2026-10-12 in "ihni7's Plan"): a
- * pop-up with two tabs, "Auto" (the Auto-Assign options) and "Manually" ("Assign:" filled with all
- * of Ready to Assign, "To:" a category, Cancel / Assign). It opens on the tab used last, which YNAB
- * keeps in the browser.
- */
+/** Opens on the tab used last, which is kept in the browser. */
 export function AssignButton({
   readyToAssign,
   format,
@@ -358,7 +345,6 @@ export function AssignButton({
   readyToAssign: string;
   format: Format;
   actions: MoveActions;
-  /** The Auto-Assign options for the rows in view. */
   auto: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -414,7 +400,7 @@ export function AssignButton({
   );
 }
 
-/** A form that only picks a category to take money from, as YNAB's cover and Fix This do. */
+/** A form that only picks a category to take money from (cover and Fix This). */
 function PickSourceForm({
   label,
   aside,
@@ -469,23 +455,20 @@ function PickSourceForm({
 }
 
 /**
- * The months Fix This can un-assign from, as YNAB offers them (checked 2026-10-11): from the
- * current month to the last one with money assigned, months with nothing assigned disabled. The
- * current month offers what's available; later months what's assigned in them.
+ * From the current month to the last one with money assigned, months with nothing assigned
+ * disabled. The current month offers what's available; later months what's assigned in them.
  */
 export interface FixThisMonths {
   months: readonly { month: BudgetMonth; disabled: boolean }[];
-  /** Selected at first: the month on screen. */
   initial: BudgetMonth;
   /** The categories to offer in `month`, with what can be taken back; undefined while loading. */
   optionsFor: (month: BudgetMonth) => readonly MoneyOption[] | undefined;
-  /** Moves `amount` from a category back to Ready to Assign in `month`. */
   unassign: (month: BudgetMonth, categoryId: string, amount: bigint) => Promise<void>;
 }
 
 /**
- * YNAB's "Fix This" on a negative Ready to Assign: takes the shortfall back from one category
- * (as much as it has), in the month on screen or, with `months`, another month YNAB offers.
+ * Fix This on a negative Ready to Assign: takes the shortfall back from one category (as much as
+ * it has), in the month on screen or, with `months`, another month.
  */
 export function FixThisButton({
   readyToAssign,

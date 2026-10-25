@@ -3,14 +3,13 @@ import { monthlyInterest, rateThousandths } from "./loans";
 import { addMonths, type BudgetMonth } from "./months";
 
 /**
- * The loan planner (phase 7g): payoff projections and what-ifs, as YNAB's loan page, payoff
- * simulator and Debt Payment targets work (checked in its web app, 2026-10-13, YNAB findings
- * "Loan planner"). Nothing here writes to the ledger.
+ * The loan planner: payoff projections and what-ifs for the loan page, payoff simulator and Debt
+ * Payment targets. Nothing here writes to the ledger.
  *
- * YNAB projects with the closed-form annuity rather than month by month: a payment `A` pays `P`
+ * Projections use the closed-form annuity rather than month by month: a payment `A` pays `P`
  * off in n = −ln(1 − iP/A) / ln(1 + i) months (i = rate ÷ 1200), payments starting next month, so
  * the payoff month is this month + ⌈n⌉ and the interest still to pay is n·A − P, rounded half up
- * ($10,000.00 at 6% paying $200.00: n = 57.68, Aug 2031 from October, $1,536.03). Its chart is a
+ * ($10,000.00 at 6% paying $200.00: n = 57.68, Aug 2031 from October, $1,536.03). The chart is a
  * month-by-month schedule instead (`payoffSchedule`). Logarithms and powers use decimal.js at 40
  * significant digits; money stays in bigint minor units.
  */
@@ -43,8 +42,8 @@ export interface PayoffProjection {
 /**
  * How long `payment` a month takes to pay off `owed` (minor units, positive) at `rate`, and the
  * interest on the way; null when it never does: no rate, or a payment that doesn't beat the
- * month's interest (YNAB: $50.00 against $50.00 of interest "will never be fully paid", $50.01
- * pays it off by Feb 2169). A 0% loan takes owed ÷ payment months.
+ * month's interest ($50.00 against $50.00 of interest never pays it off, $50.01 does by Feb
+ * 2169). A 0% loan takes owed ÷ payment months.
  */
 export function payoffProjection(input: {
   owed: bigint;
@@ -72,9 +71,8 @@ export function payoffProjection(input: {
 
 /**
  * The monthly payment that pays `owed` off in `months` payments (the first next month): the
- * annuity payment P·i / (1 − (1 + i)^−k), rounded up to the minor unit (YNAB: $10,000.00 at 6%
- * by Dec 2027, 14 payments, is $741.37 for $741.3609). Null for fewer than one payment (YNAB:
- * "We can't estimate a monthly payment for this Payoff date.") or without a rate.
+ * annuity payment P·i / (1 − (1 + i)^−k), rounded up to the minor unit ($10,000.00 at 6% by Dec
+ * 2027, 14 payments, is $741.37 for $741.3609). Null for fewer than one payment or without a rate.
  */
 export function paymentForMonths(input: {
   owed: bigint;
@@ -91,13 +89,13 @@ export function paymentForMonths(input: {
   return BigInt(A.toDecimalPlaces(20).toDecimalPlaces(0, Decimal.ROUND_CEIL).toFixed(0));
 }
 
-/** Longest schedule drawn (YNAB drew 142 years for a payment $0.01 above the interest). */
+/** Longest schedule drawn (a payment $0.01 above the interest can take 142 years). */
 const SCHEDULE_LIMIT = 2400;
 
 /**
  * What's owed after each monthly payment until it's paid off (the last entry is 0), with each
- * month's interest from `monthlyInterest` (YNAB's chart: all 60 points of $10,000.00 at 6%
- * paying $200.00 matched). Empty when nothing is owed; null when the payment never pays it off.
+ * month's interest from `monthlyInterest`. Empty when nothing is owed; null when the payment never
+ * pays it off.
  */
 export function payoffSchedule(input: {
   owed: bigint;
@@ -119,16 +117,15 @@ export function payoffSchedule(input: {
 }
 
 export interface PlannedPayoff extends PayoffProjection {
-  /** The month of the last payment. */
   payoffMonth: BudgetMonth;
   /** What's owed after this month: the start of the projection. */
   owedAfterThisMonth: bigint;
 }
 
 /**
- * A plan from this month on (YNAB's Current Track and payoff simulator): `payment` a month from
+ * A plan from this month on (Current Track and the payoff simulator): `payment` a month from
  * next month, after an optional one-time `extra` this month. With no payment yet this month,
- * paying an extra pays this month's `payment` and interest too (YNAB: $10,000.00, $200.00 a month,
+ * paying an extra pays this month's `payment` and interest too ($10,000.00, $200.00 a month,
  * $1,000.00 extra in October → $8,850.00 from November, interest $50.00 + $1,177.59); after a
  * payment this month it only lowers the balance ($9,850.00 → $8,850.00, interest $1,177.59).
  */
@@ -177,7 +174,6 @@ export interface LoanHistoryMonth {
   opening: bigint;
 }
 
-/** Months from `a` to `b` (b later). */
 export function monthsBetween(a: BudgetMonth, b: BudgetMonth): number {
   const [ay, am] = a.split("-").map(Number) as [number, number];
   const [by, bm] = b.split("-").map(Number) as [number, number];
@@ -188,20 +184,16 @@ export interface LoanProgress {
   /** What's owed today (positive). */
   owed: bigint;
   /**
-   * What was owed when the loan started: its starting balance, or with none, the most it has owed
-   * (YNAB: "$2,035 (98.1%)" of $2,074.97 charged after a $0 start).
+   * What was owed when the loan started: its starting balance, or with none, the most it has owed.
    */
   started: bigint;
-  /** Whether nothing is owed. */
   paidOff: boolean;
-  /** Whether there are payments this month. */
   paidThisMonth: boolean;
-  /** This month's payments (YNAB's "$200.00 paid this month"). */
   paymentsThisMonth: bigint;
-  /** YNAB's "You paid off your loan in N months": this month − the loan's first month. */
+  /** "You paid off your loan in N months": this month − the loan's first month. */
   monthsSinceStart: number;
   /**
-   * YNAB's Original Payment Schedule: drawn from the loan's first month (or a Past Balance picked
+   * The Original Payment Schedule: drawn from the loan's first month (or a Past Balance picked
    * as its base), the minimum payment from the first month with a payment on what was owed at its
    * start; null before any payment or without terms that pay it off.
    */
@@ -221,9 +213,9 @@ export interface LoanProgress {
 }
 
 /**
- * Where a loan stands against the plan it started with (YNAB's loan page). Paid off, YNAB says
- * "You saved $2.10 in interest and paid it off 4 months earlier": the original schedule's interest
- * less what was charged, and the month the original schedule reaches 0 less this month (G7 Off:
+ * Where a loan stands against the plan it started with. Paid off, it shows "You saved $2.10 in
+ * interest and paid it off 4 months earlier": the original schedule's interest less what was
+ * charged, and the month the original schedule reaches 0 less this month (e.g.
  * $100.00 at 12% from July, $20.00 minimum, $101.00 paid on August 10 → original Aug–Jan, $3.10;
  * charged $1.00; 4 months from October; paid on September 10 instead → 5 months).
  */
@@ -237,10 +229,9 @@ export function loanProgress(input: {
   month: BudgetMonth;
   exponent: number;
   /**
-   * A Past Balance month to base the original schedule on (YNAB's "Base the Original Payment
-   * Schedule on this Past Balance"): the line starts there, and its payments at the later of it and
-   * the first month with a payment (G7 Off, paid in September, based on August: $100.00 in August
-   * and September, $81.00 in October).
+   * A Past Balance month to base the original schedule on: the line starts there, and its payments
+   * at the later of it and the first month with a payment (the loan above, paid in September,
+   * based on August: $100.00 in August and September, $81.00 in October).
    */
   originalFrom?: BudgetMonth;
 }): LoanProgress {
@@ -293,9 +284,8 @@ export function loanProgress(input: {
 }
 
 /**
- * What of a payment goes to principal and interest: escrow comes off first (YNAB's "L7 Mortgage",
- * $100,000.00 at 5.125% paying $900.00 with $150.00 escrow, read "16 yrs, 6 mos": the payoff of
- * $750.00). Null without a payment.
+ * What of a payment goes to principal and interest: escrow comes off first ($900.00 with $150.00
+ * escrow pays off like $750.00). Null without a payment.
  */
 export function effectivePayment(payment: bigint | null, escrow: bigint | null): bigint | null {
   if (payment === null) return null;
@@ -303,7 +293,7 @@ export function effectivePayment(payment: bigint | null, escrow: bigint | null):
   return left > 0n ? left : 0n;
 }
 
-/** YNAB's paid-off line: interest saved and months earlier than the original schedule. */
+/** The paid-off line: interest saved and months earlier than the original schedule. */
 export function paidOffSavings(progress: LoanProgress, month: BudgetMonth) {
   if (!progress.paidOff || !progress.original) return null;
   const zeroMonth = addMonths(progress.original.month, progress.original.projection.months);

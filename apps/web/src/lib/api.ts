@@ -1,4 +1,4 @@
-import { createApiClient, createQueryApi } from "@everycent/api-client";
+import { createApiClient, createQueryApi } from "@strictbudget/api-client";
 import { CLIENT_ID } from "./live-updates";
 
 export const apiBaseUrl = import.meta.env.VITE_API_URL ?? window.location.origin;
@@ -13,5 +13,4 @@ apiClient.use({
   },
 });
 
-/** Typed TanStack Query bindings for the everycent API. */
 export const $api = createQueryApi(apiClient);

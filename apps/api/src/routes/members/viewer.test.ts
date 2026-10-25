@@ -30,7 +30,7 @@ const ALLOWED = new Set([
   "POST /v1/budgets/{budgetId}/export/transactions",
 ]);
 
-describe("viewer role (EVERYCENT-88)", () => {
+describe("viewer role", () => {
   it("refuses a viewer every write route of the budget", async () => {
     const owner = await signUp(app, { name: "Owner" });
     const budget = await createBudget(app, owner.cookie);
@@ -106,7 +106,6 @@ describe("viewer role (EVERYCENT-88)", () => {
       (await send("PUT", `${base}/months/2026-10/note`, pat.cookie, { note: "x" })).status,
     ).toBe(200);
 
-    // Only the owner changes roles, and never their own.
     const sam = await shareBudget(app, owner.cookie, budget.id, { name: "Sam" });
     expect(
       (await send("PATCH", `${base}/members/${sam.userId}`, pat.cookie, { role: "viewer" })).status,
@@ -116,7 +115,6 @@ describe("viewer role (EVERYCENT-88)", () => {
       role: "viewer",
     });
     expect(own.status).toBe(409);
-    // An invitation lists the role it gives.
     const invited = await json<{ role: string }>(
       await send("POST", `${base}/invitations`, owner.cookie, {
         name: "Kim",

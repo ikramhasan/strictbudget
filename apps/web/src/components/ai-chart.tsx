@@ -1,4 +1,4 @@
-import { money } from "@everycent/engine";
+import { money } from "@strictbudget/engine";
 import {
   type ChartConfig,
   ChartContainer,
@@ -6,7 +6,7 @@ import {
   ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
-} from "@everycent/ui/components/chart";
+} from "@strictbudget/ui/components/chart";
 import type { ReactNode } from "react";
 import {
   Area,

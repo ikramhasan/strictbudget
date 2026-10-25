@@ -9,17 +9,16 @@ export interface TrendCell<K> {
   net: bigint;
 }
 
-/** A month of YNAB's Spending Trends (2026-10-17). */
 export interface TrendMonth<K> {
   month: BudgetMonth;
   /**
-   * Total Spending, positive: the month's spending less its Positive Inflow Categories, as
-   * Spending Breakdown counts it (Sep 2026 on the test plan: $2,905.00 − $353.00 = $2,552.00).
+   * Total spending, positive: the month's spending less its positive rows, as Spending Breakdown
+   * counts it.
    */
   total: bigint;
-  /** "Spending": what the keys that spent money spent, positive. */
+  /** What the keys that spent money spent, positive. */
   spending: bigint;
-  /** "Net Inflows": what the keys whose inflows beat their outflows brought in, positive. */
+  /** What the keys whose inflows beat their outflows brought in, positive. */
   netInflows: bigint;
   /** Each key's net that month (keys with no lines are missing). */
   nets: Map<K, bigint>;
@@ -48,8 +47,8 @@ export function trendMonths<K>(
 
 /**
  * `part` as a percent of |`whole`|, unsigned, to one decimal ("75.5"), rounded half away from
- * zero; null when `whole` is zero. YNAB's Compared to Average (+$1,549.00 of $2,052.00 is
- * "75.5%") and segment shares ($2,900.00 of $2,905.00 is "99.8% of Total") read this way.
+ * zero; null when `whole` is zero (+$1,549.00 of $2,052.00 is "75.5"). Compared to Average and
+ * segment shares read this way.
  */
 export function percentTenths(part: bigint, whole: bigint): string | null {
   if (whole === 0n) return null;
@@ -59,7 +58,7 @@ export function percentTenths(part: bigint, whole: bigint): string | null {
 }
 
 /**
- * Spending Trends' Compared to Average (YNAB, 2026-10-17): a month's total less the range's
+ * Spending Trends' Compared to Average: a month's total less the range's
  * average, and that difference as a percent of the average ("+$1,549.00 (75.5%)").
  */
 export function comparedToAverage(total: bigint, average: bigint) {
@@ -76,8 +75,8 @@ export function averageMonthlySpending(months: readonly { total: bigint }[]): bi
 }
 
 /**
- * The average of each value with the `window - 1` values before it (an everycent extra: the
- * rolling 3-month average), null until there are `window` values.
+ * The average of each value with the `window - 1` values before it (a rolling average), null
+ * until there are `window` values.
  */
 export function rollingAverage(values: readonly bigint[], window: number): (bigint | null)[] {
   return values.map((_, i) => {

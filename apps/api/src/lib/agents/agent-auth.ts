@@ -1,6 +1,6 @@
 import type { AgentAuthOptions } from "@better-auth/agent-auth";
-import type { Database } from "@everycent/db";
-import { agent as agentTable, connectedAgent, oauthClient } from "@everycent/db/schema";
+import type { Database } from "@strictbudget/db";
+import { agent as agentTable, connectedAgent, oauthClient } from "@strictbudget/db/schema";
 import { APIError } from "better-auth/api";
 import { and, eq } from "drizzle-orm";
 import type { Env } from "../../env";
@@ -51,7 +51,6 @@ export async function recordApproval(db: Database, userId: string, path: string,
   }
 }
 
-/** An operation's answer as an Agent Auth execute result (`{ data }`), or its error thrown. */
 function executeResult(result: OperationResult): unknown {
   if (!result.ok) {
     const body =
@@ -80,7 +79,7 @@ function executeResult(result: OperationResult): unknown {
 }
 
 /**
- * Agent Auth for everycent: delegated agents only (each acts for the person who approved it), one
+ * Agent Auth for strictbudget: delegated agents only (each acts for the person who approved it), one
  * capability per API operation, approved on the web app's /agents/approve page with the code the
  * agent shows. Capabilities run as the person's own request would, attributed to the agent.
  */
@@ -94,7 +93,7 @@ export function agentAuthOptions({
   runtime: AgentRuntime;
 }): AgentAuthOptions {
   return {
-    providerName: "everycent",
+    providerName: "strictbudget",
     providerDescription:
       "Zero-based budgeting: budgets, accounts, transactions (with attachments), categories, " +
       "targets, scheduled transactions, payees and reports. Money amounts are integer strings " +
@@ -128,7 +127,6 @@ export function agentAuthOptions({
       return executeResult(await runtime.run({ user, agent, canWrite: true }, capability, args));
     },
     async onEvent(event) {
-      // Revoked from the agent's side (or its host): show it as disconnected.
       if (event.type === "agent.revoked" && event.agentId) {
         try {
           await db

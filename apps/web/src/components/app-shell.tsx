@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@everycent/ui/components/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@strictbudget/ui/components/avatar";
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -7,10 +7,10 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@everycent/ui/components/dropdown-menu";
-import { Kbd, KbdGroup } from "@everycent/ui/components/kbd";
-import { ScrollArea } from "@everycent/ui/components/scroll-area";
-import { Separator } from "@everycent/ui/components/separator";
+} from "@strictbudget/ui/components/dropdown-menu";
+import { Kbd, KbdGroup } from "@strictbudget/ui/components/kbd";
+import { ScrollArea } from "@strictbudget/ui/components/scroll-area";
+import { Separator } from "@strictbudget/ui/components/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -24,9 +24,9 @@ import {
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
-} from "@everycent/ui/components/sidebar";
-import { type Theme, useTheme } from "@everycent/ui/lib/theme";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/sidebar";
+import { type Theme, useTheme } from "@strictbudget/ui/lib/theme";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 import {
@@ -124,7 +124,6 @@ export function AppShell({
         style={
           {
             "--sidebar-width": `${sidebarWidth}px`,
-            // YNAB's collapsed sidebar is a 56px rail of icons.
             "--sidebar-width-icon": "3.5rem",
           } as React.CSSProperties
         }
@@ -146,7 +145,7 @@ export function AppShell({
           onSignOut={() => void signOut()}
         />
         <Sidebar collapsible="icon">
-          {/* One landmark for the sidebar, so everything in it is in a region (EVERYCENT-95). */}
+          {/* One landmark for the sidebar, so everything in it is in a region. */}
           <nav aria-label="Main" className="flex min-h-0 flex-1 flex-col">
             <SidebarResizer
               width={sidebarWidth}
@@ -157,7 +156,7 @@ export function AppShell({
               <SidebarMenu>
                 <SidebarMenuItem>
                   <BudgetSwitcher
-                    // Most recently used first; archived ones too, as in YNAB's Open Plan menu.
+                    // Most recently used first; archived ones too.
                     budgets={budgets.data?.budgets ?? []}
                     currentBudgetId={budgetId}
                   />
@@ -177,7 +176,7 @@ export function AppShell({
                           <Link
                             to="/budgets/$budgetId"
                             params={{ budgetId }}
-                            // Back to the month last viewed, as YNAB's Plan link does.
+                            // Back to the month last viewed.
                             search={{ month: lastViewedMonth(budgetId) }}
                             activeOptions={{ exact: true, includeSearch: false }}
                             activeProps={{ "data-active": true }}
@@ -189,7 +188,6 @@ export function AppShell({
                       </SidebarMenuItem>
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild tooltip="Reports">
-                          {/* Between Plan and All Accounts, where YNAB has Reflect. */}
                           <Link
                             to="/budgets/$budgetId/reports"
                             params={{ budgetId }}
@@ -277,7 +275,7 @@ export function AppShell({
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <SidebarMenuButton size="lg">
-                        {/* A profile picture is a circle (EVERYCENT-229); initials keep the square. */}
+                        {/* A profile picture is a circle; initials keep the square. */}
                         <Avatar
                           className={cn("size-8", user.image ? "rounded-full" : "rounded-lg")}
                         >
@@ -301,7 +299,6 @@ export function AppShell({
                           <UserCog /> Account settings
                         </Link>
                       </DropdownMenuItem>
-                      {/* YNAB's menu has Keyboard Shortcuts under Account (2026-10-18). */}
                       <DropdownMenuItem onSelect={() => setHelpOpen(true)}>
                         <Keyboard /> Keyboard Shortcuts
                       </DropdownMenuItem>
@@ -378,8 +375,8 @@ export function AppShell({
 }
 
 /**
- * YNAB's Universal shortcuts that belong to the shell: "?" for the list, Shift+. for the sidebar;
- * and everycent's Cmd/Ctrl+K for the command palette, which works from a text field too.
+ * The shell's shortcuts: "?" for the list, Shift+. for the sidebar, and Cmd/Ctrl+K for the
+ * command palette, which works from a text field too.
  */
 function GlobalShortcuts({ onHelp, onPalette }: { onHelp: () => void; onPalette: () => void }) {
   const { toggleSidebar } = useSidebar();
@@ -414,19 +411,18 @@ function PaletteButton({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-/** The left sidebar's width: YNAB's limits (client code, 2026-10-18), our own starting width. */
 const SIDEBAR = {
   /** Narrower than the kit's 16rem, leaving the page more room. */
   default: 224,
-  /** Under this a drag folds it to the icon rail, as YNAB's does. */
+  /** Under this a drag folds it to the icon rail. */
   rail: 150,
   /** Under this the account balances hide. */
   narrow: 220,
   max: 600,
 };
-const SIDEBAR_WIDTH_KEY = "everycent:sidebar-width";
+const SIDEBAR_WIDTH_KEY = "strictbudget:sidebar-width";
 
-/** The width last dragged to, kept in this browser as YNAB keeps it. */
+/** The width last dragged to, kept in this browser. */
 function useSidebarWidth() {
   const [width, setWidth] = useState(() => {
     try {
@@ -448,7 +444,7 @@ function useSidebarWidth() {
 }
 
 /**
- * The sidebar's right edge, dragged to resize it as YNAB's is: 150–600px, and narrower than that
+ * The sidebar's right edge, dragged to resize it: 150–600px, and narrower than that
  * folds it to the icon rail (dragging out again opens it). Arrow keys move it 16px.
  * Hand-rolled: shadcn's Sidebar is a fixed panel sized by a CSS variable, which a panel library
  * (they lay out both sides in one group) can't drive.
@@ -517,7 +513,7 @@ function SidebarResizer({
 }
 
 /**
- * A phone's main places within thumb reach (everycent's own layout, not YNAB's, EVERYCENT-93):
+ * A phone's main places within thumb reach:
  * Budget, All Accounts, Reports and Activity, and More for the rest of the sidebar (the accounts,
  * settings, the user menu). Hidden from tablet width up, where the sidebar shows.
  */

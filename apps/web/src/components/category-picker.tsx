@@ -1,18 +1,16 @@
-import { Button } from "@everycent/ui/components/button";
-import { Checkbox } from "@everycent/ui/components/checkbox";
-import { Field, FieldLabel, FieldLegend, FieldSet } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { Spinner } from "@everycent/ui/components/spinner";
+import { Button } from "@strictbudget/ui/components/button";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
+import { Field, FieldLabel, FieldLegend, FieldSet } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { Plus, X } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import type { CategoryList } from "@/lib/categories";
 
 export interface CategoryPicks {
-  /** Existing categories to delete. */
   removeCategoryIds: string[];
   /** Groups left with nothing in them, to delete as well. */
   removeGroupIds: string[];
-  /** New categories to add, in order. */
   add: Array<{ groupId: string; name: string }>;
 }
 

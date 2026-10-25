@@ -1,5 +1,5 @@
-import { type BudgetMonth, money } from "@everycent/engine";
-import { cn } from "@everycent/ui/lib/utils";
+import { type BudgetMonth, money } from "@strictbudget/engine";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { SpendingPaceChart } from "@/components/reports/spending-pace-chart";
@@ -7,7 +7,7 @@ import { useBudget } from "@/lib/budget-context";
 import { paceCallout, STATUS_TONES, spendingPaceOptions } from "@/lib/spending-pace";
 
 /**
- * The plan screen's spending pace (EVERYCENT-239, an everycent extra): the whole plan's burndown in
+ * The plan screen's spending pace: the whole plan's burndown in
  * small under the month's summary, with its callout and today's safe amount per day, opening the
  * report. Nothing shows until there's money to pace.
  */

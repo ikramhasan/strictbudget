@@ -1,4 +1,4 @@
-import { averageOf, toDelimited, trendMonths } from "@everycent/engine";
+import { averageOf, toDelimited, trendMonths } from "@strictbudget/engine";
 import { describe, expect, it } from "vitest";
 import type { CategoryList } from "./categories";
 import type { ReportSum, ReportTransaction } from "./reports";
@@ -108,7 +108,7 @@ describe("trend series", () => {
     expect(folded.map((m) => m.total)).toEqual(byCategory.map((m) => m.total));
   });
 
-  it("charts only months with transactions, as YNAB does", () => {
+  it("charts only months with transactions", () => {
     const byCategory = trendMonths(cellsOf(rows, catalog, "category"), months);
     expect(chartedMonths(byCategory).map((m) => m.month)).toEqual([
       "2026-08",
@@ -152,7 +152,7 @@ describe("spending trends export", () => {
     ).toBe("1234567,89\u00a0€");
   });
 
-  it("writes the transactions YNAB's way", () => {
+  it("writes the transactions export", () => {
     const line = (over: Partial<ReportTransaction>): ReportTransaction => ({
       id: "t",
       transactionId: "t",

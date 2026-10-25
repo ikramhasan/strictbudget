@@ -1,4 +1,4 @@
-import { budget as budgetTable } from "@everycent/db/schema";
+import { budget as budgetTable } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -264,7 +264,7 @@ describe("budget backup", () => {
     const backup = (await res.json()) as Record<string, unknown> & {
       transactions: { id: string; amount: string }[];
     };
-    expect(backup).toMatchObject({ format: "everycent-backup", version: 1 });
+    expect(backup).toMatchObject({ format: "strictbudget-backup", version: 1 });
     expect(typeof backup.transactions[0]?.amount).toBe("string");
 
     const imported = await ok<Imported>(
@@ -275,7 +275,6 @@ describe("budget backup", () => {
     expect(imported.counts.transactions).toBe(backup.transactions.length);
     expect(imported.counts.scheduledSubTransactions).toBe(2);
     const newBase = `/v1/budgets/${imported.budget.id}`;
-    // Fresh ids everywhere.
     const again = (await (await send("GET", `${newBase}/backup`, cookie)).json()) as {
       transactions: { id: string }[];
     };
@@ -288,7 +287,6 @@ describe("budget backup", () => {
     expect(before.length).toBeGreaterThan(3);
     expect(after).toEqual(remap(before, pairs));
 
-    // Spending pace's settings (EVERYCENT-239).
     const paceSettings = async (b: string) =>
       (
         await ok<{ categories: { name: string; setting: string | null }[] }>(
@@ -298,7 +296,6 @@ describe("budget backup", () => {
     expect(await paceSettings(newBase)).toEqual(await paceSettings(base));
     expect(await paceSettings(newBase)).toContainEqual(["🏠 Rent/Mortgage", "include"]);
 
-    // Accounts, balances and the register too.
     const accounts = async (b: string) =>
       (await ok<{ accounts: unknown[] }>(send("GET", `${b}/accounts?today=${TODAY}`, cookie)))
         .accounts;
@@ -311,7 +308,7 @@ describe("budget backup", () => {
     expect(budget.id).not.toBe(second.budget.id);
   });
 
-  it("keeps file imports' ids, settings and matches (EVERYCENT-66/68)", async () => {
+  it("keeps file imports' ids, settings and matches", async () => {
     const { cookie } = await signUp(app);
     const budget = await createBudget(app, cookie, { name: "Imports" });
     const base = `/v1/budgets/${budget.id}`;

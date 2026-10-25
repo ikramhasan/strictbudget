@@ -1,11 +1,11 @@
-import { BUDGET_ROLES } from "@everycent/db/schema";
+import { createRoute, z } from "@hono/zod-openapi";
+import { BUDGET_ROLES } from "@strictbudget/db/schema";
 import {
   AUTO_ASSIGN_OPTIONS,
   BUDGET_MONTH_PATTERN,
   zCurrencyCode,
   zMinorUnits,
-} from "@everycent/engine";
-import { createRoute, z } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { jsonError } from "../../lib/errors";
 import { zAvatarColor, zPicture } from "../../lib/member-colors";
 import { authSecurity, requireAuth } from "../../middleware/require-auth";
@@ -18,10 +18,10 @@ const zBudgetMonth = z
 const Activity = {
   activity: zMinorUnits,
   cashActivity: zMinorUnits.describe(
-    "The part of activity in cash accounts, refunds included (YNAB's Cash Spending)",
+    "The part of activity in cash accounts, refunds included (Cash Spending)",
   ),
   creditActivity: zMinorUnits.describe(
-    "The part of activity in credit accounts, refunds included (YNAB's Credit Spending)",
+    "The part of activity in credit accounts, refunds included (Credit Spending)",
   ),
 };
 
@@ -67,7 +67,7 @@ const PaymentSchema = z
       "The month's inflows on the card (payments, returns, statement credits), positive",
     ),
     underfunded: zMinorUnits.describe(
-      "What's owed beyond what's set aside (YNAB's Total Underfunded); 0 when Available covers it",
+      "What's owed beyond what's set aside (Total Underfunded); 0 when Available covers it",
     ),
     overspentCategories: zMinorUnits.describe(
       "The part of underfunded that is this month's credit overspending on the card",
@@ -77,7 +77,7 @@ const PaymentSchema = z
         '"Overspending (Oct)"); positive',
     ),
     fundedSpending: zMinorUnits.describe(
-      "Money moved in this month for funded card spending, less returns (YNAB's Funded Spending)",
+      "Money moved in this month for funded card spending, less returns (Funded Spending)",
     ),
     paymentsMade: zMinorUnits.describe("This month's payments to the card, negative"),
     hasUncategorized: z
@@ -94,7 +94,7 @@ const FutureTargetsSchema = z
     funded: zMinorUnits.describe("How much of that is funded (each target counts up to its need)"),
   })
   .nullable()
-  .describe("A later month's targets for YNAB's pie or check; null when it has none");
+  .describe("A later month's targets for the pie or check; null when it has none");
 
 const TargetNeedSchema = z
   .object({
@@ -173,7 +173,7 @@ const ProgressBarSchema = z
     ),
   })
   .nullable()
-  .describe("YNAB's progress bar under the category; null for payment categories")
+  .describe("The progress bar under the category; null for payment categories")
   .openapi("ProgressBar");
 
 const MonthCategorySchema = Totals.extend({
@@ -229,7 +229,7 @@ const MonthCategorySchema = Totals.extend({
     })
     .nullable()
     .describe(
-      'Scheduled transactions still to come in the month (YNAB\'s "Upcoming Transactions"): ' +
+      'Scheduled transactions still to come in the month ("Upcoming Transactions"): ' +
         "after the user's today, none in past months; null when there are none",
     )
     .openapi("CategoryUpcoming"),
@@ -257,7 +257,7 @@ const MonthSchema = z
       .boolean()
       .describe(
         "A negative Ready to Assign that taking back every category's cash wouldn't cover " +
-          '(YNAB\'s "Overdraft?"); false when categories could cover it ("You assigned more ' +
+          '("Overdraft?"); false when categories could cover it ("You assigned more ' +
           "than you have\", Fix This) and when Ready to Assign isn't negative",
       ),
     assignedInFuture: zMinorUnits.describe("Money assigned in the months after this one"),
@@ -279,7 +279,7 @@ const MonthSchema = z
         ),
         total: zMinorUnits.describe("The sum of the lines: Ready to Assign"),
       })
-      .describe("YNAB's Ready to Assign Breakdown, line by line"),
+      .describe("The Ready to Assign Breakdown, line by line"),
     futureMonths: z
       .array(
         z.object({
@@ -292,7 +292,7 @@ const MonthSchema = z
     nextMonthTargets: FutureTargetsSchema.describe(
       "Next month's targets, for the panel's row when nothing is assigned there yet",
     ),
-    note: z.string().describe("The month's note (YNAB's \"Enter a note…\"); empty for none"),
+    note: z.string().describe('The month\'s note ("Enter a note…"); empty for none'),
     futureShortfall: z
       .object({ month: zBudgetMonth, readyToAssign: zMinorUnits })
       .nullable()
@@ -311,14 +311,14 @@ const MonthSchema = z
     targets: z
       .object({
         month: zMinorUnits.describe(
-          "What the targets of the categories that aren't hidden ask of this month (YNAB's " +
+          "What the targets of the categories that aren't hidden ask of this month (" +
             "\"October's Targets\"): each month's amount, or this month's share of a dated target",
         ),
         nextMonth: zMinorUnits.describe("The same for the month after"),
         expectedIncome: zMinorUnits
           .nullable()
           .describe(
-            "The budget's expected monthly income (YNAB's \"Expected Income\" under Cost to Be " +
+            'The budget\'s expected monthly income ("Expected Income" under Cost to Be ' +
               "Me), the same in every month; null until entered",
           ),
       })
@@ -363,7 +363,7 @@ export const setMonthNote = createRoute({
   middleware: [requireAuth] as const,
   summary: "Set the month's note",
   description:
-    "YNAB's note under the month name: one per month, not carried to other months. An empty note " +
+    "The note under the month name: one per month, not carried to other months. An empty note " +
     "removes it.",
   request: {
     params: BudgetParams,
@@ -562,7 +562,7 @@ export const autoAssign = createRoute({
   tags: ["Budget months"],
   security: authSecurity,
   middleware: [requireAuth] as const,
-  summary: "Set categories' Assigned from one of YNAB's Auto-Assign options",
+  summary: "Set categories' Assigned from one of the Auto-Assign options",
   description:
     "Sets each category's Assigned to the option's amount (`autoAssign` in the month). Without " +
     "`categoryIds` it covers every category that isn't hidden. Each change is a move in Recent " +
@@ -613,7 +613,7 @@ const MoneyMoveSchema = z
       .enum(["assigned", "moved", "removed"])
       .describe(
         "assigned: from Ready to Assign; removed: back to it; moved: between categories (and, " +
-          "for a deletion, from Ready to Assign to the deleted category, as YNAB words it)",
+          "for a deletion, from Ready to Assign to the deleted category)",
       ),
     fromCategoryId: z
       .string()
@@ -643,9 +643,7 @@ const MoneyMoveSchema = z
         method: z.enum(AUTO_ASSIGN_OPTIONS).describe("The Auto-Assign option used"),
       })
       .nullable()
-      .describe(
-        "Set on the moves of an Auto-Assign, which YNAB lists together as one entry; null otherwise",
-      ),
+      .describe("Set on the moves of an Auto-Assign, listed together as one entry; null otherwise"),
     userId: z.string().nullable().describe("Who moved it; null if their user was deleted"),
     userName: z.string().nullable().describe("Who moved it; null if their user was deleted"),
     memberRole: z
@@ -673,7 +671,7 @@ export const listMoves = createRoute({
   middleware: [requireAuth] as const,
   summary: "Recent changes to assigned money, newest first",
   description:
-    "Every change of the last 34 days, as YNAB's Recent Moves (\"Previous 34 days of assigning " +
+    'Every change of the last 34 days, as Recent Moves ("Previous 34 days of assigning ' +
     'and moving money").',
   request: {
     params: z.object({
@@ -704,7 +702,7 @@ export const listMonthMoves = createRoute({
   middleware: [requireAuth] as const,
   summary: "Every change to assigned money in a month, newest first",
   description:
-    'Behind YNAB\'s per-category history ("Changes to your assigned amount this month"): all of ' +
+    'Behind the per-category history ("Changes to your assigned amount this month"): all of ' +
     "the month's moves, however old.",
   request: { params: BudgetParams },
   responses: {
@@ -727,8 +725,8 @@ export const setExpectedIncome = createRoute({
   middleware: [requireAuth] as const,
   summary: "Set the budget's expected monthly income",
   description:
-    'YNAB\'s "Enter your expected income" under Cost to Be Me: entered once, it stays from ' +
-    "month to month. It must be positive; like YNAB, it can be changed but not cleared.",
+    '"Enter your expected income" under Cost to Be Me: entered once, it stays from ' +
+    "month to month. It must be positive; it can be changed but not cleared.",
   request: {
     params: z.object({
       budgetId: z.string().openapi({ param: { name: "budgetId", in: "path" } }),

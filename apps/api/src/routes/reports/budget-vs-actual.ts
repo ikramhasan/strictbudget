@@ -1,4 +1,5 @@
-import { category, categoryGroup } from "@everycent/db/schema";
+import { createRoute, type RouteHandler, z } from "@hono/zod-openapi";
+import { category, categoryGroup } from "@strictbudget/db/schema";
 import {
   addMonths,
   BUDGET_MONTH_PATTERN,
@@ -9,8 +10,7 @@ import {
   targetNeed,
   zCurrencyCode,
   zMinorUnits,
-} from "@everycent/engine";
-import { createRoute, type RouteHandler, z } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { asc, eq } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError, jsonError } from "../../lib/errors";
@@ -102,7 +102,6 @@ export const getBudgetVsActual = createRoute({
   },
 });
 
-/** The months from `from` to `to`, inclusive. */
 function monthsBetween(from: BudgetMonth, to: BudgetMonth) {
   const months: BudgetMonth[] = [];
   for (let m = from; m <= to; m = addMonths(m, 1)) months.push(m);
@@ -145,7 +144,6 @@ export const getBudgetVsActualHandler: RouteHandler<
   const { targets } = await loadTargets(db, c.var.deps, budget, today);
   const current = monthOf(today);
 
-  // Plan order: groups, then categories.
   const rows = await db
     .select({
       id: category.id,

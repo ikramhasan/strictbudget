@@ -2,8 +2,8 @@ import { addMonths, type BudgetMonth } from "./months";
 import { divideRounded } from "./rounding";
 
 /**
- * The Reports home's observations (EVERYCENT-184, an everycent extra): short rule-based notes, no
- * AI, each with its rule, threshold and the evidence to link to. Amounts are minor units of the
+ * The Reports home's observations: short rule-based notes, no AI, each with its rule, threshold
+ * and the evidence to link to. Amounts are minor units of the
  * budget's currency; "spent" amounts are positive.
  */
 export type Observation =
@@ -67,8 +67,8 @@ export const TOP_PAYEES = 10;
 
 /**
  * The month's observations, in this order, at most MAX_PER_RULE of a rule and MAX_OBSERVATIONS
- * in all: overspent categories,
- * categories well above their average (largest gap first), a new net worth high, lower income
+ * in all: overspent categories, categories well above their average (largest gap first), a new
+ * net worth high, lower income
  * than the month before, new payees among the top ten.
  */
 export function observations(input: ObservationInput): Observation[] {

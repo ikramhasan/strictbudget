@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { createRouter } from "./router";
 import { serveWebApp } from "./web-app";
 
-const root = mkdtempSync(join(tmpdir(), "everycent-web-"));
+const root = mkdtempSync(join(tmpdir(), "strictbudget-web-"));
 mkdirSync(join(root, "assets"));
 writeFileSync(join(root, "index.html"), "<!doctype html><div id=root></div>");
 writeFileSync(join(root, "assets", "index-abc.js"), "console.log(1)");
@@ -16,7 +16,7 @@ app.get("/v1/health", (c) => c.json({ status: "ok" }));
 serveWebApp(app, root);
 app.notFound((c) => c.json({ error: { code: "NOT_FOUND" } }, 404));
 
-describe("serving the web app (EVERYCENT-105)", () => {
+describe("serving the web app", () => {
   it("serves files, and the app shell for client-side routes", async () => {
     const home = await app.request("/");
     expect(home.status).toBe(200);

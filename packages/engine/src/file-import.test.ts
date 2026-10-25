@@ -11,7 +11,7 @@ import {
   possibleDateFormats,
 } from "./file-import";
 
-describe("CSV import (EVERYCENT-66)", () => {
+describe("CSV import", () => {
   it("reads comma and semicolon files, quotes and a BOM", () => {
     expect(parseCsvText('﻿Date,Description,Amount\n10/10/2026,"Shop, Inc",-4.50\n\n')).toEqual([
       ["Date", "Description", "Amount"],
@@ -36,7 +36,7 @@ describe("CSV import (EVERYCENT-66)", () => {
     expect(csvColumnNames(table, true)).toEqual(["A", "B", "C"]);
   });
 
-  it("guesses date, payee (or description) and memo, and nothing else, like YNAB", () => {
+  it("guesses date, payee (or description) and memo, and nothing else", () => {
     expect(guessCsvMapping(["date", "description", "memo", "amount"])).toEqual({
       date: 0,
       payee: 1,
@@ -53,7 +53,7 @@ describe("CSV import (EVERYCENT-66)", () => {
     });
   });
 
-  it("reads YNAB's date formats", () => {
+  it("reads the offered date formats", () => {
     expect(parseImportDate("10/12/2026", "MM/DD/YYYY")).toBe("2026-10-12");
     expect(parseImportDate("10/12/2026", "DD/MM/YYYY")).toBe("2026-12-10");
     expect(parseImportDate("1/5/2026", "MM/DD/YYYY")).toBe("2026-01-05");
@@ -131,7 +131,7 @@ describe("CSV import (EVERYCENT-66)", () => {
     expect(swapped.rows.map((r) => r.amount)).toEqual([450n, -120000n]);
   });
 
-  it("gives each row an id from amount, date and occurrence, as YNAB does", () => {
+  it("gives each row an id from amount, date and occurrence", () => {
     const row = { date: "2026-10-10", amount: -450n, payee: "A", memo: "" };
     expect(importIds([row, { ...row, payee: "B" }, { ...row, amount: 1n }])).toEqual([
       "EC:-450:2026-10-10:1",

@@ -12,12 +12,12 @@ import {
   type PayoffProjection,
   payoffProjection,
   payoffSchedule,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import type { LoanActivity } from "./loans";
 
 /**
- * The loan planner's view of a loan (phase 7g), built on the engine's `loan-planner` from the
- * loan activity API. YNAB's behaviour is in YNAB findings "Loan planner".
+ * The loan planner's view of a loan, built on the engine's `loan-planner` from the loan activity
+ * API.
  */
 
 export interface PlannerTerms {
@@ -26,7 +26,6 @@ export interface PlannerTerms {
   escrowAmount: bigint | null;
 }
 
-/** The loan's months as the engine's planner reads them. */
 export function loanHistory(activity: LoanActivity): LoanHistoryMonth[] {
   return activity.months.map((m) => ({
     month: m.month,
@@ -60,10 +59,7 @@ export function termsLookup(activity: LoanActivity) {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
-/**
- * YNAB's durations: "1 month", "10 months", "1 year", "2 years", "1 yr, 1 mo", "4 yrs, 10 mos"
- * (checked 2026-10-13 in the payoff simulator).
- */
+/** "1 month", "10 months", "1 year", "2 years", "1 yr, 1 mo", "4 yrs, 10 mos". */
 export function formatDuration(months: number) {
   const years = Math.floor(months / 12);
   const rest = months % 12;
@@ -90,11 +86,9 @@ export interface LoanPlan {
   /** The paired category's Monthly Debt Payment target, less escrow, if any. */
   target: bigint | null;
   targetShown: bigint | null;
-  /** Paying the minimum from next month. */
   byMinimum: PayoffProjection | null;
-  /** Paying the target from next month. */
   byTarget: PayoffProjection | null;
-  /** YNAB's header Payoff Date: from the target when there is one, else the minimum. */
+  /** The header's Payoff Date: from the target when there is one, else the minimum. */
   payoffMonth: BudgetMonth | null;
   tracks: {
     past: Track;
@@ -105,9 +99,9 @@ export interface LoanPlan {
 }
 
 /**
- * Everything the loan page shows about the payoff. `targetAmount` is the paired category's Monthly
- * Debt Payment target; YNAB then projects with it (Payoff Date, Current Track) and adds the
- * Original Payment Schedule and Minimum Payment lines.
+ * Everything the loan page shows about the payoff. With `targetAmount` (the paired category's
+ * Monthly Debt Payment target) it projects with the target (Payoff Date, Current Track) and adds
+ * the Original Payment Schedule and Minimum Payment lines.
  */
 export function loanPlan(input: {
   activity: LoanActivity;
@@ -219,7 +213,7 @@ export function paidOffPercent(owed: bigint, started: bigint): string {
   return ((paid * 200n + started) / (2n * started)).toString();
 }
 
-/** A piece of a message; `strong` pieces are YNAB's highlighted amounts and durations. */
+/** A piece of a message; `strong` pieces are highlighted amounts and durations. */
 export type MessagePart = string | { strong: string };
 
 export interface ProgressMessage {
@@ -233,8 +227,8 @@ export interface ProgressMessage {
 }
 
 /**
- * The message under YNAB's progress chart (2026-10-13, G7 Loan and G7 Off), or null when there's
- * nothing it could say (no terms that pay the loan down).
+ * The message under the progress chart, or null when there's nothing it could say (no terms that
+ * pay the loan down).
  */
 export function progressMessage(
   plan: LoanPlan,
@@ -262,7 +256,6 @@ export function progressMessage(
   if (plan.targetShown === null) {
     if (minimum === null || plan.rate === null) return null;
     if (!byMinimum) {
-      // YNAB, 2026-10-14 (L7 Half, $1.00 minimum on $2,035.35 at 6%).
       return {
         tone: "warning",
         increaseMinimum: true,
@@ -366,7 +359,7 @@ export function progressMessage(
   };
 }
 
-/** YNAB's "to at least $48.74": this month's interest on what's owed, plus a minor unit. */
+/** "to at least $48.74": this month's interest on what's owed, plus a minor unit. */
 function minimumToPayDownNow(plan: LoanPlan) {
   return minimumToPayDown(plan.progress.owed, plan.rate, plan.exponent);
 }

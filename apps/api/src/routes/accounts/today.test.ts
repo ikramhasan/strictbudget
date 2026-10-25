@@ -49,7 +49,7 @@ const working = async (res: Response, id?: string) => {
   return account?.balances.working;
 };
 
-describe("account responses take the user's today (EVERYCENT-34)", () => {
+describe("account responses take the user's today", () => {
   it("move", async () => {
     const { cookie, base, checking, savings } = await setup();
     const move = (today?: string) =>

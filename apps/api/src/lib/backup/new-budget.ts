@@ -1,5 +1,5 @@
-import { newId } from "@everycent/db";
-import type { BudgetFormatSettings, CurrencyCode } from "@everycent/engine";
+import { newId } from "@strictbudget/db";
+import type { BudgetFormatSettings, CurrencyCode } from "@strictbudget/engine";
 import type { Context } from "hono";
 import type { AuthedEnv } from "../../middleware/require-auth";
 import type { AppEnv } from "../../types";
@@ -10,9 +10,9 @@ import type { Tx } from "../ledger";
 import { createOrganizationAs } from "../organization-calls";
 
 /**
- * Creates a budget for an import (a backup, a YNAB plan) and fills it in one transaction: the
- * organization plugin makes the budget with its internal categories (and the caller as owner),
- * then `fill` adds everything else. If `fill` fails the half-made budget is deleted again.
+ * Creates a budget for an import (a backup, another app's budget) and fills it in one
+ * transaction: the organization plugin makes the budget with its internal categories (and the
+ * caller as owner), then `fill` adds everything else. If `fill` fails the half-made budget is deleted again.
  * Requests that call this run outside the request transaction (see `audit-context.ts`).
  */
 export async function createFilledBudget<T>(

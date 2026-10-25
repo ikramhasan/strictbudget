@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 import type { FakeFxProvider } from "../../lib/fx/fake";
 
-// EVERYCENT-193: the all-accounts register reads a searched amount in each row's own currency.
+// The all-accounts register reads a searched amount in each row's own currency.
 const { app, db, close, fxProviders } = createTestApp();
 const fx = fxProviders[0] as FakeFxProvider;
 beforeEach(async () => {

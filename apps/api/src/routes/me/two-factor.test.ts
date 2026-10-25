@@ -16,14 +16,12 @@ function post(path: string, cookie: string | null, body: unknown) {
     body: JSON.stringify(body),
   });
 }
-/** The cookies a response sets, as one Cookie header. */
 const cookiesOf = (res: Response) =>
   res.headers
     .getSetCookie()
     .map((c) => c.split(";")[0])
     .join("; ");
 
-/** The current code from the authenticator app set up with this otpauth:// URI. */
 async function codeFor(totpURI: string) {
   const secret = new URL(totpURI).searchParams.get("secret") ?? "";
   return createOTP(new TextDecoder().decode(base32.decode(secret))).totp();
@@ -54,7 +52,7 @@ describe("two-step verification", () => {
     const user = await signUp(app);
     expect((await me(user.cookie)).twoFactorEnabled).toBe(false);
     const { totpURI, backupCodes, cookie } = await enable(user.cookie, user.password);
-    expect(totpURI).toMatch(/^otpauth:\/\/totp\/everycent:/);
+    expect(totpURI).toMatch(/^otpauth:\/\/totp\/strictbudget:/);
     expect(backupCodes).toHaveLength(1);
     expect((await me(cookie)).twoFactorEnabled).toBe(true);
   });
@@ -68,7 +66,6 @@ describe("two-step verification", () => {
     const first = await signIn();
     expect(((await first.json()) as { twoFactorRedirect?: boolean }).twoFactorRedirect).toBe(true);
     const pending = cookiesOf(first);
-    // No session yet.
     expect((await app.request("/v1/me", { headers: { cookie: pending } })).status).toBe(401);
 
     const wrong = await post("/api/auth/two-factor/verify-totp", pending, { code: "000000" });

@@ -6,19 +6,19 @@ import {
   monthsBetween,
   paymentForMonths,
   payoffProjection,
-} from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
+} from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { FieldError } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dialog";
+import { FieldError } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
@@ -35,16 +35,14 @@ import { AddAccountDialog } from "./add-account-dialog";
 import { useLoanRefresh } from "./loan-page";
 import { PayoffMonthPicker } from "./payoff-simulator";
 
-/** YNAB's Every list on this form: Last Day of Month, then 1st to 31st (2026-10-13). */
 const EVERY_OPTIONS = [
   { value: "last", label: "Last Day of Month" },
   ...Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: ordinal(i + 1) })),
 ];
 
 /**
- * YNAB's Debt Payment Target form (2026-10-13, G7 Loan Pay): a box comparing the payment with the
- * minimum, Monthly Payment and Payoff Date (each gives the other; a date gives the payment rounded
- * up), Every (the due day), and a Summary. Saved, it asks the payment each month.
+ * Monthly Payment and Payoff Date each give the other (a date gives the payment rounded up);
+ * Every is the due day.
  */
 export function DebtTargetEditor({
   target,
@@ -59,10 +57,7 @@ export function DebtTargetEditor({
 }: {
   target: CategoryTarget | null;
   plan: LoanPlan | null;
-  /**
-   * A category whose loan was unpaired or closed, keeping its debt target: YNAB's "Amount to Pay"
-   * form with "Pair with a Loan" (2026-10-14).
-   */
+  /** A category whose loan was unpaired or closed but kept its debt target: offers "Pair with a Loan". */
   unpairedCategoryId?: string;
   format: (minorUnits: string) => string;
   parse: (text: string) => bigint | string;
@@ -224,8 +219,8 @@ export function DebtTargetEditor({
           <dl className="grid gap-1 text-sm">
             <p className="font-semibold">Summary</p>
             <SummaryRow label="Minimum Payment" value={minimum !== null ? money(minimum) : "--"} />
-            {/* YNAB's Summary counts a month less than the box above: 57 payments read "4 yrs,
-                9 mos" there and "4 yrs, 8 mos" here. */}
+            {/* The Summary counts a month less than the box above: 57 payments read "4 yrs, 9 mos"
+                there and "4 yrs, 8 mos" here. */}
             <SummaryRow
               label="Time Remaining"
               value={formatDuration(Math.max(0, byPayment.months - 1))}
@@ -272,11 +267,7 @@ function SummaryRow({ label, value, indent }: { label: string; value: string; in
   );
 }
 
-/**
- * YNAB's "Pair with a Loan" on an unpaired debt target (2026-10-14): "Select an existing loan or
- * add a new one", the loans not paired with a category and their balances, and Add a New Loan.
- * Pairing starts the target again from the loan's minimum (G7 Loan Pay: $40.00 → $200.00).
- */
+/** Pairing restarts the target from the loan's minimum. */
 function PairWithLoan({ categoryId, onPaired }: { categoryId: string; onPaired: () => void }) {
   const { budget, formatAmount } = useBudget();
   const accounts = useQuery(accountsQueryOptions(budget.id));

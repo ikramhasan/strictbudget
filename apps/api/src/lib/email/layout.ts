@@ -69,11 +69,10 @@ a{text-decoration:none}
 @media (prefers-color-scheme: dark){${DARK_CSS}}
 @media (max-width: 480px){${NARROW_CSS}}`;
 
-/** The brand row at the top of every email. */
 function brand(webOrigin: string) {
   return html`<table role="presentation" cellpadding="0" cellspacing="0"><tr>
 <td style="padding-right:8px;vertical-align:middle"><img src="${webOrigin}/email/logo.png" width="22" height="22" alt="" style="display:block;border:0"></td>
-<td class="ec-strong" style="font-size:15px;font-weight:600;color:${C.strong};vertical-align:middle">everycent</td>
+<td class="ec-strong" style="font-size:15px;font-weight:600;color:${C.strong};vertical-align:middle">strictbudget</td>
 </tr></table>`;
 }
 
@@ -129,11 +128,9 @@ export interface FrameInput {
   preheader?: string;
   /** The card's sections (`section(...)`), the brand row is added above them. */
   sections: Html[];
-  /** Footer lines, small and muted. */
   footer: Html[];
 }
 
-/** The whole document: canvas, card, brand row, sections, footer. */
 export function frame({ webOrigin, subject, preheader, sections, footer }: FrameInput): string {
   const doc = html`<!doctype html>
 <html lang="en">

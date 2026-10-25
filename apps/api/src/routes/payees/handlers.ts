@@ -1,4 +1,5 @@
-import { newId, sql } from "@everycent/db";
+import type { RouteHandler } from "@hono/zod-openapi";
+import { newId, sql } from "@strictbudget/db";
 import {
   budgetAccount,
   category,
@@ -9,9 +10,8 @@ import {
   scheduledTransaction,
   subTransaction,
   transaction,
-} from "@everycent/db/schema";
-import type { PayeeCategorization } from "@everycent/engine";
-import type { RouteHandler } from "@hono/zod-openapi";
+} from "@strictbudget/db/schema";
+import type { PayeeCategorization } from "@strictbudget/engine";
 import { and, asc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError } from "../../lib/errors";
@@ -133,7 +133,6 @@ function payeeColumns() {
   };
 }
 
-/** Rows from `payeeColumns` with what their transactions say about their categories. */
 async function withCategories<T extends PayeeCategorySettings>(
   db: Db,
   budgetId: string,
@@ -273,7 +272,7 @@ export const listPayeesHandler: RouteHandler<typeof listPayees, Env> = async (c)
 
 /**
  * The categorization columns to set for an update, if it changes them. "Always use my choice"
- * needs a category the category list offers; the other two settings forget it, as YNAB does.
+ * needs a category the category list offers; the other two settings forget it.
  */
 async function categorizationChange(
   db: Db,
@@ -367,8 +366,8 @@ export const combinePayeesHandler: RouteHandler<typeof combinePayees, Env> = asy
   await loadBudgetAccess(c, budgetId, EDIT);
   const result = await db.transaction(async (tx) => {
     const selected = await lockPayees(tx, budgetId, payeeIds);
-    // A payee that already has the name keeps it (YNAB merges into it, even when it wasn't
-    // selected); otherwise the first one selected takes the name.
+    // A payee that already has the name keeps it (even when it wasn't selected);
+    // otherwise the first one selected takes the name.
     const named = await payeeNamed(tx, budgetId, name);
     if (named && (named.internalKind || named.transferAccountId)) throw NAME_TAKEN();
     const target = named ? (await lockPayees(tx, budgetId, [named.id]))[0] : selected[0];
@@ -387,8 +386,7 @@ export const combinePayeesHandler: RouteHandler<typeof combinePayees, Env> = asy
         affected.map((p) => p.id),
       ),
     };
-    // The others' renaming rules move to the target, after its own (YNAB: "Combining these
-    // payees will also combine all their renaming rules"; x-c12-62-Tea, 2026-10-16).
+    // The others' renaming rules move to the target, after its own.
     const targetRules = snapshot.rules.filter((r) => r.payeeId === target.id);
     let position = Math.max(-1, ...targetRules.map((r) => r.position));
     for (const rule of snapshot.rules.filter((r) => r.payeeId !== target.id)) {
@@ -398,8 +396,8 @@ export const combinePayeesHandler: RouteHandler<typeof combinePayees, Env> = asy
         .set({ payeeId: target.id, position, updatedAt: sql`now()` })
         .where(eq(payeeRule.id, rule.id));
     }
-    // The target keeps its own Categorization and default (YNAB, x-c13-182 D into E,
-    // 2026-10-17): its default is saved as it stands, so the moved history doesn't change it.
+    // The target keeps its own Categorization and default: its default is saved as it stands,
+    // so the moved history doesn't change it.
     const kept = (await payeeCategories(tx, budgetId, [target])).get(target.id);
     await tx
       .update(payee)
@@ -446,7 +444,7 @@ export const deletePayeesHandler: RouteHandler<typeof deletePayees, Env> = async
         );
       }
     }
-    // Their renaming rules go with them (YNAB: "Deleting them will also delete their rules").
+    // Their renaming rules go with them.
     const snapshot: PayeeSnapshot = {
       payees: doomed.map(snapshotOf),
       uses: await usesOf(tx, budgetId, ids),
@@ -629,7 +627,7 @@ export const listPayeeTransactionsHandler: RouteHandler<typeof listPayeeTransact
   const { db } = c.var.deps;
   await loadBudgetAccess(c, budgetId);
   const ids = payeeIds.slice(0, 1000);
-  // Uncategorized shows as no category, as YNAB's list leaves it blank.
+  // Uncategorized shows as no category.
   const categoryName = sql<string | null>`case when ${category.internalKind} = 'uncategorized'
     then null else ${category.name} end`;
   const common = {
@@ -717,7 +715,6 @@ export const listPayeeTransactionsHandler: RouteHandler<typeof listPayeeTransact
   return c.json({ transactions: rows }, 200);
 };
 
-/** Columns a rule is returned with. */
 const ruleColumns = {
   id: payeeRule.id,
   payeeId: payeeRule.payeeId,
@@ -725,7 +722,6 @@ const ruleColumns = {
   text: payeeRule.text,
 };
 
-/** The budget's rule with this id, or 404. */
 async function findRule(db: Db, budgetId: string, ruleId: string) {
   const [row] = await db
     .select(ruleColumns)
@@ -774,7 +770,7 @@ export const createPayeeRuleHandler: RouteHandler<typeof createPayeeRule, Env> =
       .where(and(eq(payee.id, payeeId), eq(payee.budgetId, budgetId)))
       .for("update");
     if (!target) throw new AppError(404, "NOT_FOUND", "Payee not found");
-    // Transfer payees take rules (YNAB); built-in ones like Starting Balance aren't listed.
+    // Transfer payees take rules; built-in ones like Starting Balance aren't listed.
     if (target.internalKind) {
       throw new AppError(409, "PAYEE_LOCKED", "Built-in payees can't have renaming rules");
     }

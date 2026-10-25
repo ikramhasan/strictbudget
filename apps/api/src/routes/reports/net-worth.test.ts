@@ -2,7 +2,6 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 import type { FakeFxProvider } from "../../lib/fx/fake";
 
-// EVERYCENT-79: YNAB's Net Worth report (2026-10-17).
 const { app, db, close, fxProviders } = createTestApp();
 const fx = fxProviders[0] as FakeFxProvider;
 beforeEach(async () => {
@@ -125,8 +124,7 @@ describe("net worth report", () => {
       amount: "-600",
       payeeName: "Fee",
     });
-    // October: the old account is closed (its $30
-    // leaves with a balance adjustment, so it holds 0 from October).
+    // October: the old account is closed; its $30 leaves with a balance adjustment.
     const closed = await send("POST", `${base}/accounts/${old.id}/close`, cookie, {
       date: "2026-10-03",
     });
@@ -170,7 +168,7 @@ describe("net worth report", () => {
     const oldRow = r.accounts.find((a) => a.id === old.id);
     expect(oldRow).toMatchObject({ closed: true, onBudget: true, firstMonth: "2026-07" });
     expect(oldRow?.balances.map((b) => b.native)).toEqual(["3000", "3000", "3000", "0"]);
-    // Accounts come in the order they were made (YNAB's export order).
+    // Accounts come in the order they were made.
     expect(r.accounts.map((a) => a.name)).toEqual([
       "Checking",
       "Visa",
@@ -300,7 +298,6 @@ describe("net worth report", () => {
     });
   });
 
-  // EVERYCENT-245: no rates for months before a currency's first transaction.
   it("looks up a foreign currency's rates only from its first transaction", async () => {
     fx.seed("2000-01-01", "EUR", { USD: "1.1" });
     const { account, report } = await setup();
@@ -334,7 +331,6 @@ describe("net worth report", () => {
     expect(hidden.status).toBe(404);
   });
 
-  // EVERYCENT-244: the work a request asks for stays bounded however wide or far its range is.
   it("caps the range and bounds the walk", async () => {
     const { cookie, base, account, add, report } = await setup();
     const a = await account({ name: "A", type: "checking", balance: "1000" });
@@ -372,7 +368,7 @@ describe("net worth report's today", () => {
   const bounded = createTestApp({ serverDate: () => TODAY });
   afterAll(bounded.close);
 
-  // EVERYCENT-244: `today` sets how far a loan's charges run, so it's held near the server's date.
+  // `today` sets how far a loan's charges run, so it's held near the server's date.
   it("is held within a day of the server's date", async () => {
     const { cookie } = await signUp(bounded.app);
     const budget = await createBudget(bounded.app, cookie);
@@ -402,7 +398,7 @@ describe("net worth report's today", () => {
     );
     expect(res.status, await res.clone().text()).toBe(200);
     const r = await json<Report>(res);
-    // The made-up today counts as the server's (it also sets how far a loan's charges run).
+    // The made-up today counts as the server's.
     expect(r.months.map((m) => m.netWorth)).toEqual(["11000", "11000"]);
     expect(r.rates.every((x) => x.rateDate !== null && x.rateDate <= "2026-10-21")).toBe(true);
   });

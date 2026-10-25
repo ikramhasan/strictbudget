@@ -16,7 +16,7 @@ describe("payeeAutoCategory", () => {
     expect(payeeAutoCategory(["a"])).toBe("a");
   });
 
-  it("keeps the default until two of the last three agree on another (YNAB register)", () => {
+  it("keeps the default until two of the last three agree on another", () => {
     expect(payeeAutoCategory(["a", "b"])).toBe("a");
     expect(payeeAutoCategory(["a", "a", "b"])).toBe("a");
     expect(payeeAutoCategory(["a", "b", "c"])).toBe("a");
@@ -98,7 +98,7 @@ describe("nextPayeeAutoCategory", () => {
     expect(nextPayeeAutoCategory("a", ["a", "b", "b"], "a")).toBe("b");
   });
 
-  it("keeps the default when the last three don't agree (YNAB, x-c13-182 E)", () => {
+  it("keeps the default when the last three don't agree", () => {
     // 10/01 a, 10/02 b, 10/03 b gave b; editing 10/03 to c keeps b (a replay would give a).
     expect(nextPayeeAutoCategory("b", ["c", "b", "a"], "c")).toBe("b");
   });

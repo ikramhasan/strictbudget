@@ -1,5 +1,5 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from "@everycent/ui/components/tooltip";
-import { cn } from "@everycent/ui/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@strictbudget/ui/components/tooltip";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Bot } from "lucide-react";
 import { $api } from "@/lib/api";
 import { useOptionalBudget } from "@/lib/budget-context";
@@ -8,8 +8,7 @@ import { pictureSrc } from "@/lib/pictures";
 import { useOptionalQueryClient } from "@/lib/query-client";
 
 /**
- * YNAB's six member avatar colours (avatar-one … avatar-six, checked 2026-10-16 on a shared plan,
- * EVERYCENT-166): the owner ("manager") is #545BFE with white text, everyone else black text. The
+ * The six member avatar colours: the owner ("manager") is #545BFE with white text, everyone else black text. The
  * API numbers them 1–6 (the owner 1, the others by when they joined).
  */
 const AVATAR_COLORS: Record<number, string> = {
@@ -22,9 +21,9 @@ const AVATAR_COLORS: Record<number, string> = {
 };
 
 /**
- * With Differentiate Without Color, YNAB tells apart members whose names start with the same
- * character (exactly, so "i" and "I" differ): the first in member order gets no pattern, the next
- * pattern 1, then 2 … 5 (seen 2026-10-17, EVERYCENT-202). Members are in the API's order, the
+ * With Differentiate Without Color, members whose names start with the same character (exactly,
+ * so "i" and "I" differ) are told apart: the first in member order gets no pattern, the next
+ * pattern 1, then 2 … 5. Members are in the API's order, the
  * owner first and then by when they joined. Returns 0 for no pattern.
  */
 export function avatarPattern(
@@ -39,7 +38,7 @@ export function avatarPattern(
 }
 
 /**
- * YNAB's five avatar patterns (/images/avatar/pattern-one … five.svg): black at 15% over the
+ * The five avatar patterns: black at 15% over the
  * colour. One is the left half, two opposite quarters, three diagonal stripes, four the bottom
  * half, five a checker grid.
  */
@@ -94,7 +93,7 @@ function usePattern(userId: string | null, active: boolean) {
   return on && userId ? avatarPattern(members.data?.members ?? [], userId) : 0;
 }
 
-/** An avatar's tooltip, as YNAB words it: "Pat", "Pat (you)", "Pat (removed)", "Inactive Member". */
+/** An avatar's tooltip: "Pat", "Pat (you)", "Pat (removed)", "Inactive Member". */
 export function memberTooltip(
   userId: string | null,
   userName: string | null,
@@ -107,9 +106,9 @@ export function memberTooltip(
 }
 
 /**
- * Who made a change, as YNAB marks a money move: a small round avatar with the first letter of the
+ * Who made a change: a small round avatar with the first letter of the
  * name in the member's colour and the name as its tooltip. Someone who has left the budget keeps
- * their own colour and initial, with "(removed)" in the tooltip (EVERYCENT-213). Once their user is
+ * their own colour and initial, with "(removed)" in the tooltip. Once their user is
  * deleted there's no colour: the grey inactive avatar (#DBD7CC), empty, "Inactive Member".
  */
 export function MemberAvatar({
@@ -128,9 +127,8 @@ export function MemberAvatar({
   userName: string | null;
   /** 1–6 from the API, kept after they leave; null once their user is deleted. */
   avatarColor: number | null;
-  /** They've left the budget. */
   removed?: boolean;
-  /** Their profile picture's URL (EVERYCENT-229), shown instead of the initial. */
+  /** Shown instead of the initial. */
   picture?: string | null;
   currentUserId: string | undefined;
   /** Around the name in the tooltip: "Entered by " … ", last changed by Sam". */

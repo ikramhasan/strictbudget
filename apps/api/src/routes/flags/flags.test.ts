@@ -1,5 +1,5 @@
-import { newId } from "@everycent/db";
-import { budgetMember } from "@everycent/db/schema";
+import { newId } from "@strictbudget/db";
+import { budgetMember } from "@strictbudget/db/schema";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 

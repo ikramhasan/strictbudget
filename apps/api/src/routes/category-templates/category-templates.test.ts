@@ -50,7 +50,6 @@ async function setup(currency = "USD") {
   return { cookie, base, importTemplate, groups };
 }
 
-/** Every category id of a template ("<group>.<category>"). */
 const allIds = (templateId: string) => {
   const t = CATEGORY_TEMPLATES.find((x) => x.id === templateId);
   if (!t) throw new Error(`no template ${templateId}`);
@@ -58,7 +57,7 @@ const allIds = (templateId: string) => {
 };
 
 describe("category templates", () => {
-  it("lists YNAB's gallery with amounts in the budget's minor units", async () => {
+  it("lists the template gallery with amounts in the budget's minor units", async () => {
     const { cookie, base } = await setup();
     const res = await send("GET", `${base}/category-templates`, cookie);
     expect(res.status).toBe(200);
@@ -92,7 +91,7 @@ describe("category templates", () => {
   it("adds new groups at the bottom with balance targets, nothing assigned", async () => {
     const { importTemplate, groups } = await setup();
     const before = (await groups()).map((g) => g.name);
-    // YNAB, 2026-10-16: unticking Security Deposit and the whole Unexpected group.
+    // Unticking Security Deposit and the whole Unexpected group.
     const picked = allIds("moving").filter((id) => id !== "0.0" && !id.startsWith("4."));
     const res = await importTemplate("moving", picked);
     expect(res.status).toBe(200);
@@ -133,7 +132,7 @@ describe("category templates", () => {
     ]);
   });
 
-  it("imports our note on each About This Template category (EVERYCENT-178)", async () => {
+  it("imports our note on each About This Template category", async () => {
     const { importTemplate, groups } = await setup();
     await importTemplate("kid", allIds("kid"));
     const notes = (await groups()).flatMap((g) =>
@@ -142,12 +141,10 @@ describe("category templates", () => {
     const about = notes.find(([name]) => name === "📋 About This Template");
     expect(about?.[1]).toBe(templateCategoryNote("kid", "📋 About This Template"));
     expect(about?.[1]).toMatch(/spend, some to save and some to give/);
-    // The other categories have no note of ours.
     expect(notes.filter(([name]) => name !== "📋 About This Template" && name.length > 0)).toEqual(
       expect.arrayContaining([["🍭 Spend", ""]]),
     );
 
-    // Importing again skips it: nothing new, nothing rewritten.
     const again = await json<ImportResult>(await importTemplate("kid", allIds("kid")));
     expect(again.added).toBe(0);
   });
@@ -164,7 +161,7 @@ describe("category templates", () => {
     const abouts = CATEGORY_TEMPLATES.filter((t) =>
       t.groups.some((g) => g.categories.some((c) => c.name.includes("About This Template"))),
     );
-    // Both spellings YNAB uses ("📋 About…", "📋About…") are recognised.
+    // Both spellings ("📋 About…", "📋About…") are recognised.
     expect(abouts).toHaveLength(29);
   });
 
@@ -180,7 +177,6 @@ describe("category templates", () => {
       ?.categories.find((c) => c.name === "🍕 Pizza & Drinks");
     const fees = move?.categories.find((c) => c.name === "📝 Application Fees");
     if (!move || !truck || !pizza || !fees) throw new Error("import missing");
-    // As in YNAB's check: rename one away, change another's case and another's target.
     await send("PATCH", `${base}/categories/${fees.id}`, cookie, { name: "x renamed" });
     await send("PATCH", `${base}/categories/${pizza.id}`, cookie, { name: "🍕 pizza & drinks" });
     await send("PUT", `${base}/categories/${truck.id}/target`, cookie, {
@@ -212,7 +208,7 @@ describe("category templates", () => {
     expect(helpers?.categories).toHaveLength(3);
   });
 
-  it("counts hidden groups and categories as already there (EVERYCENT-177)", async () => {
+  it("counts hidden groups and categories as already there", async () => {
     const { cookie, base, importTemplate, groups } = await setup();
     await importTemplate("moving", allIds("moving"));
     const unexpected = (await groups()).find((g) => g.name === "Unexpected");
@@ -220,7 +216,6 @@ describe("category templates", () => {
     const truck = supplies?.categories.find((c) => c.name === "🚚 Moving Truck");
     const settle = unexpected?.categories.find((c) => c.name === "🔑 Settling in Fund");
     if (!unexpected || !truck || !settle) throw new Error("import missing");
-    // As in YNAB's check (2026-10-17): hide a group and a category, take one away from the group.
     await send("PATCH", `${base}/category-groups/${unexpected.id}`, cookie, { hidden: true });
     await send("PATCH", `${base}/categories/${truck.id}`, cookie, { hidden: true });
     await send("PATCH", `${base}/categories/${settle.id}`, cookie, { name: "x settle" });
@@ -228,7 +223,6 @@ describe("category templates", () => {
     const body = await json<ImportResult>(await importTemplate("moving", allIds("moving")));
     expect(body.added).toBe(1);
     const after = body.categories.groups as (Group & { hidden: boolean })[];
-    // The hidden group is filled (and stays hidden); the hidden category isn't added again.
     expect(after.filter((g) => g.name === "Unexpected")).toHaveLength(1);
     const filled = after.find((g) => g.name === "Unexpected");
     expect(filled?.hidden).toBe(true);

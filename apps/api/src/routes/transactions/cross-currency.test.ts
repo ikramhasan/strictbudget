@@ -2,8 +2,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 import type { FakeFxProvider } from "../../lib/fx/fake";
 
-// EVERYCENT-55: transfers between accounts in different currencies. Each side keeps its own
-// amount; the two always have opposite base amounts, so a transfer moves no money in the plan.
+// Transfers between accounts in different currencies. Each side keeps its own amount; the two
+// always have opposite base amounts, so a transfer moves no money in the plan.
 const { app, db, close, fxProviders } = createTestApp();
 const fx = fxProviders[0] as FakeFxProvider;
 beforeEach(async () => {
@@ -100,7 +100,6 @@ async function setup() {
       (t) => t.payeeName !== "Starting Balance",
     );
   };
-  /** The one transaction in an account. */
   const only = async (accountId: string) => {
     const list = await rows(accountId);
     expect(list).toHaveLength(1);

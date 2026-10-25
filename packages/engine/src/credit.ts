@@ -20,31 +20,28 @@ export interface FundedCardSpending {
   moved: Map<string, bigint>;
   /**
    * accountId → that card's spending left unfunded when it happened (positive): its payment
-   * category's "Overspent Categories". A later refill doesn't lower it (YNAB, 2026-10-11: Card R4
-   * kept its $3 from G-X2 after another card's return refilled the category).
+   * category's "Overspent Categories". A later refill (e.g. another card's return) doesn't
+   * lower it.
    */
   unfunded: Map<string, bigint>;
 }
 
 /**
  * How a category's card activity in a month moves money into each card's payment category (or, for
- * returns, back out of it): YNAB's Funded Spending, checked in its web app and API (YNAB findings,
- * "Funded card spending (phase 7b)"):
+ * returns, back out of it), the category's Funded Spending:
  *
  * - `cash` is what the category has before card spending: carried in, assigned and the whole
  *   month's cash activity. Cash is funded first, even cash spending dated after the card's
- *   (2026-10-11: $10 assigned, card −$8 on 10/01, cash −$6 on 10/05 moved $4).
- * - Card activity then runs in date order; on the same day the largest outflow goes first
- *   (2026-10-11, cards F1/F2), and equal ones by transaction id, smallest first (Cards U2/U3, 4 of
- *   4; YNAB's ids are random, ours are time-ordered). Each purchase is funded with what the
- *   category has left; the rest is credit overspending (phase 7c).
+ *   ($10 assigned, card −$8 on 10/01, cash −$6 on 10/05 moves $4).
+ * - Card activity then runs in date order; on the same day the largest outflow goes first, and
+ *   equal ones by transaction id, smallest first (ids are time-ordered). Each purchase is funded
+ *   with what the category has left; the rest is credit overspending.
  * - A return first refills what earlier card spending left unfunded; only the rest leaves the
- *   returning card's payment category and is the category's again (2026-10-11: card −$3 on 10/01,
- *   another card's +$5 return on 10/02 left the first unfunded and moved $2 out). A return doesn't
- *   refill cash overspending: it moves out in full (2026-10-03, Groceries).
+ *   returning card's payment category and is the category's again (card −$3 on 10/01, another
+ *   card's +$5 return on 10/02 leaves the first unfunded and moves $2 out). A return doesn't
+ *   refill cash overspending: it moves out in full.
  * - What a return pays back above the card's zero (`cash`) joins the category on its date and
- *   refills nothing (2026-10-14, x128 Card A owing $20: +$25 uncategorized moved $19 out, $1
- *   refilling Amex's earlier −$1, and Amex's payment category didn't change).
+ *   refills nothing.
  */
 export function fundedCardSpending(
   cash: bigint,
@@ -140,22 +137,20 @@ export interface CardLineEffect {
 
 /**
  * Walks one card's lines in order and splits each by the card's balance just before it: the part
- * of a balance above zero is cash (YNAB, checked 2026-10-11 in "Onboarding Check"; YNAB findings
- * "Credit lifecycle (phase 7e)"). Lines run by date; on the same day outflows come first, the
- * largest first (Card S1: spending dated the day of the payment that made the card positive was
- * credit), and a split's lines in their order (Cards T5, T8).
+ * of a balance above zero is cash. Lines run by date; on the same day outflows come first, the
+ * largest first (spending dated the day of the payment that made the card positive is credit),
+ * and a split's lines in their order.
  *
- * - Spending is cash up to the balance above zero and credit for the rest (Card Q3: −$10 at +$6
- *   was $6 cash and $4 credit). A return pays down debt first (credit, out of the payment
- *   category) and the rest is cash (Card R8: +$5 owing $3 moved $3 out, the category got $5).
- * - Ready to Assign and payments in add the part that takes the card above zero (Card X, Card V);
- *   money out to Ready to Assign takes out the part that was above zero (Cards V, W; closing
- *   Card P).
- * - A cash advance adds what becomes new debt: the amount less what was above zero (Card A at +$6
- *   moving $8: +$2; Card W owing $5 moving $3: +$3).
+ * - Spending is cash up to the balance above zero and credit for the rest (−$10 at +$6 is $6 cash
+ *   and $4 credit). A return pays down debt first (credit, out of the payment category) and the
+ *   rest is cash (+$5 owing $3 moves $3 out, the category gets $5).
+ * - Ready to Assign and payments in add the part that takes the card above zero; money out to
+ *   Ready to Assign (including closing the card) takes out the part that was above zero.
+ * - A cash advance adds what becomes new debt: the amount less what was above zero (at +$6
+ *   moving $8: +$2; owing $5 moving $3: +$3).
  * - Between two credit accounts, the sending card's new debt adds nothing; the part it paid from
  *   above zero (`paidFromCash`) is a payment to the other card, and the receiving card counts like
- *   a payment in: what takes it above zero goes to Ready to Assign (Cards T1–T9).
+ *   a payment in: what takes it above zero goes to Ready to Assign.
  */
 export function cardLedger(lines: readonly CardLine[]): CardLineEffect[] {
   const ordered = [...lines].sort(

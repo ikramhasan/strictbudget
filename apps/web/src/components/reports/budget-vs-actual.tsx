@@ -1,4 +1,4 @@
-import { type BudgetMonth, money } from "@everycent/engine";
+import { type BudgetMonth, money } from "@strictbudget/engine";
 import {
   Table,
   TableBody,
@@ -7,8 +7,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@everycent/ui/components/table";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/table";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Fragment } from "react";
 import { useBudget } from "@/lib/budget-context";
 import {
@@ -73,7 +73,7 @@ export function StatusLegend({ target = true }: { target?: boolean }) {
 }
 
 /**
- * The bullet chart (EVERYCENT-83): per category a light band for what was assigned, a thick bar
+ * The bullet chart: per category a light band for what was assigned, a thick bar
  * for what was spent coloured by under / on / over plan, and a tick for what its target asked.
  * Plain elements rather than a chart library: each row is three positioned boxes on one scale,
  * and the rows are buttons that open the category's transactions.
@@ -258,7 +258,7 @@ const OVERSPENT_RING = {
 } as const;
 
 /**
- * The overspending heatmap (EVERYCENT-83): categories × months, each cell spent − assigned on a
+ * The overspending heatmap: categories × months, each cell spent − assigned on a
  * diverging scale (under plan blue, over plan vermillion, deeper the further off), and a red
  * (cash) or yellow (credit) ring on months the category ended overspent. Cells open that month's
  * transactions.

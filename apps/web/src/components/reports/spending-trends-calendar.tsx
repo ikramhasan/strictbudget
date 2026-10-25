@@ -1,5 +1,5 @@
-import { type MonthRange, money } from "@everycent/engine";
-import { cn } from "@everycent/ui/lib/utils";
+import { type MonthRange, money } from "@strictbudget/engine";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useBudget } from "@/lib/budget-context";
 import { monthLabel } from "@/lib/reports";
 import { type CalendarDay, calendarLevels, calendarWeeks } from "@/lib/spending-trends";
@@ -15,10 +15,7 @@ const SHADES = [
   "var(--report-1)",
 ];
 
-/**
- * The calendar heatmap (everycent, EVERYCENT-78): every day of the range as a square, weeks across
- * and weekdays down, shaded by what was spent that day; clicking a day lists its transactions.
- */
+/** Every day of the range as a square, weeks across and weekdays down, shaded by what was spent. */
 export function SpendingCalendar({
   range,
   days,

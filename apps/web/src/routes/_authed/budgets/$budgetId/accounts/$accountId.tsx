@@ -1,5 +1,5 @@
-import { ACCOUNT_TYPE_LABELS, accountFamily, isOnBudget, money } from "@everycent/engine";
-import { Alert, AlertDescription } from "@everycent/ui/components/alert";
+import { ACCOUNT_TYPE_LABELS, accountFamily, isOnBudget, money } from "@strictbudget/engine";
+import { Alert, AlertDescription } from "@strictbudget/ui/components/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,14 +9,24 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Badge } from "@everycent/ui/components/badge";
-import { Button } from "@everycent/ui/components/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@everycent/ui/components/dialog";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@everycent/ui/components/empty";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@everycent/ui/components/tooltip";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Badge } from "@strictbudget/ui/components/badge";
+import { Button } from "@strictbudget/ui/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@strictbudget/ui/components/dialog";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@strictbudget/ui/components/empty";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@strictbudget/ui/components/tooltip";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Info, Lock, Pencil } from "lucide-react";
@@ -128,7 +138,7 @@ function AccountPage() {
   const showBudget = (amount: string | bigint) =>
     formatAmount(money(BigInt(amount), budget.currency));
   const isLoan = account !== undefined && accountFamily(account.type) === "loan";
-  // A loan's reconcile is its page's Update Balance (YNAB).
+  // A loan's reconcile is its page's Update Balance.
   const reconcilable = account !== undefined && !isLoan;
   const isCard = account !== undefined && accountFamily(account.type) === "credit";
   const cardPayment = useCardPayment(isCard ? account : undefined);
@@ -142,7 +152,6 @@ function AccountPage() {
   // A reconciliation in progress belongs to the account it started on.
   useEffect(() => setReconcilingTo(null), [accountId]);
 
-  // YNAB's shortcut for Reconcile is Shift+E.
   useShortcut("reconcile", () => setReconcileOpen(true), { enabled: reconcilable });
 
   async function refresh() {
@@ -244,7 +253,7 @@ function AccountPage() {
       "Account closed",
       "Couldn't close the account.",
     );
-  /** YNAB closes a zeroed account at once and asks first when the balance needs an adjustment. */
+  /** A zeroed account closes at once; one whose balance needs an adjustment asks first. */
   function handleClose() {
     if (working !== 0n) return setConfirm("close");
     setEditing(false);
@@ -264,7 +273,6 @@ function AccountPage() {
     if (confirm === "reopen") {
       const loanName =
         accounts.data?.accounts.find((a) => a.id === account.migratedToAccountId)?.name ?? "";
-      // YNAB's Re-open Account for an updated tracking account (2026-10-15, EVERYCENT-165).
       return (
         <AlertDialog open onOpenChange={(o) => !o && setConfirm(null)}>
           <AlertDialogContent>
@@ -427,7 +435,7 @@ function AccountPage() {
               }}
             />
           )}
-        {/* YNAB: an open account offers Close, or Delete while it has only its starting
+        {/* An open account offers Close, or Delete while it has only its starting
             balance; a closed one offers Re-open and Delete, disabled while it has history. */}
         <div className="flex flex-wrap gap-2 border-t pt-4">
           {account.closed && (

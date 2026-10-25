@@ -61,7 +61,6 @@ export function CommandRegistryProvider({ children }: { children: ReactNode }) {
 const NONE: readonly Entry[] = [];
 const noop = () => () => {};
 
-/** What the screens offer now. */
 export function useScreenCommands(): readonly Entry[] {
   const registry = useContext(RegistryContext);
   return useSyncExternalStore(registry?.subscribe ?? noop, registry?.get ?? (() => NONE));

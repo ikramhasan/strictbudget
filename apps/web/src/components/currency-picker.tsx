@@ -1,5 +1,5 @@
-import { CURRENCY_CODES, type CurrencyCode } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
+import { CURRENCY_CODES, type CurrencyCode } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Command,
   CommandEmpty,
@@ -7,8 +7,8 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@everycent/ui/components/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
+} from "@strictbudget/ui/components/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { CheckIcon, ChevronsUpDown } from "lucide-react";
 import { useState } from "react";
 
@@ -29,7 +29,6 @@ export function CurrencyPicker({
   /** Null shows `noneLabel` (a picker that offers "no currency of its own"). */
   value: CurrencyCode | null;
   onChange: (code: CurrencyCode) => void;
-  /** The first option, standing for no currency (e.g. "Budget's currency"). */
   noneLabel?: string;
   onNone?: () => void;
 }) {

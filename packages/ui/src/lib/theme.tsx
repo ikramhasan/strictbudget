@@ -67,23 +67,11 @@ function withTransitionsDisabled(apply: () => void) {
 }
 
 /**
- * Minimal, client-only theme provider with the same public shape as
- * next-themes' `ThemeProvider` + `useTheme` — but without next-themes'
- * inline anti-flash `<script>` tag. That script is meant to run as part of
- * server-rendered HTML, before React hydrates; consumers of this package are
- * plain client-rendered SPAs with no server render, so the tag would be
- * emitted by React itself when `ThemeProvider` renders, and a script React
- * renders is never executed on the client. That produces a "script tag"
- * console warning for no benefit in that setup — hence no dependency on
- * next-themes at all here.
- *
- * Consuming apps should apply the theme before first paint themselves, via a
- * real static `<script>` in their index.html (not React-rendered, so the
- * browser does execute it) that reads the same "theme" localStorage key —
- * see apps/web/index.html for the reference implementation. `sonner.tsx` in
- * this package imports `useTheme` from here directly, so it always reflects
- * whatever this provider (if any) is mounted above it; with no provider
- * mounted, `useTheme` falls back to `{ theme: "system", ... }`.
+ * Client-only theme provider shaped like next-themes' `ThemeProvider` + `useTheme`, without its
+ * inline anti-flash `<script>`: in a client-rendered SPA React renders that tag but never runs it,
+ * and warns. Apps apply the theme before first paint with a static `<script>` in index.html that
+ * reads the same "theme" localStorage key (see apps/web/index.html). With no provider mounted,
+ * `useTheme` returns `{ theme: "system", ... }`.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => readStoredTheme());

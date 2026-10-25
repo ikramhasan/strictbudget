@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import {
   type BudgetMonth,
   type CurrencyCode,
@@ -13,7 +13,7 @@ import {
   REPORT_PRESETS,
   type ReportComparison,
   type ReportPreset,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { strToU8, zipSync } from "fflate";
 import { z } from "zod";
 import { $api } from "./api";
@@ -47,7 +47,6 @@ export const reportSearchSchema = z.object({
 });
 export type ReportSearch = z.infer<typeof reportSearchSchema>;
 
-/** The user's current month. */
 export const currentMonth = (): BudgetMonth => monthOf(todayIso());
 
 /** The months a report's search asks for: `from`/`to` when both are set, else a preset. */
@@ -101,13 +100,11 @@ const activityQuery = (r: ReportRequest) => ({
   ...r.days,
 });
 
-/** Spending or income sums for a report (`GET /reports/activity`). */
 export const reportActivityOptions = (r: ReportRequest) =>
   $api.queryOptions("get", "/v1/budgets/{budgetId}/reports/activity", {
     params: { path: { budgetId: r.budgetId }, query: activityQuery(r) },
   });
 
-/** The transactions behind a report's sums (`GET /reports/transactions`). */
 export const reportTransactionsOptions = (
   r: ReportRequest & { order?: "newest" | "largest_outflow"; limit?: number },
 ) =>
@@ -154,9 +151,9 @@ export function chartNumber(minorUnits: string | bigint, currency: CurrencyCode)
 }
 
 /**
- * everycent's report palette: Okabe–Ito's colour-blind-safe hues (as CSS variables defined for
- * both themes in packages/ui's globals.css), handed out by a category's or group's place in the
- * plan so it keeps its colour in every report.
+ * The report palette: Okabe–Ito's colour-blind-safe hues (CSS variables defined for both themes in
+ * packages/ui's globals.css), handed out by a category's or group's place in the budget so it keeps
+ * its colour in every report.
  */
 export const REPORT_COLOR_COUNT = 8;
 export const reportColor = (index: number) =>
@@ -201,16 +198,12 @@ export function planColors(list: {
 /** Uncategorized and "Other": the palette's grey. */
 export const UNCATEGORIZED_COLOR = reportColor(REPORT_COLOR_COUNT - 1);
 
-/** A file a report exports. */
 export interface ExportFile {
   name: string;
   text: string;
 }
 
-/**
- * Saves a report's export: one file as itself, several in one zip (YNAB's spending exports are a
- * zip of two CSVs, 2026-10-17).
- */
+/** Saves a report's export: one file as itself, several in one zip. */
 export function downloadExport(files: readonly ExportFile[], zipName: string) {
   const [only] = files;
   const blob =
@@ -222,7 +215,6 @@ export function downloadExport(files: readonly ExportFile[], zipName: string) {
   saveBlob(blob, files.length === 1 && only ? only.name : zipName);
 }
 
-/** Starts a download of `blob` as `name`. */
 export function saveBlob(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -233,8 +225,8 @@ export function saveBlob(blob: Blob, name: string) {
 }
 
 /**
- * A month as YNAB's reports write it: "Oct 2026" (`short`, the range picker), "October 2026"
- * (`long`, table rows) or "10/26" (`axis`, chart ticks).
+ * "Oct 2026" (`short`, the range picker), "October 2026" (`long`, table rows) or "10/26" (`axis`,
+ * chart ticks).
  */
 export function monthLabel(month: BudgetMonth, style: "short" | "long" | "axis" = "short") {
   if (style === "short") return shortMonthLabel(month);
@@ -242,7 +234,7 @@ export function monthLabel(month: BudgetMonth, style: "short" | "long" | "axis" 
   return `${month.slice(5, 7)}/${month.slice(2, 4)}`;
 }
 
-/** "Aug 2026 – Oct 2026", or "Oct 2026" for one month (YNAB's range button). */
+/** "Aug 2026 – Oct 2026", or "Oct 2026" for one month. */
 export const rangeLabel = (range: MonthRange) =>
   range.from === range.to
     ? monthLabel(range.from)

@@ -1,4 +1,4 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@everycent/ui/components/dropdown-menu";
+} from "@strictbudget/ui/components/dropdown-menu";
 import { LayoutTemplate, MoreHorizontal } from "lucide-react";
 
 /** The budget list's less frequent options, behind "⋯" at the end of the views bar. */

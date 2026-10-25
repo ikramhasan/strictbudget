@@ -114,7 +114,7 @@ describe("budget views", () => {
     expect(overspentCount(month, visible)).toBe(2);
   });
 
-  // support.ynab.com "Focused Views": yellow when all overspending is credit, red with any cash.
+  // Yellow when all overspending is credit, red with any cash.
   it("tells when all overspending is credit", () => {
     const credit = (m: typeof month) => ({
       ...m,
@@ -170,7 +170,7 @@ describe("targets", () => {
   });
   it("is yellow while a target is underfunded, unless cash overspending makes it red", () => {
     expect(isCaution(need("6000"), "2026-10", "2026-10")).toBe(true);
-    // Snoozed: green or grey instead (support.ynab.com "Snooze a Target").
+    // Snoozed: green or grey instead.
     const snoozed = need("6000");
     expect(
       isCaution({ ...snoozed, target: { ...snoozed.target, snoozed: true } }, "2026-10", "2026-10"),
@@ -191,12 +191,12 @@ describe("targets", () => {
       payment: { underfunded },
       target: target === undefined ? null : { ...need(target).target },
     });
-    // No target: yellow while the balance isn't covered (phase 7c).
+    // No target: yellow while the balance isn't covered.
     expect(isCaution(card("0", "12000"), "2026-10", "2026-10")).toBe(true);
-    // Card E1: underfunded target yellow, on track green although the balance isn't covered.
+    // Underfunded target yellow, on track green although the balance isn't covered.
     expect(isCaution(card("0", "12000", "2084"), "2026-10", "2026-10")).toBe(true);
     expect(isCaution(card("5000", "7500", "0"), "2026-10", "2026-10")).toBe(false);
-    // Card E2: a payment beyond what was set aside is red, target or not.
+    // A payment beyond what was set aside is red, target or not.
     expect(isCaution(card("-1000", "10000", "3334"), "2026-10", "2026-10")).toBe(false);
     expect(isCaution(card("-1000", "10000"), "2026-10", "2026-10")).toBe(false);
   });
@@ -228,7 +228,6 @@ describe("isCaution", () => {
   });
 });
 
-// YNAB, 2026-10-12 ("Onboarding Check", U10 A–I).
 describe("upcoming scheduled transactions on the pill", () => {
   const row = (available: string, upcoming: string | null, target?: Record<string, unknown>) => ({
     available,
@@ -240,31 +239,30 @@ describe("upcoming scheduled transactions on the pill", () => {
   const unmet = { needed: "4000", funded: "0", underfunded: "4000", snoozed: false };
 
   it("shows a yellow calendar while Available doesn't cover them", () => {
-    expect(isCaution(row("1000", "-3000"), "2026-10", "2026-10")).toBe(true); // U10 B
+    expect(isCaution(row("1000", "-3000"), "2026-10", "2026-10")).toBe(true);
     expect(availableMark(row("1000", "-3000"))).toEqual({ kind: "upcoming" });
-    expect(isCaution(row("5000", "-3000"), "2026-10", "2026-10")).toBe(false); // U10 H
+    expect(isCaution(row("5000", "-3000"), "2026-10", "2026-10")).toBe(false);
     expect(availableMark(row("5000", "-3000"))).toBeUndefined();
-    expect(availableMark(row("0", "2500"))).toBeUndefined(); // U10 G, an inflow
+    expect(availableMark(row("0", "2500"))).toBeUndefined();
   });
 
   it("puts the calendar over a target's mark, but not over a snooze", () => {
-    expect(availableMark(row("4000", "-6000", met))).toEqual({ kind: "upcoming" }); // U10 I
-    expect(availableMark(row("0", "-3000", unmet))).toEqual({ kind: "upcoming" }); // U10 D
+    expect(availableMark(row("4000", "-6000", met))).toEqual({ kind: "upcoming" });
+    expect(availableMark(row("0", "-3000", unmet))).toEqual({ kind: "upcoming" });
     const snoozed = { ...unmet, snoozed: true };
     expect(availableMark(row("0", "-3000", snoozed))).toEqual({ kind: "snoozed" });
     expect(isCaution(row("0", "-3000", snoozed), "2026-10", "2026-10")).toBe(true);
   });
 });
 
-// YNAB's stylesheet and bar, 2026-10-15 ("x-c11-151 FS3", 12 custom views; EVERYCENT-164).
 describe("fitsViewsBar", () => {
-  it("fits views 0 to 10 in a 1656px window, as YNAB showed", () => {
+  it("fits views 0 to 10 in a 1656px window", () => {
     const fits = Array.from({ length: 17 }, (_, i) => fitsViewsBar(i, 1656));
     expect(fits.indexOf(false)).toBe(11);
     expect(fits.slice(11).every((f) => !f)).toBe(true);
   });
 
-  it("follows YNAB's breakpoints", () => {
+  it("follows the breakpoints", () => {
     expect(fitsViewsBar(0, 319)).toBe(false);
     expect([0, 1, 2].map((i) => fitsViewsBar(i, 320))).toEqual([true, false, true]);
     expect(fitsViewsBar(1, 478)).toBe(true); // 29.875rem

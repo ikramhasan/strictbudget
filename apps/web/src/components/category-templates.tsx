@@ -1,6 +1,6 @@
-import type { components } from "@everycent/api-client";
-import { Button } from "@everycent/ui/components/button";
-import { Checkbox } from "@everycent/ui/components/checkbox";
+import type { components } from "@strictbudget/api-client";
+import { Button } from "@strictbudget/ui/components/button";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -8,8 +8,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Skeleton } from "@everycent/ui/components/skeleton";
+} from "@strictbudget/ui/components/dialog";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { ArrowLeft } from "lucide-react";
 import { useId, useState } from "react";
 
@@ -21,9 +21,8 @@ const groupCount = (t: CategoryTemplate) =>
   }`;
 
 /**
- * Our take on YNAB's template gallery (ynab.com/templates, which lives on YNAB's website): every
- * template with its description, then a preview of its groups, categories and example amounts
- * ("Get Template" opens the import dialog).
+ * The template gallery: every template with its description, then a preview of its groups,
+ * categories and example amounts ("Get Template" opens the import dialog).
  */
 export function TemplateGallery({
   open,
@@ -36,7 +35,6 @@ export function TemplateGallery({
   onOpenChange: (open: boolean) => void;
   /** Undefined while loading. */
   templates: CategoryTemplate[] | undefined;
-  /** Formats an amount in minor units (an integer string). */
   format: (amount: string) => string;
   onPick: (template: CategoryTemplate) => void;
 }) {
@@ -158,9 +156,9 @@ function TemplatePreview({
 }
 
 /**
- * YNAB's "Import Category Template" dialog (2026-10-16): the template's categories under their
- * groups, all ticked; a group's box ticks or unticks its categories and shows ticked only when
- * all of them are. Import stays enabled with nothing ticked, as in YNAB.
+ * The "Import Category Template" dialog: the template's categories under their groups, all
+ * ticked; a group's box ticks or unticks its categories and shows ticked only when all of them
+ * are. Import stays enabled with nothing ticked.
  */
 export function ImportTemplateDialog({
   template,
@@ -181,7 +179,7 @@ export function ImportTemplateDialog({
     <Dialog open={Boolean(template)} onOpenChange={(next) => !next && onCancel()}>
       <DialogContent className="max-h-[85vh] grid-rows-[auto_minmax(0,1fr)_auto_auto] sm:max-w-md">
         {template && (
-          // Keyed so reopening starts with everything ticked again (YNAB does).
+          // Keyed so reopening starts with everything ticked again.
           <ImportTemplateForm
             key={template.id}
             template={template}
@@ -228,7 +226,6 @@ function ImportTemplateForm({
   async function submit() {
     setPending(true);
     try {
-      // In the template's order.
       await onImport(
         template.groups
           .flatMap((g) => g.categories.map((c) => c.id))
@@ -261,7 +258,6 @@ function ImportTemplateForm({
             return (
               <li key={g.name} className="grid gap-1">
                 <label htmlFor={groupBox} className="flex items-center gap-2 font-medium">
-                  {/* A partly ticked group ticks all its categories (YNAB). */}
                   <Checkbox id={groupBox} checked={all} onCheckedChange={() => toggle(ids, !all)} />
                   {g.name}
                 </label>

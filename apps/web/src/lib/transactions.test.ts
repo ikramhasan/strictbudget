@@ -1,4 +1,4 @@
-import type { AccountType } from "@everycent/engine";
+import type { AccountType } from "@strictbudget/engine";
 import { describe, expect, it } from "vitest";
 import type { CategoryList } from "./categories";
 import { inCurrency, type MoneySettings } from "./money-input";
@@ -25,7 +25,7 @@ import {
 
 const acc = (name: string, type: AccountType) => ({ name, type });
 
-describe("YNAB's transfer wording (2026-10-15, \"ihni7's Plan\")", () => {
+describe("transfer wording", () => {
   const brac = acc("Brac", "checking");
   const cardA = acc("Card A", "credit_card");
   const cardB = acc("Card B", "credit_card");
@@ -124,7 +124,7 @@ const txn: Transaction = {
 };
 
 describe("register drafts", () => {
-  it("starts a new transaction cleared only in a cash account (YNAB)", () => {
+  it("starts a new transaction cleared only in a cash account", () => {
     expect(emptyDraft("w", "2026-10-01", "cash").cleared).toBe("cleared");
     expect(emptyDraft("c", "2026-10-01", "checking").cleared).toBe("uncleared");
     expect(emptyDraft("s", "2026-10-01", "savings").cleared).toBe("uncleared");
@@ -163,7 +163,7 @@ describe("register drafts", () => {
     });
   });
 
-  it("sends a typed FX rate, and an emptied one as null (EVERYCENT-54)", () => {
+  it("sends a typed FX rate, and an emptied one as null", () => {
     const draft: Draft = { ...emptyDraft("a1", "2026-10-01"), outflow: "5", fxRate: " 1.0842 " };
     expect(createBody(draft, usd)).toMatchObject({ ok: true, body: { fxRate: "1.0842" } });
     expect(createBody({ ...draft, fxRate: "" }, usd)).toMatchObject({
@@ -186,7 +186,7 @@ describe("register drafts", () => {
     expect(draftFrom(looked, usd).fxRate).toBe("");
   });
 
-  describe("transfers between currencies (EVERYCENT-55)", () => {
+  describe("transfers between currencies", () => {
     const eur = inCurrency(usd, "EUR");
     const jpy = inCurrency(usd, "JPY");
     const draft: Draft = {
@@ -358,7 +358,7 @@ describe("register drafts", () => {
   });
 });
 
-describe("a transaction in an account's own currency (EVERYCENT-52)", () => {
+describe("a transaction in an account's own currency", () => {
   const yenTxn: Transaction = { ...txn, amount: "-1200", currency: "JPY" };
   const yen = inCurrency(usd, yenTxn.currency);
 
@@ -381,7 +381,7 @@ describe("a transaction in an account's own currency (EVERYCENT-52)", () => {
   });
 });
 
-describe("movableAccounts (EVERYCENT-193)", () => {
+describe("movableAccounts", () => {
   it("offers open accounts in the transaction's currency, and the one it's in", () => {
     const accounts = [
       { id: "usd", closed: false, currency: "USD" },
@@ -459,7 +459,7 @@ describe("splits", () => {
     ],
   };
 
-  it("finds a split that doesn't add up, and distributes the rest as YNAB does", () => {
+  it("finds a split that doesn't add up, and distributes the rest", () => {
     expect(splitMismatch(receipt, usd)).toBeNull();
     expect(splitMismatch({ ...receipt, outflow: "" }, usd)).toBeNull();
     const short = { ...receipt, outflow: "0.03", lines: [] as Draft["lines"] };

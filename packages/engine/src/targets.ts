@@ -12,7 +12,7 @@ import {
 } from "./months";
 
 /**
- * What a target asks for (YNAB's "Next month I want to" / "I want to"):
+ * What a target asks for:
  * - set_aside: "Set aside another…": the full amount each period; money carried in doesn't count.
  * - refill: "Refill up to…" (custom: "Fill up to…"): only what brings the category up to the amount.
  * - balance: "Have a balance of…" (custom only): reach the amount, by a month or eventually.
@@ -22,9 +22,9 @@ export type TargetBehavior = (typeof TARGET_BEHAVIORS)[number];
 export const zTargetBehavior = z.enum(TARGET_BEHAVIORS);
 
 /**
- * YNAB's four target tabs, then the two targets a credit card's payment category takes instead
- * (support.ynab.com "Paired Targets"): "Pay Specific Amount Monthly" (`payment_monthly`) and "Pay
- * Off Balance by Date" (`payoff_by_date`).
+ * The four target tabs, then the two targets a credit card's payment category takes instead:
+ * "Pay Specific Amount Monthly" (`payment_monthly`) and "Pay Off Balance by Date"
+ * (`payoff_by_date`), then a loan's "Monthly Debt Payment" (`debt_monthly`).
  */
 export const TARGET_CADENCES = [
   "weekly",
@@ -38,16 +38,14 @@ export const TARGET_CADENCES = [
 export type TargetCadence = (typeof TARGET_CADENCES)[number];
 export const zTargetCadence = z.enum(TARGET_CADENCES);
 
-/** The targets only payment categories take. */
 export const PAYMENT_TARGET_CADENCES = ["payment_monthly", "payoff_by_date"] as const;
 export const isPaymentTarget = (target: Pick<CategoryTarget, "cadence">) =>
   (PAYMENT_TARGET_CADENCES as readonly string[]).includes(target.cadence);
 
 /**
- * YNAB's "Monthly Debt Payment" target (API `goal_type: DEBT`), only on a category paired with a
- * loan: an amount each month, due on `dueDay` (null for the last day), asked like a monthly "Set
- * aside another…" (YNAB, 2026-10-13, "G7 Loan Pay": $100.00 assigned of $300.00 left $200.00 to
- * go, a $50.00 payment didn't change that, and the $50.00 carried into November didn't count).
+ * The "Monthly Debt Payment" target, only on a category paired with a loan: an amount each month,
+ * due on `dueDay` (null for the last day), asked like a monthly "Set aside another…": payments
+ * don't change what's left to assign, and money carried into the next month doesn't count.
  */
 export const isDebtTarget = (target: Pick<CategoryTarget, "cadence">) =>
   target.cadence === "debt_monthly";
@@ -79,7 +77,7 @@ export interface CategoryTarget {
   /** Custom: repeats every `repeatEvery` `repeatUnit`s; null for a one-time target. */
   repeatEvery: number | null;
   repeatUnit: TargetRepeatUnit | null;
-  /** The first month the target applies to (YNAB's goal creation month). */
+  /** The first month the target applies to. */
   startMonth: BudgetMonth;
   /**
    * Weekly: the day of `startMonth` it was created on; occurrences before it aren't asked for in
@@ -91,18 +89,16 @@ export interface CategoryTarget {
 export interface TargetNeed {
   /**
    * What the target needs: this month's amount (weekly, monthly), the period's total (yearly,
-   * custom), or the balance to reach. YNAB's "Amount to Assign This Month", "Total to Assign by…",
-   * "Needed…", "Balance Needed…".
+   * custom), or the balance to reach.
    */
   needed: bigint;
-  /** What counts toward `needed` (YNAB's "Assigned So Far", "Funded", "Current Balance"). */
   funded: bigint;
   /** What's still to assign this month to stay on track; never below zero. */
   underfunded: bigint;
   /**
    * What the target asks of this month before anything is assigned in it: the month's amount
    * (weekly, monthly) or this month's share of what's missing (yearly, custom); zero for a balance
-   * with no date. YNAB adds these up as the month's targets ("October's Targets").
+   * with no date. These add up to the month's targets total.
    */
   monthAmount: bigint;
   /**
@@ -145,15 +141,14 @@ export function weekdaysIn(month: BudgetMonth, weekday: number) {
   const [y, m] = month.split("-").map(Number) as [number, number];
   const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
-  // Days 1..days whose weekday matches: the first is day 1 + offset, then every 7 days.
   const offset = (weekday - first + 7) % 7;
   return offset >= days ? 0 : Math.floor((days - 1 - offset) / 7) + 1;
 }
 
 /**
  * The days of `month` a weekly target asks for: each time its weekday falls in the month, from its
- * start day in its first month (YNAB, 2026-10-12: $10 on Saturdays created on Monday the 12th
- * asked $30.00 for the 17th, 24th and 31st, with three week sections; November asked all four).
+ * start day in its first month (created on Monday the 12th, a Saturday target asks for the 17th,
+ * 24th and 31st; the next month asks for all of them).
  */
 export function weeklyDays(
   target: Pick<CategoryTarget, "dueDay"> & Partial<Pick<CategoryTarget, "startMonth" | "startDay">>,
@@ -190,7 +185,6 @@ function periodOf(target: CategoryTarget, dueDate: string, month: BudgetMonth) {
       ? null
       : { due: dueDate, dueMonth: firstDue, start: null, past: true };
   }
-  // Due months fall every `step` months from the first; take the first one at or after `month`.
   let k = 0;
   if (month > firstDue) k = Math.ceil((monthsThrough(firstDue, month) - 1) / step);
   const dueMonth = addMonths(firstDue, k * step);
@@ -200,10 +194,8 @@ function periodOf(target: CategoryTarget, dueDate: string, month: BudgetMonth) {
 
 /**
  * What a dated "Set aside another…" target (yearly, custom) had left when its last period ended:
- * the money carried into the current period's first month, drawn as the bar's first section
- * (support.ynab.com "Progress Bars"; YNAB, 2026-10-12, "C4 Clean" C5 RO, $60 every 2 months due
- * Sep 30 with $80 assigned in September: $80 rollover in October and still $80 in November, with
- * $30 assigned in October in the period's section). Zero for other targets.
+ * the money carried into the current period's first month, drawn as the bar's first section and
+ * the same in every month of the period. Zero for other targets.
  */
 export function periodRollover(
   history: readonly MonthFigures[],
@@ -229,9 +221,8 @@ function clampDay(date: string) {
 }
 
 /**
- * What a category's target asks for in `month`, from the category's history (YNAB, checked through
- * its API and web app on 2026-10-03, YNAB findings "Monthly targets" and "Weekly, yearly and
- * custom targets"). Nothing before the target's start month (null).
+ * What a category's target asks for in `month`, from the category's history. Nothing before the
+ * target's start month (null).
  *
  * - Monthly and weekly: the month's amount (weekly: once per occurrence of its weekday). Set aside
  *   counts this month's Assigned; refill counts what was carried in plus this month's Assigned.
@@ -239,11 +230,10 @@ function clampDay(date: string) {
  *   rounding up. Set aside counts what was assigned in the period; refill counts what was
  *   carried in plus this month's Assigned. This month's share is what's missing from the total
  *   before this month, divided by the months left; anything assigned this month counts against it.
- * - Balance counts the category's Available, this month's spending included (YNAB, 2026-10-12: C5
- *   U1 with $40.00 carried in and $20.00 spent: Current Balance $20.00, $200.00 by December asked
- *   $60.00). Without a date it never asks for money this month.
- * - A one-time set aside or fill up target past its due month stays on, asking for nothing (YNAB,
- *   2026-10-12: C5 U1 due Sep 8 and C5 P1 due Sep 15 seen in October); a balance target is gone.
+ * - Balance counts the category's Available, this month's spending included. Without a date it
+ *   never asks for money this month.
+ * - A one-time set aside or fill up target past its due month stays on, asking for nothing; a
+ *   balance target is gone.
  *
  * In a month after `currentMonth` (the user's month) carried money doesn't count for refill and
  * balance: leftover money only counts once the month begins.
@@ -287,8 +277,7 @@ export function targetNeed(
       monthAmount: needed,
       overfunded: over(figures, due),
       dueDate: null,
-      // The month's targets count every week, even those before a weekly target began (YNAB
-      // "C5 First": October's Targets counted F W's five Saturdays while it asked for three).
+      // The month's targets total counts every week, even those before a weekly target began.
       ...(target.cadence === "weekly" && {
         monthAmount: target.amount * BigInt(weekdaysIn(month, target.dueDay ?? 0)),
       }),
@@ -298,8 +287,7 @@ export function targetNeed(
   const needed = target.amount;
   if (!target.dueDate) {
     // "Have a balance of…" eventually: tracked, never asked for this month. What it holds above
-    // the balance is over (YNAB, 2026-10-12, "C5 First": $10.00 target, $30.00 assigned →
-    // Reduce Overfunding $20.00; with $15.00 spent, $5.00).
+    // the balance (up to Available) is over.
     const funded = holding ?? 0n;
     const extra = funded - needed;
     return {
@@ -320,10 +308,8 @@ export function targetNeed(
     if (period.past) return pastDue(needed, funded, period.due);
     // What was in before this month's Assigned.
     const share = shareOf(needed - (funded - figures.assigned), monthsLeft);
-    // A Fill up repeating every month counts in full in the month's targets, as a monthly refill
-    // does, whatever its due date (YNAB, 2026-10-12, "C5 First FS2": $600 by Nov 30 or by Mar 31
-    // counted $600.00 while asking $300.00 or $100.00; every 2 months, or set aside every month,
-    // counted the share).
+    // A Fill up repeating every month counts in full in the month's targets total, as a monthly
+    // refill does, whatever its due date; other dated targets count their share.
     const everyMonth =
       target.cadence === "custom" && target.repeatEvery === 1 && target.repeatUnit === "month";
     return {
@@ -355,20 +341,16 @@ export function targetNeed(
 }
 
 /**
- * Pay Off Balance by Date (YNAB, checked through its API and web app on 2026-10-08, YNAB findings
- * "Credit card payment targets"): pay off what the card owes by the end of the target's month.
+ * Pay Off Balance by Date: pay off what the card owes by the end of the target's month.
  *
- * - What's still to pay off is what's owed beyond Available (Card E1: $125.00 owed, $50.00
- *   available → $75.00 to go). This month's Funded Spending is left out of both sides, so funded
- *   card spending changes nothing (E2: $110.00 owed, $10.00 funded spending → "Pay off $100.00",
- *   0%), while credit overspending raises what's owed at once (E1: $120.00 + $5.00 → $125.00).
+ * - What's still to pay off is what's owed beyond Available ($125.00 owed, $50.00 available →
+ *   $75.00 to go). This month's Funded Spending is left out of both sides, so funded card spending
+ *   changes nothing, while credit overspending raises what's owed at once.
  * - This month's share is what was still to go before this month's Assigned, spread over the months
  *   left up to the target's month and rounded up, as for dated targets ($100.00 by December from
- *   October: $33.34; $125.00 by March: $20.84). Money carried in counts in a future month too (E1
- *   in November: ($125.00 − $50.00) ÷ 5 = $15.00).
- * - After the target's month it stays on and asks for nothing (YNAB, 2026-10-12, "C5 First": F Card
- *   paying off by October still showed "Pay off $2.00 … By Oct 2026", 50%, in November, without a
- *   message or Underfunded). A target saved with a month already past is dropped (refused here).
+ *   October: $33.34). Money carried in counts in a future month too.
+ * - After the target's month it stays on and asks for nothing. A target saved with a month already
+ *   past is refused.
  */
 function payoffNeed(
   figures: CategoryMonth,
@@ -420,7 +402,7 @@ const shareOf = (missing: bigint, monthsLeft: bigint) =>
 
 /**
  * What's over: this month's Assigned above what it has to reach (`due`), but never more than is
- * Available (YNAB: $150.00 assigned against $100.00 with $120.00 spent gave back $30.00).
+ * Available ($150.00 assigned against $100.00 with $120.00 spent gives back $30.00).
  */
 function over(figures: CategoryMonth, due: bigint) {
   const extra = figures.assigned - due;
@@ -430,8 +412,7 @@ function over(figures: CategoryMonth, due: bigint) {
 
 /**
  * The share of a target that's funded, in whole percent from 0 to 100, rounded down so it never
- * reads 100 before the target is met (YNAB rounds down too: YNAB findings,
- * "Percentage rounding").
+ * reads 100 before the target is met.
  */
 export function targetPercent(need: Pick<TargetNeed, "needed" | "funded">): number {
   if (need.funded >= need.needed) return 100;

@@ -1,10 +1,10 @@
-import { sql } from "@everycent/db";
+import { sql } from "@strictbudget/db";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 import type { FakeFxProvider } from "./fake";
 
-// EVERYCENT-247: the write paths that convert again look their rates up before they lock
-// anything, as the main ones do (EVERYCENT-201). Each test empties the rate cache, holds the
+// The write paths that convert again look their rates up before they lock
+// anything, as the main ones do. Each test empties the rate cache, holds the
 // provider, starts the write and, while it waits on the provider, edits a row the write locks:
 // that edit must go through.
 const { app, db, close, fxProviders } = createTestApp();

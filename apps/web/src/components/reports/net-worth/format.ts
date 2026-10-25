@@ -1,11 +1,10 @@
-import { type CurrencyCode, money, NUMBER_FORMAT_SPECS } from "@everycent/engine";
+import { type CurrencyCode, money, NUMBER_FORMAT_SPECS } from "@strictbudget/engine";
 import { useBudget } from "@/lib/budget-context";
 import { chartTick } from "@/lib/reports";
 
 /**
  * Amount labels for the net worth charts, always from exact minor units: `exact` for values,
- * `tick` for an axis tick (`chartTick`: to the minor unit, decimals only when needed), `masked` for Show Amounts off
- * (YNAB, 2026-10-17: "$•••••").
+ * `tick` for an axis tick (`chartTick`: to the minor unit, decimals only when needed), `masked` for Show Amounts off.
  */
 export function useAmountFormat(currency: CurrencyCode) {
   const { budget, formatAmount } = useBudget();

@@ -1,4 +1,4 @@
-import { type Database, newId, sql } from "@everycent/db";
+import { type Database, newId, sql } from "@strictbudget/db";
 import {
   budgetAccount,
   category,
@@ -6,7 +6,7 @@ import {
   payee,
   scheduledSubTransaction,
   scheduledTransaction,
-} from "@everycent/db/schema";
+} from "@strictbudget/db/schema";
 import {
   accountFamily,
   type BudgetMonth,
@@ -21,7 +21,7 @@ import {
   type SearchSettings,
   type SearchTerm,
   usesCategory as usesAccountCategory,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { and, asc, eq, inArray, isNull, lte } from "drizzle-orm";
 import {
   type AccountRow,
@@ -55,7 +55,7 @@ import {
 
 export type ScheduleRow = typeof scheduledTransaction.$inferSelect;
 
-// Entered occurrences start out like any new transaction (YNAB, checked 2026-10-11).
+// Entered occurrences start out like any new transaction.
 export { clearedOnEntry };
 
 async function scheduleLines(db: Db, scheduleIds: readonly string[]) {
@@ -79,7 +79,6 @@ async function scheduleLines(db: Db, scheduleIds: readonly string[]) {
     .orderBy(asc(scheduledSubTransaction.sortOrder), asc(scheduledSubTransaction.id));
 }
 
-/** The account a payee transfers to, if it's a transfer payee. */
 async function transferAccountOf(db: Db, payeeId: string | null) {
   if (!payeeId) return null;
   const [row] = await db
@@ -90,9 +89,9 @@ async function transferAccountOf(db: Db, payeeId: string | null) {
 }
 
 /**
- * Looks up the rates entering schedules will need, before the request locks any of them
- * (EVERYCENT-247): the accounts each schedule touches (its own, its transfer's and its split
- * lines'), plus `accountIds`, on each date.
+ * Looks up the rates entering schedules will need, before the request locks any of them:
+ * the accounts each schedule touches (its own, its transfer's and its split lines'), plus
+ * `accountIds`, on each date.
  */
 export async function prefetchScheduleRates(
   db: Db,
@@ -135,8 +134,7 @@ export async function prefetchScheduleRates(
 /**
  * Turns one occurrence of `schedule` into a transaction dated `date` (with its transfer's other
  * side and its split's lines), and returns the transaction's id. Due occurrences are entered
- * unapproved and Enter Now's approved, as YNAB does. A transfer into a closed account is still
- * entered (YNAB, 2026-10-11).
+ * unapproved and Enter Now's approved. A transfer into a closed account is still entered.
  */
 export async function enterOccurrence(
   tx: Db,
@@ -245,11 +243,11 @@ export function userToday(deps: Pick<AppDeps, "serverDate">, today?: string) {
 }
 
 /**
- * Enters every occurrence due by the user's `today` (YNAB enters each missed one, dated its own
- * date and unapproved; checked 2026-10-11) and moves each schedule past it. Idempotent and safe to
- * run from concurrent requests: due schedules are locked, and ones another request holds are
- * skipped (that request enters them). Schedules in closed accounts wait and catch up on every
- * missed date once the account is reopened, as YNAB does (EVERYCENT-115).
+ * Enters every occurrence due by the user's `today` (each missed one, dated its own date and
+ * unapproved) and moves each schedule past it. Idempotent and safe to run from concurrent
+ * requests: due schedules are locked, and ones another request holds are skipped (that request
+ * enters them). Schedules in closed accounts wait and catch up on every missed date once the
+ * account is reopened.
  */
 export async function enterDueScheduled(db: Database, fx: FxDeps, budgetId: string, today: string) {
   const due = and(
@@ -265,9 +263,9 @@ export async function enterDueScheduled(db: Database, fx: FxDeps, budgetId: stri
     .limit(1);
   if (!any) return;
   await db.transaction(async (tx) => {
-    // Entered on someone's read, not by them: logged with no actor (EVERYCENT-108).
+    // Entered on someone's read, not by them: logged with no actor.
     await tx.execute(
-      sql`select set_config('everycent.source', 'scheduled', true) where everycent_setting('actor_id') is null`,
+      sql`select set_config('strictbudget.source', 'scheduled', true) where strictbudget_setting('actor_id') is null`,
     );
     const rows = await tx
       .select({ schedule: scheduledTransaction })
@@ -281,7 +279,7 @@ export async function enterDueScheduled(db: Database, fx: FxDeps, budgetId: stri
       while (date !== null && date <= today) {
         const day = date;
         // A foreign account's occurrence with no rate available waits (still due) until one is,
-        // so a missing rate never stops the reads that enter schedules (EVERYCENT-54).
+        // so a missing rate never stops the reads that enter schedules.
         const entered = await tx
           .transaction(async (sp) => {
             await enterOccurrence(sp, fx, schedule, day, false);
@@ -298,7 +296,7 @@ export async function enterDueScheduled(db: Database, fx: FxDeps, budgetId: stri
   });
 }
 
-/** YNAB's Enter Now: the next occurrence, dated `today` and approved; the schedule moves on. */
+/** Enter Now: the next occurrence, dated `today` and approved; the schedule moves on. */
 export async function enterNow(tx: Db, fx: FxDeps, schedule: ScheduleRow, today: string) {
   const id = await enterOccurrence(tx, fx, schedule, today, true);
   await advance(tx, schedule, schedule.dateNext);
@@ -316,7 +314,6 @@ export interface ScheduleInput {
   categoryId: string | null;
   memo: string;
   flag: FlagColor | null;
-  /** A split's lines; null when it isn't split. */
   lines: LineInput[] | null;
 }
 
@@ -341,7 +338,7 @@ async function scheduleCategory(
  * Checks `input` with the rules transactions follow and writes it, as a new schedule or over
  * `existing.id`. New transfers need both accounts open; one that already points at a closed
  * account (an edited schedule, or a transaction being rescheduled) keeps it. `restore` (an undo
- * putting a schedule back) skips the open-account checks, as YNAB's Undo does.
+ * putting a schedule back) skips the open-account checks.
  */
 export async function writeSchedule(
   tx: Db,
@@ -445,10 +442,10 @@ export async function writeSchedule(
 }
 
 /**
- * After a schedule is written with a date on or before `today`: YNAB enters that occurrence
- * (unapproved) and starts the schedule at its first date after today, skipping the ones between
- * (monthly from 9/01 added on 10/11: 9/01 entered, next 11/01; checked 2026-10-11). Returns the
- * entered transaction's id, or null if the date is still ahead.
+ * After a schedule is written with a date on or before `today`, that occurrence is entered
+ * (unapproved) and the schedule starts at its first date after today, skipping the ones between
+ * (monthly from 9/01 added on 10/11: 9/01 entered, next 11/01). Returns the entered transaction's
+ * id, or null if the date is still ahead.
  */
 export async function enterIfPast(tx: Db, fx: FxDeps, id: string, today: string) {
   const [schedule] = await tx
@@ -470,13 +467,12 @@ export async function enterIfPast(tx: Db, fx: FxDeps, id: string, today: string)
   return entered;
 }
 
-/** How a register row relates to its schedule. */
 export type ScheduledRowKind = "schedule" | "transfer" | "splitTransfer";
 
 /**
  * Every row the registers show for the budget's schedules (or one account's): each schedule in
- * its own account, plus, as YNAB shows them, a scheduled transfer in the other account (amount
- * negated, "Transfer : <account>") and a split's transfer line in its account. Newest first.
+ * its own account, plus a scheduled transfer in the other account (amount negated, "Transfer :
+ * <account>") and a split's transfer line in its account. Newest first.
  */
 export async function scheduledRows(db: Db, budgetId: string, accountId?: string) {
   const ownAccount = budgetAccount;
@@ -599,8 +595,8 @@ function contains(value: string | null, text: string) {
 }
 
 /**
- * YNAB's register search over a scheduled row (or one of its split lines), as `termWhere` does it
- * for transactions. Scheduled rows count as uncleared (YNAB, 2026-10-11).
+ * Register search over a scheduled row (or one of its split lines), as `termWhere` does it for
+ * transactions. Scheduled rows count as uncleared.
  */
 export function scheduledRowMatches(
   row: ScheduledRowJson,
@@ -683,7 +679,6 @@ export function scheduledRowMatches(
             ? row.dateNext <= term.date
             : row.dateNext >= term.date;
       case "income": {
-        // YNAB, 2026-10-15: a scheduled RTA row matches by its next date.
         const year = term.year ?? Number(context.today.slice(0, 4));
         const month = `${String(year).padStart(4, "0")}-${String(term.month).padStart(2, "0")}`;
         return unit.categoryId === context.readyToAssignId && row.dateNext.startsWith(month);
@@ -707,23 +702,20 @@ export interface UpcomingTransaction {
   amount: bigint;
 }
 
-/** A category's upcoming scheduled transactions in a month (YNAB's "Upcoming Transactions"). */
 export interface CategoryUpcoming {
   /** Net amount; negative when more goes out than comes in. */
   amount: bigint;
-  /** The earliest one's date, YYYY-MM-DD. */
   date: string;
-  /** Latest first, as YNAB lists them. */
+  /** Latest first. */
   transactions: UpcomingTransaction[];
 }
 
 /**
- * Each category's scheduled transactions still to come in `month`, as of the user's `today`
- * (YNAB, checked 2026-10-12): occurrences after today in the month, earlier months counting
- * nothing; inflows net against outflows; a split counts line by line; spending on a card counts
- * in its category; a payment from a budget account counts against the card's payment category
- * (`paymentCategoryByAccount`); Ready to Assign and Uncategorized don't count. Schedules in closed
- * accounts don't occur.
+ * Each category's scheduled transactions still to come in `month`, as of the user's `today`:
+ * occurrences after today in the month, earlier months counting nothing; inflows net against
+ * outflows; a split counts line by line; spending on a card counts in its category; a payment from
+ * a budget account counts against the card's payment category (`paymentCategoryByAccount`); Ready
+ * to Assign and Uncategorized don't count. Schedules in closed accounts don't occur.
  */
 export async function upcomingByCategory(
   db: Db,
@@ -756,7 +748,7 @@ export async function upcomingByCategory(
       ),
     );
   if (schedules.length === 0) return upcoming;
-  // A foreign account's schedule counts at the latest rate known for today (EVERYCENT-54), else
+  // A foreign account's schedule counts at the latest rate known for today, else
   // one looked up now; with no rate at all it's left out (FX_RATE_UNAVAILABLE).
   const budgetCurrency = await budgetCurrencyOf(db, budgetId);
   const rates = new Map<CurrencyCode, string | null>();

@@ -3,8 +3,8 @@ import {
   ACCOUNT_TYPES,
   type AccountType,
   accountFamily,
-} from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
+} from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -12,10 +12,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Field, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
+} from "@strictbudget/ui/components/dialog";
+import { Field, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
 import { ChevronDown, ChevronRight, CircleCheck } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import type { CategoryList } from "@/lib/categories";
@@ -26,10 +26,7 @@ import { PairCategoryFields, type PairChoice, pairChoiceReady } from "./loan-dia
 
 const LOAN_TYPES = ACCOUNT_TYPES.filter((t) => accountFamily(t) === "loan");
 
-/**
- * Edit Account's section on a tracking liability (YNAB, 2026-10-14; tracking assets and budget
- * accounts don't have it).
- */
+/** Only on a tracking liability; tracking assets and budget accounts don't have it. */
 export function UpdateToLoanSection({ onLearnMore }: { onLearnMore: () => void }) {
   return (
     <section className="grid gap-2 border-t pt-4" aria-label="Update to a Loan Account">
@@ -44,7 +41,6 @@ export function UpdateToLoanSection({ onLearnMore }: { onLearnMore: () => void }
   );
 }
 
-/** What the dialog sends: the new loan, signed like an account balance, and its pairing. */
 export interface UpdateToLoanValues {
   name: string;
   type: AccountType;
@@ -59,9 +55,8 @@ export interface UpdateToLoanValues {
 type Step = "learn" | "type" | "details" | "pair" | "confirm" | "done";
 
 /**
- * YNAB's "Update to a Loan Account" (web, 2026-10-14): Learn More → Select Account Type → the
- * Add Account loan form prefilled with the account's name and what's owed → Pair Account with
- * Category (required: no Skip) → Update Account (what will happen) → Success.
+ * Learn More → Select Account Type → the loan form prefilled with the account's name and what's
+ * owed → Pair Account with Category (required: no Skip) → Update Account → Success.
  */
 export function UpdateToLoanDialog({
   open,
@@ -359,10 +354,7 @@ export function UpdateToLoanDialog({
   );
 }
 
-/**
- * The loan page's "Original Tracking Account History" (YNAB, 2026-10-14): the tracking account
- * the loan was made from, collapsed under "Closed Account", with each month's ending balance.
- */
+/** The tracking account the loan was made from, with each month's ending balance. */
 export function OriginalHistory({
   months,
   format,

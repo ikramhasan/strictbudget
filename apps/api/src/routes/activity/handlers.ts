@@ -1,6 +1,6 @@
-import { sql } from "@everycent/db";
-import { auditEvent, transaction, user } from "@everycent/db/schema";
 import type { RouteConfig, RouteHandler } from "@hono/zod-openapi";
+import { sql } from "@strictbudget/db";
+import { auditEvent, transaction, user } from "@strictbudget/db/schema";
 import { and, desc, eq, inArray, isNull, ne, type SQL } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError } from "../../lib/errors";

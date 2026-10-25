@@ -5,8 +5,8 @@ import {
   REPORT_COMPARISONS,
   type ReportComparison,
   type ReportPreset,
-} from "@everycent/engine";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
+} from "@strictbudget/engine";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
 import { useQuery } from "@tanstack/react-query";
 import { Flag } from "lucide-react";
 import { accountsQueryOptions } from "@/lib/accounts";
@@ -20,7 +20,6 @@ import { type RangeChange, RangePicker } from "./range-picker";
 
 export type ReportFilterName = "categories" | "accounts" | "payees" | "flags" | "compare";
 
-/** Sets some of a report's search params; the rest stay. */
 export type UpdateSearch = (patch: Partial<ReportSearch>) => void;
 
 const ACCOUNT_SECTIONS = [
@@ -30,10 +29,7 @@ const ACCOUNT_SECTIONS = [
   ["tracking", "Tracking Accounts"],
 ] as const;
 
-/**
- * A report's filters, kept in its URL: YNAB's date range, All Categories and All Accounts, plus
- * everycent's payee and flag filters and comparison mode where the report offers them.
- */
+/** A report's filters, kept in its URL. */
 export function ReportFilterBar({
   search,
   update,

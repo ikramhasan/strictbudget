@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isBudgetQuery } from "./live-updates";
 
-describe("live updates (EVERYCENT-90)", () => {
+describe("live updates", () => {
   it("refetches the budget's own queries and the budget list, not other budgets'", () => {
     const month = [
       "get",

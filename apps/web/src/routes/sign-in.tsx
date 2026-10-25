@@ -1,7 +1,7 @@
-import { Button } from "@everycent/ui/components/button";
-import { Field, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { Spinner } from "@everycent/ui/components/spinner";
+import { Button } from "@strictbudget/ui/components/button";
+import { Field, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
@@ -85,7 +85,7 @@ function SignInPage() {
 
 /**
  * The second step of signing in with two-step verification on: the code from the verification
- * app, or, as a last resort, the emergency backup code (YNAB's order).
+ * app, or, as a last resort, the emergency backup code.
  */
 function TwoStepVerification({ onVerified }: { onVerified: () => Promise<void> }) {
   const [backup, setBackup] = useState(false);
@@ -123,7 +123,7 @@ function TwoStepVerification({ onVerified }: { onVerified: () => Promise<void> }
       description={
         backup
           ? "Enter the emergency backup code you saved when you set up two-step verification."
-          : "Open your verification app and enter the 6-digit code for everycent."
+          : "Open your verification app and enter the 6-digit code for strictbudget."
       }
       footer={
         <button

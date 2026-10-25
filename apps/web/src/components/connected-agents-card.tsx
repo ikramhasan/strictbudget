@@ -7,17 +7,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Badge } from "@everycent/ui/components/badge";
-import { Button } from "@everycent/ui/components/button";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Badge } from "@strictbudget/ui/components/badge";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@everycent/ui/components/card";
-import { FieldError } from "@everycent/ui/components/field";
+} from "@strictbudget/ui/components/card";
+import { FieldError } from "@strictbudget/ui/components/field";
 import {
   Item,
   ItemActions,
@@ -26,8 +26,8 @@ import {
   ItemGroup,
   ItemMedia,
   ItemTitle,
-} from "@everycent/ui/components/item";
-import { Spinner } from "@everycent/ui/components/spinner";
+} from "@strictbudget/ui/components/item";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Bot } from "lucide-react";
 import { useState } from "react";
@@ -38,10 +38,7 @@ import { apiErrorMessage } from "@/lib/budgets";
 
 const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
-/**
- * AI agents acting for the person: MCP clients (Claude, Cursor, …) and Agent Auth agents. Shows
- * how to connect one, what each connected one may do, and disconnects them.
- */
+/** MCP clients (Claude, Cursor, …) and Agent Auth agents acting for the person. */
 export function ConnectedAgentsCard() {
   const queryClient = useQueryClient();
   const agents = $api.useQuery("get", "/v1/me/agents");
@@ -66,9 +63,9 @@ export function ConnectedAgentsCard() {
       <CardHeader>
         <CardTitle>Connected agents</CardTitle>
         <CardDescription>
-          AI apps you've allowed to use everycent for you. They can do what you can in your budgets,
-          and their changes show as theirs, on your behalf. They can't change your sign-in details
-          or delete your account.
+          AI apps you've allowed to use strictbudget for you. They can do what you can in your
+          budgets, and their changes show as theirs, on your behalf. They can't change your sign-in
+          details or delete your account.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">

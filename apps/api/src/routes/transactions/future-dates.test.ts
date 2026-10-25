@@ -49,7 +49,7 @@ async function setup() {
 
 const code = async (res: Response) => ((await res.json()) as ErrorBody).error.code;
 
-describe("future dates (EVERYCENT-137)", () => {
+describe("future dates", () => {
   it("refuses a date after the user's today on create", async () => {
     const { create } = await setup();
     const tomorrow = await create("2026-10-16", "2026-10-15");
@@ -67,7 +67,7 @@ describe("future dates (EVERYCENT-137)", () => {
     expect((await create("2026-10-14", "2026-10-14")).status).toBe(201);
   });
 
-  it("allows up to the server's date plus a day without a today, as YNAB's API does", async () => {
+  it("allows up to the server's date plus a day without a today", async () => {
     const { create } = await setup();
     expect((await create("2026-10-16")).status).toBe(201);
     const res = await create("2026-10-17");

@@ -1,5 +1,5 @@
 {
-  "name": "@everycent/api-client",
+  "name": "@strictbudget/api-client",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -19,7 +19,7 @@
     "@tanstack/react-query": "catalog:"
   },
   "devDependencies": {
-    "@everycent/tsconfig": "workspace:*",
+    "@strictbudget/tsconfig": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "openapi-typescript": "catalog:",
     "typescript": "catalog:",

@@ -6,18 +6,18 @@ import {
   paymentForMonths,
   payoffSchedule,
   plannedPayoff,
-} from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
+} from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Input } from "@everycent/ui/components/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dialog";
+import { Input } from "@strictbudget/ui/components/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, ChevronLeft, ChevronRight, Copy, TriangleAlert, X } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -30,7 +30,6 @@ import { seriesHints } from "./loan-progress";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** YNAB's payoff date picker: a year with arrows over a grid of months; earlier months are off. */
 export function PayoffMonthPicker({
   value,
   min,
@@ -108,7 +107,7 @@ export function PayoffMonthPicker({
   );
 }
 
-/** Copies `text` and opens the plan with the paired category's Assigned being edited (YNAB). */
+/** Copies `text` and opens the plan with the paired category's Assigned being edited. */
 export function useCopyToPlan(categoryId: string | null) {
   const { budget } = useBudget();
   const navigate = useNavigate();
@@ -160,11 +159,7 @@ function Summary({
   );
 }
 
-/**
- * YNAB's Loan Payoff Simulator (checked 2026-10-13, YNAB findings "Loan planner"): try a monthly
- * payment or a payoff date (each gives the other) and a one-time extra this month, against the
- * minimum. Nothing here is saved; "Copy and go to my plan" copies an amount and opens the plan.
- */
+/** Nothing here is saved; "Copy and go to my plan" copies an amount and opens the plan. */
 export function PayoffSimulator({
   open,
   onOpenChange,
@@ -262,8 +257,7 @@ export function PayoffSimulator({
             ? `Your original payoff date is ${shortMonth(baseline.payoffMonth)}`
             : null;
 
-  // The summary box compares with paying the minimum (YNAB: a $300.00 target read "Paying
-  // +$100.00 extra every month" against the $200.00 minimum).
+  // The summary box compares with paying the minimum.
   let summary: ReactNode = null;
   if (sim && minimum && typed !== null && minShown !== null) {
     const diff = typed - minShown;
@@ -308,7 +302,7 @@ export function PayoffSimulator({
     }
   }
 
-  // From the start of this month: YNAB's simulation begins where Past Balance's month does.
+  // The simulation begins at the start of this month, where Past Balance's month does.
   const simTrack: Track | null =
     sim && changed && typed !== null
       ? {

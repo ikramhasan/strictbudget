@@ -1,7 +1,7 @@
 import { type AccountType, accountFamily } from "./accounts";
 
 /**
- * Net worth (EVERYCENT-79). YNAB's Net Worth report (2026-10-17): each account's balance at the
+ * Net worth: each account's balance at the
  * end of every month (the last day's working balance, uncleared included; the current month is
  * today's), on- and off-budget, closed accounts included with whatever they hold. Assets are the
  * accounts with a positive balance, debts those with a negative one, decided per account by its
@@ -12,7 +12,6 @@ export interface NetWorthTotals {
   assets: bigint;
   /** Σ of the negative balances (≤ 0). */
   debts: bigint;
-  /** assets + debts. */
   netWorth: bigint;
 }
 
@@ -48,8 +47,8 @@ export interface NetWorthFlows {
 }
 
 /**
- * "What changed this month" (an everycent extra): last month's net worth to this month's, in four
- * parts that always add up to `change` exactly.
+ * "What changed this month": last month's net worth to this month's, in four parts that always
+ * add up to `change` exactly.
  *
  * - `netSaved`, net saved from income: the budget accounts' cash flow, what their transactions
  *   added (income less spending, money sent to loans and tracking accounts counting as spent, as

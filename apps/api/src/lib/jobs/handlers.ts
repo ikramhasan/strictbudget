@@ -5,7 +5,6 @@ import { purgeStorage } from "../storage/purge";
 import { queueMonthlySummaries, sendBudgetSummary } from "../summary/job";
 import type { JobHandlers } from "./index";
 
-/** The handler for each queue in `QUEUES`. */
 export const jobHandlers: JobHandlers = {
   "email.send": sendQueuedEmail,
   "invitations.remind": remindInvitations,

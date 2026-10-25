@@ -125,7 +125,6 @@ async function setup() {
     today: TODAY,
   });
   await send("PATCH", `${base}/categories/${gym}`, cookie, { hidden: true });
-  // Holiday: saving up for a balance.
   const holiday = await category("Pace Holiday");
   await assign(holiday, "2026-11", "50000");
   expect(

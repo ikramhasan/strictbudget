@@ -143,7 +143,6 @@ describe("GET /reports/credit-card-health", () => {
       gap: "0",
       cover: "0",
     });
-    // A card with nothing on it is covered too.
     expect(report.cards.find((c) => c.accountId === t.amex)).toMatchObject({
       balance: "0",
       status: "covered",
@@ -168,7 +167,6 @@ describe("GET /reports/credit-card-health", () => {
       fromCreditOverspending: "4000",
       other: "0",
     });
-    // Ready to Assign has plenty, so it can cover the whole gap.
     expect(BigInt(report.readyToAssign)).toBeGreaterThan(4000n);
     expect(visa.cover).toBe("4000");
     expect(report.totals.unfunded).toBe("4000");
@@ -207,7 +205,6 @@ describe("GET /reports/credit-card-health", () => {
     await t.assign(t.fun, "2026-10", "2000");
     await t.post(t.visa, "2026-10-05", "-10000", t.groceries);
     await t.post(t.amex, "2026-10-07", "-5000", t.fun);
-    // A return on the Visa, and cash spending that takes some of Fun's money.
     await t.post(t.visa, "2026-10-08", "1500", t.groceries);
     await t.post(t.checking, "2026-10-09", "-1000", t.fun);
 
@@ -248,7 +245,6 @@ describe("GET /reports/credit-card-health", () => {
     const t = await setup();
     await t.assign(t.groceries, "2026-10", "6000");
     await t.post(t.visa, "2026-10-05", "-10000", t.groceries);
-    // November: the gap is paid down by assigning to the card's payment category.
     const report = await t.health("months=2");
     const visa = report.cards.find((c) => c.accountId === t.visa) as Card;
     const october = report.float.find((f) => f.month === "2026-10");

@@ -42,7 +42,7 @@ function renderDialog(onSubmit = vi.fn().mockResolvedValue({ loanId: "loan-1" })
   return { onSubmit, onDone, onOpenChange };
 }
 
-describe("Update to a Loan Account (YNAB, 2026-10-14)", () => {
+describe("Update to a Loan Account", () => {
   it("is offered from Edit Account with Learn More", async () => {
     const onLearnMore = vi.fn();
     render(<UpdateToLoanSection onLearnMore={onLearnMore} />);

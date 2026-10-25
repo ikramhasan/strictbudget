@@ -1,7 +1,7 @@
-import { type Database, newId } from "@everycent/db";
-import { aiAttachment, budgetAccount } from "@everycent/db/schema";
-import type { CurrencyCode } from "@everycent/engine";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { type Database, newId } from "@strictbudget/db";
+import { aiAttachment, budgetAccount } from "@strictbudget/db/schema";
+import type { CurrencyCode } from "@strictbudget/engine";
 import { and, eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";

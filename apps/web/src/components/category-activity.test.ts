@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { cardActivity } from "./category-activity";
 
 describe("cardActivity", () => {
-  it("adds up YNAB's card Activity window (Citi, 2026-10-03)", () => {
+  it("adds up a card's Activity window", () => {
     // Spending −$12, no returns, $9 funded, $16 paid: Total Activity −$7.
     expect(
       cardActivity({

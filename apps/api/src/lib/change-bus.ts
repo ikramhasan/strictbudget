@@ -1,9 +1,8 @@
-import type { Listen } from "@everycent/db";
+import type { Listen } from "@strictbudget/db";
 
 /** A change to a budget's data, as the audit trigger notifies it (migration 0038). */
 export interface BudgetChange {
   budgetId: string;
-  /** The table changed, e.g. "transaction". */
   table: string;
   actorId: string | null;
   /** The agent (`connected_agent` id) that made it for the actor; null for the actor's own. */
@@ -15,7 +14,7 @@ export interface BudgetChange {
 type Subscriber = (change: BudgetChange) => void;
 
 /**
- * Live updates (EVERYCENT-90): one LISTEN on `budget_change` per API process, fanned out to the
+ * Live updates: one LISTEN on `budget_change` per API process, fanned out to the
  * budget's open event streams. Postgres sends a transaction's notifications at commit (identical
  * ones once), so streams only hear about changes that were kept, from every API process alike.
  * The LISTEN starts with the first subscriber.

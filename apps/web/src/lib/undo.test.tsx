@@ -52,7 +52,7 @@ describe("UndoProvider", () => {
     expect(result.current.redoLabel).toBeNull();
   });
 
-  it("drops an undo a partner's later change made stale (EVERYCENT-36)", async () => {
+  it("drops an undo a partner's later change made stale", async () => {
     const stale = {
       error: { code: "STALE_VERSION", message: "Pat changed this transaction since" },
     };
@@ -70,7 +70,7 @@ describe("UndoProvider", () => {
     expect(result.current.redoLabel).toBeNull();
   });
 
-  it("follows only this tab's own version steps (EVERYCENT-36)", () => {
+  it("follows only this tab's own version steps", () => {
     const { result } = renderHook(useUndo, { wrapper });
     // Own chain: edit memo (1 → 2), toggle cleared (2 → 3), undo the toggle (3 → 4). The memo
     // edit's undo, which left the row at 2, now expects 4.

@@ -1,15 +1,15 @@
-import { type CurrencyCode, money, toDecimalString } from "@everycent/engine";
+import { type CurrencyCode, money, toDecimalString } from "@strictbudget/engine";
 
 /**
- * Bank Import Details' store links (YNAB, 2026-10-17, EVERYCENT-155): a payee as the bank wrote
- * it that names one of these stores gets "<Store>.com Order History". Case and punctuation don't
- * count ("WAL-MART #1234" is Walmart); Amazon Web Services gets none.
+ * A payee as the bank wrote it that names one of these stores gets a "<Store>.com Order History"
+ * link. Case and punctuation don't count ("WAL-MART #1234" is Walmart); Amazon Web Services gets
+ * none.
  */
 const STORES: readonly { key: string; label: string; url: (amount: string) => string }[] = [
   {
     key: "amazon",
     label: "Amazon.com Order History",
-    // YNAB points the page at the amount (a text fragment).
+    // Points the page at the amount (a text fragment).
     url: (amount) => `https://www.amazon.com/cpe/yourpayments/transactions#:~:text=${amount}`,
   },
   {

@@ -4,8 +4,8 @@ import { percentOf } from "./reports";
 import { divideRounded } from "./rounding";
 
 /**
- * Spending pace (EVERYCENT-239, an everycent extra; YNAB has no burndown): how a month's money to
- * spend runs down day by day against an even pace to zero on the month's last day.
+ * Spending pace: how a month's money to spend runs down day by day against an even pace to zero on
+ * the month's last day.
  *
  * The money to spend is what the month started with plus everything assigned in it so far (money
  * moved out counts against it), so assigning mid-month raises the whole month's line rather than

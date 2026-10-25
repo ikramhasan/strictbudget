@@ -13,7 +13,6 @@ export const TodayQuery = z.object({
   ),
 });
 
-/** `date` moved by `days` calendar days. */
 export function shiftDay(date: string, days: number) {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
@@ -23,9 +22,8 @@ export function shiftDay(date: string, days: number) {
 /**
  * The latest date a transaction may have: the user's `today`, but never past the server's UTC
  * date plus a day. Without a `today` it's that UTC date plus a day, since a user in a time zone
- * ahead of UTC (up to +14h) can already be on the next date; YNAB's own API accepts the UTC date
- * plus one and refuses plus two (checked 2026-10-15). Null (tests without a server date, and no
- * `today`) leaves it unbounded.
+ * ahead of UTC (up to +14h) can already be on the next date. Null (tests without a server date,
+ * and no `today`) leaves it unbounded.
  */
 export function latestTransactionDate(deps: Pick<AppDeps, "serverDate">, today?: string) {
   const server = deps.serverDate ? deps.serverDate() : serverToday();
@@ -35,8 +33,7 @@ export function latestTransactionDate(deps: Pick<AppDeps, "serverDate">, today?:
 }
 
 /**
- * Refuses a transaction dated after `latest`: a future-dated entry is a scheduled transaction
- * (YNAB's API: 400 "date must not be in the future or over 5 years ago", 2026-10-15).
+ * Refuses a transaction dated after `latest`: a future-dated entry is a scheduled transaction.
  */
 export function assertNotFuture(date: string, latest: string | null) {
   if (latest !== null && date > latest) {

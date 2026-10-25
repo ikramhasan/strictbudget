@@ -1,6 +1,6 @@
-import { addMonths, type BudgetMonth } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
+import { addMonths, type BudgetMonth } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { monthLabel } from "@/lib/months";
@@ -20,10 +20,6 @@ const MONTH_NAMES = [
   "Dec",
 ] as const;
 
-/**
- * YNAB's month switcher: previous/next arrows, the month with a picker (a year of months, the ones
- * out of range disabled) and "Today" when another month is showing.
- */
 export function MonthNav({
   month,
   current,

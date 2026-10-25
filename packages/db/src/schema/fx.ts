@@ -1,4 +1,4 @@
-import type { CurrencyCode } from "@everycent/engine";
+import type { CurrencyCode } from "@strictbudget/engine";
 import { char, date, numeric, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 import { budget } from "./budget";
 import { timestamps } from "./columns";

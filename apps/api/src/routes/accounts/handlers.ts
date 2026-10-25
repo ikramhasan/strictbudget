@@ -1,4 +1,5 @@
-import { newId } from "@everycent/db";
+import type { RouteHandler } from "@hono/zod-openapi";
+import { newId } from "@strictbudget/db";
 import {
   budgetAccount,
   category,
@@ -8,7 +9,7 @@ import {
   scheduledSubTransaction,
   scheduledTransaction,
   transaction,
-} from "@everycent/db/schema";
+} from "@strictbudget/db/schema";
 import {
   accountFamily,
   type CurrencyCode,
@@ -18,8 +19,7 @@ import {
   type LoanTerms,
   money,
   rateThousandths,
-} from "@everycent/engine";
-import type { RouteHandler } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { and, asc, eq, inArray, isNotNull, isNull, lte, max, ne, or, sql } from "drizzle-orm";
 import {
   convertedTotals,
@@ -192,7 +192,7 @@ async function listAccountJson(db: Db, budgetId: string, today: string) {
 
 /**
  * The account list with each account's balances and the sidebar's totals and net worth in
- * `display` (the user's display currency, else the budget's; EVERYCENT-57).
+ * `display` (the user's display currency, else the budget's).
  */
 async function accountListJson(
   db: Db,
@@ -249,7 +249,7 @@ export async function accountJson(
   today: string | undefined,
   deps: Pick<AppDeps, "serverDate">,
 ) {
-  // Held near the server's date: `today` can come straight from a client (EVERYCENT-246).
+  // Held near the server's date: `today` can come straight from a client.
   const found = (await listAccountJson(db, budgetId, userToday(deps, today))).find(
     (a) => a.id === accountId,
   );
@@ -283,11 +283,9 @@ function assertLoanFields(
 }
 
 /**
- * Pairs `categoryId` with the loan, moving it from any other loan (YNAB, 2026-10-13: pairing
- * L7 Neg with L7 Mortgage's category unpaired the mortgage). The category's target follows YNAB
- * (2026-10-14): any other target is removed ("Pairing this category will remove the current
- * goal"), and a Monthly Debt Payment target starts again from the loan's minimum (G7 Loan Pay,
- * $40.00, went to $200.00 when re-paired). Unpairing leaves the target as it is.
+ * Pairs `categoryId` with the loan, moving it from any other loan. Any other target on the
+ * category is removed, and a Monthly Debt Payment target starts again from the loan's minimum.
+ * Unpairing leaves the target as it is.
  */
 async function pairCategory(tx: Db, account: AccountRow, categoryId: string | null) {
   if (categoryId !== null) {
@@ -383,7 +381,6 @@ type NewAccount = {
   pairedCategoryId?: string;
 };
 
-/** Adds an account at the end of the sidebar with its Starting Balance; returns its id. */
 async function insertAccount(
   tx: Db,
   fx: FxDeps,
@@ -391,7 +388,7 @@ async function insertAccount(
   currency: AccountRow["currency"],
   body: NewAccount,
 ) {
-  // The Starting Balance's rate, before anything is written (EVERYCENT-201).
+  // The Starting Balance's rate, before anything is written.
   if (BigInt(body.balance) !== 0n) {
     await prefetchRates(tx, fx, { budgetId, currencies: [currency], dates: [body.date] });
   }
@@ -411,7 +408,7 @@ async function insertAccount(
       currency,
       interestRate: body.interestRate ?? null,
       minimumPayment: optionalBigInt(body.minimumPayment) ?? null,
-      // Only mortgages have escrow (YNAB's forms); other loans would be charged it unseen.
+      // Only mortgages have escrow; other loans would be charged it unseen.
       escrowAmount: hasEscrow(body.type) ? (optionalBigInt(body.escrowAmount) ?? null) : null,
     })
     .returning();
@@ -454,12 +451,11 @@ export const createAccountHandler: RouteHandler<typeof createAccount, Env> = asy
 };
 
 /**
- * YNAB's "Update to a Loan Account" (web, 2026-10-14, x-145 HELOC in "ihni7's Plan"): a new loan
- * whose only transaction is a cleared Starting Balance dated today, its terms and paired
- * category; the tracking liability keeps its history but is closed with a cleared "Closed
- * Account" Manual Balance Adjustment of its working balance, renamed "… (Original)", and its
- * scheduled transactions (the transfer scheduled from Brac into it too) are gone. Ready to Assign
- * doesn't move: both accounts are off budget.
+ * Update to a Loan Account: a new loan whose only transaction is a cleared Starting Balance dated
+ * today, its terms and paired category; the tracking liability keeps its history but is closed
+ * with a cleared "Closed Account" Manual Balance Adjustment of its working balance, renamed
+ * "… (Original)", and its scheduled transactions (including ones transferring into it) are gone.
+ * Ready to Assign doesn't move: both accounts are off budget.
  */
 export const updateToLoanAccountHandler: RouteHandler<typeof updateToLoanAccount, Env> = async (
   c,
@@ -481,7 +477,7 @@ export const updateToLoanAccountHandler: RouteHandler<typeof updateToLoanAccount
       .where(and(eq(budgetAccount.id, accountId), eq(budgetAccount.budgetId, budgetId)))
       .for("update");
     if (!original) throw new AppError(404, "NOT_FOUND", "Account not found");
-    // YNAB offers it on tracking liabilities only (not assets or budget accounts).
+    // Tracking liabilities only (not assets or budget accounts).
     if (original.type !== "liability") {
       throw new AppError(400, "BAD_REQUEST", "Only tracking liabilities can be updated to a loan");
     }
@@ -565,20 +561,20 @@ export const updateAccountHandler: RouteHandler<typeof updateAccount, Env> = asy
   );
   const account = await findAccount(db, budgetId, accountId);
   if (workingBalance !== undefined) {
-    // A closed account's Edit Account has no Working Balance in YNAB.
+    // A closed account's Edit Account has no Working Balance.
     if (account.closed) {
       throw new AppError(400, "ACCOUNT_CLOSED", "Reopen the account to change its balance");
     }
   }
 
-  // YNAB's star: open cash and credit accounts only (checked 2026-10-15, EVERYCENT-149).
+  // Only open cash and credit accounts can be starred.
   if (starred && (account.closed || !isOnBudget(account.type))) {
     throw new AppError(400, "BAD_REQUEST", "Only open cash and credit accounts can be starred");
   }
 
   const type = body.type ?? account.type;
   if (accountFamily(type) !== accountFamily(account.type)) {
-    // Cross-family changes move money in or out of the budget; see Design notes.
+    // Cross-family changes would move money in or out of the budget.
     throw new AppError(
       400,
       "BAD_REQUEST",
@@ -597,7 +593,7 @@ export const updateAccountHandler: RouteHandler<typeof updateAccount, Env> = asy
       optionalBigInt(body.minimumPayment) !== account.minimumPayment) ||
     (escrowAmount !== undefined && escrowAmount !== account.escrowAmount);
 
-  // The adjustment's rate, before the transaction locks anything (EVERYCENT-247); an account in
+  // The adjustment's rate, before the transaction locks anything; an account in
   // the budget's currency needs none.
   if (workingBalance !== undefined && account.currency !== budget.currency) {
     const working = (await accountBalances(db, budgetId, date)).get(accountId)?.working ?? 0n;
@@ -621,7 +617,7 @@ export const updateAccountHandler: RouteHandler<typeof updateAccount, Env> = asy
         .set(fields)
         .where(eq(budgetAccount.id, accountId))
         .returning();
-      // YNAB keeps a loan's terms per month: a change applies "for October and going forward".
+      // A loan's terms are kept per month: a change applies from this month on.
       if (updated && termsChanged && accountFamily(updated.type) === "loan") {
         await keepEarlierTerms(tx, account);
         await saveLoanTerms(tx, updated, date);
@@ -648,8 +644,8 @@ export const updateAccountHandler: RouteHandler<typeof updateAccount, Env> = asy
       const working = (await accountBalances(tx, budgetId, date)).get(accountId)?.working ?? 0n;
       const difference = BigInt(workingBalance) - working;
       if (difference !== 0n) {
-        // YNAB's Edit Account (2026-10-11, "Onboarding Check"): a cleared Manual Balance
-        // Adjustment with no memo, from Ready to Assign on budget accounts, cards included.
+        // A cleared Manual Balance Adjustment with no memo, from Ready to Assign on budget
+        // accounts, cards included.
         await insertAdjustment(tx, c.var.deps, account, {
           date,
           amount: difference,
@@ -701,7 +697,7 @@ type ReconcileBody = {
   };
 };
 
-/** What a reconcile would do: the adjustment, and for a loan the terms check (EVERYCENT-126). */
+/** What a reconcile would do: the adjustment, and for a loan the terms check. */
 async function planReconcile(db: Db, account: AccountRow, body: ReconcileBody) {
   const { balance, date, loanTerms } = body;
   const loan = accountFamily(account.type) === "loan";
@@ -726,9 +722,8 @@ async function planReconcile(db: Db, account: AccountRow, body: ReconcileBody) {
     : null;
   const balances =
     (await accountBalances(db, account.budgetId, date)).get(account.id) ?? ZERO_BALANCES;
-  // YNAB's loan Update Balance asks about the whole balance ("Is your current balance at your
-  // lender −$97,980.25?"), interest and escrow included, and after its check step counts this
-  // month's charges on the new terms (YNAB, 2026-10-14: $98.75 became $181.88 at 6% → 7%).
+  // A loan's Update Balance asks about the whole balance, interest and escrow included, and after
+  // its check step counts this month's charges on the new terms.
   const current = loan ? balances.working - (check?.extraCharges ?? 0n) : balances.cleared;
   return { loan, check, adjustment: BigInt(balance) - current };
 }
@@ -754,7 +749,7 @@ export const reconcileAccountHandler: RouteHandler<typeof reconcileAccount, Env>
   const { budget } = await loadBudgetAccess(c, budgetId, {
     transaction: ["create", "update"],
   });
-  // The adjustment's rate, before the transaction locks the account (EVERYCENT-247); an account
+  // The adjustment's rate, before the transaction locks the account; an account
   // in the budget's currency needs none.
   const planning = await findAccount(db, budgetId, accountId);
   if (planning.currency !== budget.currency) {
@@ -773,19 +768,18 @@ export const reconcileAccountHandler: RouteHandler<typeof reconcileAccount, Env>
     const { loan, check, adjustment: difference } = await planReconcile(tx, account, body);
     if (check) await applyLoanTerms(tx, account, date, check);
     if (difference !== 0n) {
-      // YNAB (2026-10-11, "Onboarding Check"): dated today, reconciled, Inflow: Ready to Assign
-      // on budget accounts (a card's too), none on tracking accounts.
+      // Dated today, reconciled, Inflow: Ready to Assign on budget accounts (a card's too), none on
+      // tracking accounts.
       await insertAdjustment(tx, c.var.deps, account, {
         date,
         amount: difference,
         kind: "reconciliation_balance_adjustment",
-        memo: "Entered automatically by everycent",
+        memo: "Entered automatically by strictbudget",
         cleared: "reconciled",
       });
     }
     // Future-dated transactions aren't in the cleared balance yet, so they stay unlocked. A
-    // loan's are all reconciled, uncleared ones too (YNAB, 2026-10-13), and its months' interest
-    // and escrow are fixed.
+    // loan's are all reconciled, uncleared ones too, and its months' interest and escrow are fixed.
     await tx
       .update(transaction)
       .set({ cleared: "reconciled" })
@@ -796,9 +790,8 @@ export const reconcileAccountHandler: RouteHandler<typeof reconcileAccount, Env>
           lte(transaction.date, date),
         ),
       );
-    // YNAB fixes the months at what they had before the check step's new terms: x-126-Mort's
-    // October interest stayed "Reconciled −$498.75" at 7%, so the balance ended −$99,316.87, not
-    // the −$99,400.00 entered (2026-10-14; Design notes, EVERYCENT-126).
+    // The months are fixed at what they had before the check step's new terms, so the balance can
+    // end slightly off the amount entered.
     if (loan) await freezeLoanCharges(tx, account, date, check?.before);
     await tx
       .update(budgetAccount)
@@ -912,10 +905,9 @@ export const closeAccountHandler: RouteHandler<typeof closeAccount, Env> = async
         cleared: "cleared",
       });
     }
-    // The payment category stays visible with whatever is set aside (YNAB, 2026-10-11: Card Y
-    // kept $6 after closing); hiding it is up to the user. A loan's paired category is unpaired
-    // (YNAB's help center, "Loan Accounts"). Closing also drops the star: reopened, it isn't
-    // starred (YNAB, "x-c11-151 FS3", 2026-10-15, EVERYCENT-170).
+    // The payment category stays visible with whatever is set aside; hiding it is up to the user.
+    // A loan's paired category is unpaired. Closing also drops the star: reopened, it isn't
+    // starred.
     await tx
       .update(budgetAccount)
       .set({ closed: true, pairedCategoryId: null, starredSortOrder: null })
@@ -930,8 +922,8 @@ export const reopenAccountHandler: RouteHandler<typeof reopenAccount, Env> = asy
   const { db } = c.var.deps;
   await loadBudgetAccess(c, budgetId, { account: ["update"] });
   await findAccount(db, budgetId, accountId);
-  // YNAB's "Erase & Re-open" (2026-10-15, EVERYCENT-165): reopening an updated tracking account
-  // erases the information migrated to its loan, so it can be updated again.
+  // Reopening an updated tracking account erases the information migrated to its loan, so it can
+  // be updated again.
   await db
     .update(budgetAccount)
     .set({ closed: false, migratedToAccountId: null })

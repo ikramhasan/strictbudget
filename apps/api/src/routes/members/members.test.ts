@@ -1,4 +1,4 @@
-import { budgetInvitation } from "@everycent/db/schema";
+import { budgetInvitation } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -61,7 +61,6 @@ describe("budget invitations", () => {
     expect(sent[0]?.text).not.toContain(budget.name);
     const token = linkToken(sent[0]);
 
-    // No session needed to see what it's for.
     const view = await send("POST", "/v1/invitations/view", null, { token });
     expect(view.status).toBe(200);
     expect(await json(view)).toMatchObject({
@@ -77,16 +76,14 @@ describe("budget invitations", () => {
     expect(await json(accepted)).toEqual({ budgetId: budget.id });
 
     const after = await members();
-    // YNAB's avatar colours: the owner 1, then 2 onwards by when they joined (EVERYCENT-166).
+    // Avatar colours: the owner 1, then 2 onwards by when they joined.
     expect(after.members.map((m) => [m.email, m.role, m.avatarColor])).toEqual([
       [owner.email, "owner", 1],
       [email, "editor", 2],
     ]);
     expect(after.invitations).toEqual([]);
-    // The partner sees the budget, but not invitations.
     expect((await members(pat.cookie)).invitations).toEqual([]);
 
-    // A link works once.
     expect((await send("POST", "/v1/invitations/accept", pat.cookie, { token })).status).toBe(404);
   });
 
@@ -127,7 +124,6 @@ describe("budget invitations", () => {
     expect(sent).toHaveLength(2);
     const second = linkToken(sent[1]);
     expect(second).not.toBe(first);
-    // The old link stops working.
     expect((await send("POST", "/v1/invitations/view", null, { token: first })).status).toBe(404);
     expect((await send("POST", "/v1/invitations/view", null, { token: second })).status).toBe(200);
   });
@@ -147,7 +143,6 @@ describe("budget invitations", () => {
     expect(expired.status).toBe(410);
     expect(await code(expired)).toBe("INVITATION_EXPIRED");
     expect((await members()).invitations[0]?.expired).toBe(true);
-    // Inviting the address again replaces the expired invitation.
     expect((await invite(email)).status).toBe(201);
     const fresh = (await members()).invitations;
     expect(fresh).toHaveLength(1);
@@ -174,7 +169,6 @@ describe("budget invitations", () => {
 });
 
 describe("leaving, removing and transferring ownership", () => {
-  /** Shares the budget with a new user through an invitation. */
   async function join(ctx: Awaited<ReturnType<typeof setup>>) {
     const email = `m-${crypto.randomUUID()}@example.com`;
     await ctx.invite(email);
@@ -231,7 +225,6 @@ describe("leaving, removing and transferring ownership", () => {
     const roles = (await ctx.members(pat.cookie)).members.map((m) => [m.userId, m.role]);
     expect(roles[0]).toEqual([pat.id, "owner"]);
     expect(roles[1]?.[1]).toBe("editor");
-    // The new owner can now manage sharing; the old one can't.
     expect((await ctx.invite(stranger.email, "S", ctx.owner.cookie)).status).toBe(403);
     expect((await ctx.invite(stranger.email, "S", pat.cookie)).status).toBe(201);
     expect((await send("POST", `${ctx.base}/leave`, ctx.owner.cookie)).status).toBe(204);

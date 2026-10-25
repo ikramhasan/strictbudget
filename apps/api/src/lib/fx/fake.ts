@@ -1,5 +1,5 @@
-import type { FxRateSource } from "@everycent/db/schema";
-import type { CurrencyCode } from "@everycent/engine";
+import type { FxRateSource } from "@strictbudget/db/schema";
+import type { CurrencyCode } from "@strictbudget/engine";
 import { forgetFxFailures } from ".";
 import type { FxProvider, FxRates } from "./providers";
 

@@ -115,7 +115,7 @@ describe("payee categorization", () => {
     expect((await payee("Market")).prefillCategoryId).toBe(c.id);
   });
 
-  it("keeps the default through an edit the last three don't agree on (YNAB, x-c13-182 E)", async () => {
+  it("keeps the default through an edit the last three don't agree on", async () => {
     const { a, b, c, spend, payee, edit } = await setup();
     await spend("Market", a.id, "2026-09-01");
     await spend("Market", b.id, "2026-09-02");
@@ -129,18 +129,18 @@ describe("payee categorization", () => {
     expect((await payee("Market")).autoCategoryId).toBe(a.id);
   });
 
-  it("keeps the default when a transaction is deleted (YNAB, x-c13-182 D)", async () => {
+  it("keeps the default when a transaction is deleted", async () => {
     const { a, b, spend, payee, remove } = await setup();
     await spend("Market", a.id, "2026-09-01");
     await spend("Market", b.id, "2026-09-02");
     const last = await spend("Market", b.id, "2026-09-03");
     expect((await payee("Market")).autoCategoryId).toBe(b.id);
     await remove(last);
-    // a, b left: a replay would give a; YNAB keeps b.
+    // a, b left: a replay would give a; b stays.
     expect((await payee("Market")).autoCategoryId).toBe(b.id);
   });
 
-  it("keeps the combine target's setting and default (YNAB, x-c13-182 D into E)", async () => {
+  it("keeps the combine target's setting and default", async () => {
     const { owner, base, a, b, c, spend, payee, update } = await setup();
     await spend("Shop E", a.id, "2026-09-01");
     await spend("Shop E", b.id, "2026-09-05");
@@ -292,7 +292,7 @@ describe("payee categorization", () => {
     ).groups.flatMap((g) => g.categories);
     const named = (name: string) => freshCategories.find((x) => x.name === name)?.id;
 
-    // No transactions came along, but the default did ("C4 Clean" → "x-c12-61 FS").
+    // No transactions came along, but the default did.
     expect(await payee("Market", fresh)).toMatchObject({
       categorization: "auto",
       autoCategoryId: named(a.name),

@@ -19,17 +19,16 @@ const need = (underfunded: bigint, extra: Partial<TargetNeed> = {}): TargetNeed 
 });
 const monthly = { cadence: "monthly" as const, dueDay: null };
 
-// YNAB's test categories in YNAB findings ("Underfunded and Reduce Overfunding"), 2026-10-07.
 describe("spendingFunding", () => {
   it("meets the target or covers overspending, whichever is more", () => {
-    expect(spendingFunding("2026-10", -30_00n, monthly, need(100_00n)).underfunded).toBe(100_00n); // O11
-    expect(spendingFunding("2026-10", -30_00n, monthly, need(0n)).underfunded).toBe(30_00n); // O13
+    expect(spendingFunding("2026-10", -30_00n, monthly, need(100_00n)).underfunded).toBe(100_00n);
+    expect(spendingFunding("2026-10", -30_00n, monthly, need(0n)).underfunded).toBe(30_00n);
     expect(spendingFunding("2026-10", -4_00n, null, null)).toEqual({
       underfunded: 4_00n,
       overfunded: 0n,
       parts: [{ amount: 4_00n, step: FUNDING_STEPS.overspent, date: "" }],
-    }); // Groceries, no target
-    expect(spendingFunding("2026-10", 13_00n, null, null).underfunded).toBe(0n); // Phone, no target
+    });
+    expect(spendingFunding("2026-10", 13_00n, null, null).underfunded).toBe(0n);
   });
 
   it("places a target's shortfall by its due date", () => {
@@ -40,7 +39,7 @@ describe("spendingFunding", () => {
     expect(
       spendingFunding("2026-11", 0n, { cadence: "monthly", dueDay: 31 }, need(60_00n)).parts,
     ).toEqual([{ amount: 60_00n, step: FUNDING_STEPS.dueThisMonth, date: "2026-11-30" }]);
-    // A debt payment target is due like a monthly one (YNAB: "$300.00 needed by the 31st").
+    // A debt payment target is due like a monthly one.
     expect(
       spendingFunding("2026-10", 0n, { cadence: "debt_monthly", dueDay: null }, need(60_00n)).parts,
     ).toEqual([{ amount: 60_00n, step: FUNDING_STEPS.dueThisMonth, date: "2026-10-31" }]);
@@ -69,28 +68,28 @@ describe("spendingFunding", () => {
 
 describe("paymentFunding", () => {
   it("asks for what's owed beyond Available, less this month's credit overspending", () => {
-    expect(paymentFunding(3_00n, 103_00n, 0n).underfunded).toBe(100_00n); // Card B
-    expect(paymentFunding(-10_00n, 0n, 0n).underfunded).toBe(10_00n); // Card X
-    expect(paymentFunding(-10_00n, 2_00n, 0n).underfunded).toBe(12_00n); // Card Z3
-    expect(paymentFunding(31_00n, 65_00n, 33_00n).underfunded).toBe(1_00n); // Visa
-    expect(paymentFunding(2_00n, 5_00n, 3_00n).underfunded).toBe(0n); // LOC A
+    expect(paymentFunding(3_00n, 103_00n, 0n).underfunded).toBe(100_00n);
+    expect(paymentFunding(-10_00n, 0n, 0n).underfunded).toBe(10_00n);
+    expect(paymentFunding(-10_00n, 2_00n, 0n).underfunded).toBe(12_00n);
+    expect(paymentFunding(31_00n, 65_00n, 33_00n).underfunded).toBe(1_00n);
+    expect(paymentFunding(2_00n, 5_00n, 3_00n).underfunded).toBe(0n);
   });
 
   it("gives back Available above what's owed", () => {
-    expect(paymentFunding(6_00n, 0n, 0n).overfunded).toBe(6_00n); // Amex
-    expect(paymentFunding(2_00n, 7_00n, 0n).overfunded).toBe(0n); // Card W
+    expect(paymentFunding(6_00n, 0n, 0n).overfunded).toBe(6_00n);
+    expect(paymentFunding(2_00n, 7_00n, 0n).overfunded).toBe(0n);
   });
 
   it("follows the card's target when it has one", () => {
-    // E3: $30.00 a month asks $30.00, credit overspending or not.
+    // $30.00 a month asks $30.00, credit overspending or not.
     expect(paymentFunding(0n, 105_00n, 5_00n, need(30_00n))).toMatchObject({
       underfunded: 30_00n,
       parts: [{ amount: 30_00n, step: FUNDING_STEPS.cardPayment, date: "", rank: 0 }],
     });
-    // E2: red at −$10.00 still asks its $33.34 share; overspending beyond the share is covered.
+    // Red at −$10.00 still asks its $33.34 share; overspending beyond the share is covered.
     expect(paymentFunding(-10_00n, 90_00n, 0n, need(33_34n)).underfunded).toBe(33_34n);
     expect(paymentFunding(-40_00n, 90_00n, 0n, need(33_34n)).underfunded).toBe(40_00n);
-    // E1: $50.00 against a $20.84 share gives back $29.16, not Available above what's owed.
+    // $50.00 against a $20.84 share gives back $29.16, not Available above what's owed.
     expect(paymentFunding(50_00n, 125_00n, 0n, need(0n, { overfunded: 29_16n })).overfunded).toBe(
       29_16n,
     );
@@ -123,7 +122,7 @@ describe("fundUnderfunded", () => {
     );
   });
 
-  it("stops when Ready to Assign runs out, in YNAB's order", () => {
+  it("stops when Ready to Assign runs out, in order", () => {
     expect(fundUnderfunded(categories, 50_00n)).toEqual(
       new Map([
         ["over", 4_00n],
@@ -149,7 +148,6 @@ describe("fundUnderfunded", () => {
   });
 });
 
-// YNAB, 2026-10-12 ("Onboarding Check" U10 A–I, "C4 Order", "C4 Order FS").
 describe("upcoming scheduled transactions", () => {
   const up = (amount: bigint, date = "2026-10-20") => ({ amount, date });
 
@@ -159,23 +157,23 @@ describe("upcoming scheduled transactions", () => {
       overfunded: 0n,
       parts: [{ amount: 30_00n, step: FUNDING_STEPS.dueThisMonth, date: "2026-10-20" }],
     });
-    // U10 B: $10.00 available, $30.00 scheduled.
+    // $10.00 available, $30.00 scheduled.
     expect(spendingFunding("2026-10", 10_00n, null, null, false, up(-30_00n)).underfunded).toBe(
       20_00n,
     );
-    // U10 H: covered; U10 G: an inflow asks nothing.
+    // Covered; an inflow asks nothing.
     expect(spendingFunding("2026-10", 50_00n, null, null, false, up(-30_00n)).underfunded).toBe(0n);
     expect(spendingFunding("2026-10", 0n, null, null, false, up(25_00n)).underfunded).toBe(0n);
   });
 
   it("asks the larger of the target and the schedule, all at the schedule's date", () => {
-    // U10 D: $40.00 target, $30.00 scheduled → $40.00 (X10: funded whole at its date).
+    // $40.00 target, $30.00 scheduled → $40.00, funded whole at its date.
     expect(spendingFunding("2026-10", 0n, monthly, need(40_00n), false, up(-30_00n))).toEqual({
       underfunded: 40_00n,
       overfunded: 0n,
       parts: [{ amount: 40_00n, step: FUNDING_STEPS.dueThisMonth, date: "2026-10-20" }],
     });
-    // U10 I: target met at $40.00, $60.00 scheduled → $20.00.
+    // Target met at $40.00, $60.00 scheduled → $20.00.
     expect(
       spendingFunding("2026-10", 40_00n, monthly, need(0n), false, up(-60_00n)).underfunded,
     ).toBe(20_00n);
@@ -186,7 +184,7 @@ describe("upcoming scheduled transactions", () => {
   });
 
   it("puts a card with a scheduled payment first among card payments", () => {
-    // Card W: owes $10.00, $5.00 payment scheduled → still $10.00.
+    // Owes $10.00, $5.00 payment scheduled → still $10.00.
     const card = paymentFunding(0n, 10_00n, 0n, null, up(-5_00n, "2026-10-21"));
     expect(card.underfunded).toBe(10_00n);
     expect(card.parts).toEqual([
@@ -204,8 +202,8 @@ describe("upcoming scheduled transactions", () => {
     ).toEqual(new Map([["scheduled", 10_00n]]));
   });
 
-  // YNAB plan "x132 Order", 2026-10-14: $15.00 for three cards owing $10.00, listed A (alert),
-  // C (pay off by October), B ($10.00 payment scheduled on the 20th).
+  // $15.00 for three cards owing $10.00, listed A (alert), C (pay off by October), B ($10.00
+  // payment scheduled on the 20th).
   it("funds scheduled payments, then payment targets, then plain alerts", () => {
     const alert = paymentFunding(0n, 10_00n, 0n);
     const target = paymentFunding(0n, 10_00n, 0n, need(10_00n));
@@ -228,7 +226,6 @@ describe("upcoming scheduled transactions", () => {
   });
 });
 
-// YNAB plan "C5 First" (created 2026-10-12), checked 2026-10-12.
 describe("Underfunded in the budget's first month", () => {
   type Target = { cadence: "monthly" | "weekly"; dueDay: number | null };
   const eom: Target = { cadence: "monthly", dueDay: null };

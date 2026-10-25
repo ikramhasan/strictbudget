@@ -1,4 +1,4 @@
-import { TooltipProvider } from "@everycent/ui/components/tooltip";
+import { TooltipProvider } from "@strictbudget/ui/components/tooltip";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
@@ -74,7 +74,6 @@ function renderList(
   return { onOpenCategory };
 }
 
-// YNAB, 2026-10-14 (ihni7's Plan, x-142 A–C).
 describe("Recent Moves", () => {
   it("names who made each move and opens a category in its month", async () => {
     const { onOpenCategory } = renderList([
@@ -157,7 +156,7 @@ describe("Recent Moves", () => {
     expect(screen.getByRole("img", { name: "Inactive Member" })).toHaveTextContent("");
   });
 
-  it("colours each member as YNAB does: the owner avatar-one, the next to join avatar-two", () => {
+  it("colours each member: the owner avatar-one, the next to join avatar-two", () => {
     renderList([
       move({ toCategoryId: "a", amount: "100" }),
       move({

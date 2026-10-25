@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 import type { FakeFxProvider } from "../../lib/fx/fake";
 
-// EVERYCENT-58: a target can be in its own currency; its amount is converted into the budget's
+// A target can be in its own currency; its amount is converted into the budget's
 // at the user's today's rate, rounded up, before the target math.
 const { app, db, close, fxProviders } = createTestApp();
 const fx = fxProviders[0] as FakeFxProvider;
@@ -104,7 +104,6 @@ describe("targets in their own currency", () => {
       targetRateMissing: false,
       autoAssign: { underfunded: "162630" },
     });
-    // Cost to Be Me ("October's Targets") sums in USD.
     expect(m.targets.month).toBe("162630");
   });
 
@@ -113,7 +112,6 @@ describe("targets in their own currency", () => {
     // €10.01 × 1.0842 = $10.852842 → $10.86.
     await setTarget(holiday.id, { currency: "EUR", amount: "1001" });
     expect((await month()).of(holiday.id)?.target?.needed).toBe("1086");
-    // Assigning the converted amount meets the target.
     expect((await assign(holiday.id, "1086")).status).toBe(200);
     expect((await month()).of(holiday.id)?.target).toMatchObject({
       funded: "1086",

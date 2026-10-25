@@ -135,7 +135,7 @@ describe("category targets", () => {
     expect((await findCategory(rent.id))?.target?.startMonth).toBe("2026-09");
   });
 
-  it("a changed target starts again in the month it's saved from (YNAB F-Y1)", async () => {
+  it("a changed target starts again in the month it's saved from", async () => {
     const { rent, setTarget, findCategory, need } = await setup();
     await setTarget(rent.id, { month: "2026-09" });
     // $80.00 from October: September shows no target any more.
@@ -148,12 +148,11 @@ describe("category targets", () => {
     await setTarget(rent.id, { amount: "9000", month: "2026-10" });
     await setTarget(rent.id, { amount: "9000", month: "2026-11" });
     expect((await findCategory(rent.id))?.target?.startMonth).toBe("2026-10");
-    // A new due day alone isn't a change (YNAB "C5 First" F A, 2026-10-12).
+    // A new due day alone isn't a change.
     await setTarget(rent.id, { amount: "9000", dueDay: 15, month: "2026-11" });
     expect((await findCategory(rent.id))?.target?.startMonth).toBe("2026-10");
   });
 
-  // YNAB's Undo puts a target back, start month included (2026-10-12, "C4 Clean" C5 Z0).
   it("restores a target exactly as it was, or removes it", async () => {
     const { cookie, base, rent, setTarget, findCategory } = await setup();
     await setTarget(rent.id, { amount: "10000" });
@@ -172,7 +171,7 @@ describe("category targets", () => {
     expect((await restore(payment)).status).toBe(409);
   });
 
-  it("set aside counts this month's Assigned (YNAB T8 B, C, E)", async () => {
+  it("set aside counts this month's Assigned", async () => {
     const { rent, phone, setTarget, assign, spend, need } = await setup();
     await setTarget(rent.id, {});
     await setTarget(phone.id, {});
@@ -191,7 +190,7 @@ describe("category targets", () => {
     expect((await need(phone.id, "2026-10"))?.underfunded).toBe("10000");
   });
 
-  it("refill counts carried money and Assigned, not spending or refunds (YNAB T8 G, H, J, M)", async () => {
+  it("refill counts carried money and Assigned, not spending or refunds", async () => {
     const { rent, phone, setTarget, assign, spend, need } = await setup();
     await setTarget(rent.id, { behavior: "refill" });
     await setTarget(phone.id, { behavior: "refill" });
@@ -235,7 +234,7 @@ describe("category targets", () => {
     expect((await setTarget(rent.id, { dueDay: 32 })).status).toBe(400);
   });
 
-  it("asks a weekly amount per occurrence of its weekday (YNAB: $10 on Saturdays)", async () => {
+  it("asks a weekly amount per occurrence of its weekday", async () => {
     const { rent, setTarget, need } = await setup();
     const res = await setTarget(rent.id, { cadence: "weekly", amount: "1000", dueDay: 6 });
     expect(res.status).toBe(200);
@@ -243,7 +242,6 @@ describe("category targets", () => {
     expect((await need(rent.id, "2026-11"))?.needed).toBe("4000");
   });
 
-  // YNAB "C5 First" and "C4 Clean", 2026-10-12: made weekly on Monday the 12th.
   it("asks a target made weekly mid-month only for the weeks from that day", async () => {
     const { rent, phone, setTarget, need } = await setup();
     const weekly = { cadence: "weekly", amount: "1000", dueDay: 6, today: "2026-10-12" };
@@ -261,7 +259,7 @@ describe("category targets", () => {
     expect((await need(phone.id, "2026-11"))?.needed).toBe("2000");
   });
 
-  it("spreads a yearly target over the months left (YNAB T8 F)", async () => {
+  it("spreads a yearly target over the months left", async () => {
     const { rent, setTarget, assign, need, findCategory } = await setup();
     await setTarget(rent.id, {
       cadence: "yearly",
@@ -306,7 +304,6 @@ describe("category targets", () => {
     expect((await need(phone.id, "2026-10"))?.underfunded).toBe("10000");
   });
 
-  // YNAB plan "C4 Clean", 2026-10-12: C5 U1, C5 P1 (one-time, due in September) seen in October.
   it("keeps a one-time target on past its due month, asking nothing; balance targets count Available", async () => {
     const { rent, phone, setTarget, assign, spend, need } = await setup();
     await setTarget(rent.id, {
@@ -381,7 +378,6 @@ describe("category targets", () => {
     expect(res.status).toBe(404);
   });
 
-  // YNAB (support.ynab.com "Snooze a Target", web app 2026-10-07: T8 E, O9, O11).
   describe("snooze", () => {
     type MonthRow = {
       categoryId: string;
@@ -433,7 +429,7 @@ describe("category targets", () => {
       expect((await findCategory(rent.id))?.target?.snoozedMonth).toBeNull();
     });
 
-    it("still covers overspending and gives back what's over (YNAB O11, O9)", async () => {
+    it("still covers overspending and gives back what's over", async () => {
       const ctx = await setup();
       const { rent, phone, setTarget, assign, spend } = ctx;
       await setTarget(rent.id, {});

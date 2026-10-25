@@ -14,7 +14,7 @@ describe("dateForKey", () => {
     ["M", "2026-10-31"],
     ["y", "2026-01-01"],
     ["Y", "2026-12-31"],
-  ])("moves %s from the field's date as YNAB's picker does", (key, expected) => {
+  ])("moves %s from the field's date", (key, expected) => {
     expect(dateForKey("2026-10-18", key, today)).toBe(expected);
   });
 

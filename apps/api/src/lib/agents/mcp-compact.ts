@@ -21,7 +21,7 @@ export const COMPACT_TOOLS = [
     name: "searchOperations",
     title: "Search operations",
     description:
-      'Find everycent operations by keyword (e.g. "create transaction", "budget month", ' +
+      'Find strictbudget operations by keyword (e.g. "create transaction", "budget month", ' +
       '"scheduled"). Returns each match\'s name, summary, HTTP method and path. Without a query, ' +
       "lists every operation's name and summary.",
     inputSchema: objectSchema(

@@ -7,7 +7,7 @@ const API_PATH = /^\/(v1|api)(\/|$)|^\/(docs|openapi\.json)$/;
 
 /**
  * Serves the built web app (`apps/web/dist`) from the API, so one service and one origin run
- * everycent: cookies and the API need no cross-origin setup. Hashed assets are cached for a year;
+ * strictbudget: cookies and the API need no cross-origin setup. Hashed assets are cached for a year;
  * any other path that isn't a file gets `index.html` (the web app routes on the client). Source
  * maps are built for reading error reports, not served.
  */

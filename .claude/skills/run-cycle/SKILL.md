@@ -1,6 +1,6 @@
 ---
 name: run-cycle
-description: Runs one everycent Plane cycle end to end — start it, order its tickets, settle YNAB questions, build and test each ticket, record everything in Plane, review, and complete the cycle. Use when the user says "/run-cycle N", "start/do/finish cycle N", or asks to work through a Plane cycle's tickets.
+description: Runs one strictbudget Plane cycle end to end — start it, order its tickets, settle open questions, build and test each ticket, record everything in Plane, review, and complete the cycle. Use when the user says "/run-cycle N", "start/do/finish cycle N", or asks to work through a Plane cycle's tickets.
 ---
 
 # Run a Plane cycle
@@ -11,7 +11,7 @@ Argument: the cycle number (e.g. `10`). The rules live in `docs/plane.md` and `C
 
 - [ ] Find the cycle: Plane `cycle list` (project `69479a76-b0fc-4151-a446-8d3d13980081`), match the name `Cycle N · …`.
 - [ ] If its start date is in the future, `cycle update` `start_date` to today (UTC) so it's the active cycle.
-- [ ] `cycle list_workitems`; retrieve each ticket's description and comments. Read the matching "YNAB findings" page(s) and "Design notes and known differences" for the area.
+- [ ] `cycle list_workitems`; retrieve each ticket's description and comments. Read "Design notes and known differences" for the area.
 - [ ] Branch from up-to-date `main`: `cycle-N-<short-name>` (or a worktree if the user asks). Never work on `main`.
 - [ ] Make sure Postgres is up (`docker compose up -d`; OrbStack may need `open -a OrbStack`) before any test run.
 
@@ -20,8 +20,8 @@ Argument: the cycle number (e.g. `10`). The rules live in `docs/plane.md` and `C
 Enter plan mode and present, without editing code:
 
 - The ticket order: verify/gate tickets before the builds they unblock; shared-file tickets (engine budget math, `months` handlers) in sequence; independent ones flagged as parallelisable.
-- Per ticket: what to check in YNAB (API or web app), what to build, what tests.
-- **Questions only the user can answer** (product decisions, anything YNAB can't show). Ask them now, together, not mid-cycle.
+- Per ticket: what to build and what tests.
+- **Questions only the user can answer** (product decisions). Ask them now, together, not mid-cycle.
 
 After approval, suggest the user set a goal so the session can't end early, e.g.
 `/goal Complete Plane Cycle N: every ticket Done per docs/plane.md and pnpm check passes`.
@@ -31,10 +31,9 @@ After approval, suggest the user set a goal so the session can't end early, e.g.
 For each ticket, in order:
 
 1. Set it **In Progress** in Plane.
-2. **Settle YNAB behaviour first** (CLAUDE.md "Matching YNAB"): API for numbers (wait a few seconds after writes, confirm deltas by delete + re-add, fresh category/card per case, name data `x-…`), Chrome for UI-only details. Comment findings on the ticket as soon as you have them (single-line HTML).
-3. Build the vertical slice: engine → PostgreSQL integration test → API schema/route (`pnpm generate` if routes change) → web → browser check in light and dark. Money stays bigint.
-4. Gaps you can't settle or that fall outside the ticket → a new ticket right away (sub-ticket of EVERYCENT-7 if it's a YNAB question), linked in a comment. Deliberate simplifications → a line on "Design notes and known differences".
-5. Commit (conventional message with the ticket id), then comment on the ticket: commit(s), branch, tests added, browser checks, anything left. Add confirmed YNAB answers to the matching "YNAB findings" page (new `h3` with the date). Set **Done**.
+2. Build the vertical slice: engine → PostgreSQL integration test → API schema/route (`pnpm generate` if routes change) → web → browser check in light and dark. Money stays bigint.
+3. Gaps you can't settle or that fall outside the ticket → a new ticket right away, linked in a comment. Deliberate simplifications → a line on "Design notes and known differences".
+4. Commit (conventional message with the ticket id), then comment on the ticket: commit(s), branch, tests added, browser checks, anything left. Set **Done**.
 
 Parallel option: tickets that don't share files can go to subagents with `isolation: "worktree"` (one ticket each, with this skill's step 3 as their brief), or a Workflow if the user opted in ("use a workflow" / ultracode). Merge their branches back into the cycle branch and re-run checks.
 

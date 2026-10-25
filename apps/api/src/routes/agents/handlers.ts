@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { RouteConfig, RouteHandler } from "@hono/zod-openapi";
 import {
   agent,
   agentCapabilityGrant,
@@ -8,8 +9,7 @@ import {
   oauthAccessToken,
   oauthConsent,
   oauthRefreshToken,
-} from "@everycent/db/schema";
-import type { RouteConfig, RouteHandler } from "@hono/zod-openapi";
+} from "@strictbudget/db/schema";
 import { and, desc, eq, gt, inArray, isNull, ne } from "drizzle-orm";
 import type { Context } from "hono";
 import { markDisconnected } from "../../lib/agents/principal";
@@ -39,7 +39,7 @@ export const listConnectedAgentsHandler: Handler<typeof listConnectedAgents> = a
       and(
         eq(connectedAgent.userId, userId),
         isNull(connectedAgent.revokedAt),
-        // everycent's own assistant acts through the signed-in session, not a connection.
+        // The in-app assistant acts through the signed-in session, not a connection.
         ne(connectedAgent.kind, "in_app"),
       ),
     )
@@ -75,11 +75,11 @@ export const listConnectedAgentsHandler: Handler<typeof listConnectedAgents> = a
             ? consents
                 .filter((x) => x.clientId === r.externalId)
                 .flatMap((x) => x.scopes)
-                .filter((s) => s.startsWith("everycent:"))
+                .filter((s) => s.startsWith("strictbudget:"))
             : grants.filter((g) => g.agentId === r.externalId).map((g) => g.capability);
         const writes =
           r.kind === "mcp"
-            ? permissions.includes("everycent:write")
+            ? permissions.includes("strictbudget:write")
             : permissions.some((p) => operations.get(p)?.readOnly === false);
         return {
           id: r.id,

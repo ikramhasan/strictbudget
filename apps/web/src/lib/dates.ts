@@ -1,4 +1,4 @@
-import type { DateFormat } from "@everycent/engine";
+import type { DateFormat } from "@strictbudget/engine";
 import {
   addDays,
   endOfMonth,
@@ -10,7 +10,7 @@ import {
   startOfYear,
 } from "date-fns";
 
-/** The user's local calendar date as YYYY-MM-DD (what YNAB means by "today"). */
+/** The user's local calendar date as YYYY-MM-DD (what "today" means throughout the app). */
 export function todayIso(now = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
@@ -32,7 +32,7 @@ function withoutYear(pattern: string) {
 
 /**
  * Reads a date typed in the budget's format into YYYY-MM-DD, or null if it isn't one. Single
- * digits and a missing year (meaning `reference`'s year) are fine, as in YNAB's date field.
+ * digits and a missing year (meaning `reference`'s year) are fine.
  */
 export function parseDateInput(text: string, format: DateFormat, reference = new Date()) {
   const trimmed = text.trim();
@@ -49,10 +49,10 @@ export const isoToDate = (iso: string) => parse(iso, "yyyy-MM-dd", new Date());
 export const dateToIso = (date: Date) => format_(date, "yyyy-MM-dd");
 
 /**
- * YNAB's date-picker keys, applied to the field's date (seen 2026-10-18): + and - a day, T today,
- * M / Shift+M the first and last day of its month, Y / Shift+Y of its year, Left/Right a day and
- * Up/Down a week. Null for any other key. `dash` is false when the date format uses "-" between
- * its parts, so typing a dash still types one.
+ * Date-picker keys, applied to the field's date: + and - a day, T today, M / Shift+M the first and
+ * last day of its month, Y / Shift+Y of its year, Left/Right a day and Up/Down a week. Null for any
+ * other key. `dash` is false when the date format uses "-" between its parts, so typing a dash
+ * still types one.
  */
 export function dateForKey(
   iso: string,

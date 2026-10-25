@@ -1,6 +1,6 @@
-import { newId, sql } from "@everycent/db";
-import { FLAG_COLORS, flagName } from "@everycent/db/schema";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { newId, sql } from "@strictbudget/db";
+import { FLAG_COLORS, flagName } from "@strictbudget/db/schema";
 import { and, eq } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import type { AuthedEnv } from "../../middleware/require-auth";

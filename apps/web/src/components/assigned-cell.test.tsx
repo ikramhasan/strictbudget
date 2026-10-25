@@ -56,7 +56,7 @@ describe("AssignedCell", () => {
     expect(actions.assign).not.toHaveBeenCalled();
   });
 
-  it("adds an operator from YNAB's calculator without saving, then keeps typing", async () => {
+  it("adds an operator from the calculator without saving, then keeps typing", async () => {
     const actions = setup();
     await userEvent.click(screen.getByRole("button", { name: "Assigned to Rent: $10" }));
     await userEvent.click(screen.getByRole("button", { name: "Open calculator" }));

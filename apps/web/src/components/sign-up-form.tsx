@@ -1,7 +1,7 @@
-import { Button } from "@everycent/ui/components/button";
-import { Field, FieldError, FieldLabel } from "@everycent/ui/components/field";
-import { Input } from "@everycent/ui/components/input";
-import { Spinner } from "@everycent/ui/components/spinner";
+import { Button } from "@strictbudget/ui/components/button";
+import { Field, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
+import { Input } from "@strictbudget/ui/components/input";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { UserRound } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { PROFILE_PICTURE_PX } from "@/lib/pictures";
@@ -11,7 +11,7 @@ export interface SignUpValues {
   name: string;
   email: string;
   password: string;
-  /** An optional profile picture, already cropped (EVERYCENT-229). */
+  /** Already cropped. */
   picture: Blob | null;
 }
 

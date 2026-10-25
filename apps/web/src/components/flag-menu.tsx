@@ -1,17 +1,13 @@
-import { Button } from "@everycent/ui/components/button";
-import { Input } from "@everycent/ui/components/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { cn } from "@everycent/ui/lib/utils";
+import { Button } from "@strictbudget/ui/components/button";
+import { Input } from "@strictbudget/ui/components/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Bookmark, Check, Pencil } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { FLAG_CLASS, type Flag, type FlagColor, flagLabel } from "@/lib/flags";
 import { menuKeyDown } from "@/lib/menu-keys";
 
-/**
- * YNAB's flag cell: a bookmark showing the transaction's flag color, opening a menu of the six
- * colors (with the budget's names for them) and "Clear flag". "Edit names" switches the menu to
- * name fields, shared by everyone on the budget.
- */
+/** Flag names are shared by everyone on the budget. */
 export function FlagMenu({
   value,
   flags,
@@ -21,7 +17,6 @@ export function FlagMenu({
   value: FlagColor | null;
   flags: readonly Flag[];
   onChange: (flag: FlagColor | null) => void;
-  /** Saves the changed names; resolves once saved. */
   onRename: (changes: Flag[]) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);

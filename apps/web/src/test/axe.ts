@@ -2,7 +2,7 @@ import axe from "axe-core";
 import { expect } from "vitest";
 
 /**
- * Fails with axe's findings for `container` (EVERYCENT-95). Colour contrast is left to the browser
+ * Fails with axe's findings for `container`. Colour contrast is left to the browser
  * audit: jsdom doesn't lay out or paint, so axe can't measure it here.
  */
 export async function expectAccessible(container: Element) {

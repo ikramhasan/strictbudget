@@ -1,10 +1,9 @@
-import type { components } from "@everycent/api-client";
-import { type AccountFamily, accountFamily, isOnBudget } from "@everycent/engine";
+import type { components } from "@strictbudget/api-client";
+import { type AccountFamily, accountFamily, isOnBudget } from "@strictbudget/engine";
 import { $api } from "./api";
 import { todayIso } from "./dates";
 
 export type Account = components["schemas"]["Account"];
-/** The account list's totals and net worth in the display currency (EVERYCENT-57). */
 export type AccountTotals = components["schemas"]["AccountList"]["totals"];
 
 /** Balances leave out transactions dated after the user's today. */
@@ -21,7 +20,7 @@ export interface SidebarSection {
   accounts: Account[];
   /** Sum of the working balances, in `currency`'s minor units (closed accounts: always zero). */
   total: bigint;
-  /** The currency `total` is in: the display currency, or the budget's. */
+  /** The display currency, or the budget's. */
   currency: string;
   /** Some account in `total` was converted from another currency at today's rate. */
   converted: boolean;
@@ -44,21 +43,21 @@ const TITLES: Record<SidebarSectionId, string> = {
   closed: "Closed",
 };
 
-/** Whether YNAB shows the account's star: open cash and credit accounts only. */
+/** Only open cash and credit accounts can be starred. */
 export function canStar(account: Account) {
   return !account.closed && isOnBudget(account.type);
 }
 
-/** In the Starred group: starred, and still starrable (a closed account drops out). */
+/** Starred and still starrable (a closed account drops out). */
 export function isStarred(account: Account) {
   return account.starredOrder !== null && canStar(account);
 }
 
 /**
- * YNAB's sidebar: Starred first (its own order; the accounts stay in their usual group too),
- * then open accounts by family, then closed ones. Empty sections are left out. Totals are the
- * API's, converted to the display currency at today's rates (EVERYCENT-57); without them (or
- * for a group they don't cover) they add up the accounts in `budgetCurrency` only.
+ * Starred first (its own order; those accounts stay in their usual group too), then open accounts
+ * by family, then closed ones. Empty sections are left out. Totals are the API's, converted to the
+ * display currency at today's rates; without them (or for a group they don't cover) they add up the
+ * accounts in `budgetCurrency` only.
  */
 export function sidebarSections(
   accounts: readonly Account[],
@@ -110,11 +109,9 @@ export function sidebarSections(
 }
 
 /**
- * What YNAB's Close Account dialog says for an account whose working balance isn't zero: the
- * closing adjustment (minus the balance), and whether it adds the info box "The money in this
- * account will be removed from your plan…". The box shows only for money in the plan: an
- * on-budget (cash or credit) account above zero. An overdrawn cash account, a card in debt and a
- * tracking account of either sign get none (EVERYCENT-129, checked in YNAB 2026-10-14).
+ * The Close Account dialog for an account whose working balance isn't zero: the closing adjustment
+ * (minus the balance), and whether it shows the "money will be removed from your plan" box. That
+ * shows only for money in the plan: an on-budget (cash or credit) account above zero.
  */
 export function closeAccountNotice(
   type: Account["type"],
@@ -123,10 +120,6 @@ export function closeAccountNotice(
   return { adjustment: -working, removesMoneyFromPlan: working > 0n && isOnBudget(type) };
 }
 
-/**
- * The hint on a sidebar total that leaves accounts out: "Excludes 1 EUR account", "Excludes 2
- * accounts in other currencies".
- */
 export function excludedHint(excluded: readonly Pick<Account, "currency">[]): string | null {
   if (excluded.length === 0) return null;
   const currencies = new Set(excluded.map((a) => a.currency));
@@ -136,10 +129,6 @@ export function excludedHint(excluded: readonly Pick<Account, "currency">[]): st
     : `Excludes ${excluded.length} ${noun} in other currencies`;
 }
 
-/**
- * The hint on a sidebar total: "Converted to USD at today's rates" when an account in it was
- * converted, then which accounts are left out for want of a rate.
- */
 export function totalHint(
   section: Pick<SidebarSection, "converted" | "currency" | "excluded">,
 ): string | null {
@@ -150,7 +139,6 @@ export function totalHint(
   return parts.length > 0 ? parts.join(". ") : null;
 }
 
-/** YNAB labels Edit Account's balance field "Today's Balance" for loans and tracking accounts. */
 export function editBalanceLabel(type: Account["type"]): string {
   const family = accountFamily(type);
   return family === "loan" || family === "tracking" ? "Today's Balance" : "Working Balance";

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * YNAB's account types. Keys are persisted in the database, so an existing key must never be
+ * Account types. Keys are persisted in the database, so an existing key must never be
  * renamed or change meaning.
  */
 export const ACCOUNT_TYPES = [
@@ -56,7 +56,7 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   liability: "Liability",
 };
 
-export const zAccountType = z.enum(ACCOUNT_TYPES).describe("YNAB account type");
+export const zAccountType = z.enum(ACCOUNT_TYPES).describe("Account type");
 
 export function accountFamily(type: AccountType): AccountFamily {
   return FAMILY[type];
@@ -71,7 +71,7 @@ export function isOnBudget(type: AccountType): boolean {
 /**
  * Whether a transaction in an account of `type` has a category. Tracking accounts never do. A
  * transfer (to or from `transferType`) only does when money leaves the budget: on the budget side
- * of a transfer with a tracking account (YNAB's rule). Between two budget accounts it stays in
+ * of a transfer with a tracking account. Between two budget accounts it stays in
  * the budget.
  */
 export function usesCategory(type: AccountType, transferType?: AccountType | null): boolean {

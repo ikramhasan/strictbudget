@@ -1,4 +1,4 @@
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
 

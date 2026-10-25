@@ -287,7 +287,6 @@ describe("payees", () => {
     expect((await txns()).find((t) => t.id === g.id)?.payeeId).toBe(gamma.id);
     expect(await byName("Gamma")).toMatchObject({ id: gamma.id, useCount: 2 });
 
-    // No payee.
     await send("POST", `${base}/payees/delete`, owner.cookie, {
       payeeIds: [gamma.id],
       replacementPayeeId: null,

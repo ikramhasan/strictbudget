@@ -11,21 +11,26 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@everycent/ui/components/alert-dialog";
-import { Button } from "@everycent/ui/components/button";
-import { Checkbox } from "@everycent/ui/components/checkbox";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@everycent/ui/components/empty";
-import { Label } from "@everycent/ui/components/label";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Button } from "@strictbudget/ui/components/button";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@strictbudget/ui/components/empty";
+import { Label } from "@strictbudget/ui/components/label";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
 import {
   Popover,
   PopoverContent,
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
-} from "@everycent/ui/components/popover";
-import { useIsMobile } from "@everycent/ui/hooks/use-mobile";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/popover";
+import { useIsMobile } from "@strictbudget/ui/hooks/use-mobile";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ChevronRight, GripVertical, Plus, StickyNote } from "lucide-react";
 import { type MouseEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useOptionalBudget } from "@/lib/budget-context";
@@ -99,7 +104,7 @@ export interface CategoryFigures {
   editAssigned?: string;
   /** Called once that edit has opened. */
   onEditAssignedStarted?: () => void;
-  /** Makes Available open YNAB's move and cover popovers. */
+  /** Makes Available open the move and cover popovers. */
   move?: MoveActions;
   /** Makes Activity open the transactions behind it. */
   activity?: { budgetId: string; formatDate: (isoDate: string) => string };
@@ -115,7 +120,7 @@ export interface CategoryFigures {
    * edit it).
    */
   emptyView?: { message: string; onViewAll: () => void; onEdit?: () => void };
-  /** YNAB's Progress Bars setting: off hides the bars and the notes under category names. */
+  /** The Progress Bars setting: off hides the bars and the notes under category names. */
   progressBars?: boolean;
   /** The month's moves, for the history button next to Assigned (recent months only). */
   moves?: CategoryMovesContext;
@@ -126,7 +131,6 @@ export interface CategoryFigures {
 export interface SelectionActions {
   selected: ReadonlySet<string>;
   toggle: (id: string) => void;
-  /** Selects `id` alone. */
   selectOnly: (id: string) => void;
   /** Selects these, or clears the selection with an empty list. */
   setAll: (ids: string[]) => void;
@@ -134,12 +138,12 @@ export interface SelectionActions {
 
 const NO_GROUPS: ReadonlySet<string> = new Set();
 /**
- * Every row shares one grid so the figures line up whatever a name's length. Like YNAB, a list
- * narrower than the columns scrolls sideways instead of squeezing them (mobile gets its own pass).
+ * Every row shares one grid so the figures line up whatever a name's length. A list narrower
+ * than the columns scrolls sideways instead of squeezing them (mobile gets its own pass).
  */
 // Assigned and Activity fit "-$10,000.00"; Available keeps room for its pill and icon.
 // On a phone a row is its name and Available, a thumb's height; Assigned and Activity are in the
-// category's drawer (EVERYCENT-93).
+// category's drawer.
 const ROW =
   "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-1 px-2 py-1.5 max-md:min-h-12 md:grid-cols-[minmax(10rem,1fr)_6.5rem_6.5rem_7.5rem]";
 /** The plan's keys also work from a category's open Assigned input. */
@@ -186,7 +190,7 @@ const HOVER_REVEAL =
 const categoryType = (c: Category) => (c.linkedAccountId ? "payment" : "category");
 
 /**
- * YNAB's budget screen: groups and categories with the month's Assigned, Activity and Available,
+ * The budget screen: groups and categories with the month's Assigned, Activity and Available,
  * drag to reorder, collapsible groups and the Hidden Categories row.
  */
 export function CategoryList({
@@ -202,10 +206,10 @@ export function CategoryList({
   figures?: CategoryFigures;
   collapsed?: ReadonlySet<string>;
   onCollapsedChange?: (collapsed: ReadonlySet<string>) => void;
-  /** Greys out the header's "Add a category group" button (YNAB does in a custom view). */
+  /** Greys out the header's "Add a category group" button (as in a custom view). */
   addGroupDisabled?: boolean;
 }) {
-  // A viewer (EVERYCENT-88) can't add, rename, hide, delete or reorder.
+  // A viewer can't add, rename, hide, delete or reorder.
   const readOnly = useOptionalBudget()?.readOnly ?? false;
   const serverLayout = useMemo(() => visibleLayout(data), [data]);
   const [layout, setLayout] = useState<VisibleLayout>(serverLayout);
@@ -264,8 +268,8 @@ export function CategoryList({
     selection.setAll([...next]);
   }
 
-  // YNAB's plan keys (seen 2026-10-18): Up/Down walk the categories on screen, opening each one's
-  // Assigned amount; Shift extends; Cmd/Ctrl+Up/Down collapse and expand groups.
+  // Up/Down walk the categories on screen, opening each one's Assigned amount; Shift extends;
+  // Cmd/Ctrl+Up/Down collapse and expand groups.
   const cursor = useRef<{ anchor: string | null; head: string | null }>({
     anchor: null,
     head: null,
@@ -276,7 +280,7 @@ export function CategoryList({
     ...groupOrder.filter((g) => !collapsed.has(g)).flatMap((g) => itemsOf(g)),
   ];
   const groupOf = (id: string) => groupOrder.find((g) => (layout.items[g] ?? []).includes(id));
-  /** Leaves an open Assigned input, saving it, as moving away from it does in YNAB. */
+  /** Leaves an open Assigned input, saving it, as moving away from it does. */
   function leaveAssigned() {
     const active = document.activeElement;
     if (active instanceof HTMLElement && active.closest("[data-assigned-cell]")) active.blur();
@@ -308,7 +312,7 @@ export function CategoryList({
         return;
       }
       // With categories selected, Up folds their groups and Down leaves them open; both clear the
-      // selection (YNAB, 2026-10-18).
+      // selection.
       leaveAssigned();
       if (!up) {
         selection.setAll([]);
@@ -342,7 +346,7 @@ export function CategoryList({
     const deleted =
       kind === "group" ? (groupsById.get(id)?.categories ?? []) : [categoriesById.get(id)];
     const hasTransactions = deleted.some((c) => c?.hasTransactions);
-    // YNAB deletes a category with neither transactions nor assigned money straight away.
+    // A category with neither transactions nor assigned money is deleted straight away.
     if (kind === "category" && !hasTransactions && !deleted[0]?.hasAssignedMoney) {
       void actions.deleteCategory(id);
       return;
@@ -410,7 +414,6 @@ export function CategoryList({
                 </span>
               )}
               <span className="truncate px-2">Category</span>
-              {/* A new group is added from the column it belongs to. */}
               {!readOnly && (
                 <NamePopover
                   title="New category group"
@@ -471,7 +474,7 @@ export function CategoryList({
                     <span className="truncate px-2">Uncategorized Transactions</span>
                   )}
                 </div>
-                {/* YNAB shows a dash: money can't be assigned to Uncategorized. */}
+                {/* A dash: money can't be assigned to Uncategorized. */}
                 <span className={cn(FIGURE, FIGURE_PAD, WIDE_ONLY)}>–</span>
                 <span className={cn(FIGURE, "text-sm", WIDE_ONLY)}>
                   <Activity
@@ -539,7 +542,7 @@ export function CategoryList({
                     index={groupIndex}
                     actions={actions}
                     totals={
-                      // Under a view a group totals only its categories in view (YNAB, 2026-10-11).
+                      // Under a view a group totals only its categories in view.
                       shown && figures
                         ? toTotals(summarize(figures.month, itemsOf(groupId)))
                         : groupFigures.get(groupId)
@@ -635,7 +638,6 @@ export function CategoryList({
           {pendingDelete?.kind === "category" ? (
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Category</AlertDialogTitle>
-              {/* YNAB's wording (checked 2026-10-11, YNAB findings). */}
               <AlertDialogDescription className="grid gap-2">
                 {pendingDelete.hasTransactions ? (
                   <span>
@@ -762,7 +764,7 @@ function GroupSection({
       aria-label={group.name}
       className={cn("border-b bg-background last:border-b-0", isDragSource && "opacity-60")}
     >
-      {/* An empty handle keeps dnd-kit's button role off a group that can't move (EVERYCENT-95). */}
+      {/* An empty handle keeps dnd-kit's button role off a group that can't move. */}
       {(managed || !reorderable) && <span ref={handleRef} hidden />}
       <div className={cn(ROW, "group/row", GROUP_ROW)}>
         <div className={NAME_CELL}>
@@ -928,9 +930,9 @@ function CategoryRow({
     disabled: !reorderable,
   });
   const selected = selection?.selected.has(category.id) ?? false;
-  // YNAB: clicking a name selects that category alone; clicking it again opens its editor.
+  // Clicking a name selects that category alone; clicking it again opens its editor.
   const onlySelected = selected && selection?.selected.size === 1;
-  // Set by a click on the row: opens its Assigned amount for typing, as YNAB does.
+  // Set by a click on the row: opens its Assigned amount for typing.
   const [editAssigned, setEditAssigned] = useState(false);
   // A phone has no Assigned cell in the row: the tap opens the category's drawer instead.
   const phone = useIsMobile();
@@ -995,7 +997,7 @@ function CategoryRow({
           ) : (
             <>
               <Spacer />
-              {/* An empty handle keeps dnd-kit's button role off the row (EVERYCENT-95). */}
+              {/* An empty handle keeps dnd-kit's button role off the row. */}
               <span ref={handleRef} hidden />
             </>
           )}
@@ -1064,7 +1066,7 @@ function CategoryRow({
             format &&
             figures &&
             figures.progressBars !== false &&
-            // YNAB writes no note under a payment category, target or not (seen 2026-10-08).
+            // No note under a payment category, target or not.
             !isPayment &&
             (totals.available.startsWith("-") ? (
               <OverspentNote totals={totals} format={format} />
@@ -1157,7 +1159,7 @@ function CategoryRow({
   );
 }
 
-/** The note under a category's name: its target's status, or what was spent (YNAB's row note). */
+/** The note under a category's name: its target's status, or what was spent. */
 function RowNote({ note }: { note: { strong: string; rest: string } | null }) {
   if (!note) return null;
   return (
@@ -1169,7 +1171,7 @@ function RowNote({ note }: { note: { strong: string; rest: string } | null }) {
 }
 
 /**
- * YNAB's note on an overspent category: what was spent of what it had (carried in plus assigned),
+ * The note on an overspent category: what was spent of what it had (carried in plus assigned),
  * e.g. "Overspent. $25.00 of $10.00".
  */
 function OverspentNote({
@@ -1226,7 +1228,7 @@ function Activity({
   target: ActivityTarget;
   name: string;
   amount: string;
-  /** A payment category's card figures: the popover adds YNAB's card summary. */
+  /** A payment category's card figures: the popover adds the card summary. */
   card?: CardSummary | null;
 }) {
   if (!figures.activity) return <span className={FIGURE_PAD}>{figures.format(amount)}</span>;
@@ -1296,7 +1298,7 @@ function DragHandle({
 }
 
 /**
- * YNAB's "Hidden Categories" row at the bottom of the list, with the hidden categories' totals.
+ * The "Hidden Categories" row at the bottom of the list, with the hidden categories' totals.
  * Clicking it lists them to unhide one, or all of them.
  */
 function HiddenRow({
@@ -1316,7 +1318,7 @@ function HiddenRow({
   const [open, setOpen] = useState(false);
   if (hidden.groups.length + hidden.categories.length === 0) return null;
 
-  // Hidden categories under their (visible) group's name, as YNAB lists them.
+  // Hidden categories under their (visible) group's name.
   const byGroup = new Map<string, typeof hidden.categories>();
   for (const c of hidden.categories)
     byGroup.set(c.groupName, [...(byGroup.get(c.groupName) ?? []), c]);

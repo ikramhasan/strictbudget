@@ -1,6 +1,6 @@
-import { Button } from "@everycent/ui/components/button";
-import { FieldError } from "@everycent/ui/components/field";
-import { Spinner } from "@everycent/ui/components/spinner";
+import { Button } from "@strictbudget/ui/components/button";
+import { FieldError } from "@strictbudget/ui/components/field";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { AuthCard } from "@/components/auth-card";
@@ -23,7 +23,7 @@ function UnsubscribePage() {
 }
 
 /**
- * From a monthly summary's "Unsubscribe" link (EVERYCENT-241). Like every emailed link, opening it
+ * From a monthly summary's "Unsubscribe" link. Like every emailed link, opening it
  * changes nothing: only the button does, so a mail scanner can't unsubscribe anyone.
  */
 function Unsubscribe({ token }: { token: string | null }) {
@@ -44,7 +44,7 @@ function Unsubscribe({ token }: { token: string | null }) {
 
   const home = (
     <Button asChild variant="outline" className="w-full">
-      <Link to="/">Open everycent</Link>
+      <Link to="/">Open strictbudget</Link>
     </Button>
   );
 
@@ -85,7 +85,7 @@ function Unsubscribe({ token }: { token: string | null }) {
   return (
     <AuthCard
       title="Unsubscribe from monthly summaries"
-      description="Stop the email everycent sends on the 1st of each month with an overview of your budgets."
+      description="Stop the email strictbudget sends on the 1st of each month with an overview of your budgets."
       footer={footer}
     >
       <div className="grid gap-3">

@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import {
   applyStatementOptions,
   CSV_DATE_FORMATS,
@@ -14,9 +14,9 @@ import {
   readOfx,
   readQif,
   type StatementOptions,
-} from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { Checkbox } from "@everycent/ui/components/checkbox";
+} from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -24,10 +24,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Label } from "@everycent/ui/components/label";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dialog";
+import { Label } from "@strictbudget/ui/components/label";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, CircleAlert, FileUp, Info } from "lucide-react";
@@ -57,7 +57,7 @@ interface LoadedFile {
 }
 
 /**
- * The register's File Import (YNAB, 2026-10-17, EVERYCENT-66): an explainer (unless turned off),
+ * The register's File Import: an explainer (unless turned off),
  * then the file picker, then Import Transactions for the chosen account.
  */
 export function FileImportButton({ accountId }: { accountId?: string }) {
@@ -116,8 +116,8 @@ export function FileImportButton({ accountId }: { accountId?: string }) {
 }
 
 /**
- * YNAB starts a File Import when a file is dropped anywhere in the app (help center,
- * file-based-import-a-guide): into the open account's register, or with no account picked.
+ * A File Import starts when a file is dropped anywhere in the app: into the open account's
+ * register, or with no account picked.
  */
 export function FileDropImport() {
   const { accountId } = useParams({ strict: false }) as { accountId?: string };
@@ -214,7 +214,7 @@ function ImportTransactionsDialog(props: {
 }
 
 /**
- * What both Import Transactions dialogs share (EVERYCENT-212): the account choice, its import
+ * What both Import Transactions dialogs share: the account choice, its import
  * context (start date, last reconciliation, remembered settings), the "dated before" cutoff and
  * the import itself, after which everything the new transactions show up in refetches.
  */
@@ -347,7 +347,7 @@ function CsvImportDialog({
 
   const table = useMemo(() => (file.kind === "csv" ? parseCsvText(file.text) : []), [file]);
   const [setup, setSetup] = useState<CsvSetup | null>(null);
-  // The account's remembered settings arrive with its context; until then, YNAB's guess.
+  // The account's remembered settings arrive with its context; until then, a guess from the file.
   const current = setup ?? initialCsvSetup(table, context?.csvSettings ?? null);
   const update = (patch: Partial<CsvSetup>) => setSetup({ ...current, ...patch });
   const [remember, setRemember] = useState(true);
@@ -588,7 +588,7 @@ function CsvImportDialog({
 }
 
 /**
- * Import Transactions for an OFX/QFX or QIF file (YNAB, 2026-10-17, EVERYCENT-67): "N
+ * Import Transactions for an OFX/QFX or QIF file: "N
  * transactions will be imported from CHECKING: ***2345 into", the skip notice on top, the
  * preview with unsigned amounts, then Import Memos, Swap Payee and Memo, Swap Inflow and
  * Outflow and Remember setting for this account. A QIF file's unclear dates are asked about
@@ -779,7 +779,6 @@ function StatementImportDialog({
   );
 }
 
-/** YNAB's OFX/QIF options start with memos imported and nothing swapped (2026-10-17). */
 const DEFAULT_STATEMENT_OPTIONS: StatementOptions = {
   importMemos: true,
   swapPayeeMemo: false,
@@ -794,7 +793,7 @@ const FIELD_LABELS = {
   inflow: "Inflow",
 } as const;
 
-/** YNAB's "The date format of … is unclear" prompt (2026-10-17). */
+/** The "The date format of … is unclear" prompt. */
 function DateFormatPrompt({
   fileName,
   first,
@@ -847,8 +846,8 @@ function laterOf(a: string | null, b: string | null) {
 }
 
 /**
- * YNAB's result dialogs (2026-10-17): "Import Matched" when nothing new came in, otherwise "Import
- * Successful", with how many entered transactions were matched (EVERYCENT-68).
+ * The result dialogs: "Import Matched" when nothing new came in, otherwise "Import
+ * Successful", with how many entered transactions were matched.
  */
 export function resultMessage(sent: number, imported: number, matched = 0): Result {
   if (imported === 0 && sent > 0) {

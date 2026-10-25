@@ -1,4 +1,4 @@
-import { type CurrencyCode, formatAmount, money } from "@everycent/engine";
+import { type CurrencyCode, formatAmount, money } from "@strictbudget/engine";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -79,7 +79,7 @@ function renderSection(
   return { onSave };
 }
 
-describe("TargetSection with a target in its own currency (EVERYCENT-58)", () => {
+describe("TargetSection with a target in its own currency", () => {
   it("shows the target in its currency and what it needs in the budget's", () => {
     renderSection(eurTarget, need, { conversion: { amountInBase: "162630", rate: "1.0842" } });
     expect(screen.getByText("Set Aside Another €1,500.00 Each Month")).toBeInTheDocument();
@@ -137,7 +137,7 @@ describe("TargetSection with a target in its own currency (EVERYCENT-58)", () =>
   });
 });
 
-describe("ReadOnlyTarget for a viewer (EVERYCENT-200)", () => {
+describe("ReadOnlyTarget for a viewer", () => {
   const usdIO = moneyIn("USD");
   const usdTarget: CategoryTarget = { ...eurTarget, currency: "USD", amount: "15000" };
 
@@ -181,7 +181,7 @@ describe("ReadOnlyTarget for a viewer (EVERYCENT-200)", () => {
   });
 });
 
-describe("paymentAlertShows (EVERYCENT-200)", () => {
+describe("paymentAlertShows", () => {
   const base = { target: eurTarget, need, overpaid: false, past: false };
   it("shows the alert while no target applies, or when overpaid, but not in a past month", () => {
     expect(paymentAlertShows({ ...base, target: null })).toBe(true);

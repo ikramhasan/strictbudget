@@ -1,17 +1,15 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { $api } from "./api";
 
 export type CustomView = components["schemas"]["BudgetView"];
 export type ViewList = components["schemas"]["BudgetViewList"];
 
-/** YNAB allows up to 12 custom views per plan. */
 export const MAX_CUSTOM_VIEWS = 12;
 
 export const viewsQueryOptions = (budgetId: string) =>
   $api.queryOptions("get", "/v1/budgets/{budgetId}/views", { params: { path: { budgetId } } });
 
-/** Creating, editing, deleting and reordering the budget's views; each refreshes the list. */
 export function useViewActions(budgetId: string) {
   const queryClient = useQueryClient();
   const key = viewsQueryOptions(budgetId).queryKey;

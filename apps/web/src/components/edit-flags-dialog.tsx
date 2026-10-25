@@ -1,4 +1,4 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -6,9 +6,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Input } from "@everycent/ui/components/input";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dialog";
+import { Input } from "@strictbudget/ui/components/input";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bookmark } from "lucide-react";
 import { type FormEvent, useState } from "react";
@@ -17,11 +17,7 @@ import { $api } from "@/lib/api";
 import { apiErrorMessage } from "@/lib/budgets";
 import { COLOR_LABEL, FLAG_CLASS, type Flag, flagsQueryOptions } from "@/lib/flags";
 
-/**
- * YNAB's Edit Flags dialog (plan menu): the six flags in color order, each field prefilled with
- * its name, or the color's own name when it has none. Done saves; an empty name (or the color's
- * own name) clears it back to the color. Cancel discards.
- */
+/** An empty name, or the color's own name, clears the flag's name back to the color. */
 export function EditFlagsDialog({
   budgetId,
   open,
@@ -46,7 +42,6 @@ export function EditFlagsDialog({
   );
 }
 
-/** What a field shows for a flag: its name, or the color's name when it has none. */
 const shown = (flag: Flag) => flag.name || COLOR_LABEL[flag.color];
 
 function EditFlagsForm({ budgetId, onClose }: { budgetId: string; onClose: () => void }) {

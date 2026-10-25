@@ -1,4 +1,4 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -6,7 +6,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
+} from "@strictbudget/ui/components/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { CircleCheck } from "lucide-react";
@@ -17,8 +17,8 @@ import { useCreateAccount } from "@/lib/use-create-account";
 import { AddAccountForm } from "./account-forms";
 
 /**
- * The Add Account dialog. Like YNAB's (2026-10-15, EVERYCENT-151), adding one shows a success
- * step: "Add Another" starts over with an empty form, "Done" closes and opens the new account.
+ * Adding an account shows a success step: "Add Another" starts over with an empty form, "Done"
+ * closes and opens the new account.
  */
 export function AddAccountDialog({
   budget,
@@ -34,7 +34,6 @@ export function AddAccountDialog({
   const categories = useQuery(categoriesQueryOptions(budget.id));
   /** The account just added: the success step is showing. */
   const [created, setCreated] = useState<string | null>(null);
-  // A fresh form for each account.
   const [formKey, setFormKey] = useState(0);
 
   function handleOpenChange(next: boolean) {
@@ -90,7 +89,7 @@ export function AddAccountDialog({
             <DialogHeader>
               <DialogTitle>Add account</DialogTitle>
               <DialogDescription>
-                Enter today's balance; everycent records it as the account's starting balance.
+                Enter today's balance; strictbudget records it as the account's starting balance.
               </DialogDescription>
             </DialogHeader>
             <AddAccountForm

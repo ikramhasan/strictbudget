@@ -12,8 +12,8 @@ afterAll(async () => {
   await close();
 });
 
-// EVERYCENT-246: a made-up `today` sets how far a loan's month-by-month charges run (and which
-// months a plan lists), so every read that takes one holds it within a day of the server's date.
+// A made-up `today` sets how far a loan's month-by-month charges run (and which months a plan
+// lists), so every read that takes one holds it within a day of the server's date.
 describe("a made-up today", () => {
   let cookie = "";
   let base = "";

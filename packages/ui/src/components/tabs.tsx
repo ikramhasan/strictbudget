@@ -1,11 +1,11 @@
 "use client";
 
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Tabs as TabsPrimitive } from "radix-ui";
 import * as React from "react";
 
-// everycent: Radix marks state with data-orientation="…" and data-state="active", not the bare
+// strictbudget: Radix marks state with data-orientation="…" and data-state="active", not the bare
 // data-horizontal / data-active attributes this component was written for.
 function Tabs({
   className,
@@ -68,7 +68,7 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
         // neighboring tab or the track's lip.
         "relative inline-flex flex-1 items-center justify-center gap-1.5 rounded-[calc(var(--radius-lg)-3px)] border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-current transition-[color,box-shadow] duration-150 outline-none select-none group-data-[orientation=horizontal]/tabs:h-full group-data-[orientation=vertical]/tabs:h-[26px] group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:flex-none group-data-[orientation=vertical]/tabs:justify-start hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring group-data-[variant=default]/tabs-list:focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[state=active]:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         "before:absolute group-data-[orientation=horizontal]/tabs:before:inset-x-0 group-data-[orientation=horizontal]/tabs:before:-inset-y-[7px] group-data-[orientation=vertical]/tabs:before:inset-y-0 group-data-[orientation=vertical]/tabs:before:-inset-x-1",
-        // everycent: Radix Tabs has no sliding Indicator, so the library's indicator skin sits on
+        // strictbudget: Radix Tabs has no sliding Indicator, so the library's indicator skin sits on
         // the active trigger itself (no slide between tabs). Default: a raised chip (the secondary
         // Button in white), concentric with the track.
         "group-data-[variant=default]/tabs-list:data-[state=active]:bg-linear-to-b group-data-[variant=default]/tabs-list:data-[state=active]:from-background group-data-[variant=default]/tabs-list:data-[state=active]:to-[color-mix(in_oklch,var(--background),var(--secondary)_60%)] group-data-[variant=default]/tabs-list:data-[state=active]:shadow-[0_1px_2px_rgb(0_0_0/0.1),0_0_0_1px_rgb(0_0_0/0.07),inset_0_-1px_0_rgb(0_0_0/0.03)] dark:group-data-[variant=default]/tabs-list:data-[state=active]:from-[color-mix(in_oklch,var(--secondary),var(--foreground)_9%)] dark:group-data-[variant=default]/tabs-list:data-[state=active]:to-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] dark:group-data-[variant=default]/tabs-list:data-[state=active]:shadow-[0_1px_2px_rgb(0_0_0/0.5),0_0_0_1px_rgb(255_255_255/0.06),inset_0_1px_0_rgb(255_255_255/0.07)]",

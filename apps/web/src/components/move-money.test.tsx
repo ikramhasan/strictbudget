@@ -22,7 +22,6 @@ function makeActions(): MoveActions & { move: ReturnType<typeof vi.fn> } {
 }
 
 describe("AvailableButton", () => {
-  // YNAB "x132 Order", 2026-10-14 (EVERYCENT-140).
   it("covers overspending from a later month's assigned money", async () => {
     const actions = makeActions();
     const moveFrom = vi.fn().mockResolvedValue(undefined);
@@ -111,9 +110,9 @@ describe("FixThisButton", () => {
     expect(actions.move).toHaveBeenCalledWith("rent", "rta", 1200n);
   });
 
-  // YNAB, 2026-10-11: from the current month to the last with money assigned; later months offer
-  // what's assigned in them.
-  it("un-assigns from another month YNAB offers", async () => {
+  // From the current month to the last with money assigned; later months offer what's assigned
+  // in them.
+  it("un-assigns from another month Fix This offers", async () => {
     const actions = makeActions();
     const unassign = vi.fn().mockResolvedValue(undefined);
     render(

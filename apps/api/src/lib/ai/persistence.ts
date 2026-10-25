@@ -1,5 +1,5 @@
-import type { Database } from "@everycent/db";
-import { aiChatInterrupt, aiChatRun, aiChatThread } from "@everycent/db/schema";
+import type { Database } from "@strictbudget/db";
+import { aiChatInterrupt, aiChatRun, aiChatThread } from "@strictbudget/db/schema";
 import type { ModelMessage, RunRecord, RunStatus, RunStore, TokenUsage } from "@tanstack/ai";
 import {
   type ChatWithInterruptsPersistence,
@@ -216,7 +216,6 @@ function interruptStore(db: Database) {
   });
 }
 
-/** The chat stores for one database: transcripts, runs, and pending approvals. */
 export function chatPersistence(db: Database): ChatWithInterruptsPersistence {
   return defineAIPersistence({
     stores: { messages: messageStore(db), runs: runStore(db), interrupts: interruptStore(db) },

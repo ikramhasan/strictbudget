@@ -1,6 +1,5 @@
-// Generated from YNAB's category template gallery (ynab.com/templates), checked 2026-10-16:
-// every template's groups, categories and example amounts, in YNAB's order. The descriptions
-// are our own. Don't edit by hand except to follow a change in YNAB's gallery.
+// Generated: every template's groups, categories and example amounts, in the gallery's order.
+// Don't edit by hand except to follow a change in the source gallery.
 
 import type { CategoryTemplate } from "./category-templates";
 
@@ -694,8 +693,8 @@ export const CATEGORY_TEMPLATE_DATA: readonly CategoryTemplate[] = [
     ],
   },
   {
-    id: "minimalist-ynab",
-    name: "Minimalist YNAB",
+    id: "minimalist",
+    name: "Minimalist",
     description: "A handful of broad categories for a simple budget.",
     groups: [
       {
@@ -1175,7 +1174,7 @@ export const CATEGORY_TEMPLATE_DATA: readonly CategoryTemplate[] = [
           { name: "🚗 Auto Maintenance", amount: 30n },
           { name: "⚕️ Routine Medical", amount: 45n },
           { name: "🛡️ Life Insurance", amount: 40n },
-          { name: "📊 YNAB", amount: 9n },
+          { name: "📊 strictbudget", amount: 9n },
           { name: "🛒 Amazon Prime", amount: 12n },
           { name: "🎁 Gifts", amount: 60n },
           { name: "🎄 Christmas", amount: 125n },
@@ -1436,8 +1435,8 @@ export const CATEGORY_TEMPLATE_DATA: readonly CategoryTemplate[] = [
     ],
   },
   {
-    id: "teach-ynab",
-    name: "Teach YNAB",
+    id: "teach-budgeting",
+    name: "Teach Budgeting",
     description: "An example budget to walk someone through the method.",
     groups: [
       {
@@ -1698,8 +1697,8 @@ export const CATEGORY_TEMPLATE_DATA: readonly CategoryTemplate[] = [
     ],
   },
   {
-    id: "ynab-beginner-template",
-    name: "YNAB Beginner Template",
+    id: "beginner-template",
+    name: "Beginner Template",
     description: "A first budget for someone new to giving every dollar a job.",
     groups: [
       {
@@ -1754,7 +1753,7 @@ export const CATEGORY_TEMPLATE_DATA: readonly CategoryTemplate[] = [
           { name: "🩺 Medical", amount: 150n },
           { name: "🐾 Vet", amount: 75n },
           { name: "🛡️ Auto Insurance", amount: 165n },
-          { name: "📊 YNAB Subscription", amount: 10n },
+          { name: "📊 strictbudget Subscription", amount: 10n },
           { name: "🎁 Gifts", amount: 50n },
           { name: "🎄 Holiday Spending", amount: 100n },
         ],

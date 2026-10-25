@@ -44,7 +44,6 @@ type Entry = {
 );
 
 export const SETTINGS: readonly Entry[] = [
-  // Account › Profile
   {
     page: "account",
     tab: "profile",
@@ -73,7 +72,6 @@ export const SETTINGS: readonly Entry[] = [
     title: "Delete account",
     keywords: ["close account", "remove"],
   },
-  // Account › Security
   {
     page: "account",
     tab: "security",
@@ -95,7 +93,6 @@ export const SETTINGS: readonly Entry[] = [
     title: "Devices",
     keywords: ["sessions", "sign out", "signed in", "log out"],
   },
-  // Account › Preferences
   {
     page: "account",
     tab: "preferences",
@@ -117,7 +114,6 @@ export const SETTINGS: readonly Entry[] = [
     title: "Show account totals in",
     keywords: ["display currency", "net worth", "convert"],
   },
-  // Account › Notifications
   {
     page: "account",
     tab: "notifications",
@@ -132,7 +128,6 @@ export const SETTINGS: readonly Entry[] = [
     title: "AI overview in summaries",
     keywords: ["notifications", "email", "ai"],
   },
-  // Account › API & agents
   {
     page: "account",
     tab: "developer",
@@ -147,7 +142,6 @@ export const SETTINGS: readonly Entry[] = [
     title: "Connected agents",
     keywords: ["mcp", "claude", "oauth", "disconnect"],
   },
-  // Budget › General
   {
     page: "budget",
     tab: "general",
@@ -173,7 +167,6 @@ export const SETTINGS: readonly Entry[] = [
     keywords: ["manage payees", "rename", "combine", "merge"],
     minRole: "editor",
   },
-  // Budget › Sharing
   {
     page: "budget",
     tab: "sharing",
@@ -181,7 +174,6 @@ export const SETTINGS: readonly Entry[] = [
     title: "Members",
     keywords: ["sharing", "invite", "partner", "share", "roles"],
   },
-  // Budget › Exchange rates
   {
     page: "budget",
     tab: "rates",
@@ -189,7 +181,6 @@ export const SETTINGS: readonly Entry[] = [
     title: "Exchange rates",
     keywords: ["currency", "conversion", "fx"],
   },
-  // Budget › AI
   {
     page: "budget",
     tab: "ai",
@@ -211,7 +202,6 @@ export const SETTINGS: readonly Entry[] = [
     title: "Use your own agent",
     keywords: ["mcp", "claude", "cursor"],
   },
-  // Budget › Backup & data
   {
     page: "budget",
     tab: "data",
@@ -238,7 +228,6 @@ export const SETTINGS: readonly Entry[] = [
 ];
 
 export type SettingsMatch = Entry & {
-  /** Where it is: "Account settings › Security". */
   where: string;
 };
 

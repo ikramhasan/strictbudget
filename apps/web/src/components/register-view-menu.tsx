@@ -1,9 +1,9 @@
-import { Button } from "@everycent/ui/components/button";
-import { Checkbox } from "@everycent/ui/components/checkbox";
-import { Label } from "@everycent/ui/components/label";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { Popover, PopoverContent, PopoverTrigger } from "@everycent/ui/components/popover";
-import { cn } from "@everycent/ui/lib/utils";
+import { Button } from "@strictbudget/ui/components/button";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
+import { Label } from "@strictbudget/ui/components/label";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 import { todayIso } from "@/lib/dates";
@@ -30,10 +30,7 @@ const MONTHS = [
   "December",
 ];
 
-/**
- * YNAB's View menu: a date range (a preset applies at once; picking months waits for Apply)
- * and what the register shows.
- */
+/** A preset date range applies at once; picking months waits for Apply. */
 export function RegisterViewMenu({
   view,
   onChange,
@@ -52,8 +49,7 @@ export function RegisterViewMenu({
   const id = useId();
   const thisMonth = todayIso().slice(0, 7);
   // All Dates runs from the month of the budget's oldest transaction (any account) to ten years
-  // past this month, as YNAB's pickers do (checked 2026-10-11: August 2026 in a plan whose oldest
-  // transaction is 08/15, in every account).
+  // past this month.
   const months = rangeMonths(draft);
   const from = months.from ?? oldestMonth ?? thisMonth;
   const to = months.to ?? addMonths(thisMonth, 120);

@@ -15,25 +15,20 @@ const funded = (cash: bigint, cards: Parameters<typeof fundedCardSpending>[1]) =
   Object.fromEntries(fundedCardSpending(cash, cards).moved);
 
 describe("fundedCardSpending", () => {
-  // Cases from YNAB's test plans (2026-10-03 and 2026-10-11), YNAB findings phase 7b.
   it.each([
-    // [case, cash before cards, cards, moved]
     ["fully funded on one card", 2000n, [card(VISA, -500n)], { [VISA]: 500n }],
     ["nothing funded without money", 0n, [card(VISA, -500n)], { [VISA]: 0n }],
     ["overspent cash leaves nothing", -300n, [card(VISA, -500n)], { [VISA]: 0n }],
-    // Rent: $10 assigned, Wallet −$6, Visa −$8: $4 moves, whatever the entry order.
+    // $10 assigned, cash −$6, card −$8: $4 moves, whatever the entry order.
     ["cash is funded first", 1000n - 600n, [card(VISA, -800n)], { [VISA]: 400n }],
-    // Phone & Internet: $20 + cash $6; Visa −$5 −$7 +$2 nets −$10, Amex −$3.
     [
       "two cards, enough money",
       2600n,
       [card(VISA, -1000n), card(AMEX, -300n)],
       { [VISA]: 1000n, [AMEX]: 300n },
     ],
-    // Groceries (overspent in cash) and Vacation: a return on the card leaves its payment category.
     ["a return on an overspent category", -500n, [card(VISA, 100n)], { [VISA]: -100n }],
     ["a return on a funded category", 500n, [card(VISA, 200n)], { [VISA]: -200n }],
-    // G-F1/G-F2 ($5): the earlier purchase is funded first, whichever card was created first.
     [
       "earliest purchase first",
       500n,
@@ -46,7 +41,6 @@ describe("fundedCardSpending", () => {
       [card(VISA, -300n, "2026-10-01"), card(AMEX, -400n, "2026-10-02")],
       { [VISA]: 300n, [AMEX]: 200n },
     ],
-    // G-T1/G-T2 ($5): on the same day the largest purchase goes first.
     [
       "same day, largest first",
       500n,
@@ -59,7 +53,7 @@ describe("fundedCardSpending", () => {
       [card(VISA, -300n), card(AMEX, -400n)],
       { [AMEX]: 400n, [VISA]: 100n },
     ],
-    // G-E1–G-E4 ($5, two −$4 on one day): the smaller transaction id is funded first, whichever
+    // Two −$4 on one day: the smaller transaction id is funded first, whichever
     // card it's on.
     [
       "equal purchases by transaction id",
@@ -73,21 +67,21 @@ describe("fundedCardSpending", () => {
       [card(VISA, -400n, "2026-10-06", "tx-a"), card(AMEX, -400n, "2026-10-06", "tx-b")],
       { [VISA]: 400n, [AMEX]: 100n },
     ],
-    // G-X1 ($0): Card R1 +$5 on 10/01, Card R2 −$3 on 10/02.
+    // A +$5 return on 10/01, then −$3 on another card on 10/02.
     [
       "a return funds later spending on another card",
       0n,
       [card(AMEX, 500n, "2026-10-01"), card(VISA, -300n, "2026-10-02")],
       { [AMEX]: -500n, [VISA]: 300n },
     ],
-    // G-X2 ($0): Card R4 −$3 on 10/01, Card R3 +$5 on 10/02: R4 stays unfunded, R3 gives up $2.
+    // −$3 on 10/01, another card's +$5 on 10/02: the first stays unfunded, the second gives up $2.
     [
       "a return refills earlier unfunded spending first",
       0n,
       [card(VISA, -300n, "2026-10-01"), card(AMEX, 500n, "2026-10-02")],
       { [VISA]: 0n, [AMEX]: -200n },
     ],
-    // G-X6 ($0): Card R7 −$2 on 10/04 and +$6 on 10/05: $4 moves out.
+    // −$2 on 10/04 and +$6 on 10/05: $4 moves out.
     [
       "a refund larger than the month's purchases",
       0n,
@@ -98,7 +92,7 @@ describe("fundedCardSpending", () => {
     expect(funded(cash, cards)).toEqual(moved);
   });
 
-  it("keeps a refilled purchase in its card's overspent categories (YNAB: Card R4)", () => {
+  it("keeps a refilled purchase in its card's overspent categories", () => {
     const { moved, unfunded } = fundedCardSpending(0n, [
       card(VISA, -300n, "2026-10-01"),
       card(AMEX, 500n, "2026-10-02"),
@@ -112,8 +106,8 @@ describe("fundedCardSpending", () => {
     expect(moved).toEqual({ [AMEX]: -200n, [VISA]: 0n });
   });
 
-  // x128 ($0): Amex −$1 on 10/03; Card A owing $20 gets +$25 on 10/14: $20 is a return of credit
-  // ($1 refills Amex, $19 moves out), the $5 above zero comes in on its date and funds nothing.
+  // −$1 on 10/03; a card owing $20 gets +$25 on 10/14: $20 is a return of credit
+  // ($1 refills the first, $19 moves out), the $5 above zero comes in on its date and funds nothing.
   it("adds a return's part above zero on its date, refilling nothing", () => {
     const { moved, unfunded } = fundedCardSpending(0n, [
       card(AMEX, -100n, "2026-10-03"),
@@ -121,7 +115,6 @@ describe("fundedCardSpending", () => {
     ]);
     expect(Object.fromEntries(moved)).toEqual({ [AMEX]: 0n, [VISA]: -1900n });
     expect(Object.fromEntries(unfunded)).toEqual({ [AMEX]: 100n });
-    // Card spending after it is funded from it.
     const later = funded(0n, [
       { ...card(VISA, 0n, "2026-10-14"), cash: 500n },
       card(AMEX, -300n, "2026-10-20"),
@@ -130,7 +123,6 @@ describe("fundedCardSpending", () => {
   });
 
   it("keeps money and debt in balance", () => {
-    // Whatever isn't funded stays in the category as (credit) overspending.
     const cards = [card(VISA, -700n), card(AMEX, -200n), card(CITI, 100n, "2026-10-02")];
     const { moved } = fundedCardSpending(300n, cards);
     expect([...moved.values()].reduce((a, b) => a + b, 0n)).toBe(300n);
@@ -138,7 +130,6 @@ describe("fundedCardSpending", () => {
 });
 
 describe("cardLedger", () => {
-  // Cases from YNAB's "Onboarding Check" plan (2026-10-11), YNAB findings phase 7e.
   let n = 0;
   const line = (date: string, amount: bigint, kind: CardLineKind) => {
     n += 1;
@@ -153,11 +144,11 @@ describe("cardLedger", () => {
     readyToAssign,
   });
 
-  it("adds a payment's part above zero to Ready to Assign (Card X)", () => {
+  it("adds a payment's part above zero to Ready to Assign", () => {
     expect(effects([line("2026-10-01", 1000n, "budgetTransfer")])).toEqual([fx(0n, 0n, 1000n)]);
   });
 
-  it("makes spending while positive cash, and splits spending that crosses zero (Card Z)", () => {
+  it("makes spending while positive cash, and splits spending that crosses zero", () => {
     const lines = [
       line("2026-10-01", 500n, "budgetTransfer"),
       line("2026-10-02", -400n, "category"),
@@ -166,17 +157,16 @@ describe("cardLedger", () => {
     expect(effects(lines)).toEqual([fx(0n, 0n, 500n), fx(-400n, 0n, 0n), fx(-100n, -200n, 0n)]);
   });
 
-  it("puts a day's spending before the payment that day (Card S1)", () => {
+  it("puts a day's spending before the payment that day", () => {
     // Entered after the payment, still counted first: credit, and the payment only adds $6.
     const lines = [
       line("2026-10-05", 1000n, "budgetTransfer"),
       line("2026-10-05", -400n, "category"),
     ];
-    // Effects come back in the ledger's order: the spending, then the payment.
     expect(effects(lines)).toEqual([fx(0n, -400n, 0n), fx(0n, 0n, 600n)]);
   });
 
-  it("counts money to and from Ready to Assign only above zero (Cards V and W)", () => {
+  it("counts money to and from Ready to Assign only above zero", () => {
     expect(
       effects([
         line("2026-10-01", 300n, "budgetTransfer"),
@@ -189,7 +179,7 @@ describe("cardLedger", () => {
         line("2026-10-11", -200n, "readyToAssign"),
       ]),
     ).toEqual([fx(0n, 0n, 0n), fx(0n, 0n, 0n)]);
-    // Card V (2026-10-03): $8 in at −$5 → +$3.
+    // $8 in at −$5 → +$3.
     expect(
       effects([
         line("2026-10-01", -500n, "readyToAssign"),
@@ -198,7 +188,7 @@ describe("cardLedger", () => {
     ).toEqual([fx(0n, 0n, 0n), fx(0n, 0n, 300n)]);
   });
 
-  it("adds a cash advance's new debt (Cards A and W)", () => {
+  it("adds a cash advance's new debt", () => {
     expect(
       effects([
         line("2026-10-01", 600n, "budgetTransfer"),
@@ -213,13 +203,13 @@ describe("cardLedger", () => {
     ).toEqual([fx(0n, 0n, 0n), fx(0n, 0n, 300n)]);
   });
 
-  it("pays down debt with a return first, the rest is cash (Card R8)", () => {
+  it("pays down debt with a return first, the rest is cash", () => {
     expect(
       effects([line("2026-09-01", -300n, "readyToAssign"), line("2026-10-09", 500n, "category")]),
     ).toEqual([fx(0n, 0n, 0n), fx(200n, 300n, 0n)]);
   });
 
-  it("takes a closed positive card's balance out of Ready to Assign (Card P)", () => {
+  it("takes a closed positive card's balance out of Ready to Assign", () => {
     expect(
       effects([
         line("2026-10-01", 1000n, "budgetTransfer"),
@@ -228,20 +218,20 @@ describe("cardLedger", () => {
     ).toEqual([fx(0n, 0n, 1000n), fx(0n, 0n, -1000n)]);
   });
 
-  it("pays another card from the part above zero only (YNAB: Cards T1–T9)", () => {
-    // T1 at +$10 sends $6 to a card: all of it from above zero, a payment there; no new debt.
+  it("pays another card from the part above zero only", () => {
+    // At +$10, sending $6 to a card: all of it from above zero, a payment there; no new debt.
     const out = cardLedger([
       line("2026-10-01", 1000n, "budgetTransfer"),
       line("2026-10-03", -600n, "creditTransfer"),
     ]);
     expect(out[1]).toMatchObject({ paidFromCash: 600n, readyToAssign: 0n });
-    // T3 owing $10 sends $5: new debt, nothing paid from cash and nothing to Ready to Assign.
+    // Owing $10, sending $5: new debt, nothing paid from cash and nothing to Ready to Assign.
     const owing = cardLedger([
       line("2026-09-01", -1000n, "readyToAssign"),
       line("2026-10-03", -500n, "creditTransfer"),
     ]);
     expect(owing[1]).toMatchObject({ paidFromCash: 0n, readyToAssign: 0n });
-    // T6 owing $2 receives $5: $2 pays its debt, $3 above zero goes to Ready to Assign.
+    // Owing $2, receiving $5: $2 pays its debt, $3 above zero goes to Ready to Assign.
     const received = cardLedger([
       line("2026-09-01", -200n, "readyToAssign"),
       line("2026-10-03", 500n, "creditTransfer"),
@@ -249,7 +239,7 @@ describe("cardLedger", () => {
     expect(received[1]).toMatchObject({ readyToAssign: 300n });
   });
 
-  it("gives a split's cash part to its lines in order (YNAB: Cards T5, T8)", () => {
+  it("gives a split's cash part to its lines in order", () => {
     const split = (id: string, order: number, amount: bigint) => ({
       id,
       transactionId: "s1",

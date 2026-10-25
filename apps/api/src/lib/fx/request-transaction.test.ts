@@ -1,11 +1,11 @@
-import { sql } from "@everycent/db";
-import { CURRENCY_CODES } from "@everycent/engine";
+import { sql } from "@strictbudget/db";
+import { CURRENCY_CODES } from "@strictbudget/engine";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 import { deferFxCacheWrites, resolveRate } from ".";
 import type { FakeFxProvider } from "./fake";
 
-// EVERYCENT-201: a write fetches its exchange rates before it locks anything, and caches them
+// A write fetches its exchange rates before it locks anything, and caches them
 // outside its transaction (kept when it fails), so a slow provider doesn't keep others waiting.
 const { app, db, close, fxProviders } = createTestApp();
 const fx = fxProviders[0] as FakeFxProvider;

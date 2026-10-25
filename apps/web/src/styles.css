@@ -1,4 +1,4 @@
-@import "@everycent/ui/globals.css";
+@import "@strictbudget/ui/globals.css";
 
 /* A register row jumped to (a transfer's other side): holds the highlight, then fades it out. */
 @keyframes row-highlight {
@@ -17,9 +17,8 @@
 }
 
 /*
- * Progress bar colours, YNAB's own (its `--budgetBar*` variables on :root and body.theme-dark, read
- * from app.ynab.com on 2026-10-12): the empty track and its border, then the available (funded,
- * underfunded) and spent (stripes of two shades) parts, and overspending.
+ * Progress bar colours: the empty track and its border, then the available (funded, underfunded)
+ * and spent (stripes of two shades) parts, and overspending.
  */
 :root {
   --bar-track: #f3eee2;
@@ -46,8 +45,8 @@
 }
 
 /*
- * On a phone's touch screen every button and checkbox is at least 44px to aim at (WCAG 2.5.5,
- * EVERYCENT-93). A small control keeps its look; only its hit area grows, through a centred
+ * On a phone's touch screen every button and checkbox is at least 44px to aim at (WCAG 2.5.5).
+ * A small control keeps its look; only its hit area grows, through a centred
  * pseudo-element, so dense rows don't reflow.
  */
 /* In the base layer, so a control's own utilities (absolute, fixed) still win. */

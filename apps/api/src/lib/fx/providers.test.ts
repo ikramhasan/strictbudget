@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CurrencyApiProvider, FrankfurterProvider } from "./providers";
 
-// Bodies recorded from the real services on 2026-10-16 (trimmed), so no test touches the network.
+// Bodies recorded from the real services (trimmed), so no test touches the network.
 const FRANKFURTER_2024_03_02 =
   '{"amount":1.0,"base":"EUR","date":"2024-03-01","rates":{"GBP":0.85588,"JPY":162.82,"USD":1.0813}}';
 const CURRENCY_API_2024_03_06 = `{

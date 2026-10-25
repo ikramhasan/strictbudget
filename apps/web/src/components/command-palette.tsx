@@ -1,4 +1,4 @@
-import { addMonths, type BudgetMonth, formatAmount, money } from "@everycent/engine";
+import { addMonths, type BudgetMonth, formatAmount, money } from "@strictbudget/engine";
 import {
   Command,
   CommandEmpty,
@@ -8,15 +8,15 @@ import {
   CommandList,
   CommandShortcut,
   defaultFilter,
-} from "@everycent/ui/components/command";
+} from "@strictbudget/ui/components/command";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { type Theme, useTheme } from "@everycent/ui/lib/theme";
-import { cn } from "@everycent/ui/lib/utils";
+} from "@strictbudget/ui/components/dialog";
+import { type Theme, useTheme } from "@strictbudget/ui/lib/theme";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { format, parse } from "date-fns";
@@ -51,7 +51,6 @@ import { settingsSectionId, visibleSettings } from "@/lib/settings-index";
 import { capLabel, type KeyCap } from "@/lib/shortcuts";
 import { AddAccountDialog } from "./add-account-dialog";
 
-/** One row of the palette. */
 export interface PaletteItem {
   /** Unique across the palette: cmdk's value for it. */
   id: string;
@@ -138,7 +137,7 @@ const MONTHS_BACK = 12;
 const MONTHS_AHEAD = 12;
 
 /**
- * The command palette (Cmd/Ctrl+K, an everycent extra): go anywhere in the budget (pages,
+ * The command palette (Cmd/Ctrl+K): go anywhere in the budget (pages,
  * accounts, categories, months, reports, settings, other budgets), run what the screen offers
  * with its keys shown, search transactions, ask the AI, and switch theme. A search ranks every
  * source together; Enter runs the best match, and Cmd/Ctrl+Enter asks the AI instead.

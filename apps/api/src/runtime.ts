@@ -1,4 +1,4 @@
-import { createDb } from "@everycent/db";
+import { createDb } from "@strictbudget/db";
 import type { Env } from "./env";
 import { createAuth } from "./lib/auth";
 import { ChangeBus } from "./lib/change-bus";
@@ -37,7 +37,6 @@ export async function createRuntime(env: Env, { worker }: { worker: boolean }) {
   }
   return {
     deps,
-    /** Stops taking jobs, lets running ones finish, then closes the database. */
     close: async () => {
       await jobs.stop();
       await closeDb();

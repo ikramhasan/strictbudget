@@ -103,8 +103,8 @@ describe("transactions", () => {
 
     await add({ accountId: checking.id, amount: "-450", payeeName: "corner shop" });
     const rows = await register(checking.id);
-    // The same day: the largest outflow on top, as YNAB sorts, and the balance runs from the
-    // bottom. The second one reused the payee despite the different case.
+    // The same day: the largest outflow on top, and the balance runs from the bottom. The
+    // second one reused the payee despite the different case.
     expect(rows.map((r) => [r.amount, r.payeeName, r.runningBalance])).toEqual([
       ["-2550", "Corner Shop", "97000"],
       ["-450", "Corner Shop", "99550"],
@@ -205,7 +205,6 @@ describe("transactions", () => {
     });
     expect((await balances(checking.id))?.cleared).toBe("8500");
 
-    // Clearing the payee leaves the rest alone.
     const noPayee = await json<Txn>(await send("PATCH", path, cookie, { payeeName: null }));
     expect(noPayee).toMatchObject({ payeeName: null, categoryId: rent.id });
 

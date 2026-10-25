@@ -1,11 +1,9 @@
-import type { ApiError, components } from "@everycent/api-client";
+import type { ApiError, components } from "@strictbudget/api-client";
 import type { QueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { $api } from "./api";
 
-// YNAB words it like moment's fromNow ("Last used 9 minutes ago", "a day ago"); dayjs's
-// relativeTime plugin gives the same wording.
 dayjs.extend(relativeTime);
 
 export type Budget = components["schemas"]["Budget"];
@@ -26,7 +24,6 @@ export function pickBudgetRedirect(list: BudgetList): string | null {
   );
 }
 
-/** YNAB's plan list line: "Last used 9 minutes ago" (2026-10-15, EVERYCENT-151). */
 export function lastUsedLabel(lastUsedAt: string, now = new Date()) {
   return `Last used ${dayjs(lastUsedAt).from(now)}`;
 }
@@ -40,7 +37,6 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
   return (error as Partial<ApiError> | null)?.error?.message ?? fallback;
 }
 
-/** Refetch everything that shows budgets after a create, update or delete. */
 export async function invalidateBudgets(queryClient: QueryClient) {
   await queryClient.invalidateQueries({ queryKey: ["get", "/v1/budgets"] });
   await queryClient.invalidateQueries({ queryKey: ["get", "/v1/budgets/{budgetId}"] });

@@ -1,20 +1,20 @@
 import { createHash } from "node:crypto";
 import type { RouteHandler } from "@hono/zod-openapi";
 import { loadBudgetAccess } from "../../lib/budget-access";
-import { httpYnabClient } from "../../lib/ynab/client";
-import { fromYnabApi } from "../../lib/ynab/from-api";
-import { csvAccounts, fromYnabCsv } from "../../lib/ynab/from-csv";
-import { importConverted, type YnabImportResult } from "../../lib/ynab/import";
+import { httpExternalClient } from "../../lib/external-import/client";
+import { fromExternalApi } from "../../lib/external-import/from-api";
+import { csvAccounts, fromExternalCsv } from "../../lib/external-import/from-csv";
+import { type ExternalImportResult, importConverted } from "../../lib/external-import/import";
 import type { AuthedEnv } from "../../middleware/require-auth";
 import type { AppEnv } from "../../types";
 import { toBudgetJson } from "../budgets/handlers";
-import type { importYnabFiles, importYnabPlan, listYnabPlans } from "./routes";
+import type { importExternalFiles, importExternalPlan, listExternalPlans } from "./routes";
 
 type Env = AppEnv & AuthedEnv;
 
-export const listYnabPlansHandler: RouteHandler<typeof listYnabPlans, Env> = async (c) => {
+export const listExternalPlansHandler: RouteHandler<typeof listExternalPlans, Env> = async (c) => {
   const { token } = c.req.valid("json");
-  const client = c.var.deps.ynab ?? httpYnabClient();
+  const client = c.var.deps.externalPlans ?? httpExternalClient();
   const plans = await client.listPlans(token);
   return c.json(
     {
@@ -29,7 +29,7 @@ export const listYnabPlansHandler: RouteHandler<typeof listYnabPlans, Env> = asy
 };
 
 // biome-ignore lint/suspicious/noExplicitAny: any route's context
-async function report(c: Parameters<RouteHandler<any, Env>>[0], result: YnabImportResult) {
+async function report(c: Parameters<RouteHandler<any, Env>>[0], result: ExternalImportResult) {
   const access = await loadBudgetAccess(c, result.budgetId);
   return {
     budget: toBudgetJson(access),
@@ -39,24 +39,28 @@ async function report(c: Parameters<RouteHandler<any, Env>>[0], result: YnabImpo
   };
 }
 
-export const importYnabPlanHandler: RouteHandler<typeof importYnabPlan, Env> = async (c) => {
+export const importExternalPlanHandler: RouteHandler<typeof importExternalPlan, Env> = async (
+  c,
+) => {
   const { token, planId, name, replace } = c.req.valid("json");
-  const client = c.var.deps.ynab ?? httpYnabClient();
+  const client = c.var.deps.externalPlans ?? httpExternalClient();
   const plan = await client.getPlan(token, planId);
-  const result = await importConverted(c, fromYnabApi(plan), {
-    source: `ynab:${plan.id}`,
+  const result = await importConverted(c, fromExternalApi(plan), {
+    source: `external:${plan.id}`,
     name,
     replace,
   });
   return c.json(await report(c, result), result.reused ? 200 : 201);
 };
 
-export const importYnabFilesHandler: RouteHandler<typeof importYnabFiles, Env> = async (c) => {
+export const importExternalFilesHandler: RouteHandler<typeof importExternalFiles, Env> = async (
+  c,
+) => {
   const body = c.req.valid("json");
   if (body.dryRun) {
     return c.json({ accounts: csvAccounts(body.register, body.plan, body) }, 200);
   }
-  const conversion = fromYnabCsv(
+  const conversion = fromExternalCsv(
     { plan: body.plan, register: body.register, name: body.name },
     body,
   );
@@ -66,7 +70,7 @@ export const importYnabFilesHandler: RouteHandler<typeof importYnabFiles, Env> =
     .update(body.register)
     .digest("hex");
   const result = await importConverted(c, conversion, {
-    source: `ynab-files:${hash}`,
+    source: `external-files:${hash}`,
     replace: body.replace,
   });
   return c.json(await report(c, result), result.reused ? 200 : 201);

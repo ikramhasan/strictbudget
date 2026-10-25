@@ -1,7 +1,7 @@
-import { Button } from "@everycent/ui/components/button";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@everycent/ui/components/toggle-group";
-import { cn } from "@everycent/ui/lib/utils";
+import { Button } from "@strictbudget/ui/components/button";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ChartColumn, ImageDown, Table2 } from "lucide-react";
 import { domToBlob } from "modern-screenshot";
 import { type ReactNode, useRef, useState } from "react";
@@ -10,11 +10,7 @@ import { saveBlob } from "@/lib/reports";
 
 export type ChartView = "chart" | "table";
 
-/**
- * A report's chart with its table view (every chart has one: it's the accessible alternative),
- * loading and empty states, and Save as PNG (an everycent extra). The table is what `view`
- * "table" shows; the PNG is of the chart.
- */
+/** Every chart has a table view (the accessible alternative); the PNG is of the chart. */
 export function ChartCard({
   title,
   view,
@@ -30,7 +26,6 @@ export function ChartCard({
   view: ChartView;
   onViewChange: (view: ChartView) => void;
   loading?: boolean;
-  /** Shown instead of the chart and table when there's nothing to show. */
   empty?: ReactNode;
   chart: ReactNode;
   table: ReactNode;

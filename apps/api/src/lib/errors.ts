@@ -35,7 +35,6 @@ export function errorBody(code: string, message: string, details?: unknown): Err
   return { error: details === undefined ? { code, message } : { code, message, details } };
 }
 
-/** OpenAPI response entry for an error status. */
 export function jsonError(description: string) {
   return { description, content: { "application/json": { schema: ErrorSchema } } };
 }

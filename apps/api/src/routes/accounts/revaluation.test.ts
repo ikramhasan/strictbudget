@@ -2,8 +2,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 import type { FakeFxProvider } from "../../lib/fx/fake";
 
-// EVERYCENT-56: unrealized FX gain/loss on foreign-currency accounts, and revaluing it into the
-// budget (Ready to Assign for budget accounts).
+// Unrealized FX gain/loss on foreign-currency accounts, and revaluing it into the budget (Ready
+// to Assign for budget accounts).
 const { app, db, close, fxProviders } = createTestApp();
 const fx = fxProviders[0] as FakeFxProvider;
 beforeEach(async () => {
@@ -214,7 +214,7 @@ describe("revaluing an account", () => {
     // At 1.2 it owes $120.00: a $10.00 loss.
     const { transaction } = await json<{ transaction: Txn }>(await revalue(card.id));
     expect(transaction.baseAmount).toBe("-1000");
-    // No money is made or lost in the plan: Ready to Assign stays and the payment category
+    // No money is made or lost in the budget: Ready to Assign stays and the payment category
     // falls $10.00 further short of the balance.
     expect(await payment()).toMatchObject({
       readyToAssign: before.readyToAssign,

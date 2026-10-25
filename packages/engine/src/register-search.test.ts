@@ -45,7 +45,7 @@ describe("parseSearch", () => {
     ]);
   });
 
-  it("reads the approval terms (YNAB, 2026-10-16, EVERYCENT-65)", () => {
+  it("reads the approval terms", () => {
     expect(
       parseSearch(
         "Is: Approved, is: unapproved, IS: NEEDS CATEGORY, Is: Unapproved or Needs Category",
@@ -60,7 +60,7 @@ describe("parseSearch", () => {
   });
 
   it("reads Income: as a month name, in full or three letters, with an optional year", () => {
-    // The forms that matched October in YNAB (2026-10-15, EVERYCENT-114).
+    // The forms that match October.
     expect(
       parseSearch(
         "Income: October 2026, income: oct 2026, INCOME: OCTOBER 2026, Income: Oct, Income: may",
@@ -94,8 +94,8 @@ describe("parseSearch", () => {
 
 describe("parseSearch dates", () => {
   it("completes a partial date in a typed On:/Before:/After: term", () => {
-    // YNAB (2026-10-15): "On: 10/11," and "On: x1011," matched the 10/11/2026 rows; "After:
-    // 10/14," showed 10/14/2026 onward.
+    // "On: 10/11," and "On: x1011," match the 10/11/2026 rows; "After: 10/14," shows 10/14/2026
+    // onward.
     expect(
       parseSearch("On: 10/11, On: x1011, After: 10/14, Before: 5, On: 13", settings, TODAY),
     ).toEqual([
@@ -113,7 +113,6 @@ const read = (format: DateFormat, ...texts: string[]) =>
   texts.map((t) => completeDate(t, format, TODAY));
 
 describe("completeDate", () => {
-  // Every case below is what YNAB's search box offered (2026-10-15/16, EVERYCENT-167).
   it("reads full dates in the budget's format", () => {
     expect(read("MM/DD/YYYY", "10/02/2026", "1/2/2030", "02/29/2028")).toEqual([
       "2026-10-02",

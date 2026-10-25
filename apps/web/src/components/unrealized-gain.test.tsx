@@ -1,4 +1,4 @@
-import { formatAmount, money } from "@everycent/engine";
+import { formatAmount, money } from "@strictbudget/engine";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";

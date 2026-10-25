@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { newId, sql } from "@everycent/db";
-import { budget, budgetAccount, fxRate, fxRateOverride } from "@everycent/db/schema";
-import { type CurrencyCode, crossRate, invertRate, normalizeRate } from "@everycent/engine";
+import { newId, sql } from "@strictbudget/db";
+import { budget, budgetAccount, fxRate, fxRateOverride } from "@strictbudget/db/schema";
+import { type CurrencyCode, crossRate, invertRate, normalizeRate } from "@strictbudget/engine";
 import { and, desc, eq, inArray, lt, ne, or } from "drizzle-orm";
 import type { AppDeps } from "../../types";
 import { shiftDay } from "../dates";
@@ -124,7 +124,7 @@ export interface PrefetchInput {
 }
 
 /**
- * Looks up the rates a write will need before it changes anything (EVERYCENT-201): each of these
+ * Looks up the rates a write will need before it changes anything: each of these
  * currencies to and from the budget's, on each date. A provider fetch then happens while the
  * request's transaction holds no locks, and the write's own lookups find what it fetched (any pair
  * of these currencies, through a pivot). A rate that can't be had is left for the write's lookup to
@@ -281,7 +281,7 @@ const deferred = new AsyncLocalStorage<FxRateRow[]>();
 
 /**
  * Runs a write request's transaction (`inRequestTransaction`) with the rates it fetches kept out of
- * it (EVERYCENT-201): they're written to the cache on `db` (the pool, not the transaction) once the
+ * it: they're written to the cache on `db` (the pool, not the transaction) once the
  * transaction has ended, committed or not. Writing them inside it would hold the new `fx_rate` rows
  * locked until the request finishes, so another request caching the same rate waits on it, and a
  * rolled-back request would lose them. Until then, lookups in the request see them.
@@ -325,7 +325,7 @@ async function cacheRates(db: Db, rows: FxRateRow[]) {
 
 /**
  * A write fetches its rates before it changes anything, so a slow provider doesn't keep rows
- * locked that other requests wait on (EVERYCENT-201). Logs a fetch that comes after one (a
+ * locked that other requests wait on. Logs a fetch that comes after one (a
  * transaction with an id has written or locked rows).
  */
 async function warnIfHoldingLocks(db: Db, lookup: { base: string; date: string }) {
@@ -436,7 +436,7 @@ function fetchOnce(
 }
 
 /**
- * The `fx.prefetch` job (EVERYCENT-192), a few times a day: fetches today's market rates once per
+ * The `fx.prefetch` job, a few times a day: fetches today's market rates once per
  * budget currency that has a foreign account, so reads find them cached. A base that already has
  * today's own rate is skipped. Early in the day a provider may only have yesterday's (currency-api
  * 404s until the day's file is out, Frankfurter has no weekend rates); that answer is cached as

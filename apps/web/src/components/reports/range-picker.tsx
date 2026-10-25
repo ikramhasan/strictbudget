@@ -6,28 +6,25 @@ import {
   REPORT_PRESETS,
   type ReportPreset,
   shiftRange,
-} from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
+} from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@everycent/ui/components/dialog";
-import { Label } from "@everycent/ui/components/label";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { RadioGroup, RadioGroupItem } from "@everycent/ui/components/radio-group";
+} from "@strictbudget/ui/components/dialog";
+import { Label } from "@strictbudget/ui/components/label";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { RadioGroup, RadioGroupItem } from "@strictbudget/ui/components/radio-group";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { monthLabel, PRESET_LABELS, rangeLabel } from "@/lib/reports";
 
 export type RangeChange = { range: ReportPreset } | { from: BudgetMonth; to: BudgetMonth };
 
-/**
- * YNAB's report date range (2026-10-17): arrows that move the whole range by its length (Next
- * stops at the current month), and a dialog with the presets and a custom start and end month.
- */
+/** The arrows move the whole range by its length; Next stops at the current month. */
 export function RangePicker({
   range,
   preset,

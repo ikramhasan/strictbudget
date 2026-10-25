@@ -1,4 +1,4 @@
-import { addMonths, type BudgetFormatSettings, formatAmount } from "@everycent/engine";
+import { addMonths, type BudgetFormatSettings, formatAmount } from "@strictbudget/engine";
 import { html } from "hono/html";
 import {
   button,
@@ -17,7 +17,7 @@ import type { MonthlySummary } from "./data";
 import { dayAndMonth, monthAndYear, monthName, shortMonthName } from "./format";
 
 /**
- * The monthly summary email (EVERYCENT-241), one per budget per member. Unlike the auth emails it
+ * The monthly summary email, one per budget per member. Unlike the auth emails it
  * shows names from the budget (its own, categories, payees): they come from a budget the
  * recipient is on, and like every interpolation they're escaped. Sections with nothing to say
  * are left out.
@@ -43,7 +43,6 @@ function h2(text: string) {
   return html`<h2 class="ec-strong" style="margin:0;font-size:15px;line-height:1.4;font-weight:600;color:${C.strong}">${text}</h2>`;
 }
 
-/** A section heading with a link or a note on the right. */
 function headRow(title: string, right?: Html) {
   return html`<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="vertical-align:baseline">${h2(title)}</td>${
     right
@@ -62,7 +61,6 @@ interface Row {
   dot?: "destructive" | "warn";
 }
 
-/** A list of name/amount rows with rules between them. */
 function rows(items: Row[]) {
   return html`<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${items.map(
     (r, i) => {
@@ -126,7 +124,6 @@ export function monthlySummaryEmail(input: SummaryEmailInput): EmailMessage {
     formatAmount({ amount, currency: s.currency }, budget).replace(/^-/, MINUS);
   const signed = (amount: bigint) =>
     `${amount < 0n ? MINUS : "+"}${money(amount < 0n ? -amount : amount)}`;
-  // A scheduled transaction is in its account's currency: one that isn't the budget's is named.
   const upcomingAmount = (u: { amount: bigint; currency: MonthlySummary["currency"] }) =>
     upcomingMoney(u, s.currency, budget);
   const foreign = s.upcoming.items.some((u) => u.currency !== s.currency);
@@ -144,7 +141,7 @@ export function monthlySummaryEmail(input: SummaryEmailInput): EmailMessage {
         ? `You spent ${money(s.spent)}, and ${money(s.readyToAssign)} is still waiting for a job.`
         : `You spent ${money(s.spent)} and every cent had a job.`;
   // The budget's name tells apart the emails of someone on several budgets.
-  const subject = `Your ${month} in everycent: ${budget.name}`;
+  const subject = `Your ${month} in strictbudget: ${budget.name}`;
   const lede = `Here's how ${month} went, and what's coming up in ${nextName}.`;
 
   // Key numbers. Spending less than last month is good news; earning less isn't.
@@ -196,7 +193,7 @@ ${st.note ? html`<div class="ec-muted-fg" style="font-size:12px;color:${C.mutedF
                   html`<li style="${i < overview.points.length - 1 ? "padding-bottom:6px" : ""}">${p}</li>`,
               )}</ul>`,
             mutedText(
-              "Written from this month's budget data. AI can make mistakes, so check the numbers in everycent.",
+              "Written from this month's budget data. AI can make mistakes, so check the numbers in strictbudget.",
               12,
             ),
           ],
@@ -332,7 +329,7 @@ ${st.note ? html`<div class="ec-muted-fg" style="font-size:12px;color:${C.mutedF
   const footer = [
     html`You get this summary on the 1st of each month for the budgets you're a member of. Amounts are in ${s.currency}, the budget's currency${foreign ? ", unless another currency is named" : ""}.`,
     html`<a href="${settingsUrl}" class="ec-muted-fg" style="color:${C.mutedFg};text-decoration:underline">Email settings</a> · <a href="${input.unsubscribeUrl}" class="ec-muted-fg" style="color:${C.mutedFg};text-decoration:underline">Unsubscribe from monthly summaries</a>`,
-    html`everycent`,
+    html`strictbudget`,
   ];
 
   const text = [

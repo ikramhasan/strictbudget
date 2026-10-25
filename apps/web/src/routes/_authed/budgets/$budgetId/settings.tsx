@@ -8,16 +8,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@everycent/ui/components/alert-dialog";
-import { Button } from "@everycent/ui/components/button";
+} from "@strictbudget/ui/components/alert-dialog";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@everycent/ui/components/card";
-import { TabsContent } from "@everycent/ui/components/tabs";
+} from "@strictbudget/ui/components/card";
+import { TabsContent } from "@strictbudget/ui/components/tabs";
 import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { FileDown } from "lucide-react";
@@ -116,7 +116,7 @@ function BudgetSettingsPage() {
       budget={budget}
     >
       <TabsContent value="general" className="grid gap-6">
-        {/* A viewer (EVERYCENT-88) sees the settings but can't change them. */}
+        {/* A viewer sees the settings but can't change them. */}
         <SettingsSection id="general">
           <Card>
             <CardHeader>
@@ -219,7 +219,7 @@ function BudgetSettingsPage() {
           </Card>
         </SettingsSection>
 
-        {/* An archived budget can start fresh again, as in YNAB. */}
+        {/* An archived budget can start fresh again. */}
         {budget.role === "owner" && (
           <SettingsSection id="fresh-start">
             <Card>

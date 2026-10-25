@@ -1,7 +1,7 @@
-import { Button } from "@everycent/ui/components/button";
-import { Input } from "@everycent/ui/components/input";
-import { Textarea } from "@everycent/ui/components/textarea";
-import { cn } from "@everycent/ui/lib/utils";
+import { Button } from "@strictbudget/ui/components/button";
+import { Input } from "@strictbudget/ui/components/input";
+import { Textarea } from "@strictbudget/ui/components/textarea";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 

@@ -1,5 +1,5 @@
-import { scheduledTransaction } from "@everycent/db/schema";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { scheduledTransaction } from "@strictbudget/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { type Db, serverToday } from "../../lib/ledger";
@@ -85,8 +85,7 @@ export const bulkUpdateScheduledTransactionsHandler: RouteHandler<
     return picked;
   };
   if (action.type === "enterNow") {
-    // Enter Now converts at `today`: look the rates up before any schedule is locked
-    // (EVERYCENT-247).
+    // Enter Now converts at `today`: look the rates up before any schedule is locked.
     const own = pick(await scheduledRows(db, budgetId)).map((p) => p.own.id);
     await prefetchScheduleRates(db, c.var.deps, budgetId, { scheduleIds: own, dates: [today] });
   }

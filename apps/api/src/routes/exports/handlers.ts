@@ -1,3 +1,4 @@
+import type { RouteHandler } from "@hono/zod-openapi";
 import {
   budgetAccount,
   category,
@@ -6,7 +7,7 @@ import {
   payee,
   subTransaction,
   transaction,
-} from "@everycent/db/schema";
+} from "@strictbudget/db/schema";
 import {
   addMonths,
   type BudgetMonth,
@@ -28,8 +29,7 @@ import {
   PLAN_EXPORT_HEADER,
   REGISTER_EXPORT_FX_HEADER,
   REGISTER_EXPORT_HEADER,
-} from "@everycent/engine";
-import type { RouteHandler } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { and, asc, desc, eq, gt, inArray, lt, or, type SQL } from "drizzle-orm";
 import type { Context } from "hono";
 import { stream } from "hono/streaming";
@@ -46,13 +46,10 @@ import type { exportPlan, exportRegister, exportSelectedTransactions } from "./r
 type Env = AppEnv & AuthedEnv;
 type BudgetRow = Awaited<ReturnType<typeof loadBudgetAccess>>["budget"];
 
-/** Rows fetched per query while streaming the register. */
 const PAGE = 500;
 
-/** A row's cells joined by the separator. */
 const line = (cells: readonly string[], separator: string) => cells.join(separator);
 
-/** Streams `rows` as a delimited file: the header, then each row on its own CRLF line. */
 function delimitedResponse(
   // biome-ignore lint/suspicious/noExplicitAny: any route's context
   c: Context<Env, any, any>,
@@ -76,7 +73,6 @@ function delimitedResponse(
   }) as never;
 }
 
-/** An amount cell: the budget's number format, no group separator. */
 const amountCell = (budget: BudgetRow, amount: bigint, currency: CurrencyCode) =>
   formatAmount({ amount, currency }, budget, { grouping: false });
 
@@ -185,7 +181,7 @@ function categoryOf(r: {
 
 /**
  * Streams the register file: the budget's transactions (or those `where` picks), newest first,
- * then smallest amount first (YNAB's order), a split as one row per line.
+ * then smallest amount first, a split as one row per line.
  */
 async function writeRegister(
   db: Db,

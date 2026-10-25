@@ -6,7 +6,6 @@ import {
   type ScheduleFrequency,
 } from "./schedule";
 
-/** `count` dates of a schedule, starting with `dateFirst`. */
 function sequence(frequency: ScheduleFrequency, dateFirst: string, count: number) {
   const dates = [dateFirst];
   while (dates.length < count) {
@@ -17,8 +16,6 @@ function sequence(frequency: ScheduleFrequency, dateFirst: string, count: number
   return dates;
 }
 
-// Every sequence below is what YNAB's API reported after each Enter Now (plan "Onboarding
-// Check", 2026-10-11).
 describe("nextOccurrence", () => {
   it("never repeats a one-off", () => {
     expect(nextOccurrence("never", "2026-10-14", "2026-10-14")).toBeNull();
@@ -197,7 +194,7 @@ describe("nextOccurrence", () => {
 });
 
 describe("firstOccurrenceAfter", () => {
-  it("skips the occurrences up to the date (YNAB: monthly from 9/01 added on 10/11 → 11/01)", () => {
+  it("skips the occurrences up to the date (monthly from 9/01 added on 10/11 → 11/01)", () => {
     expect(firstOccurrenceAfter("monthly", "2026-09-01", "2026-10-11")).toBe("2026-11-01");
     expect(firstOccurrenceAfter("weekly", "2026-10-11", "2026-10-11")).toBe("2026-10-18");
   });
@@ -209,7 +206,6 @@ describe("firstOccurrenceAfter", () => {
 });
 
 describe("occurrencesBetween", () => {
-  // YNAB, 2026-10-12: a weekly $10 from 10/14 is 3 upcoming in October, 4 in November (U10 F).
   const weekly = { frequency: "weekly" as const, dateFirst: "2026-10-14", dateNext: "2026-10-14" };
 
   it("lists the occurrences after a date up to another, from the pending one", () => {

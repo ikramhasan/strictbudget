@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Collapsible as CollapsiblePrimitive } from "radix-ui";
 
 function Collapsible({ ...props }: React.ComponentProps<typeof CollapsiblePrimitive.Root>) {
@@ -20,7 +20,7 @@ function CollapsibleContent({
   return (
     <CollapsiblePrimitive.CollapsibleContent
       data-slot="collapsible-content"
-      // The Accordion's height animation. everycent: Radix measures the content into
+      // The Accordion's height animation. strictbudget: Radix measures the content into
       // --radix-collapsible-content-height (read by tw-animate-css's collapsible keyframes) and
       // marks state with data-state, where Base UI uses a height transition. Clipped with a 4px
       // margin so focus rings and raised shadows at the edges still show.

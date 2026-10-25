@@ -7,14 +7,13 @@ import {
   FieldLegend,
   FieldSeparator,
   FieldSet,
-} from "@everycent/ui/components/field";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { Switch } from "@everycent/ui/components/switch";
+} from "@strictbudget/ui/components/field";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { Switch } from "@strictbudget/ui/components/switch";
 import { Calculator, ChartColumn, CircleAlert, MessageSquareText, SquarePen } from "lucide-react";
 import { McpSetup } from "@/components/agent-setup";
 import { aiUnavailableMessage, useAiSettings, useUpdateAiSettings } from "@/lib/ai";
 
-/** What the in-app AI will help with, listed before it's turned on. */
 const CAPABILITIES = [
   {
     icon: MessageSquareText,
@@ -69,7 +68,7 @@ export function AiSettingsFields({ budgetId, canEdit }: { budgetId: string; canE
       <FieldSet>
         <FieldLegend>Use your own agent</FieldLegend>
         <FieldDescription>
-          Connect Claude, Cursor or another agent to everycent over MCP. It works whether or not
+          Connect Claude, Cursor or another agent to strictbudget over MCP. It works whether or not
           in-app AI is on.
         </FieldDescription>
         <McpSetup />

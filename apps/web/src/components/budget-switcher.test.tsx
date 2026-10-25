@@ -1,4 +1,4 @@
-import { SidebarProvider } from "@everycent/ui/components/sidebar";
+import { SidebarProvider } from "@strictbudget/ui/components/sidebar";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -75,7 +75,7 @@ describe("BudgetSwitcher", () => {
       "href",
       "/budgets",
     );
-    // The current budget's own items, as in YNAB's plan menu.
+    // The current budget's own items.
     expect(screen.getByRole("menuitem", { name: "Edit Flags" })).toBeInTheDocument();
   });
 

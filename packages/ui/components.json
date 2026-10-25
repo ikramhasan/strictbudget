@@ -11,10 +11,10 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@everycent/ui/components",
-    "utils": "@everycent/ui/lib/utils",
-    "hooks": "@everycent/ui/hooks",
-    "lib": "@everycent/ui/lib",
-    "ui": "@everycent/ui/components"
+    "components": "@strictbudget/ui/components",
+    "utils": "@strictbudget/ui/lib/utils",
+    "hooks": "@strictbudget/ui/hooks",
+    "lib": "@strictbudget/ui/lib",
+    "ui": "@strictbudget/ui/components"
   }
 }

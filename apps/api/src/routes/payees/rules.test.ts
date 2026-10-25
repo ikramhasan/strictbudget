@@ -32,7 +32,6 @@ async function setup() {
       date: TODAY,
     }),
   );
-  /** A payee, made by spending with it. */
   const payeeId = async (payeeName: string) => {
     const txn = await json<{ payeeId: string }>(
       await send("POST", `${base}/transactions`, owner.cookie, {
@@ -64,7 +63,7 @@ describe("payee renaming rules", () => {
     const { owner, base, payeeId, addRule, rulesOf } = await setup();
     const coffee = await payeeId("Coffee");
     const first = await addRule(coffee, "contains", "  Starbucks  ");
-    // The same rule twice is allowed, and the text is kept as typed (YNAB).
+    // The same rule twice is allowed, and the text is kept as typed.
     await addRule(coffee, "is", "starbucks");
     await addRule(coffee, "is", "starbucks");
     expect(await rulesOf(coffee)).toEqual([

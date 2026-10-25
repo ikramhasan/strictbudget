@@ -1,10 +1,10 @@
-import { budget, scheduledTransaction, transaction } from "@everycent/db/schema";
+import { budget, scheduledTransaction, transaction } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import type { Db } from "./ledger";
 
 /**
- * Removes a budget's transactions and scheduled transactions, ahead of the budget itself
- * (EVERYCENT-207). Split lines refer to categories with no cascade, so a cascade from the budget
+ * Removes a budget's transactions and scheduled transactions, ahead of the budget itself.
+ * Split lines refer to categories with no cascade, so a cascade from the budget
  * that reached a category before the split lines that use it failed the whole delete.
  */
 export async function deleteBudgetTransactions(db: Db, budgetId: string) {

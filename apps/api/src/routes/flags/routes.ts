@@ -1,5 +1,5 @@
-import { FLAG_COLORS } from "@everycent/db/schema";
 import { createRoute, z } from "@hono/zod-openapi";
+import { FLAG_COLORS } from "@strictbudget/db/schema";
 import { jsonError } from "../../lib/errors";
 import { authSecurity, requireAuth } from "../../middleware/require-auth";
 
@@ -11,7 +11,7 @@ const FlagSchema = z
   .openapi("Flag");
 
 const FlagListSchema = z
-  .object({ flags: z.array(FlagSchema).describe("All six colors, in YNAB's order") })
+  .object({ flags: z.array(FlagSchema).describe("All six colors, in display order") })
   .openapi("FlagList");
 
 const BudgetParams = z.object({

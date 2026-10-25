@@ -1,10 +1,10 @@
-import { auditEvent, transaction, user } from "@everycent/db/schema";
+import { auditEvent, transaction, user } from "@strictbudget/db/schema";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { AppError } from "./errors";
 import type { Db } from "./ledger";
 
 /**
- * Preconditions for undo and redo (EVERYCENT-36): an inverse replays a row as it was, so a
+ * Preconditions for undo and redo: an inverse replays a row as it was, so a
  * partner's later change to the same row would be overwritten. Undo sends the version it saw
  * (`expectedVersion`; `expectedAssigned` for an assigned amount) and a changed row is refused.
  */

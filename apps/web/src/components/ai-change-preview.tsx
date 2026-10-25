@@ -1,4 +1,4 @@
-import { isCurrencyCode, money } from "@everycent/engine";
+import { isCurrencyCode, money } from "@strictbudget/engine";
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { accountsQueryOptions } from "@/lib/accounts";

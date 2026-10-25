@@ -1,5 +1,5 @@
-import { ToggleGroup, ToggleGroupItem } from "@everycent/ui/components/toggle-group";
-import { cn } from "@everycent/ui/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
+import { cn } from "@strictbudget/ui/lib/utils";
 import type { ReactNode } from "react";
 import { type BudgetFilter, fitsViewsBar, isPresetFilter } from "@/lib/budget-view";
 
@@ -20,14 +20,10 @@ const BAR_VIEWS = 4;
 const FIXED: readonly BudgetFilter[] = ["all", "overspent"];
 
 /**
- * YNAB's views above the budget list: All, Overspent (with its count), then Underfunded,
- * Overfunded, Money Available, Snoozed and the custom views in the plan's order, and the Views
- * Menu after them. Views that don't fit the window (`fitsViewsBar`) move into the Views Menu,
- * except the selected one.
- *
- * everycent differs on purpose (Plane, "Design notes and known differences"): the views are text
- * tabs, the bar shows at most four (`BAR_VIEWS`) however wide the window, and the Views Menu is a
- * "More" tab holding the rest.
+ * The views above the budget list: All, Overspent (with its count), then Underfunded, Overfunded,
+ * Money Available, Snoozed and the custom views in the plan's order. The bar shows at most four
+ * (`BAR_VIEWS`), fewer when the window is narrow (`fitsViewsBar`); the rest go into a "More" tab
+ * (the Views Menu), except the selected one.
  */
 export function BudgetFilterBar({
   filter,
@@ -39,11 +35,9 @@ export function BudgetFilterBar({
   viewportWidth = Number.POSITIVE_INFINITY,
   menu,
 }: {
-  /** A preset view or a custom view's id. */
   filter: string;
-  /** How many categories are overspent this month. */
   overspent: number;
-  /** All of it is credit overspending: YNAB draws the view yellow instead of red. */
+  /** All of it is credit overspending: the view is drawn yellow instead of red. */
   onlyCredit?: boolean;
   onChange: (filter: string) => void;
   /** The rearrangeable views in order: preset keys and custom view ids. */
@@ -63,14 +57,13 @@ export function BudgetFilterBar({
     snoozed: "Snoozed",
   };
   const names = new Map(custom.map((v) => [v.id, v.name]));
-  // YNAB leaves Overspent out when nothing is, unless that view is on ("0 Overspent").
+  // Overspent is left out when nothing is, unless that view is on ("0 Overspent").
   const keys = [...FIXED, ...order].filter(
     (key) =>
       (isPresetFilter(key) || names.has(key)) &&
       (key !== "overspent" || overspent > 0 || filter === key),
   );
   const label = (key: string) => (isPresetFilter(key) ? labels[key] : (names.get(key) ?? key));
-  // Four views on the bar (fewer if the window is narrow); the rest, and Manage Views, in "More".
   const onBar = keys.filter(
     (key, i) => key === filter || (i < BAR_VIEWS && fitsViewsBar(i, viewportWidth)),
   );
@@ -79,7 +72,6 @@ export function BudgetFilterBar({
     .map((key) => ({ key, label: label(key) }));
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-1">
-      {/* Text tabs: the chosen view in full colour and weight with an underline, the rest muted. */}
       <ToggleGroup
         type="single"
         size="sm"

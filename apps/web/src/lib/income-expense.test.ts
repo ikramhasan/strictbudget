@@ -7,7 +7,6 @@ import {
   incomeExpenseExportRows,
 } from "./income-expense";
 
-// A slice of YNAB's test plan, Aug–Oct 2026 (2026-10-17).
 const input: IncomeExpenseInput = {
   months: ["2026-08", "2026-09", "2026-10"],
   income: [
@@ -115,7 +114,7 @@ describe("buildIncomeExpense", () => {
 describe("export", () => {
   const table = buildIncomeExpense(input);
 
-  it("follows YNAB's rows: group rows carry the total, no Total <Group> rows", () => {
+  it("writes the export rows: group rows carry the total, no Total <Group> rows", () => {
     const rows = incomeExpenseExportRows(table, 2, "comma_dot");
     expect(rows.map((r) => r[0])).toEqual([
       "Category",

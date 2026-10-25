@@ -1,4 +1,4 @@
-import { type Database, newId, sql } from "@everycent/db";
+import { type Database, newId, sql } from "@strictbudget/db";
 import {
   type ClearedState,
   category,
@@ -8,8 +8,8 @@ import {
   type InternalPayeeKind,
   payee,
   transaction,
-} from "@everycent/db/schema";
-import { type AccountType, isOnBudget } from "@everycent/engine";
+} from "@strictbudget/db/schema";
+import { type AccountType, isOnBudget } from "@strictbudget/engine";
 import { and, eq, isNull, lte, max } from "drizzle-orm";
 import { type BaseFields, baseFields, budgetCurrencyOf, type FxDeps } from "./base-amount";
 import { loanChargeBalances } from "./loans";
@@ -133,11 +133,11 @@ export interface NewTransaction {
   cleared: ClearedState;
   memo?: string;
   flag?: FlagColor | null;
-  /** False for scheduled transactions entered on their date (YNAB asks to approve those). */
+  /** False for scheduled transactions entered on their date (they wait for approval). */
   approved?: boolean;
   transferTransactionId?: string | null;
   transferSubTransactionId?: string | null;
-  /** A file import's id and payee as the file named it (EVERYCENT-66). */
+  /** A file import's id and payee as the file named it. */
   importId?: string | null;
   importedPayee?: string | null;
   /**
@@ -175,7 +175,7 @@ export async function insertTransaction(db: Db, values: NewTransaction) {
     }
   }
   await db.insert(transaction).values({ id, ...row, ...base });
-  // An add updates the payee's auto-categorization default (EVERYCENT-182).
+  // An add updates the payee's auto-categorization default.
   if (row.payeeId) await notePayeeCategorizations(db, row.budgetId, [id]);
   return id;
 }
@@ -256,7 +256,7 @@ export async function accountBalances(
     .from(transaction)
     .where(and(eq(transaction.budgetId, budgetId), lte(transaction.date, today)))
     .groupBy(transaction.accountId);
-  // A loan's interest and escrow aren't transactions but add to what it owes (phase 7f).
+  // A loan's interest and escrow aren't transactions but add to what it owes.
   const charges = await loanChargeBalances(db, budgetId, today);
   const balances = new Map<string, AccountBalances>();
   for (const row of rows) {
@@ -272,9 +272,9 @@ export async function accountBalances(
 export const ZERO_BALANCES: AccountBalances = { cleared: 0n, uncleared: 0n, working: 0n };
 
 /**
- * An account's Starting Balance, as YNAB records it: money in budget accounts goes to Ready to
- * Assign; credit debt has no category (existing debt, paid from the payment category; Design
- * notes); off-budget accounts never have a category.
+ * An account's Starting Balance: money in budget accounts goes to Ready to Assign; credit debt has
+ * no category (existing debt, paid from the payment category); off-budget accounts never have a
+ * category.
  */
 export async function insertStartingBalance(
   db: Db,

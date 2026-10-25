@@ -1,4 +1,4 @@
-import { runMigrations } from "@everycent/db";
+import { runMigrations } from "@strictbudget/db";
 import { isPreviewDeploy, parseEnv } from "../env";
 import { seedDemoUser } from "../lib/demo-user";
 import { installJobs } from "../lib/jobs/install";

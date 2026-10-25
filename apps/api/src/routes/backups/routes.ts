@@ -20,9 +20,9 @@ export const exportBackup = createRoute({
   tags: ["Export"],
   security: authSecurity,
   middleware: [requireAuth] as const,
-  summary: "The whole budget as everycent's versioned JSON backup (streamed)",
+  summary: "The whole budget as strictbudget's versioned JSON backup (streamed)",
   description:
-    "An everycent extra (EVERYCENT-71). Every table that belongs to the budget, in the " +
+    "Every table that belongs to the budget, in the " +
     "`BudgetBackup` layout: ids are only references inside the file, money is an integer " +
     "string of minor units next to its currency. Members, invitations and the change history " +
     "aren't included. Import it with `importBackup`.",

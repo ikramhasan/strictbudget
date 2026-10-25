@@ -1,6 +1,6 @@
-import { newId } from "@everycent/db";
-import { transaction, transactionAttachment } from "@everycent/db/schema";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { newId } from "@strictbudget/db";
+import { transaction, transactionAttachment } from "@strictbudget/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";

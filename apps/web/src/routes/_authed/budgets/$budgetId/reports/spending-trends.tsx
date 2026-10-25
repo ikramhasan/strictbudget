@@ -12,9 +12,9 @@ import {
   rollingAverage,
   toDelimited,
   trendMonths,
-} from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
+} from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
 import {
   Table,
   TableBody,
@@ -22,9 +22,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@everycent/ui/components/table";
-import { Toggle } from "@everycent/ui/components/toggle";
-import { ToggleGroup, ToggleGroupItem } from "@everycent/ui/components/toggle-group";
+} from "@strictbudget/ui/components/table";
+import { Toggle } from "@strictbudget/ui/components/toggle";
+import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -101,7 +101,6 @@ const MODE_ICONS: Record<TrendMode, ReactNode> = {
   calendar: <CalendarDays />,
 };
 
-/** YNAB's Spending Trends report (EVERYCENT-78), with everycent's views on top. */
 function Report() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();

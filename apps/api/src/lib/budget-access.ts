@@ -1,5 +1,5 @@
-import { type Database, sql } from "@everycent/db";
-import { type BudgetRole, budget, budgetMember, userPreference } from "@everycent/db/schema";
+import { type Database, sql } from "@strictbudget/db";
+import { type BudgetRole, budget, budgetMember, userPreference } from "@strictbudget/db/schema";
 import { and, eq } from "drizzle-orm";
 import type { Context } from "hono";
 import type { AuthedEnv } from "../middleware/require-auth";

@@ -66,7 +66,7 @@ function renderSection(payee: Payee) {
   return { onChange };
 }
 
-describe("PayeeCategorizationSection (YNAB Manage Payees, 2026-10-16)", () => {
+describe("PayeeCategorizationSection (Manage Payees)", () => {
   it("shows the current default category while auto-categorizing", () => {
     renderSection(market);
     expect(screen.getByLabelText("Auto-categorize based on payee history")).toBeChecked();

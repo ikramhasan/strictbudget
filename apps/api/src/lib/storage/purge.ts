@@ -1,9 +1,8 @@
-import { aiAttachment, storageDeletion } from "@everycent/db/schema";
+import { aiAttachment, storageDeletion } from "@strictbudget/db/schema";
 import { and, asc, inArray, isNull, lt, sql } from "drizzle-orm";
 import type { JobHandler } from "../jobs";
 import { log } from "../log";
 
-/** Keys deleted per round. */
 const BATCH = 500;
 
 /** Files uploaded for the AI assistant but never sent are kept this long. */

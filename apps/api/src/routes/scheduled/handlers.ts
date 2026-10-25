@@ -1,6 +1,6 @@
-import { flagName, payee, scheduledTransaction } from "@everycent/db/schema";
-import { type CurrencyCode, parseSearch, type SearchTerm } from "@everycent/engine";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { flagName, payee, scheduledTransaction } from "@strictbudget/db/schema";
+import { type CurrencyCode, parseSearch, type SearchTerm } from "@strictbudget/engine";
 import { and, eq } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError } from "../../lib/errors";
@@ -78,7 +78,7 @@ export const listScheduledTransactionsHandler: RouteHandler<
     readyToAssignId: await internalCategoryId(db, budgetId, "ready_to_assign"),
     today,
   };
-  // Each row's amounts are read in its own account's currency (EVERYCENT-193).
+  // Each row's amounts are read in its own account's currency.
   const byCurrency = new Map<string, SearchTerm[]>([[budget.currency, terms]]);
   const termsIn = (currency: CurrencyCode) => {
     const known = byCurrency.get(currency);
@@ -107,7 +107,7 @@ export const createScheduledTransactionHandler: RouteHandler<
   await loadBudgetAccess(c, budgetId, { transaction: ["create"] });
   assertOnePayee(body);
   const today = body.today ?? serverToday();
-  // A past date is entered at once: its rates come before anything is locked (EVERYCENT-247).
+  // A past date is entered at once: its rates come before anything is locked.
   if (body.date <= entryDate(c.var.deps, today)) {
     await prefetchScheduleRates(db, c.var.deps, budgetId, {
       accountIds: [
@@ -183,8 +183,7 @@ export const updateScheduledTransactionHandler: RouteHandler<
   await loadBudgetAccess(c, budgetId, { transaction: ["update"] });
   assertOnePayee(body);
   const today = body.today ?? serverToday();
-  // A new past date is entered at once: its rates come before the schedule is locked
-  // (EVERYCENT-247).
+  // A new past date is entered at once: its rates come before the schedule is locked.
   if (body.date !== undefined && body.date <= entryDate(c.var.deps, today)) {
     await prefetchScheduleRates(db, c.var.deps, budgetId, {
       scheduleIds: [id],
@@ -237,7 +236,7 @@ export const updateScheduledTransactionHandler: RouteHandler<
       if (!usable) categoryId = null;
     }
     const date = body.date ?? schedule.dateNext;
-    // A new date restarts the repeats there (YNAB resets date_first); a new frequency counts
+    // A new date restarts the repeats there (`dateFirst` is reset); a new frequency counts
     // from the date shown.
     const dateFirst =
       body.dateFirst ??
@@ -262,8 +261,8 @@ export const updateScheduledTransactionHandler: RouteHandler<
       },
       { id, accountId: schedule.accountId, transferAccountId, restore: body.restore },
     );
-    // Only a new date enters what's past (YNAB's rule for saving a past date); other edits leave
-    // the schedule's occurrences alone, as for those waiting in a closed account.
+    // Only a new date enters what's past; other edits leave the schedule's occurrences alone,
+    // as for those waiting in a closed account.
     return body.date !== undefined
       ? enterIfPast(tx, c.var.deps, id, entryDate(c.var.deps, today))
       : null;

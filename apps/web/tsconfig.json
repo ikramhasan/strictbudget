@@ -1,5 +1,5 @@
 {
-  "extends": "@everycent/tsconfig/react.json",
+  "extends": "@strictbudget/tsconfig/react.json",
   "compilerOptions": {
     "types": ["vite/client", "node"],
     "paths": { "@/*": ["./src/*"] }

@@ -1,4 +1,5 @@
-import { newId, sql } from "@everycent/db";
+import type { RouteHandler } from "@hono/zod-openapi";
+import { newId, sql } from "@strictbudget/db";
 import {
   budgetAccount,
   budgetMember,
@@ -13,7 +14,7 @@ import {
   subTransaction,
   transaction,
   user,
-} from "@everycent/db/schema";
+} from "@strictbudget/db/schema";
 import {
   ACCOUNT_TYPES,
   type AccountType,
@@ -52,8 +53,7 @@ import {
   type TargetNeed,
   targetInBase,
   targetNeed,
-} from "@everycent/engine";
-import type { RouteHandler } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import {
   and,
   desc,
@@ -104,7 +104,7 @@ const monthKey = (date: AnyPgColumn) => sql<string>`to_char(${date}, 'YYYY-MM')`
 const total = (amount: AnyPgColumn) => sql<string>`sum(${amount})`;
 const CREDIT_TYPES = ACCOUNT_TYPES.filter((t) => accountFamily(t) === "credit");
 const CASH_TYPES = ACCOUNT_TYPES.filter((t) => accountFamily(t) === "cash");
-/** The part of `amount`'s sum on credit accounts (YNAB's Credit Spending). */
+/** The part of `amount`'s sum on credit accounts (credit spending). */
 const creditTotal = (amount: AnyPgColumn) =>
   sql<string>`coalesce(sum(${amount}) filter (where ${inArray(budgetAccount.type, CREDIT_TYPES)}), 0)`;
 
@@ -179,8 +179,8 @@ async function categoryHistory(db: Db, budgetId: string, cutoff: string) {
 }
 
 /**
- * Every category's history up to `cutoff`, payment categories' Funded Spending included (YNAB moves
- * the funded part of card spending into the card's payment category).
+ * Every category's history up to `cutoff`, payment categories' Funded Spending included (the
+ * funded part of card spending moves into the card's payment category).
  */
 export async function budgetHistory(db: Db, budgetId: string, cutoff: string) {
   const history = await categoryHistory(db, budgetId, cutoff);
@@ -200,8 +200,7 @@ export async function budgetHistory(db: Db, budgetId: string, cutoff: string) {
     readyToAssignId,
     byAccount,
   );
-  // Card money moves through every spending category, Uncategorized included (YNAB, 2026-10-11:
-  // Card R4's uncategorized −$3 was funded from Uncategorized's $7).
+  // Card money moves through every spending category, Uncategorized included.
   const skip = new Set(
     rows.filter((r) => r.accountId || r.internalKind === "ready_to_assign").map((r) => r.id),
   );
@@ -212,12 +211,11 @@ export async function budgetHistory(db: Db, budgetId: string, cutoff: string) {
 
 /**
  * Adds each payment category's Payments Made to `history`: money moved into a card from a cash
- * account comes out of the card's payment category in the payment's month (YNAB, checked in its
- * web app on 2026-10-03: Citi $14.00 → $8.00 for a $6.00 payment from Wallet; paying more than
- * is set aside leaves it negative). Money moved out of a card to a budget account (a cash advance)
+ * account comes out of the card's payment category in the payment's month (paying more than is
+ * set aside leaves it negative). Money moved out of a card to a budget account (a cash advance)
  * only raises what's owed. From another card only the part it paid from above zero is a payment
  * (`applyCardLedger`). A transfer from a tracking account is no payment: its category on the card
- * side decides, as for any card inflow (YNAB, 2026-10-11; YNAB findings).
+ * side decides, as for any card inflow.
  */
 async function addPayments(
   db: Db,
@@ -384,7 +382,7 @@ async function cardLines(db: Db, budgetId: string, cutoff: string): Promise<Plac
 }
 
 /**
- * Places each card's lines in the plan by the card's balance at the time (`cardLedger`, phase 7e):
+ * Places each card's lines in the plan by the card's balance at the time (`cardLedger`):
  * the cash part of category lines moves from credit to cash activity, and Ready to Assign gets what
  * the card's balance above zero adds or takes (instead of every inflow to it), and a transfer from
  * another card is a payment for the part that card paid from above zero. Returns each category's
@@ -406,8 +404,7 @@ function applyCardLedger(
   const credit = new Map<string, Map<BudgetMonth, CardActivity[]>>();
   // A sending card's line id → what it paid from above zero.
   const paidFromCash = new Map<string, bigint>();
-  // month → what the cards' balances above zero added to Ready to Assign ("Inflow from Debt
-  // Account" in YNAB's breakdown).
+  // month → what the cards' balances above zero added to Ready to Assign.
   const debt = new Map<BudgetMonth, bigint>();
   const received: PlacedCardLine[] = [];
   for (const [accountId, own] of byAccount) {
@@ -627,8 +624,8 @@ async function targetRates(
 }
 
 /**
- * Looks up today's rates for targets in other currencies before a write (EVERYCENT-201), so the
- * month it answers with doesn't fetch them while its changes hold locks.
+ * Looks up today's rates for targets in other currencies before a write, so the month it answers
+ * with doesn't fetch them while its changes hold locks.
  */
 async function prefetchTargetRates(db: Db, deps: FxDeps, budgetId: string, today: string) {
   const rows = await db
@@ -782,8 +779,8 @@ export async function monthState(
     const balance = balances.get(accountId)?.working ?? 0n;
     const owed = balance < 0n ? -balance : 0n;
     // What's underfunded is the debt Available doesn't reach. A negative Available (overpayment,
-    // red cash overspending) adds to it while the card still owes (YNAB, 2026-10-08: Card E2 owing
-    // $90.00 at −$10.00 showed Total Underfunded $100.00); a paid-off card's: YNAB findings (8e).
+    // red cash overspending) adds to it while the card still owes: owing $90.00 at −$10.00 is
+    // $100.00 underfunded.
     const setAside = owed > 0n || figures.available > 0n ? figures.available : 0n;
     const underfunded = owed > setAside ? owed - setAside : 0n;
     const overspentNow = creditOverspent.get(accountId)?.get(month) ?? 0n;
@@ -791,9 +788,7 @@ export async function monthState(
     return { accountId, balance, owed, underfunded, fromOverspending, overspentNow };
   };
 
-  // A payment target asks nothing in months before its card was opened (YNAB, 2026-10-12, Card E3
-  // opened Oct 8: September's "Pay Specific Amount Monthly $30.00" read "Assign $0.00 to meet your
-  // target", Amount to Assign $30.00, To Go $0.00).
+  // A payment target asks nothing in months before its card was opened.
   const beforeOpening = (
     accountId: string | undefined,
     need: TargetNeed | null,
@@ -829,7 +824,7 @@ export async function monthState(
   const nextMonth = addMonths(month, 1);
   const monthTargets = { month: 0n, nextMonth: 0n };
   // Each later month the panel lists (money assigned there, and always next month): how much its
-  // targets need and how much of that is funded, for YNAB's pie or check by the month.
+  // targets need and how much of that is funded, for the pie or check by the month.
   const futureTargets = new Map<BudgetMonth, { needed: bigint; funded: bigint }>([
     [nextMonth, { needed: 0n, funded: 0n }],
   ]);
@@ -852,7 +847,7 @@ export async function monthState(
     assigned.push(...entries.map((e) => ({ month: e.month, amount: e.assigned })));
     const figures = categoryMonth(entries, month);
     if (cat.internalKind === "uncategorized") {
-      // YNAB lists it only in months with uncategorized transactions.
+      // Listed only in months with uncategorized transactions.
       if (entries.some((e) => e.month === month)) uncategorized = figures;
       continue;
     }
@@ -865,7 +860,7 @@ export async function monthState(
       payment?.accountId,
       target && targetNeed(entries, target, month, monthOf(today), owed),
     );
-    // Credit card payment targets can't be snoozed (support.ynab.com "Paired Targets").
+    // Credit card payment targets can't be snoozed.
     const snoozed = !payment && snoozedNow.has(cat.id);
     const coming = upcoming.get(cat.id) ?? null;
     const funded = payment
@@ -882,7 +877,7 @@ export async function monthState(
           targetNeed(entries, target, m, monthOf(today), owed),
           m,
         );
-        // A one-time target past its due month asks for nothing there (YNAB: x132 C Target).
+        // A one-time target past its due month asks for nothing there.
         if (!n || n.needed <= 0n || (n.dueDate && monthOf(n.dueDate) < m)) continue;
         sums.needed += n.needed;
         sums.funded += n.funded < 0n ? 0n : n.funded < n.needed ? n.funded : n.needed;
@@ -933,7 +928,6 @@ export async function monthState(
     .select({ id: categoryGroup.id })
     .from(categoryGroup)
     .where(and(eq(categoryGroup.budgetId, budgetId), eq(categoryGroup.internal, false)))
-    // In plan order: without it the rows came back in whatever order Postgres stored them.
     .orderBy(categoryGroup.sortOrder, categoryGroup.id);
 
   const rta = readyToAssign({ month, income, assigned, overspent });
@@ -964,10 +958,8 @@ export async function monthState(
 }
 
 /**
- * The first later month whose Ready to Assign is negative (YNAB's "Ready to Assign in November is
- * −$50.00" under Assigned in Future Months; with December negative too it named only November,
- * "C5 First FS", 2026-10-12). Later months have no transactions yet, so only months with money
- * assigned can go negative.
+ * The first later month whose Ready to Assign is negative (only the first is named when several
+ * are). Later months have no transactions yet, so only months with money assigned can go negative.
  */
 function futureShortfall(
   state: Pick<Awaited<ReturnType<typeof monthState>>, "income" | "assigned" | "overspent">,
@@ -1217,8 +1209,7 @@ export const moveMoneyHandler: RouteHandler<typeof moveMoney, Env> = async (c) =
   await prefetchTargetRates(db, c.var.deps, budgetId, today);
 
   // Moving money changes what each side has assigned; Ready to Assign follows from that. Covering
-  // from a later month takes it off that month's Assigned (YNAB, 2026-10-14, "x132 Order": $2.00
-  // from November's Groceries left it at $3.00 and October's Transportation at $2.00).
+  // from a later month takes it off that month's Assigned.
   await db.transaction(async (tx) => {
     if (!from.readyToAssign) await adjustAssigned(tx, budget, from.id, fromMonth, -value);
     if (!to.readyToAssign) await adjustAssigned(tx, budget, to.id, month, value);
@@ -1266,8 +1257,8 @@ export const autoAssignHandler: RouteHandler<typeof autoAssign, Env> = async (c)
     throw new AppError(404, "NOT_FOUND", "Category not found");
   }
 
-  // What each category's Assigned becomes. Underfunded over the whole plan or a view funds in
-  // YNAB's order until Ready to Assign runs out; on a selection it funds every category in full.
+  // What each category's Assigned becomes. Underfunded over the whole plan or a view funds until
+  // Ready to Assign runs out (`fundUnderfunded`); on a selection it funds every category in full.
   const goal = new Map(covered.map((l) => [l.categoryId, l.auto[option]]));
   if (option === "underfunded" && (!wanted || scope === "view")) {
     const given = fundUnderfunded(
@@ -1281,7 +1272,7 @@ export const autoAssignHandler: RouteHandler<typeof autoAssign, Env> = async (c)
 
   await db.transaction(async (tx) => {
     const readyToAssignId = await internalCategoryId(tx, budgetId, "ready_to_assign");
-    // YNAB lists one Auto-Assign as a single "auto-assigned … to N categories" move.
+    // One Auto-Assign is listed as a single "auto-assigned … to N categories" move.
     const autoAssign = { batchId: newId(), method: option };
     for (const [id, target] of goal) {
       const delta = target - (await assignedAmount(tx, id, month));
@@ -1391,7 +1382,7 @@ export const listMonthMovesHandler: RouteHandler<typeof listMonthMoves, Env> = a
   return c.json({ moves: await movesJson(db, budgetId, { month }) }, 200);
 };
 
-/** YNAB's Recent Moves: "Previous 34 days of assigning and moving money" (checked 2026-10-11). */
+/** Recent Moves covers the previous 34 days of assigning and moving money. */
 const RECENT_MOVES_DAYS = 34;
 
 export const setExpectedIncomeHandler: RouteHandler<typeof setExpectedIncome, Env> = async (c) => {

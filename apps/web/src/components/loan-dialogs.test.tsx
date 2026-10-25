@@ -44,8 +44,7 @@ const account = (id: string, type: Account["type"], closed = false): Account => 
   balances: { cleared: "0", uncleared: "0", working: "0" },
 });
 
-// YNAB's "L7 Loans FS" (2026-10-14): cash accounts and cards in sidebar order, plus a loan and a
-// tracking account that can't pay.
+// Cash accounts and cards in sidebar order, plus a loan and a tracking account that can't pay.
 const accounts = [
   account("F Card", "credit_card"),
   account("AA L7 Test", "savings"),
@@ -72,7 +71,7 @@ function renderDialog(lastFromAccountId: string | null) {
   return screen.getByLabelText("From Account") as HTMLSelectElement;
 }
 
-describe("Record Payment's From Account (YNAB, 2026-10-14)", () => {
+describe("Record Payment's From Account", () => {
   it("starts on the account of the payment entered last", () => {
     expect(renderDialog("L7 Chk").value).toBe("L7 Chk");
   });
@@ -91,7 +90,7 @@ describe("Record Payment's From Account (YNAB, 2026-10-14)", () => {
   });
 });
 
-describe("Loan credit and charge dates (YNAB, 2026-10-16)", () => {
+describe("Loan credit and charge dates", () => {
   const today = todayIso();
   const tomorrow = format(addDays(parseISO(today), 1), "yyyy-MM-dd");
   const renderActivity = (kind: ActivityKind, date: string) =>
@@ -111,7 +110,7 @@ describe("Loan credit and charge dates (YNAB, 2026-10-16)", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
-  it("greys Save out for a balance adjustment dated after today (EVERYCENT-183)", () => {
+  it("greys Save out for a balance adjustment dated after today", () => {
     renderActivity("adjustment", tomorrow);
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });

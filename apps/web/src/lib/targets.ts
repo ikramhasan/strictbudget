@@ -1,5 +1,5 @@
-import type { components } from "@everycent/api-client";
-import { type BudgetMonth, monthBounds } from "@everycent/engine";
+import type { components } from "@strictbudget/api-client";
+import { type BudgetMonth, monthBounds } from "@strictbudget/engine";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { toast } from "sonner";
@@ -52,15 +52,15 @@ export function ordinal(n: number) {
 }
 
 /**
- * The day a monthly target is due in `month`: its due day, or the month's last day (YNAB's "by the
- * 31st" in October, "by the 30th" in November). A day past the month's end is the last day.
+ * The day a monthly target is due in `month`: its due day, or the month's last day ("by the 31st"
+ * in October, "by the 30th" in November). A day past the month's end is the last day.
  */
 export function dueDayIn(dueDay: number | null, month: BudgetMonth) {
   const last = Number(monthBounds(month).end.slice(8));
   return dueDay === null || dueDay > last ? last : dueDay;
 }
 
-/** The days YNAB's "By" list offers, in its order: Last Day of Month, then 31st down to 1st. */
+/** The days the "By" list offers, in order: Last Day of Month, then 31st down to 1st. */
 export const DUE_DAY_OPTIONS: { value: string; label: string }[] = [
   { value: "last", label: "Last Day of Month" },
   ...Array.from({ length: 31 }, (_, i) => 31 - i).map((d) => ({
@@ -70,10 +70,10 @@ export const DUE_DAY_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const monthLabel = (iso: string) => MONTHS[Number(iso.slice(5, 7)) - 1] ?? "";
-/** YNAB's "Dec 30 2026". */
+/** "Dec 30 2026". */
 export const shortDate = (iso: string) =>
   `${monthLabel(iso).slice(0, 3)} ${Number(iso.slice(8))} ${iso.slice(0, 4)}`;
-/** YNAB's "Dec 2026" for a balance target's month. */
+/** "Dec 2026", for a balance target's month. */
 const shortMonth = (iso: string) => `${monthLabel(iso).slice(0, 3)} ${iso.slice(0, 4)}`;
 
 /**
@@ -87,7 +87,7 @@ export const isDated = (target: Pick<CategoryTarget, "cadence">) =>
 export const isPaymentTarget = (target: Pick<CategoryTarget, "cadence">) =>
   target.cadence === "payment_monthly" || target.cadence === "payoff_by_date";
 
-/** YNAB's names for the payment targets, in its form's order (Pay Off Balance by Date first). */
+/** The payment targets' names, in the form's order (Pay Off Balance by Date first). */
 export const PAYMENT_TARGET_OPTIONS = [
   { value: "payoff_by_date", label: "Pay Off Balance by Date" },
   { value: "payment_monthly", label: "Pay Specific Amount Monthly" },
@@ -97,10 +97,7 @@ export const PAYMENT_TARGET_OPTIONS = [
 export const isDebtTarget = (target: Pick<CategoryTarget, "cadence">) =>
   target.cadence === "debt_monthly";
 
-/**
- * A payment or debt target's kind, which YNAB's inspector shows above its heading ("Monthly Debt
- * Payment", 2026-10-13).
- */
+/** A payment or debt target's kind, shown above the inspector's heading ("Monthly Debt Payment"). */
 export function paymentTargetKind(target: CategoryTarget) {
   if (isDebtTarget(target)) return "Monthly Debt Payment";
   return PAYMENT_TARGET_OPTIONS.find((o) => o.value === target.cadence)?.label ?? null;
@@ -114,15 +111,13 @@ function repeatPhrase(target: Pick<CategoryTarget, "repeatEvery" | "repeatUnit">
 }
 
 /**
- * YNAB's inspector heading (YNAB findings "Monthly targets", "Weekly, yearly and custom targets"):
- * "Set Aside Another $100.00 Each Month", "Refill Up to $10.00 Each Week", "Set Aside Another
- * $300.00 Every 2 Months", "Have a Balance of $300.00". Payment targets (YNAB findings "Credit card
- * payment targets"): "$30.00" (Pay Specific Amount Monthly) and "Pay off $125.00" (Pay Off Balance
- * by Date, `amount` being what's still to pay off: what the target needs).
+ * The inspector heading: "Set Aside Another $100.00 Each Month", "Refill Up to $10.00 Each Week",
+ * "Set Aside Another $300.00 Every 2 Months", "Have a Balance of $300.00". Payment targets: "$30.00"
+ * (Pay Specific Amount Monthly) and "Pay off $125.00" (Pay Off Balance by Date, `amount` being
+ * what's still to pay off: what the target needs).
  */
 export function targetHeading(target: CategoryTarget, amount: string) {
   if (target.cadence === "payment_monthly") return amount;
-  // YNAB, 2026-10-13 (G7 Loan Pay): "$300.00 Needed Each Month".
   if (target.cadence === "debt_monthly") return `${amount} Needed Each Month`;
   if (target.cadence === "payoff_by_date") return `Pay off ${amount}`;
   if (target.behavior === "balance") return `Have a Balance of ${amount}`;
@@ -135,16 +130,16 @@ export function targetHeading(target: CategoryTarget, amount: string) {
           ? " Each Year"
           : repeatPhrase(target);
   if (target.behavior === "set_aside") return `Set Aside Another ${amount}${suffix}`;
-  // YNAB, 2026-10-12 (C5 U1): "Fill Up to $200.00", then "By Sep 8 2026".
+  // "Fill Up to $200.00", then "By Sep 8 2026".
   return target.cadence === "custom"
     ? `Fill Up to ${amount}${suffix}`
     : `Refill Up to ${amount}${suffix}`;
 }
 
 /**
- * YNAB's line under the heading: "By the End of the Month", "By the 15th of the Month", "By
- * Saturday", "By Dec 30 2026" (the current period's due date), "By Dec 2026", "Eventually"; for
- * payment targets "Each Month" and "By Mar 2027".
+ * The line under the heading: "By the End of the Month", "By the 15th of the Month", "By Saturday",
+ * "By Dec 30 2026" (the current period's due date), "By Dec 2026", "Eventually"; for payment targets
+ * "Each Month" and "By Mar 2027".
  */
 export function targetDueLine(target: CategoryTarget, need: Pick<TargetNeed, "dueDate"> | null) {
   if (target.cadence === "payment_monthly") return "Each Month";
@@ -171,12 +166,11 @@ export function targetStatus(need: TargetNeed) {
 }
 
 /**
- * The note under a category's name (YNAB, YNAB findings): "Funded" when met or past a one-time
- * target's due month; "On Track" when this
- * month's share of a dated target is in; otherwise "$60.00 more needed by the 31st", "… this month"
- * (weekly, and dated targets before their due month), "… by December 30th" (a dated target's due
- * month), "$300.00 needed eventually" (a balance target without a date). Set aside always says
- * "more"; other targets only once something counts toward them.
+ * The note under a category's name: "Funded" when met or past a one-time target's due month; "On
+ * Track" when this month's share of a dated target is in; otherwise "$60.00 more needed by the
+ * 31st", "… this month" (weekly, and dated targets before their due month), "… by December 30th" (a
+ * dated target's due month), "$300.00 needed eventually" (a balance target without a date). Set
+ * aside always says "more"; other targets only once something counts toward them.
  */
 export function targetRowNote(
   target: CategoryTarget,
@@ -185,10 +179,10 @@ export function targetRowNote(
   format: Format,
 ) {
   const status = targetStatus(need);
-  // A one-time target past its due month reads like a met one (YNAB, 2026-10-12: C5 P1 "Funded.
-  // Spent $10.00 of $30.00", C5 U1 "Funded"); `categoryRowNote` drops it when nothing's in.
+  // A one-time target past its due month reads like a met one ("Funded. Spent $10.00 of $30.00");
+  // `categoryRowNote` drops it when nothing's in.
   if (status === "met" || need.pastDue) return { met: true, text: "Funded" };
-  // A debt payment reads "$300.00 needed by the 31st" with nothing assigned (YNAB, 2026-10-13).
+  // A debt payment reads "$300.00 needed by the 31st" with nothing assigned.
   const more =
     (target.behavior === "set_aside" && !isDebtTarget(target)) || BigInt(need.funded) > 0n
       ? " more"
@@ -211,8 +205,8 @@ export function targetRowNote(
 
 /**
  * Pay Off Balance by Date's heading amount ("Pay off $125.00"): what's been put toward the payoff
- * (carried and assigned: what counts plus this month's payments) and what's still to go (YNAB:
- * E1 $50.00 + $75.00 = $125.00; T7 $0.00 counted + $20.00 paid = $20.00; T2 $14.00 + $6.00).
+ * (carried and assigned: what counts plus this month's payments) and what's still to go ($50.00 +
+ * $75.00 = $125.00; $0.00 counted + $20.00 paid = $20.00).
  */
 export function payoffAmount(need: Pick<TargetNeed, "needed" | "funded">, paymentsMade: string) {
   const funded = BigInt(need.funded);
@@ -221,10 +215,10 @@ export function payoffAmount(need: Pick<TargetNeed, "needed" | "funded">, paymen
 }
 
 /**
- * The inspector's lines (YNAB): what's needed, what counts, and To Go (what's left of the total).
- * Pay Off Balance by Date shows the card's whole debt and Available (YNAB's "Needed for Payoff",
- * "Available for Payment"), which include this month's `fundedSpending`; the target leaves it out
- * of both, so To Go is the same.
+ * The inspector's lines: what's needed, what counts, and To Go (what's left of the total). Pay Off
+ * Balance by Date shows the card's whole debt and Available ("Needed for Payoff", "Available for
+ * Payment"), which include this month's `fundedSpending`; the target leaves it out of both, so To Go
+ * is the same.
  */
 export function targetLines(
   target: CategoryTarget,
@@ -232,7 +226,7 @@ export function targetLines(
   format: Format,
   fundedSpending = "0",
 ) {
-  // Before its card was opened a payment target has nothing to go (YNAB: Card E3, To Go $0.00).
+  // Before its card was opened a payment target has nothing to go.
   const toGo = need.beforeOpening ? 0n : BigInt(need.needed) - BigInt(need.funded);
   const toGoLine = { label: "To Go", value: format((toGo > 0n ? toGo : 0n).toString()) };
   if (target.cadence === "payoff_by_date") {
@@ -277,15 +271,13 @@ export function targetMessage(
   format: Format,
   month?: BudgetMonth,
 ) {
-  // Before its card was opened a payment target asks nothing, and YNAB still reads "Assign $0.00
-  // to meet your target" (Card E3, 2026-10-12).
+  // Before its card was opened a payment target asks nothing, yet still reads "Assign $0.00 to meet
+  // your target".
   if (need.beforeOpening) return { prompt: format("0"), suffix: " to meet your target" };
   const status = targetStatus(need);
-  // Past a one-time target's due month YNAB shows no message unless it's met (C5 U1, 2026-10-12).
+  // Past a one-time target's due month there's no message unless it's met.
   if (need.pastDue && status !== "met") return null;
   if (status === "met") {
-    // YNAB, 2026-10-11: Cards T2 (still owing) and T7 (paid off); Pay Specific Amount Monthly
-    // keeps the usual words (Card T3).
     return {
       text:
         target.cadence === "payoff_by_date"
@@ -299,8 +291,8 @@ export function targetMessage(
       : { text: "You're on track to meet your target!" };
   }
   const amount = format(need.underfunded);
-  // In its own month a pay-off target asks to meet it (YNAB, 2026-10-12: F Card by October read
-  // "Assign $1.00 to meet your target"); custom targets keep "this month to stay on track".
+  // In its own month a pay-off target asks to meet it ("Assign $1.00 to meet your target"); custom
+  // targets keep "this month to stay on track".
   if (target.cadence === "payoff_by_date" && month && need.dueDate?.slice(0, 7) === month) {
     return { prompt: amount, suffix: " to meet your target" };
   }
@@ -352,8 +344,7 @@ export function useTargetActions(budgetId: string, record?: (command: UndoComman
       // UndoProvider keeps the command where it was only when undo/redo throws.
       if (!ok) throw new Error("Couldn't restore the target.");
     };
-    // YNAB's Undo covers creating, editing and deleting a target, start month included (checked
-    // 2026-10-12, YNAB findings).
+    // Undo covers creating, editing and deleting a target, start month included.
     const remember = (
       label: string,
       categoryId: string,
@@ -420,12 +411,11 @@ export function useTargetActions(budgetId: string, record?: (command: UndoComman
 type MonthBar = NonNullable<components["schemas"]["ProgressBar"]>;
 
 /**
- * The note under a category that isn't overspent (YNAB, YNAB findings "Snooze and progress
- * bars"). With a target that's working this month: its note ("Funded", "$60.00 more needed by the
- * 31st", …), a met one adding what was spent of its money ("Funded. Spent $30.00 of $100.00"),
- * or "Fully Spent" once all of it is.
- * Without one (or snoozed): "Fully Spent" when spending used all the money, "Spent $7.00 of $20.00"
- * while some is left, nothing otherwise. `strong` is the part YNAB sets in bold.
+ * The note under a category that isn't overspent. With a target that's working this month: its
+ * note ("Funded", "$60.00 more needed by the 31st", …), a met one adding what was spent of its money
+ * ("Funded. Spent $30.00 of $100.00"), or "Fully Spent" once all of it is. Without one (or
+ * snoozed): "Fully Spent" when spending used all the money, "Spent $7.00 of $20.00" while some is
+ * left, nothing otherwise. `strong` is the part set in bold.
  */
 export function categoryRowNote(
   target: CategoryTarget | null,
@@ -448,8 +438,8 @@ export function categoryRowNote(
   if (target && need && !need.snoozed) {
     const note = targetRowNote(target, need, month, format);
     if (!note.met) return { strong: "", rest: note.text };
-    // YNAB, 2026-10-12: a target past its due month with nothing in it (C5 U1 at $0.00) has no
-    // note; a met one whose money is all spent reads "Fully Spent" (C5 M0, $50.00 of $50.00).
+    // A target past its due month with nothing in it has no note; a met one whose money is all spent
+    // reads "Fully Spent".
     if (need.pastDue && money === 0n) return null;
     if (spent > 0n && left === 0n) return { strong: "", rest: "Fully Spent" };
     return { strong: note.text, rest: spent > 0n ? `. ${spentOf}` : "" };

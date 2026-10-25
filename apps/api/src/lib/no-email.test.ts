@@ -1,4 +1,4 @@
-import { user } from "@everycent/db/schema";
+import { user } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createTestApp, resetDatabase, signIn, signUp } from "../../test/helpers";
@@ -90,7 +90,7 @@ describe("a server that sends no email", () => {
 
 describe("GET /v1/instance", () => {
   it("names a cloud server that sends email", async () => {
-    const cloud = createTestApp({ envOverrides: { EVERYCENT_DEPLOYMENT: "cloud" } });
+    const cloud = createTestApp({ envOverrides: { STRICTBUDGET_DEPLOYMENT: "cloud" } });
     try {
       const res = await cloud.app.request("/v1/instance");
       expect(await res.json()).toEqual({ deployment: "cloud", email: true });

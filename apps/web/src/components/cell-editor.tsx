@@ -1,6 +1,6 @@
-import type { DateFormat } from "@everycent/engine";
-import { Input } from "@everycent/ui/components/input";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
+import type { DateFormat } from "@strictbudget/engine";
+import { Input } from "@strictbudget/ui/components/input";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
 import { type FocusEvent, type KeyboardEvent, useRef, useState } from "react";
 import type { Account } from "@/lib/accounts";
 import { storeOrderLink } from "@/lib/bank-import";
@@ -26,10 +26,6 @@ import {
 
 export type CellExit = "stay" | "next" | "previous";
 
-/**
- * Edits one cell of an existing transaction in place, as YNAB does. Enter or clicking away
- * saves, Tab saves and moves to the next cell, Esc cancels.
- */
 export function CellEditor({
   transaction,
   column,
@@ -51,17 +47,13 @@ export function CellEditor({
   dateFormat: DateFormat;
   accounts: readonly Account[];
   payees: readonly Payee[];
-  /** Accounts the payee cell offers as transfers. */
   transfers: readonly TransferTarget[];
   categories: readonly CategoryOption[];
-  /** Offers "Split" in the category list; the register then opens the whole-split editor. */
   onSplit?: () => void;
-  /** Offers "Make Repeating" in the date picker; the register then opens a new scheduled row. */
   onMakeRepeating?: () => void;
-  /** `transferAccountId` is set when the payee cell now holds a transfer. */
   onCommit: (value: string | null, exit: CellExit, transferAccountId: string | null) => void;
   onCancel: () => void;
-  /** Bank Import Details' "Don't Rename as …" for an imported transaction (EVERYCENT-174). */
+  /** Bank Import Details' "Don't Rename as …" action. */
   onDontRename?: () => void;
 }) {
   const own = accounts.find((a) => a.id === transaction.accountId);
@@ -207,7 +199,6 @@ export function CellEditor({
   }
 }
 
-/** An imported transaction's Bank Import Details (EVERYCENT-155); none for entered ones. */
 function importDetails(t: Transaction, onDontRename: () => void): ImportDetails | undefined {
   // A matched transaction keeps the payee that was entered: nothing was renamed.
   if (!t.imported || !t.importedPayee || t.matched) return undefined;

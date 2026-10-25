@@ -164,11 +164,10 @@ describe("categoryMonth", () => {
     });
 
     it.each([
-      // [case, entries, activity, cash, credit]
       ["cash only", [e("2026-10", -400n, 0n)], -400n, -400n, 0n],
       ["card only", [e("2026-10", -500n, -500n)], -500n, 0n, -500n],
-      // YNAB's test plan (2026-10-03), Phone & Internet: Wallet −$4 and +$10, Visa −$5, +$2 and a
-      // −$7 split line, Amex −$3. Cash Spending $6.00, Credit Spending −$13.00.
+      // Cash −$4 and +$10, one card −$5, +$2 and a −$7 split line, another −$3: Cash Spending
+      // $6.00, Credit Spending −$13.00.
       [
         "mixed accounts, returns, splits and two cards",
         [
@@ -181,7 +180,7 @@ describe("categoryMonth", () => {
         600n,
         -1300n,
       ],
-      // A split line returned on a card (Groceries +$1 on Visa) is positive Credit Spending.
+      // A split line returned on a card is positive Credit Spending.
       ["a card return", [e("2026-10", -500n, 0n), e("2026-10", 100n, 100n)], -400n, -500n, 100n],
     ])("%s", (_, entries, activity, cash, credit) => {
       expect(categoryMonth(entries, "2026-10")).toMatchObject({
@@ -209,8 +208,8 @@ describe("categoryMonth", () => {
 describe("readyToAssignBreakdown", () => {
   const a = (month: string, amount: bigint) => ({ month, amount });
 
-  // YNAB "x132 Order", 2026-10-14: $1 in August, $3 assigned in September, $15 in and $12
-  // assigned in October, $3 assigned in November.
+  // $1 in August, $3 assigned in September, $15 in and $12 assigned in October, $3 assigned in
+  // November.
   const plan = {
     income: [a("2026-08", 100n), a("2026-10", 1500n)],
     debt: [],
@@ -239,7 +238,7 @@ describe("readyToAssignBreakdown", () => {
     });
   });
 
-  it("splits card inflows out and takes last month's cash overspending (ihni7's Plan)", () => {
+  it("splits card inflows out and takes last month's cash overspending", () => {
     const b = readyToAssignBreakdown({
       month: "2026-10",
       income: [a("2026-09", -50806n), a("2026-10", 1208500n + 8900n)],
@@ -262,7 +261,7 @@ describe("readyToAssignBreakdown", () => {
 describe("readyToAssign", () => {
   const a = (month: string, amount: bigint) => ({ month, amount });
 
-  // The YNAB test budget: $12,100 of income in October, $3 overspent in August, $32 in October.
+  // $12,100 of income in October, $3 overspent in August, $32 in October.
   const income = [a("2026-10", 1210000n)];
   const overspent = [a("2026-08", -300n), a("2026-10", -3200n)];
 
@@ -311,9 +310,7 @@ describe("overspending: cash or credit", () => {
     creditActivity,
   });
 
-  // YNAB's test plan (2026-10-03), YNAB findings phase 7c.
   it.each([
-    // [case, entry, cash overspent, credit overspent]
     ["cash only (Utilities −$25)", e(0n, -2500n, 0n), -2500n, 0n],
     ["card only (Rent $10: $6 cash, $8 card)", e(1000n, -1400n, -800n), 0n, -400n],
     ["unfunded card spending (R1 −$6)", e(0n, -600n, -600n), 0n, -600n],
@@ -321,7 +318,7 @@ describe("overspending: cash or credit", () => {
     ["mixed, $2 assigned (R2)", e(200n, -500n, -200n), -100n, -200n],
     ["mixed, $4 assigned (R2)", e(400n, -500n, -200n), 0n, -100n],
     ["not overspent", e(1000n, -500n, -500n), 0n, 0n],
-    // A card return in an overspent cash category: Groceries −$5 cash, +$1 Visa.
+    // A card return in an overspent cash category: −$5 cash, +$1 card.
     ["a card return can't make cash overspending credit", e(0n, -400n, 100n), -400n, 0n],
   ])("%s", (_, entry, cash, credit) => {
     expect(categoryMonth([entry], "2026-10")).toMatchObject({
@@ -340,7 +337,7 @@ describe("overspending: cash or credit", () => {
     expect(splitOverspending(100n, -300n)).toEqual({ cashOverspent: 0n, creditOverspent: 0n });
   });
 
-  it("makes a payment category a return took below zero cash overspending (YNAB: x128 Card A)", () => {
+  it("makes a payment category a return took below zero cash overspending", () => {
     const returned = { month: "2026-10", assigned: 0n, activity: -400n, fundedSpending: -400n };
     expect(categoryMonth([returned], "2026-10")).toMatchObject({
       available: -400n,
@@ -383,12 +380,11 @@ describe("autoAssignAmounts", () => {
       spentLastMonth: 1200n,
       resetAssigned: 0n,
     });
-    // A refund isn't negative spending.
     expect(autoAssignAmounts([m("2026-09", 0n, 500n)], "2026-10").spentLastMonth).toBe(0n);
   });
 
   it("averages from the first month with money assigned or spent", () => {
-    // YNAB: $30.00 assigned in September after $3.00 spent in August averages $15.00 / $1.50.
+    // $30.00 assigned in September after $3.00 spent in August averages $15.00 / $1.50.
     const history = [m("2026-08", 0n, -300n), m("2026-09", 3000n, 0n), m("2026-10", 1000n, 0n)];
     expect(autoAssignAmounts(history, "2026-10")).toMatchObject({
       averageAssigned: 1500n,
@@ -400,8 +396,8 @@ describe("autoAssignAmounts", () => {
     });
   });
 
-  // YNAB, ihni7's Plan R6e A–C (2026-10-11): money assigned in August only.
-  it("rounds averages half away from zero, as YNAB", () => {
+  // Money assigned in August only.
+  it("rounds averages half away from zero", () => {
     const avg = (amount: bigint, month: string) =>
       autoAssignAmounts([m("2026-08", amount, 0n)], month).averageAssigned;
     expect([
@@ -434,8 +430,8 @@ describe("autoAssignAmounts", () => {
 describe("isOverdraft", () => {
   const cat = (available: bigint, creditOverspent = 0n) => ({ available, creditOverspent });
 
-  // YNAB plan "C4 Clean", 2026-10-11: $1,000 of income, $800 assigned to Rent in October, a
-  // September overspend of $999 (Ready to Assign −$799.00).
+  // $1,000 of income, $800 assigned in October, a September overspend of $999 (Ready to Assign
+  // −$799.00).
   it("is money assigned beyond what there is while categories could cover it", () => {
     expect(isOverdraft(-799_00n, [cat(800_00n)])).toBe(false);
   });
@@ -458,7 +454,7 @@ describe("isOverdraft", () => {
 });
 
 describe("monthEndBalances", () => {
-  it("lists each month's ending balance, newest first (YNAB's x-145 HELOC history)", () => {
+  it("lists each month's ending balance, newest first", () => {
     expect(
       monthEndBalances([
         { date: "2026-08-01", amount: -500000n },

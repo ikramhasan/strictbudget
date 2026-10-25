@@ -1,1 +1,1 @@
-CREATE DATABASE everycent_test OWNER everycent;
+CREATE DATABASE strictbudget_test OWNER strictbudget;

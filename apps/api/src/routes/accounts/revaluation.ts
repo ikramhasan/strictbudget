@@ -1,6 +1,6 @@
-import { budgetAccount } from "@everycent/db/schema";
-import { isOnBudget } from "@everycent/engine";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { budgetAccount } from "@strictbudget/db/schema";
+import { isOnBudget } from "@strictbudget/engine";
 import { and, eq } from "drizzle-orm";
 import { budgetCurrencyOf } from "../../lib/base-amount";
 import { loadBudgetAccess } from "../../lib/budget-access";
@@ -22,11 +22,11 @@ import type { revalueAccount } from "./routes";
 type Env = AppEnv & AuthedEnv;
 
 /**
- * Revaluation (EVERYCENT-56, decided with the user): a foreign-currency account's unrealized gain
- * or loss is booked into the budget as a 0-native transaction whose base amount is the
- * difference, into Ready to Assign for budget accounts. On a card it goes through the card
- * ledger like any Ready to Assign line: a loss while the card owes adds debt without moving Ready
- * to Assign, so the payment category falls short of the balance (see the card test).
+ * Revaluation: a foreign-currency account's unrealized gain or loss is booked into the budget as a
+ * 0-native transaction whose base amount is the difference, into Ready to Assign for budget
+ * accounts. On a card it goes through the card ledger like any Ready to Assign line: a loss while
+ * the card owes adds debt without moving Ready to Assign, so the payment category falls short of
+ * the balance (see the card test).
  */
 export const revalueAccountHandler: RouteHandler<typeof revalueAccount, Env> = async (c) => {
   const { budgetId, accountId } = c.req.valid("param");
@@ -34,7 +34,7 @@ export const revalueAccountHandler: RouteHandler<typeof revalueAccount, Env> = a
   const { db } = c.var.deps;
   await loadBudgetAccess(c, budgetId, { transaction: ["create"] });
   assertNotFuture(date, latestTransactionDate(c.var.deps, today));
-  // Before the account is locked (EVERYCENT-201).
+  // Before the account is locked.
   await prefetchRates(db, c.var.deps, { budgetId, accountIds: [accountId], dates: [date], today });
   const posted = await db.transaction(async (tx) => {
     const [account] = await tx

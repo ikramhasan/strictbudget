@@ -1,14 +1,14 @@
 import { z } from "zod";
 
 /**
- * YNAB's renaming-rule conditions: the imported payee name **is** the text, or **contains** it.
- * There's no "starts with" and no wildcards (help center, how-to-rename-payees).
+ * Renaming-rule conditions: the imported payee name **is** the text, or **contains** it. There's
+ * no "starts with" and no wildcards.
  */
 export const PAYEE_RULE_OPERATORS = ["contains", "is"] as const;
 export type PayeeRuleOperator = (typeof PAYEE_RULE_OPERATORS)[number];
 export const zPayeeRuleOperator = z.enum(PAYEE_RULE_OPERATORS);
 
-/** Manage Payees' labels, in YNAB's order (Contains is the default). */
+/** Manage Payees' labels, in display order (Contains is the default). */
 export const PAYEE_RULE_OPERATOR_LABELS: Record<PayeeRuleOperator, string> = {
   contains: "Contains",
   is: "Is",
@@ -20,9 +20,8 @@ export interface PayeeRuleCondition {
 }
 
 /**
- * Whether an imported payee name meets a rule. Not case-sensitive (help center). The text is
- * compared as stored: YNAB keeps it as typed, surrounding spaces included, and nothing confirms
- * that it trims them when matching. Empty text matches nothing.
+ * Whether an imported payee name meets a rule. Not case-sensitive. The text is compared as stored
+ * (as typed, surrounding spaces included). Empty text matches nothing.
  */
 export function payeeRuleMatches(rule: PayeeRuleCondition, importedName: string): boolean {
   if (rule.text.length === 0) return false;
@@ -33,8 +32,8 @@ export function payeeRuleMatches(rule: PayeeRuleCondition, importedName: string)
 
 /**
  * The rule that renames an imported payee, or undefined when none matches. A payee's rules are
- * OR'ed, and when rules of several payees match, the newest rule wins (help center), so `rules`
- * must be the plan's rules oldest first.
+ * OR'ed, and when rules of several payees match, the newest rule wins, so `rules` must be the
+ * budget's rules oldest first.
  */
 export function matchPayeeRule<R extends PayeeRuleCondition>(
   rules: readonly R[],

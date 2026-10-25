@@ -1,7 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
 
-// EVERYCENT-83: Budget vs Actual (an everycent extra) reads the plan's own month numbers.
 const { app, db, close } = createTestApp();
 beforeEach(() => resetDatabase(db));
 afterAll(close);
@@ -106,7 +105,6 @@ describe("GET /v1/budgets/:id/reports/budget-vs-actual", () => {
     const s = await setup();
     await s.assign(s.groceries.id, "2026-08", "40000");
     await s.spend({ categoryId: s.groceries.id, date: "2026-08-10", amount: "-30000" });
-    // September: overspent with cash and with the card.
     await s.assign(s.groceries.id, "2026-09", "5000");
     await s.spend({ categoryId: s.groceries.id, date: "2026-09-03", amount: "-12000" });
     await s.spend({
@@ -118,7 +116,6 @@ describe("GET /v1/budgets/:id/reports/budget-vs-actual", () => {
     await s.spend({ categoryId: s.phone.id, date: "2026-09-12", amount: "-3000" });
     await s.assign(s.rent.id, "2026-09", "100000");
     await s.spend({ categoryId: s.rent.id, date: "2026-09-01", amount: "-100000" });
-    // October: a refund and a money move.
     await s.assign(s.dining.id, "2026-10", "20000");
     await s.spend({ categoryId: s.dining.id, date: "2026-10-05", amount: "2500" });
     await ok(
@@ -208,7 +205,6 @@ describe("GET /v1/budgets/:id/reports/budget-vs-actual", () => {
     expect(long.months).toEqual(["2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11"]);
     const later = await s.report("from=2027-12&to=2027-12");
     expect(later.months).toEqual([]);
-    // However wide the range, the walk stays within the plan's months.
     const widest = await s.report("from=0000-01&to=9999-12");
     expect(widest.months).toEqual(long.months);
   });

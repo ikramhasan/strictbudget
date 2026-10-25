@@ -19,7 +19,7 @@ const base = {
 
 describe("DiskStorage", () => {
   it("stores, reads and deletes files under its directory", async () => {
-    const root = await mkdtemp(join(tmpdir(), "everycent-storage-"));
+    const root = await mkdtemp(join(tmpdir(), "strictbudget-storage-"));
     dirs.push(root);
     const disk = new DiskStorage(root);
     await disk.put("budgets/b1/attachments/a1", new Uint8Array([1, 2, 3]));
@@ -30,7 +30,7 @@ describe("DiskStorage", () => {
   });
 
   it("refuses keys that leave its directory", async () => {
-    const disk = new DiskStorage(join(tmpdir(), "everycent-storage-x"));
+    const disk = new DiskStorage(join(tmpdir(), "strictbudget-storage-x"));
     await expect(disk.put("../escape", new Uint8Array(1))).rejects.toThrow(
       /outside the storage directory/,
     );
@@ -44,7 +44,7 @@ describe("createStorage", () => {
       NODE_ENV: "production",
       RESEND_API_KEY: "re_x",
       FROM_EMAIL: "example.com",
-      S3_BUCKET: "everycent-abc",
+      S3_BUCKET: "strictbudget-abc",
       S3_ENDPOINT: "https://t3.storageapi.dev",
       S3_ACCESS_KEY_ID: "id",
       S3_SECRET_ACCESS_KEY: "secret",
@@ -70,7 +70,7 @@ describe("createStorage", () => {
 describe("S3Storage", () => {
   it("signs download links that name the file", async () => {
     const s3 = new S3Storage({
-      bucket: "everycent-abc",
+      bucket: "strictbudget-abc",
       endpoint: "https://t3.storageapi.dev",
       region: "auto",
       accessKeyId: "id",
@@ -84,7 +84,7 @@ describe("S3Storage", () => {
         download: true,
       })) ?? "",
     );
-    expect(url.host).toBe("everycent-abc.t3.storageapi.dev");
+    expect(url.host).toBe("strictbudget-abc.t3.storageapi.dev");
     expect(url.pathname).toBe("/budgets/b/attachments/a");
     expect(url.searchParams.get("response-content-disposition")).toBe(
       contentDisposition("Receipt é.pdf", true),
@@ -118,7 +118,6 @@ describe("attachmentType", () => {
       "image/svg+xml",
     );
     expect(await attachmentType(new TextEncoder().encode("<html><svg/></html>"))).toBeNull();
-    // A zip (or anything else) isn't an attachment type.
     expect(await attachmentType(bytes(0x50, 0x4b, 0x03, 0x04))).toBeNull();
   });
 });

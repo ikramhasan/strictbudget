@@ -1,6 +1,6 @@
-import type { CurrencyCode } from "@everycent/engine";
-import { type ChartConfig, ChartContainer } from "@everycent/ui/components/chart";
-import { cn } from "@everycent/ui/lib/utils";
+import type { CurrencyCode } from "@strictbudget/engine";
+import { type ChartConfig, ChartContainer } from "@strictbudget/ui/components/chart";
+import { cn } from "@strictbudget/ui/lib/utils";
 import {
   Bar,
   CartesianGrid,
@@ -21,10 +21,7 @@ const config = {
   netWorth: { label: "Net Worth", color: "var(--foreground)" },
 } satisfies ChartConfig;
 
-/**
- * everycent's net worth chart (EVERYCENT-79): assets as bars above zero, debts below (diverging),
- * net worth as a line on top, a ringed point where it reaches a new all-time high.
- */
+/** Assets above zero, debts below, net worth as a line; a ringed point marks a new all-time high. */
 export function NetWorthChart({
   months,
   currency,

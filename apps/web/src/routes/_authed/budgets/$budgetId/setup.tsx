@@ -1,12 +1,12 @@
-import { Button } from "@everycent/ui/components/button";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@everycent/ui/components/card";
-import { Skeleton } from "@everycent/ui/components/skeleton";
+} from "@strictbudget/ui/components/card";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -27,9 +27,9 @@ export const Route = createFileRoute("/_authed/budgets/$budgetId/setup")({
 });
 
 /**
- * Onboarding for a new budget, YNAB's new-plan checklist: pick categories, add a first account,
- * then fund categories (which, as YNAB's checklist does, just opens the budget to assign). Before
- * funding, an everycent extra: the budget's AI settings and how to connect an agent over MCP.
+ * Onboarding for a new budget: pick categories, add a first account, then fund categories (which
+ * just opens the budget to assign). Before funding: the budget's AI settings and how to connect an
+ * agent over MCP.
  */
 function SetupPage() {
   const { budget } = useBudget();

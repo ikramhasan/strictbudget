@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import { $api } from "./api";
 
 export type Flag = components["schemas"]["Flag"];
@@ -26,7 +26,6 @@ export const COLOR_LABEL: Record<FlagColor, string> = {
   purple: "Purple",
 };
 
-/** "Reimbursable (Red)" when named, otherwise "Red". */
 export function flagLabel(flag: Flag) {
   return flag.name ? `${flag.name} (${COLOR_LABEL[flag.color]})` : COLOR_LABEL[flag.color];
 }

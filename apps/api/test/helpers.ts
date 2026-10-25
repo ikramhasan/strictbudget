@@ -1,5 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { createDb, type Database, sql } from "@everycent/db";
+import { createDb, type Database, sql } from "@strictbudget/db";
 import type { App } from "../src/app";
 import { createApp } from "../src/app";
 import { type Env, parseEnv } from "../src/env";
@@ -60,13 +60,13 @@ const appDeps = new WeakMap<App, AppDeps>();
 export function createTestApp({
   serverDate = () => null,
   fxProviders = [new FakeFxProvider()],
-  ynab,
+  externalPlans,
   storage = new MemoryStorage(),
   aiAdapter,
   envOverrides = {},
   sendsEmail = true,
   ...authOptions
-}: Partial<Pick<AppDeps, "serverDate" | "fxProviders" | "ynab" | "aiAdapter">> & {
+}: Partial<Pick<AppDeps, "serverDate" | "fxProviders" | "externalPlans" | "aiAdapter">> & {
   storage?: ObjectStorage | null;
   /** False: a server that sends no email (self-hosted production without Resend). */
   sendsEmail?: boolean;
@@ -91,7 +91,7 @@ export function createTestApp({
     changes: new ChangeBus(listen),
     serverDate,
     fxProviders,
-    ynab,
+    externalPlans,
     storage,
     aiAdapter,
   };
@@ -146,7 +146,6 @@ export function linkToken(maybeMessage: EmailMessage | undefined): string {
 
 const ORIGIN = { origin: "http://localhost:5173" };
 
-/** Signs in with email and password; returns the session cookie. */
 export async function signIn(app: App, email: string, password: string): Promise<string> {
   const res = await app.request("/api/auth/sign-in/email", {
     method: "POST",
@@ -196,7 +195,6 @@ export async function signUp(
     body: JSON.stringify({ email, password, name: input.name ?? "Test User" }),
   });
   if (res.status !== 200) throw new Error(`sign-up failed: ${res.status} ${await res.text()}`);
-  // Without email there's nothing to confirm.
   if (!appDeps.get(app)?.email)
     return { cookie: await signIn(app, email, password), email, password };
   const sent = (await emailsTo(app, email, "verify-email")).at(-1);
@@ -228,7 +226,6 @@ export const budgetInput = {
   dateFormat: "MM/DD/YYYY",
 } as const;
 
-/** Creates a budget through the API as the user behind `cookie`. */
 export async function createBudget(
   app: App,
   cookie: string,

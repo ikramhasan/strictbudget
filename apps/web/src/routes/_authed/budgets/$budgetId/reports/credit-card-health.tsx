@@ -1,6 +1,6 @@
-import { addMonths, type BudgetMonth, money, monthOf } from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { Skeleton } from "@everycent/ui/components/skeleton";
+import { addMonths, type BudgetMonth, money, monthOf } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -23,10 +23,9 @@ export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/credit-
 });
 
 /**
- * Credit card health (EVERYCENT-238, an everycent extra): each card's balance next to what its
- * payment category has set aside, where the gap came from, how the card moved month by month, and
- * how much of the cards' debt is carried on money still to come. The numbers are the plan
- * screen's own (its payment category's Available and Underfunded).
+ * Each card's balance next to what its payment category has set aside, where the gap came from,
+ * how the card moved month by month, and how much of the cards' debt is carried on money still to
+ * come. The numbers are the plan screen's own (its payment category's Available and Underfunded).
  */
 function Report() {
   const { budget, formatAmount, readOnly } = useBudget();

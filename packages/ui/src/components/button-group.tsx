@@ -1,5 +1,5 @@
-import { Separator } from "@everycent/ui/components/separator";
-import { cn } from "@everycent/ui/lib/utils";
+import { Separator } from "@strictbudget/ui/components/separator";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Slot } from "radix-ui";
 

@@ -1,3 +1,4 @@
+import { createRoute, type RouteHandler, z } from "@hono/zod-openapi";
 import {
   BUDGET_MONTH_PATTERN,
   type BudgetMonth,
@@ -5,8 +6,7 @@ import {
   zAccountType,
   zCurrencyCode,
   zMinorUnits,
-} from "@everycent/engine";
-import { createRoute, type RouteHandler, z } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError, jsonError } from "../../lib/errors";
 import { zFxRate } from "../../lib/fx/rate-schema";

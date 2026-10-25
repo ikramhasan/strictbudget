@@ -1,7 +1,7 @@
-import type { CurrencyCode } from "@everycent/engine";
-import { type ChartConfig, ChartContainer } from "@everycent/ui/components/chart";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
-import { cn } from "@everycent/ui/lib/utils";
+import type { CurrencyCode } from "@strictbudget/engine";
+import { type ChartConfig, ChartContainer } from "@strictbudget/ui/components/chart";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, XAxis, YAxis } from "recharts";
 import {
   type NetWorthReport,
@@ -27,8 +27,8 @@ const SHORT: Record<WaterfallStep["key"], string> = {
 };
 
 /**
- * "What changed this month" (an everycent extra): a waterfall from the month before's net worth
- * through net saved from income, debt paid down, tracking accounts and other, to the month's.
+ * A waterfall from the month before's net worth through net saved from income, debt paid down,
+ * tracking accounts and other, to the month's.
  */
 export function WhatChanged({
   report,

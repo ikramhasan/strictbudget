@@ -1,4 +1,4 @@
-import { cn } from "@everycent/ui/lib/utils";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { type LoanPlan, paidOffPercent } from "@/lib/loan-planner";
 import { LoanChart, LoanChartLegend } from "./loan-chart";
 import { planSeries, useWholeFormat } from "./loan-progress";
@@ -6,7 +6,6 @@ import { ShareImageDialog } from "./share-image-dialog";
 
 const TAGLINE = "Never worrying about this debt again.";
 
-/** A loan's Share Your Progress (YNAB, 2026-10-13): its balance, % paid off and chart. */
 export function ShareProgressDialog({
   open,
   onOpenChange,

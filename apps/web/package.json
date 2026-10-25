@@ -1,5 +1,5 @@
 {
-  "name": "@everycent/web",
+  "name": "@strictbudget/web",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -15,9 +15,9 @@
     "@dnd-kit/abstract": "catalog:",
     "@dnd-kit/helpers": "catalog:",
     "@dnd-kit/react": "catalog:",
-    "@everycent/api-client": "workspace:*",
-    "@everycent/engine": "workspace:*",
-    "@everycent/ui": "workspace:*",
+    "@strictbudget/api-client": "workspace:*",
+    "@strictbudget/engine": "workspace:*",
+    "@strictbudget/ui": "workspace:*",
     "@tanstack/ai": "catalog:",
     "@tanstack/ai-react": "catalog:",
     "@tanstack/react-query": "catalog:",
@@ -43,7 +43,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@everycent/tsconfig": "workspace:*",
+    "@strictbudget/tsconfig": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query-devtools": "catalog:",
     "@tanstack/react-router-devtools": "catalog:",

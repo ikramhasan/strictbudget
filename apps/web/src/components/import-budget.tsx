@@ -1,11 +1,11 @@
-import type { components } from "@everycent/api-client";
-import { Button } from "@everycent/ui/components/button";
+import type { components } from "@strictbudget/api-client";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@everycent/ui/components/dropdown-menu";
+} from "@strictbudget/ui/components/dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ArchiveRestore, ChevronDown, FileSpreadsheet, Import, KeyRound } from "lucide-react";
@@ -13,16 +13,12 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { apiErrorMessage, invalidateBudgets } from "@/lib/budgets";
-import { YnabApiImportDialog, YnabFilesImportDialog } from "./ynab-import";
+import { ExternalApiImportDialog, ExternalFilesImportDialog } from "./external-import";
 
 type Backup = components["schemas"]["BudgetBackup"];
 
-/**
- * The All budgets page's Import menu: a YNAB plan through YNAB's API or its exported files
- * (EVERYCENT-69), or an everycent backup (EVERYCENT-71), each as a new budget.
- */
 export function ImportBudgetMenu() {
-  const [dialog, setDialog] = useState<"ynab" | "files" | null>(null);
+  const [dialog, setDialog] = useState<"external" | "files" | null>(null);
   const file = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
   const queryClient = useQueryClient();
@@ -35,7 +31,7 @@ export function ImportBudgetMenu() {
       try {
         backup = JSON.parse(await chosen.text()) as Backup;
       } catch {
-        toast.error("That file isn't an everycent backup.");
+        toast.error("That file isn't a strictbudget backup.");
         return;
       }
       const { data, error } = await apiClient.POST("/v1/budgets/import", {
@@ -62,22 +58,22 @@ export function ImportBudgetMenu() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-60">
-          <DropdownMenuItem onSelect={() => setDialog("ynab")}>
+          <DropdownMenuItem onSelect={() => setDialog("external")}>
             <KeyRound /> From YNAB…
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setDialog("files")}>
             <FileSpreadsheet /> From YNAB's exported files…
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => file.current?.click()}>
-            <ArchiveRestore /> Restore an everycent backup…
+            <ArchiveRestore /> Restore a strictbudget backup…
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <YnabApiImportDialog
-        open={dialog === "ynab"}
-        onOpenChange={(open) => setDialog(open ? "ynab" : null)}
+      <ExternalApiImportDialog
+        open={dialog === "external"}
+        onOpenChange={(open) => setDialog(open ? "external" : null)}
       />
-      <YnabFilesImportDialog
+      <ExternalFilesImportDialog
         open={dialog === "files"}
         onOpenChange={(open) => setDialog(open ? "files" : null)}
       />

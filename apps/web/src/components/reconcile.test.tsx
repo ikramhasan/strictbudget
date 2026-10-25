@@ -13,11 +13,11 @@ const show = (amount: bigint) => `$${(Number(amount) / 100).toFixed(2)}`;
 
 describe("reconciledLabel", () => {
   const now = new Date("2026-10-11T00:00:00Z");
-  it("words the last reconciliation as YNAB does", () => {
+  it("words the last reconciliation", () => {
     expect(reconciledLabel(null, now)).toBe("Not Yet Reconciled");
     expect(reconciledLabel("2026-10-10T23:59:50Z", now)).toBe("Reconciled a few seconds ago");
     expect(reconciledLabel("2026-10-10T23:56:00Z", now)).toBe("Reconciled 4 minutes ago");
-    // YNAB showed "9 days ago" for 8 days and 13 hours.
+    // "9 days ago" for 8 days and 13 hours.
     expect(reconciledLabel("2026-10-02T10:02:18Z", now)).toBe("Reconciled 9 days ago");
   });
 });
@@ -38,7 +38,7 @@ describe("ReconcileBanner", () => {
     const props = { show, pending: false, onCancel: vi.fn(), onFinish: vi.fn() };
     const { rerender } = render(<ReconcileBanner difference={-1100n} {...props} />);
     expect(screen.getByRole("region", { name: "Reconciling" })).toHaveTextContent(
-      "This account's cleared balance in everycent is $11.00 higher than your actual account.",
+      "This account's cleared balance in strictbudget is $11.00 higher than your actual account.",
     );
     expect(screen.getByRole("button", { name: "Create Adjustment & Finish" })).toBeVisible();
     rerender(<ReconcileBanner difference={300n} {...props} />);
@@ -79,6 +79,6 @@ describe("ReconcilePopover", () => {
     await user.click(screen.getByRole("checkbox", { name: "Don't Show Again" }));
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(onStart).toHaveBeenCalledWith(-5700n);
-    expect(localStorage.getItem("everycent:skipDifferenceExplanation")).toBe("true");
+    expect(localStorage.getItem("strictbudget:skipDifferenceExplanation")).toBe("true");
   });
 });

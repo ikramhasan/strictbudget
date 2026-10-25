@@ -3,7 +3,7 @@ import { parseAmount } from "./format-amount";
 import type { DateFormat, NumberFormat } from "./format-settings";
 
 /**
- * YNAB's register search (web app): comma-separated terms, all of which must match (it's
+ * The register search: comma-separated terms, all of which must match (it's
  * additive, never subtractive). A term is either free text, found in any field, or
  * `Label: value` for one field, as the search suggestions write them:
  *
@@ -43,7 +43,7 @@ export const IS_STATES = [
 ] as const;
 export type IsState = (typeof IS_STATES)[number];
 
-/** How YNAB names each `Is:` state. */
+/** The name of each `Is:` state. */
 export const IS_LABELS: Record<IsState, string> = {
   uncleared: "Uncleared",
   cleared: "Cleared",
@@ -63,7 +63,7 @@ export type DateOp = "on" | "before" | "after";
 /** `On:` is that day; `Before:`/`After:` include the day itself ("On or before"). */
 export const DATE_LABELS: Record<DateOp, string> = { on: "On", before: "Before", after: "After" };
 
-/** English month names, as YNAB's `Income:` term reads and writes them. */
+/** English month names, as the `Income:` term reads and writes them. */
 export const MONTH_NAMES = [
   "January",
   "February",
@@ -161,7 +161,7 @@ function labelled(
 
 /**
  * A month name, in full or its first three letters, in any case, then an optional four-digit year
- * ("October 2026", "oct", "OCTOBER"). YNAB reads nothing else ("10/2026", "Sept" match nothing).
+ * ("October 2026", "oct", "OCTOBER"). Nothing else reads ("10/2026", "Sept" match nothing).
  */
 function parseIncomeMonth(value: string): SearchTerm | null {
   const match = /^([a-z]+)(?:\s+(\d{4}))?$/i.exec(value);
@@ -198,15 +198,14 @@ function daysIn(year: number, month: number) {
 }
 
 /**
- * The date YNAB's search reads in `text` (YYYY-MM-DD), or null. It's what moment.js's forgiving
- * parse with the budget's date format gives, then a year window (YNAB's web app, checked
- * 2026-10-15/16 in MM/DD/YYYY, DD/MM/YYYY and YYYY-MM-DD plans; EVERYCENT-167):
+ * The date the search reads in `text` (YYYY-MM-DD), or null. It's what moment.js's forgiving
+ * parse with the budget's date format gives, then a year window:
  *
  * - The format's parts are read in order, each from the first digits found in what's left
  *   (month and day take one or two, the year one to four), skipping whatever comes before them;
  *   a separator in the format is skipped up to its next occurrence. So in MM/DD/YYYY `5` is May
- *   1st, `105` is 10/05, `10/2026` is 10/20/2026 (day "20", year "26"), and `Card 5` and
- *   `x-c11-135` (11/13) read as dates too.
+ *   1st, `105` is 10/05, `10/2026` is 10/20/2026 (day "20", year "26"), and `Card 5` reads as a
+ *   date too.
  * - Year, then month, then day take today's until the first part typed; after it a missing month
  *   is January and a missing day the 1st (DD/MM/YYYY: `5` is the 5th of this month).
  * - A two-digit year is 2000–2068 or 1969–1999. A month or day that doesn't exist gives null.

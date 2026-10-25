@@ -1,5 +1,5 @@
-import { newId } from "@everycent/db";
-import { budgetMember, user } from "@everycent/db/schema";
+import { newId } from "@strictbudget/db";
+import { budgetMember, user } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../test/helpers";
@@ -13,7 +13,7 @@ const { app, db, close } = createTestApp();
 beforeEach(() => resetDatabase(db));
 afterAll(close);
 
-describe("former members keep their avatar colour (EVERYCENT-213)", () => {
+describe("former members keep their avatar colour", () => {
   async function budgetWith(names: string[]) {
     const [first = "Owner", ...rest] = names;
     const owner = await signUp(app, { name: first });

@@ -1,5 +1,5 @@
-import { createDb } from "@everycent/db";
-import { budgetAccount, budgetMember, transaction, user } from "@everycent/db/schema";
+import { createDb } from "@strictbudget/db";
+import { budgetAccount, budgetMember, transaction, user } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetDatabase, testEnv } from "../../test/helpers";

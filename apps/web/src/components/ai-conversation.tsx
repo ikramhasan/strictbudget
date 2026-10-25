@@ -1,12 +1,12 @@
-import { Bubble, BubbleContent } from "@everycent/ui/components/bubble";
-import { Button } from "@everycent/ui/components/button";
+import { Bubble, BubbleContent } from "@strictbudget/ui/components/bubble";
+import { Button } from "@strictbudget/ui/components/button";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupTextarea,
-} from "@everycent/ui/components/input-group";
-import { Message, MessageContent } from "@everycent/ui/components/message";
+} from "@strictbudget/ui/components/input-group";
+import { Message, MessageContent } from "@strictbudget/ui/components/message";
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -14,9 +14,9 @@ import {
   MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
-} from "@everycent/ui/components/message-scroller";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { Trace, TraceIcon, TraceLine, TraceTitle } from "@everycent/ui/components/trace";
+} from "@strictbudget/ui/components/message-scroller";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { Trace, TraceIcon, TraceLine, TraceTitle } from "@strictbudget/ui/components/trace";
 import { fetchServerSentEvents, type UIMessage, useChat } from "@tanstack/ai-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Check, CircleAlert, CircleDashed, Paperclip, Square, X } from "lucide-react";
@@ -177,7 +177,7 @@ export function AiConversation({
                   : ("document" as const),
                 source: {
                   type: "url" as const,
-                  value: `everycent-attachment:${f.id}`,
+                  value: `strictbudget-attachment:${f.id}`,
                   mimeType: f.contentType,
                 },
                 metadata: { attachmentId: f.id, fileName: f.fileName, byteSize: f.byteSize },
@@ -385,7 +385,6 @@ export function AiConversation({
               }
             }}
           />
-          {/* A toolbar under the message: attach on the left, send on the right. */}
           <InputGroupAddon align="block-end" className="justify-between">
             <InputGroupButton
               type="button"
@@ -508,7 +507,6 @@ function ChatMessage({
   );
 }
 
-/** A tool call's arguments, as streamed: JSON text. */
 function parseArgs(text: string): unknown {
   try {
     return JSON.parse(text);
@@ -517,7 +515,6 @@ function parseArgs(text: string): unknown {
   }
 }
 
-/** One tool the assistant used, as a line of what it did. */
 function ToolActivity({
   name,
   status,

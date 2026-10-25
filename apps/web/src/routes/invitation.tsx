@@ -1,7 +1,7 @@
-import { Button } from "@everycent/ui/components/button";
-import { FieldError } from "@everycent/ui/components/field";
-import { Skeleton } from "@everycent/ui/components/skeleton";
-import { Spinner } from "@everycent/ui/components/spinner";
+import { Button } from "@strictbudget/ui/components/button";
+import { FieldError } from "@strictbudget/ui/components/field";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -54,7 +54,7 @@ function Invitation({ token }: { token: string | null }) {
       onClick={forgetInvitation}
       className="text-foreground underline underline-offset-4"
     >
-      Go to everycent
+      Go to strictbudget
     </Link>
   );
 

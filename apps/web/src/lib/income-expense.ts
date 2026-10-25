@@ -6,24 +6,23 @@ import {
   percentOf,
   plainAmount,
   toDelimited,
-} from "@everycent/engine";
+} from "@strictbudget/engine";
 import { useCallback, useState } from "react";
 import { monthLabel } from "./reports";
 
 /**
- * YNAB's Income v Expense table (settled on the test plan 2026-10-17, EVERYCENT-80):
+ * The Income v Expense table:
  * - Income: Ready to Assign lines (no starting balances) per payee under "All Income Sources",
  *   alphabetical ignoring case, "[No Payee]" for lines without one; then "Total All Income
  *   Sources" and "Total Income". The category filter doesn't touch it, the account filter does.
- * - Expense: "Uncategorized Transactions" first, then each group in plan order with its categories
- *   in plan order (hidden ones too), each a net (inflows positive), and "Total <Group>"; then
- *   "Total Expenses" and "Net Income" = income + expenses.
+ * - Expense: "Uncategorized Transactions" first, then each group in budget order with its
+ *   categories in budget order (hidden ones too), each a net (inflows positive), and "Total
+ *   <Group>"; then "Total Expenses" and "Net Income" = income + expenses.
  * - Only rows with activity in the range are listed (a category netting $0.00 with lines is).
  * - Each row has a cell per month, an Average (the total over the months, half away from zero)
  *   and a Total.
  */
 
-/** One row's amounts: a cell per month, then Average and Total. */
 export interface RowValues {
   months: bigint[];
   average: bigint;
@@ -47,7 +46,6 @@ export interface GroupRows {
   groupId: string;
   name: string;
   categories: CategoryRow[];
-  /** "Total <Group>". */
   total: RowValues;
 }
 
@@ -62,8 +60,8 @@ export interface IncomeExpenseTable {
   totalExpenses: RowValues;
   netIncome: RowValues;
   /**
-   * everycent's savings rate (net income ÷ income) per month, then Average and Total columns, in
-   * percent for display only; null when there's no income to divide by.
+   * Savings rate (net income ÷ income) per month, then Average and Total, in percent for display
+   * only; null when there's no income to divide by.
    */
   savingsRate: { months: (number | null)[]; average: number | null; total: number | null };
 }
@@ -95,7 +93,6 @@ export interface IncomeExpenseInput {
 export const NO_PAYEE = "[No Payee]";
 export const UNCATEGORIZED = "Uncategorized Transactions";
 
-/** Row values from per-month amounts. */
 export function rowValues(months: bigint[]): RowValues {
   const total = months.reduce((s, v) => s + v, 0n);
   return { months, average: averageOf(total, months.length), total };
@@ -190,10 +187,10 @@ export function buildIncomeExpense(input: IncomeExpenseInput): IncomeExpenseTabl
 }
 
 /**
- * YNAB's export (2026-10-17): "Category", the months ("Aug 2026"), "Average", "Total"; then "All
- * Income Sources" carrying the income total, each payee, "Total Income", "Uncategorized
- * Transactions", each group as a row carrying its total followed by its categories (no "Total
- * <Group>" rows), "Total Expenses" and "Net Income". Text quoted, amounts plain.
+ * Export rows: "Category", the months ("Aug 2026"), "Average", "Total"; then "All Income Sources"
+ * carrying the income total, each payee, "Total Income", "Uncategorized Transactions", each group as
+ * a row carrying its total followed by its categories (no "Total <Group>" rows), "Total Expenses"
+ * and "Net Income". Text quoted, amounts plain.
  */
 export function incomeExpenseExportRows(
   table: IncomeExpenseTable,
@@ -221,7 +218,7 @@ export function incomeExpenseExportRows(
   ];
 }
 
-/** The export's text: YNAB's Income v Expense CSV (or TSV) has no byte-order mark. */
+/** The Income v Expense CSV (or TSV) has no byte-order mark. */
 export function incomeExpenseExport(
   table: IncomeExpenseTable,
   exponent: number,
@@ -247,11 +244,10 @@ export function heatOf(cell: bigint, average: bigint): number | null {
 }
 
 /**
- * The table's folded sections and groups, remembered by the browser like YNAB's
- * (`.incomeExpenseCollapse`, 2026-10-17): keys are "income", "expense", "income-sources" and group
- * ids.
+ * The table's folded sections and groups, remembered by the browser: keys are "income",
+ * "expense", "income-sources" and group ids.
  */
-const COLLAPSE_KEY = "everycent:income-expense-collapse";
+const COLLAPSE_KEY = "strictbudget:income-expense-collapse";
 
 function readCollapsed(): Record<string, true> {
   try {

@@ -1,4 +1,4 @@
-import { transaction } from "@everycent/db/schema";
+import { transaction } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
@@ -110,7 +110,6 @@ describe("transfers", () => {
   });
 
   it("starts new transactions cleared in cash accounts, each transfer side by its own", async () => {
-    // YNAB's web app, 2026-10-15 (EVERYCENT-146).
     const { addAccount, post, transfer, find, groceries } = await setup();
     const checking = await addAccount("Checking", "checking", "100000");
     const wallet = await addAccount("Wallet", "cash", "10000");
@@ -124,7 +123,6 @@ describe("transfers", () => {
     expect((await created({ accountId: wallet.id, ...spend })).cleared).toBe("cleared");
     expect((await created({ accountId: checking.id, ...spend })).cleared).toBe("uncleared");
     expect((await created({ accountId: savings.id, ...spend })).cleared).toBe("uncleared");
-    // Said explicitly, it's kept.
     expect((await created({ accountId: wallet.id, ...spend, cleared: "uncleared" })).cleared).toBe(
       "uncleared",
     );
@@ -137,7 +135,6 @@ describe("transfers", () => {
     expect(fromCash.cleared).toBe("cleared");
     expect((await find(fromCash.transferTransactionId ?? ""))?.cleared).toBe("uncleared");
 
-    // A split's transfer line into cash.
     const split = await created({
       accountId: checking.id,
       amount: "-3000",
@@ -220,7 +217,6 @@ describe("transfers", () => {
     expect(await find(out.id)).toMatchObject({
       amount: "-30000",
       date: "2026-10-03",
-      // YNAB copies a memo edit to the other side (EVERYCENT-158).
       memo: "mine",
       cleared: "uncleared",
     });
@@ -295,8 +291,8 @@ describe("transfers", () => {
   });
 
   it("changes a transfer whose other side is reconciled, which stays reconciled", async () => {
-    // YNAB 2026-10-11: after its warning, the reconciled side follows the edit (re-pointed, it
-    // moved to the new account with the same id) and keeps its lock.
+    // The reconciled side follows the edit (re-pointed, it moves to the new account with the
+    // same id) and keeps its lock.
     const { base, cookie, addAccount, transfer, patch, find } = await setup();
     const checking = await addAccount("Checking", "checking", "100000");
     const savings = await addAccount("Savings", "savings");
@@ -316,7 +312,7 @@ describe("transfers", () => {
     expect((await patch(out.id, { transferAccountId: wallet.id })).status).toBe(200);
     expect(await find(otherId)).toMatchObject({ accountId: wallet.id, cleared: "reconciled" });
 
-    // Deleting deletes both sides, as YNAB does after "Delete Reconciled Transfer?".
+    // Deleting deletes both sides.
     expect((await send("DELETE", `${base}/transactions/${out.id}`, cookie)).status).toBe(204);
     expect(await find(otherId)).toBeUndefined();
   });
@@ -330,7 +326,7 @@ describe("transfers", () => {
     const res = await patch(out.id, { cleared: "cleared" });
     expect(res.status).toBe(409);
     expect((await json<ErrorBody>(res)).error.code).toBe("TRANSACTION_RECONCILED");
-    // Everything else can still change (YNAB warns on the amount).
+    // Everything else can still change.
     expect((await patch(out.id, { amount: "-1500", memo: "fixed" })).status).toBe(200);
     expect(await find(out.id)).toMatchObject({ amount: "-1500", cleared: "reconciled" });
   });

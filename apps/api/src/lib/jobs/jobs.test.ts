@@ -1,4 +1,4 @@
-import { sql } from "@everycent/db";
+import { sql } from "@strictbudget/db";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestApp, emailsTo, resetDatabase, runJobs } from "../../../test/helpers";
 import type { AppDeps } from "../../types";

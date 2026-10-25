@@ -13,7 +13,6 @@ describe("collapsed splits", () => {
     expect(result.current[0]).toEqual({ t1: true, t2: true });
     act(() => result.current[1]("t1"));
     expect(result.current[0]).toEqual({ t2: true });
-    // Another register (or a reload) reads the same entry.
     expect(renderHook(() => useCollapsedSplits()).result.current[0]).toEqual({ t2: true });
   });
 });

@@ -1,14 +1,14 @@
-import { addMonths, type BudgetMonth } from "@everycent/engine";
+import { addMonths, type BudgetMonth } from "@strictbudget/engine";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import type { FixThisMonths } from "@/components/move-money";
 import type { CategoryList } from "./categories";
 import { type BudgetMonthData, type MoneyOption, moneyOptions, monthQueryOptions } from "./months";
 
 /**
- * The months YNAB's Fix This offers (checked 2026-10-11, YNAB findings): none to pick from in a
- * past month; otherwise the current month through the last month with money assigned (or the
- * month on screen, if later), months with nothing assigned disabled. The current month offers each
- * category's Available; a later month what's assigned to it there.
+ * The months Fix This offers: none in a past month; otherwise the current month through the last
+ * month with money assigned (or the month on screen, if later), months with nothing assigned
+ * disabled. The current month offers each category's Available; a later month what's assigned to it
+ * there.
  */
 export function useFixThisMonths({
   budgetId,
@@ -22,7 +22,6 @@ export function useFixThisMonths({
   budgetId: string;
   month: BudgetMonth;
   current: BudgetMonth;
-  /** The month on screen. */
   data: BudgetMonthData | undefined;
   categories: CategoryList | undefined;
   unassign: FixThisMonths["unassign"];

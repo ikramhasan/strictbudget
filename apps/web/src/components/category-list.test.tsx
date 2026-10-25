@@ -250,7 +250,7 @@ describe("CategoryList", () => {
     expect(screen.getByLabelText("Has a note")).toBeInTheDocument();
   });
 
-  it("offers a viewer nothing to change (EVERYCENT-88)", async () => {
+  it("offers a viewer nothing to change", async () => {
     const actions = makeActions();
     const viewing = {
       id: "b",
@@ -275,7 +275,6 @@ describe("CategoryList", () => {
       screen.queryByRole("button", { name: "Add a category to Bills" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Reorder/ })).not.toBeInTheDocument();
-    // Its name opens no editor.
     await userEvent.click(screen.getByRole("button", { name: "Electric" }));
     expect(screen.queryByLabelText("Category name")).not.toBeInTheDocument();
     expect(actions.updateCategory).not.toHaveBeenCalled();
@@ -404,7 +403,6 @@ describe("CategoryList", () => {
     expect(screen.getByRole("button", { name: "Hide" })).toBeInTheDocument();
   });
 
-  // YNAB's delete dialogs, checked 2026-10-11 (YNAB findings).
   const withUsage = (
     id: string,
     usage: { transactionCount?: number; hasAssignedMoney?: boolean },
@@ -541,11 +539,10 @@ describe("CategoryList", () => {
       expect(
         screen.getByText("Some categories are hidden by your current view."),
       ).toBeInTheDocument();
-      // A view can't be reordered.
       expect(screen.queryByRole("button", { name: "Reorder Electric" })).not.toBeInTheDocument();
     });
 
-    it("totals a group over its categories in view (YNAB, 2026-10-11)", () => {
+    it("totals a group over its categories in view", () => {
       renderSelectable(new Set(["c2"]));
       const bills = screen.getByRole("region", { name: "Bills" });
       // The whole group is A100 / A-35 / A65; Electric alone is A0 / A-5 / A-5.
@@ -625,7 +622,7 @@ describe("CategoryList", () => {
   });
 });
 
-describe("CategoryList keys (YNAB, 2026-10-18)", () => {
+describe("CategoryList keys", () => {
   function Harness({ onAssign }: { onAssign: (id: string, amount: bigint) => void }) {
     const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
     const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
@@ -738,7 +735,7 @@ describe("CategoryList keys (YNAB, 2026-10-18)", () => {
   });
 });
 
-describe("CategoryList with axe (EVERYCENT-95)", () => {
+describe("CategoryList with axe", () => {
   it("finds nothing on the plan's list", async () => {
     const { expectAccessible } = await import("@/test/axe");
     renderWithFigures();

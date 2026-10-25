@@ -1,12 +1,12 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import {
   PAYEE_RULE_OPERATOR_LABELS,
   PAYEE_RULE_OPERATORS,
   type PayeeRuleOperator,
-} from "@everycent/engine";
-import { Button } from "@everycent/ui/components/button";
-import { Input } from "@everycent/ui/components/input";
-import { NativeSelect, NativeSelectOption } from "@everycent/ui/components/native-select";
+} from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
+import { Input } from "@strictbudget/ui/components/input";
+import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
 import { Minus, Plus, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { $api } from "@/lib/api";
@@ -22,7 +22,6 @@ export const payeeRulesQueryOptions = (budgetId: string) =>
 /** Runs a change through Manage Payees' Undo (and refreshes what shows payees). */
 type Run = (command: UndoCommand & { first?: () => Promise<void> }) => Promise<void>;
 
-/** The gear Manage Payees puts on payees that have renaming rules, as YNAB does. */
 export function RenamingRulesGear() {
   return (
     <span title="Renaming rules applied" className="text-muted-foreground">
@@ -31,11 +30,6 @@ export function RenamingRulesGear() {
   );
 }
 
-/**
- * YNAB's "Renaming" card in Manage Payees: the payee's renaming rules, each a condition (Contains
- * or Is) and text, edited in place. "+" saves the blank row and opens another; Enter saves it.
- * Clearing a rule's text removes it; a blank row is never saved.
- */
 export function PayeeRenamingRules({
   budgetId,
   payeeId,
@@ -233,7 +227,6 @@ function SavedRule({
 
   function commit() {
     if (text === rule.text) return;
-    // Clearing a rule's text removes it (YNAB).
     if (text.trim() === "") onRemove();
     else onEdit({ text });
   }

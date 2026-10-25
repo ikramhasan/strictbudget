@@ -1,6 +1,6 @@
-import { DropdownMenuContent } from "@everycent/ui/components/dropdown-menu";
-import { useSidebar } from "@everycent/ui/components/sidebar";
-import { cn } from "@everycent/ui/lib/utils";
+import { DropdownMenuContent } from "@strictbudget/ui/components/dropdown-menu";
+import { useSidebar } from "@strictbudget/ui/components/sidebar";
+import { cn } from "@strictbudget/ui/lib/utils";
 import type { ComponentProps } from "react";
 
 /**

@@ -56,7 +56,7 @@ const changes = (text: string) =>
     .filter((block) => block.includes("event: change"))
     .map((block) => JSON.parse(block.split("data: ")[1] ?? "{}") as Record<string, string>);
 
-describe("live updates (EVERYCENT-90)", () => {
+describe("live updates", () => {
   it("tells a member's open stream about a partner's change, with the tab that made it", async () => {
     const owner = await signUp(app, { name: "Owner" });
     const budget = await createBudget(app, owner.cookie);
@@ -98,18 +98,16 @@ describe("live updates (EVERYCENT-90)", () => {
       owner.cookie,
     );
     expect(removed.status).toBe(204);
-    // Changes after the removal never reach the stream, which has closed.
     await send("PUT", `/v1/budgets/${budget.id}/months/2026-10/note`, owner.cookie, {
       note: "secret",
     });
     const { text, ended } = await open.until(() => false, 4000);
     expect(changes(text).filter((c) => c.table === "month_note")).toEqual([]);
-    // It ended on the removal, well before the read gave up.
     expect(ended).toBe(true);
     expect(Date.now() - started).toBeLessThan(3000);
   });
 
-  it("doesn't send a change heard before the removal's own notification (EVERYCENT-228)", async () => {
+  it("doesn't send a change heard before the removal's own notification", async () => {
     const owner = await signUp(app, { name: "Owner" });
     const budget = await createBudget(app, owner.cookie);
     const pat = await shareBudget(app, owner.cookie, budget.id);

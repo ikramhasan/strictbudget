@@ -3,7 +3,7 @@ import postgres from "postgres";
 import * as schema from "./schema";
 
 export interface CreateDbOptions {
-  /** Max pool size. Default 10. */
+  /** Default 10. */
   max?: number;
 }
 
@@ -16,7 +16,7 @@ export function createDb(url: string, { max = 10 }: CreateDbOptions = {}) {
     max,
     onnotice: () => {},
     // The app runs short queries; JIT compiling them cost more than it saved (300 ms on a big
-    // account's register page against a few ms of execution, EVERYCENT-33).
+    // account's register page against a few ms of execution).
     connection: { jit: "off" },
   });
   const db = drizzle({ client, schema, casing: "snake_case" });

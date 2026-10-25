@@ -44,7 +44,6 @@ describe("ReadyToAssignBanner", () => {
   });
 });
 
-// YNAB, 2026-10-14: October in "x132 Order" and in "ihni7's Plan".
 describe("Ready to Assign Breakdown", () => {
   const october = {
     leftOver: "-200",
@@ -56,7 +55,7 @@ describe("Ready to Assign Breakdown", () => {
     total: "0",
   };
 
-  it("lists the lines in YNAB's words, leaving out lines at zero", () => {
+  it("lists the lines, leaving out lines at zero", () => {
     expect(breakdownSections(october, "2026-10")).toEqual({
       plus: [
         { label: "Ready to Assign left over from September", amount: "-200" },
@@ -87,7 +86,6 @@ describe("Ready to Assign Breakdown", () => {
   });
 });
 
-// YNAB "x132 Order", 2026-10-14 (EVERYCENT-143).
 describe("FutureTargetIcon", () => {
   it("fills with the funded share, and turns into a check once funded", () => {
     const { rerender } = render(<FutureTargetIcon targets={{ needed: "500", funded: "300" }} />);

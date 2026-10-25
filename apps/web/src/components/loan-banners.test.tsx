@@ -16,7 +16,6 @@ function renderBanners(banners: { simulatorDismissed: boolean; paidOffDismissed:
   );
 }
 
-// YNAB keeps both dismissals as plan settings (checked 2026-10-14).
 describe("LoanBanners", () => {
   it("hides what the plan has dismissed", () => {
     renderBanners({ simulatorDismissed: true, paidOffDismissed: false });

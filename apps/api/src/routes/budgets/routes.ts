@@ -1,11 +1,11 @@
-import { BUDGET_ROLES } from "@everycent/db/schema";
+import { createRoute, z } from "@hono/zod-openapi";
+import { BUDGET_ROLES } from "@strictbudget/db/schema";
 import {
   zCurrencyCode,
   zCurrencySymbolPosition,
   zDateFormat,
   zNumberFormat,
-} from "@everycent/engine";
-import { createRoute, z } from "@hono/zod-openapi";
+} from "@strictbudget/engine";
 import { jsonError } from "../../lib/errors";
 import {
   authSecurity,
@@ -178,9 +178,9 @@ export const freshStartBudget = createRoute({
   description:
     "Owner only. The new budget is named `name` and keeps the settings, partners, categories " +
     "(with their notes), payees, flag names, custom views, accounts (each starting at $0 on " +
-    "`date`, as YNAB starts unlinked accounts; starred ones stay starred) and scheduled " +
+    "`date`; starred ones stay starred) and scheduled " +
     "transactions. The old one gets ' (Archived on <date>)' added to its name. An archived " +
-    "budget can make a fresh start again, as in YNAB.",
+    "budget can make a fresh start again.",
   request: {
     params: BudgetParams,
     body: {
@@ -190,7 +190,7 @@ export const freshStartBudget = createRoute({
           schema: z
             .object({
               date: z.iso.date().describe("The user's today, YYYY-MM-DD"),
-              name: BudgetName.describe("The new budget's name (YNAB's \"New Plan Name\")"),
+              name: BudgetName.describe("The new budget's name"),
             })
             .openapi("FreshStart"),
         },

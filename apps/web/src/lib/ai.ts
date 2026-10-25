@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { $api, apiBaseUrl, apiClient } from "./api";
@@ -11,7 +11,6 @@ export type AiConversationSummary = components["schemas"]["AiConversationSummary
 
 const SETTINGS = "/v1/budgets/{budgetId}/ai" as const;
 
-/** The budget's AI settings (and whether the server can run AI at all). */
 export function useAiSettings(budgetId: string | undefined) {
   return $api.useQuery(
     "get",
@@ -21,7 +20,6 @@ export function useAiSettings(budgetId: string | undefined) {
   );
 }
 
-/** Changes the budget's AI settings, showing the result at once. */
 export function useUpdateAiSettings(budgetId: string) {
   const queryClient = useQueryClient();
   const update = $api.useMutation("patch", SETTINGS);
@@ -36,11 +34,10 @@ export function useUpdateAiSettings(budgetId: string) {
   };
 }
 
-/** Why AI can't be turned on, in words for the settings. */
 export function aiUnavailableMessage(reason: AiSettings["unavailableReason"]): string | null {
   switch (reason) {
     case "NOT_CONFIGURED":
-      return "AI isn't set up on this everycent server yet. Whoever runs it needs to add an AI key (AI_API_KEY) before AI features can be turned on.";
+      return "AI isn't set up on this strictbudget server yet. Whoever runs it needs to add an AI key (AI_API_KEY) before AI features can be turned on.";
     case null:
       return null;
   }
@@ -49,7 +46,6 @@ export function aiUnavailableMessage(reason: AiSettings["unavailableReason"]): s
 export type AiAttachment = components["schemas"]["AiAttachment"];
 export type TransactionDraft = components["schemas"]["TransactionDraft"];
 
-/** What the assistant can read (the API's list): photos, PDFs, Excel workbooks, text files. */
 export const AI_FILE_ACCEPT =
   "image/jpeg,image/png,image/webp,image/gif,application/pdf,.xlsx,.csv,.tsv,.ofx,.qfx,.qif,.json,.xml,.txt,text/plain,text/csv";
 /** The API's limits: 15 MB a file, 3.75 MB a photo (Claude's 5 MB, once in base64). */
@@ -58,7 +54,6 @@ const MAX_AI_IMAGE_BYTES = (5 * 1024 * 1024 * 3) / 4;
 /** Claude reads images at up to about this many pixels on the long side. */
 const IMAGE_EDGE = 2048;
 
-/** A file sent to the assistant, as the browser fetches it. */
 export function aiAttachmentUrl(budgetId: string, attachmentId: string, download = false): string {
   const query = download ? "?download=true" : "";
   return `${apiBaseUrl}/v1/budgets/${budgetId}/ai/attachments/${attachmentId}${query}`;
@@ -99,7 +94,6 @@ function formBody<T extends Record<string, string | File>>(fields: T) {
   };
 }
 
-/** Uploads a file to send to the assistant; throws with the API's message if it's refused. */
 export async function uploadAiAttachment(budgetId: string, file: File): Promise<AiAttachment> {
   const { data, error } = await apiClient.POST("/v1/budgets/{budgetId}/ai/attachments", {
     params: { path: { budgetId } },
@@ -109,14 +103,12 @@ export async function uploadAiAttachment(budgetId: string, file: File): Promise<
   return data;
 }
 
-/** Removes a file picked for a message that won't be sent with it. */
 export async function deleteAiAttachment(budgetId: string, attachmentId: string) {
   await apiClient.DELETE("/v1/budgets/{budgetId}/ai/attachments/{attachmentId}", {
     params: { path: { budgetId, attachmentId } },
   });
 }
 
-/** Asks the AI to fill in a new transaction in `accountId` from a receipt. */
 export async function draftTransactionFromFile(
   budgetId: string,
   file: File,

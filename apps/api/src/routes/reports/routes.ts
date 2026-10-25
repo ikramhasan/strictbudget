@@ -1,6 +1,6 @@
-import { CLEARED_STATES, FLAG_COLORS } from "@everycent/db/schema";
-import { BUDGET_MONTH_PATTERN, zCurrencyCode, zMinorUnits } from "@everycent/engine";
 import { createRoute, z } from "@hono/zod-openapi";
+import { CLEARED_STATES, FLAG_COLORS } from "@strictbudget/db/schema";
+import { BUDGET_MONTH_PATTERN, zCurrencyCode, zMinorUnits } from "@strictbudget/engine";
 import { jsonError } from "../../lib/errors";
 import { REPORT_GROUPINGS, REPORT_KINDS, REPORT_LINE_ORDERS } from "../../lib/reports";
 import { authSecurity, requireAuth } from "../../middleware/require-auth";
@@ -11,7 +11,6 @@ const BudgetParams = z.object({
 
 const Month = z.string().regex(BUDGET_MONTH_PATTERN, "Expected a month as YYYY-MM");
 
-/** A comma-separated list in the query string. */
 const list = <T extends z.ZodType<string, string>>(item: T, description: string) =>
   z
     .string()
@@ -20,7 +19,6 @@ const list = <T extends z.ZodType<string, string>>(item: T, description: string)
     .optional()
     .describe(description);
 
-/** The filters every report endpoint shares. */
 const ReportQuery = z.object({
   from: Month.describe("First month, YYYY-MM"),
   to: Month.describe("Last month, YYYY-MM (inclusive)"),

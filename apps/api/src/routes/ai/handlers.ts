@@ -1,6 +1,6 @@
-import { sql } from "@everycent/db";
-import { aiConversation, budget } from "@everycent/db/schema";
 import type { RouteHandler } from "@hono/zod-openapi";
+import { sql } from "@strictbudget/db";
+import { aiConversation, budget } from "@strictbudget/db/schema";
 import { chat, chatParamsFromRequestBody, toServerSentEventsResponse } from "@tanstack/ai";
 import { reconstructChat, withPersistence } from "@tanstack/ai-persistence";
 import { and, desc, eq } from "drizzle-orm";
@@ -112,7 +112,6 @@ async function conversationFor(c: Context<Env, any, any>, budgetId: string, thre
   return row ?? null;
 }
 
-/** The text of a chat message, UI (`parts`) or model (`content`) shaped. */
 function messageText(message: unknown): string {
   if (!message || typeof message !== "object") return "";
   const m = message as { content?: unknown; parts?: unknown };

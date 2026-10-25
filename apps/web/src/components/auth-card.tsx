@@ -5,7 +5,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@everycent/ui/components/card";
+} from "@strictbudget/ui/components/card";
 import type { ReactNode } from "react";
 
 export function AuthCard(props: {
@@ -18,7 +18,7 @@ export function AuthCard(props: {
     <main className="flex min-h-svh items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <p className="font-semibold text-primary-text text-sm tracking-tight">everycent</p>
+          <p className="font-semibold text-primary-text text-sm tracking-tight">strictbudget</p>
           <CardTitle className="text-2xl">{props.title}</CardTitle>
           <CardDescription>{props.description}</CardDescription>
         </CardHeader>

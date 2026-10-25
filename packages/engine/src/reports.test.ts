@@ -77,17 +77,16 @@ describe("comparisonRange", () => {
 
 describe("averages and percentages", () => {
   it("rounds averages half away from zero to the minor unit", () => {
-    // Income v Expense, test plan Aug–Oct 2026: −$5,732.00 / 3 = −$1,910.67.
+    // −$5,732.00 / 3 = −$1,910.67.
     expect(averageOf(-573200n, 3)).toBe(-191067n);
     expect(averageOf(5n, 2)).toBe(3n);
     expect(averageOf(-5n, 2)).toBe(-3n);
-    // Spending Breakdown's Average Daily Spending: $3,601.00 / 31 days = $116.16.
+    // Average Daily Spending: $3,601.00 / 31 days = $116.16.
     expect(averageOf(360100n, 31)).toBe(11616n);
     expect(averageOf(100n, 0)).toBe(0n);
   });
 
-  it("labels shares of gross outflows as YNAB does", () => {
-    // Test plan, Oct 2026: gross outflows $3,653.00.
+  it("labels shares of gross outflows", () => {
     expect(shareLabel(283200n, 365300n)).toBe("78%");
     expect(shareLabel(13000n, 365300n)).toBe("4%");
     expect(shareLabel(3000n, 365300n)).toBe("<1%");
@@ -95,7 +94,6 @@ describe("averages and percentages", () => {
   });
 
   it("measures changes against the previous amount's size", () => {
-    // Net Worth, Oct 2026: −$306,687.00 → −$322,653.74 is −$15,966.74 (−5.2%).
     const change = changeOf(-32265374n, -30668700n);
     expect(change.amount).toBe(-1596674n);
     expect(change.percent?.toFixed(1)).toBe("-5.2");
@@ -122,7 +120,7 @@ describe("splitSpending", () => {
 });
 
 describe("export text", () => {
-  it("writes YNAB's CSV shape", () => {
+  it("writes the CSV shape", () => {
     const text = toDelimited(
       [
         ["Category Group", "Category", "Oct 2026"],

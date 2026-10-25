@@ -1,4 +1,4 @@
-import { sql } from "@everycent/db";
+import { sql } from "@strictbudget/db";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   createBudget,
@@ -25,7 +25,6 @@ function send(method: string, path: string, cookie: string | null, body?: unknow
   });
 }
 
-/** Shares `budgetId` (owned by `owner`) with `invitee` through an invitation. */
 async function share(budgetId: string, owner: string, invitee: { email: string; cookie: string }) {
   await send("POST", `/v1/budgets/${budgetId}/invitations`, owner, {
     name: "P",
@@ -104,7 +103,6 @@ describe("deleting an account", () => {
     const res = await send("POST", "/v1/me/delete", me.cookie, { password: me.password });
     expect(res.status).toBe(204);
 
-    // Signed out, and the login is gone.
     expect((await send("GET", "/v1/me", me.cookie)).status).toBe(401);
     const signIn = await send("POST", "/api/auth/sign-in/email", null, {
       email: me.email,

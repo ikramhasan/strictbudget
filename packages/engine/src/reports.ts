@@ -9,10 +9,7 @@ export interface MonthRange {
   to: BudgetMonth;
 }
 
-/**
- * YNAB's report date presets (support.ynab.com spending-breakdown): this month, the last 3, 6 or
- * 12 months, year to date, the previous year and all dates; anything else is a custom range.
- */
+/** Report date presets; any other range is a custom one. */
 export const REPORT_PRESETS = [
   "this_month",
   "last_3_months",
@@ -66,21 +63,19 @@ export function presetOf(
   });
 }
 
-/** Every month of `range`, oldest first (empty when `from` is after `to`). */
 export function monthsIn(range: MonthRange): BudgetMonth[] {
   const months: BudgetMonth[] = [];
   for (let m = range.from; m <= range.to; m = addMonths(m, 1)) months.push(m);
   return months;
 }
 
-/** The range moved by `count` months, keeping its length. */
 export function shiftRange(range: MonthRange, count: number): MonthRange {
   return { from: addMonths(range.from, count), to: addMonths(range.to, count) };
 }
 
 /**
- * Comparison mode (an everycent extra): the previous period of the same length, the same months
- * a year earlier, or the average month over the N months before the range.
+ * The previous period of the same length, the same months a year earlier, or the average month
+ * over the N months before the range.
  */
 export const REPORT_COMPARISONS = [
   "previous_period",
@@ -99,7 +94,6 @@ export interface ComparisonRange extends MonthRange {
   average: boolean;
 }
 
-/** The months a comparison reads, for a report over `range`. */
 export function comparisonRange(range: MonthRange, comparison: ReportComparison): ComparisonRange {
   const length = monthsIn(range).length;
   switch (comparison) {
@@ -116,7 +110,7 @@ export function comparisonRange(range: MonthRange, comparison: ReportComparison)
 
 /**
  * An average of `total` over `count` (months, days), rounded half away from zero to the minor
- * unit, as YNAB's report averages are (Income v Expense: −$5,732.00 over 3 months = −$1,910.67).
+ * unit (−$5,732.00 over 3 months = −$1,910.67).
  */
 export function averageOf(total: bigint, count: number): bigint {
   if (count <= 0) return 0n;
@@ -131,7 +125,7 @@ export function percentOf(part: bigint, whole: bigint): number | null {
 }
 
 /**
- * Spending Breakdown's share label (YNAB, 2026-10-17): a rounded whole percent of the gross
+ * Spending Breakdown's share label: a rounded whole percent of the gross
  * outflows ($2,832 of $3,653 is "78%"), "<1%" for anything under one percent before rounding
  * ($30 of $3,653), nothing for a category that spent nothing.
  */
@@ -159,19 +153,12 @@ export interface SpendingRow<K> {
 export interface SpendingSplit<K> {
   /** Rows that spent money or broke even (net ≤ 0), most spent first. */
   spending: SpendingRow<K>[];
-  /**
-   * YNAB's "Positive Inflow Categories": rows whose inflows beat their outflows, smallest first
-   * (YNAB, 2026-10-17: +$2 rows, then +$4, then +$20).
-   */
+  /** Rows whose inflows beat their outflows, smallest first. */
   positive: SpendingRow<K>[];
   /** What the spending rows spent, as a positive amount (the base for their shares). */
   grossOutflows: bigint;
-  /** What the positive rows brought in. */
   positiveInflows: bigint;
-  /**
-   * YNAB's Total Spending, positive: what was spent less the positive rows (Oct 2026 on the test
-   * plan: $3,653.00 − $52.00 = $3,601.00).
-   */
+  /** Total spending, as a positive amount: what was spent less the positive rows. */
   total: bigint;
 }
 
@@ -196,7 +183,7 @@ const cmp = (a: bigint, b: bigint) => (a < b ? -1 : a > b ? 1 : 0);
 export type DelimitedCell = string | { raw: string };
 
 /**
- * CSV or TSV text in YNAB's export shape (2026-10-17): every text cell quoted, numbers bare, a
+ * CSV or TSV text for an export: every text cell quoted, numbers bare, a
  * byte-order mark first so spreadsheets read UTF-8, lines joined by "\n" with no trailing newline.
  */
 export function toDelimited(rows: readonly (readonly DelimitedCell[])[], delimiter: "," | "\t") {
@@ -205,7 +192,6 @@ export function toDelimited(rows: readonly (readonly DelimitedCell[])[], delimit
   return `\uFEFF${rows.map((r) => r.map(cell).join(delimiter)).join("\n")}`;
 }
 
-/** YNAB exports TSV for currencies whose decimal mark is a comma, CSV otherwise. */
 export function exportDelimiter(numberFormat: NumberFormat): "," | "\t" {
   return NUMBER_FORMAT_SPECS[numberFormat].decimal === "," ? "\t" : ",";
 }

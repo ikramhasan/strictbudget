@@ -1,4 +1,3 @@
-/** An error from the Better Auth client (`{ error }` from authClient calls). */
 export interface AuthClientError {
   code?: string;
   message?: string;
@@ -27,7 +26,6 @@ const MESSAGES: Record<string, string> = {
     "Sign in to your account in this browser, then open the link from the email again.",
 };
 
-/** A sentence to show for a Better Auth client error. */
 export function authErrorMessage(error: AuthClientError, fallback: string): string {
   if (error.status === 429) return "Too many attempts. Wait a minute and try again.";
   return (error.code && MESSAGES[error.code]) || fallback;

@@ -1,6 +1,6 @@
-import type { BudgetMonth } from "@everycent/engine";
-import { type ChartConfig, ChartContainer } from "@everycent/ui/components/chart";
-import { Skeleton } from "@everycent/ui/components/skeleton";
+import type { BudgetMonth } from "@strictbudget/engine";
+import { type ChartConfig, ChartContainer } from "@strictbudget/ui/components/chart";
+import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -8,8 +8,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@everycent/ui/components/table";
-import { ToggleGroup, ToggleGroupItem } from "@everycent/ui/components/toggle-group";
+} from "@strictbudget/ui/components/table";
+import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from "recharts";
@@ -35,9 +35,8 @@ export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/age-of-
 });
 
 /**
- * YNAB's Age of Money report (EVERYCENT-81; YNAB's Reflect page checked 2026-10-17): the current
- * number, its history one point per month, and what it means. No filters and no export (YNAB has
- * neither here). The change since 30 days ago and the table view are everycent's.
+ * The current number, its history one point per month, and what it means. No filters and no
+ * export.
  */
 function Report() {
   const { budget } = useBudget();

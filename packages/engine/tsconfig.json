@@ -1,4 +1,4 @@
 {
-  "extends": "@everycent/tsconfig/base.json",
+  "extends": "@strictbudget/tsconfig/base.json",
   "include": ["src"]
 }

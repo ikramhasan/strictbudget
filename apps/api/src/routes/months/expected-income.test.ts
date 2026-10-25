@@ -15,7 +15,6 @@ function send(method: string, path: string, cookie: string, body?: unknown) {
   });
 }
 
-// YNAB's "Expected Income" under Cost to Be Me (YNAB findings, checked 2026-10-08).
 describe("expected income", () => {
   it("is entered once and shows in every month", async () => {
     const { cookie } = await signUp(app);
@@ -35,7 +34,7 @@ describe("expected income", () => {
     expect((await targets("2026-10")).expectedIncome).toBe("500000");
     expect((await targets("2027-02")).expectedIncome).toBe("500000");
 
-    // YNAB can't clear it: zero and negative amounts are refused.
+    // It can't be cleared: zero and negative amounts are refused.
     expect((await send("PUT", `${base}/expected-income`, cookie, { amount: "0" })).status).toBe(
       400,
     );

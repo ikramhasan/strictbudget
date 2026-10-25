@@ -2,9 +2,8 @@ import type { UpdateTransactionBody } from "./transaction-history";
 import type { Transaction } from "./transactions";
 
 /**
- * YNAB's warnings before a change that can put a reconciliation out of balance. Reconciled
- * transactions stay reconciled (YNAB can't unreconcile), so these are the only guard; the wording
- * is YNAB's (checked 2026-10-11 in "Onboarding Check").
+ * Warnings before a change that can put a reconciliation out of balance. Reconciled transactions
+ * stay reconciled (there's no unreconciling), so these are the only guard.
  */
 export interface ReconciledWarning {
   title: string;
@@ -78,8 +77,8 @@ export function rowDeleteScope(t: Transaction): DeleteScope {
 }
 
 /**
- * The warning before deleting, if any. A plain delete (even of a transfer) has none, as in YNAB;
- * a reconciled transfer elsewhere takes precedence over a reconciled row here.
+ * The warning before deleting, if any. A plain delete (even of a transfer) has none; a reconciled
+ * transfer elsewhere takes precedence over a reconciled row here.
  */
 export function deleteWarning(scope: DeleteScope): ReconciledWarning | null {
   const several = `Delete ${scope.count} Transactions?`;

@@ -1,4 +1,4 @@
-import type { components } from "@everycent/api-client";
+import type { components } from "@strictbudget/api-client";
 
 /** Auto-Assign amounts of a category without history or target, and nothing assigned. */
 export const NO_AUTO_ASSIGN: components["schemas"]["AutoAssignAmounts"] = {

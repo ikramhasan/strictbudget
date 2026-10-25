@@ -6,7 +6,7 @@ import { API_KEY_REQUESTS_PER_HOUR } from "./api-keys";
 export const OPENAPI_CONFIG = {
   openapi: "3.1.0",
   info: {
-    title: "everycent API",
+    title: "strictbudget API",
     version: "0.1.0",
     description:
       "Zero-based budgeting API. Money amounts are integer strings in the currency's minor units.\n\n" +
@@ -28,7 +28,7 @@ export function registerDocs(app: OpenAPIHono<AppEnv>): void {
   });
 
   app.get("/openapi.json", (c) => c.json(buildOpenApiDocument(app)));
-  app.get("/docs", Scalar({ url: "/openapi.json", pageTitle: "everycent API" }));
+  app.get("/docs", Scalar({ url: "/openapi.json", pageTitle: "strictbudget API" }));
 }
 
 const CURRENCY_REF = { $ref: "#/components/schemas/CurrencyCode" };

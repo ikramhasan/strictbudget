@@ -1,5 +1,5 @@
-import { createDb } from "@everycent/db";
-import { auditEvent, monthNote, transaction } from "@everycent/db/schema";
+import { createDb } from "@strictbudget/db";
+import { auditEvent, monthNote, transaction } from "@strictbudget/db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -60,7 +60,7 @@ async function setup() {
   return { owner, pat, budget, base, account, activity };
 }
 
-describe("the budget's change history (EVERYCENT-108)", () => {
+describe("the budget's change history", () => {
   it("logs who inserted, changed and deleted each row, with the row before and after", async () => {
     const { owner, pat, base, account, activity } = await setup();
     const created = await send("POST", `${base}/transactions`, owner.cookie, {
@@ -205,7 +205,7 @@ describe("the budget's change history (EVERYCENT-108)", () => {
   });
 });
 
-describe("who entered a transaction (EVERYCENT-89)", () => {
+describe("who entered a transaction", () => {
   type Ref = { userId: string; name: string | null; avatarColor: number | null } | null;
   type Txn = { id: string; enteredBy: Ref; changedBy: Ref; version: number };
 
@@ -248,7 +248,6 @@ describe("who entered a transaction (EVERYCENT-89)", () => {
       }),
     );
     expect(split).toMatchObject({ enteredBy: { name: "Owner" }, changedBy: null });
-    // The register lists the same.
     const { transactions } = await json<{ transactions: Txn[] }>(
       await send("GET", `${base}/transactions?accountId=${account.id}`, owner.cookie),
     );
@@ -259,7 +258,7 @@ describe("who entered a transaction (EVERYCENT-89)", () => {
   });
 });
 
-describe("undo conflicts between partners (EVERYCENT-36)", () => {
+describe("undo conflicts between partners", () => {
   type Txn = { id: string; version: number; memo: string };
   const errorCode = async (res: Response) =>
     (await json<{ error: { code: string; message: string } }>(res)).error;

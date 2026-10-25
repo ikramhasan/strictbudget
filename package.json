@@ -1,5 +1,5 @@
 {
-  "name": "everycent",
+  "name": "strictbudget",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -18,10 +18,10 @@
     "check": "biome check . && tsc -p .railway && turbo run typecheck test build",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
-    "db:generate": "pnpm --filter @everycent/db db:generate",
-    "db:migrate": "pnpm --filter @everycent/api db:migrate",
-    "db:studio": "pnpm --filter @everycent/db db:studio",
-    "db:seed": "pnpm --filter @everycent/api db:seed"
+    "db:generate": "pnpm --filter @strictbudget/db db:generate",
+    "db:migrate": "pnpm --filter @strictbudget/api db:migrate",
+    "db:studio": "pnpm --filter @strictbudget/db db:studio",
+    "db:seed": "pnpm --filter @strictbudget/api db:seed"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",

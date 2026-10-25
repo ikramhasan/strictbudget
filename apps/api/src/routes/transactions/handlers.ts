@@ -1,3 +1,4 @@
+import type { RouteHandler } from "@hono/zod-openapi";
 import {
   budgetAccount,
   type ClearedState,
@@ -5,9 +6,8 @@ import {
   payee,
   subTransaction,
   transaction,
-} from "@everycent/db/schema";
-import { normalizeRate } from "@everycent/engine";
-import type { RouteHandler } from "@hono/zod-openapi";
+} from "@strictbudget/db/schema";
+import { normalizeRate } from "@strictbudget/engine";
 import { and, eq, inArray } from "drizzle-orm";
 import { type FxDeps, oppositeSides, rebase, syncBases } from "../../lib/base-amount";
 import { loadBudgetAccess } from "../../lib/budget-access";
@@ -61,8 +61,7 @@ import {
 type Env = AppEnv & AuthedEnv;
 /**
  * How a register's search reads amounts: in its account's currency, or for all accounts each
- * row's in its own account's (`currencies`: every currency the budget's accounts use;
- * EVERYCENT-193).
+ * row's in its own account's (`currencies`: every currency the budget's accounts use).
  */
 export async function searchSettings<S extends { currency: AccountRow["currency"] }>(
   db: Db,
@@ -109,7 +108,7 @@ export const createTransactionHandler: RouteHandler<typeof createTransaction, En
   const { today } = c.req.valid("query");
   const { db } = c.var.deps;
   await loadBudgetAccess(c, budgetId, { transaction: ["create"] });
-  // Future-dated entries are scheduled transactions (EVERYCENT-137). An undo restore brings a row
+  // Future-dated entries are scheduled transactions. An undo restore brings a row
   // back as it was, so one dated ahead (older data, or the server's UTC + 1) isn't refused, as an
   // edit that keeps its date isn't.
   if (!body.restore) assertNotFuture(body.date, latestTransactionDate(c.var.deps, today));
@@ -118,7 +117,6 @@ export const createTransactionHandler: RouteHandler<typeof createTransaction, En
   return c.json({ ...row, feeTransactionId: feeId }, 201);
 };
 
-/** What `createTransaction` takes. */
 export interface CreateBody {
   accountId: string;
   date: string;
@@ -135,8 +133,8 @@ export interface CreateBody {
   /** A restored transfer's other side, as it was. */
   transferSide?: TransferSideInput;
   /**
-   * An undo bringing back a deleted transaction: its accounts may have been closed since. YNAB's
-   * Undo restores a transfer into an account closed from elsewhere (2026-10-14).
+   * An undo bringing back a deleted transaction: its accounts may have been closed since. A
+   * transfer into an account closed from elsewhere is restored too.
    */
   restore?: boolean;
   /** In a foreign-currency account: the rate typed by hand (otherwise the date's). */
@@ -188,7 +186,7 @@ export async function insertWithFee(tx: Db, fx: FxDeps, budgetId: string, body: 
     assertSplitAllowed(account);
     assertLinesAddUp(split, amount);
   }
-  // Before anything is written (EVERYCENT-201); zero converts without a rate.
+  // Rates are looked up before anything is written; zero converts without a rate.
   await prefetchRates(tx, fx, {
     budgetId,
     currencies: amount !== 0n || split ? [account.currency] : [],
@@ -201,7 +199,7 @@ export async function insertWithFee(tx: Db, fx: FxDeps, budgetId: string, body: 
       ? await findOrCreatePayee(tx, budgetId, body.payeeName)
       : null;
   // An undo bringing back an FX Revaluation: its amount is 0, so only its booked base amount
-  // says what it did (EVERYCENT-56).
+  // says what it did.
   if (body.baseAmount !== undefined) {
     if (!body.restore || amount !== 0n || !(await isRevaluationPayee(tx, payeeId))) {
       throw new AppError(
@@ -265,7 +263,7 @@ export async function insertWithFee(tx: Db, fx: FxDeps, budgetId: string, body: 
 }
 
 /**
- * A transfer's fee (EVERYCENT-55): its own outflow in the sending account (the one the money
+ * A transfer's fee: its own outflow in the sending account (the one the money
  * leaves; this one at zero), same date, in that account's currency and converted like any
  * transaction, payee and memo "Transfer fee", in the given category. It isn't linked to the
  * transfer.
@@ -323,9 +321,9 @@ export const updateTransactionHandler: RouteHandler<typeof updateTransaction, En
 };
 
 /**
- * In YNAB saving an unapproved transaction's editor (its button reads "Approve") or clicking its
- * cleared state approves it; setting its flag doesn't (2026-10-16, EVERYCENT-65). So any change
- * but a flag approves, unless `approved` is given (an undo restoring it unapproved).
+ * Saving an unapproved transaction's editor or clicking its cleared state approves it; setting
+ * its flag doesn't. So any change but a flag approves, unless `approved` is given (an undo
+ * restoring it unapproved).
  */
 function withApproval(body: UpdateBody): UpdateBody {
   if (body.approved !== undefined) return body;
@@ -333,7 +331,6 @@ function withApproval(body: UpdateBody): UpdateBody {
   return edits ? { ...body, approved: true } : body;
 }
 
-/** What `updateTransaction` takes. */
 export interface UpdateBody {
   accountId?: string;
   date?: string;
@@ -345,7 +342,7 @@ export interface UpdateBody {
   cleared?: "uncleared" | "cleared";
   flag?: FlagColor | null;
   subtransactions?: LineInput[];
-  /** A transfer's other side follows a change (YNAB approves both sides together). */
+  /** A transfer's other side follows a change (both sides are approved together). */
   approved?: boolean;
   /**
    * In a foreign-currency account: a rate typed by hand, or null to go back to the date's rate.
@@ -360,8 +357,8 @@ export interface UpdateBody {
 }
 
 /**
- * Looks up the rates an edit that converts again may need, before `applyUpdate` locks the row
- * (EVERYCENT-201): the accounts it touches, at its date. A memo, flag or cleared edit needs none.
+ * Looks up the rates an edit that converts again may need, before `applyUpdate` locks the row:
+ * the accounts it touches, at its date. A memo, flag or cleared edit needs none.
  */
 export async function prefetchUpdateRates(
   db: Db,
@@ -388,7 +385,7 @@ export async function prefetchUpdateRates(
         .from(transaction)
         .where(eq(transaction.id, existing.transferTransactionId))
     : [];
-  // A split edited without new lines converts its current ones again (EVERYCENT-247).
+  // A split edited without new lines converts its current ones again.
   const currentLines = subtransactions
     ? []
     : await db
@@ -421,8 +418,7 @@ export async function applyUpdate(
 ) {
   const existing = await lockTransaction(tx, budgetId, transactionId);
   if (!existing) throw new AppError(404, "NOT_FOUND", "Transaction not found");
-  // Only a new date is checked, so a row already dated ahead (from before EVERYCENT-137) can
-  // still be edited.
+  // Only a new date is checked, so a row already dated ahead (older data) can still be edited.
   if (body.date !== undefined && body.date !== existing.date)
     assertNotFuture(body.date, latestDate);
   if (existing.cleared === "reconciled" && body.cleared !== undefined) reconciledStays();
@@ -461,8 +457,8 @@ export async function applyUpdate(
   if (body.transferAmount === null && !transferTo) {
     throw new AppError(400, "BAD_REQUEST", "`transferAmount` is for transfers only");
   }
-  // A reconciled other side follows the edit and stays reconciled, as in YNAB (2026-10-11): the
-  // warning before saving is the client's.
+  // A reconciled other side follows the edit and stays reconciled: the warning before saving is
+  // the client's.
 
   // A split stays one until it gets a category (or becomes a transfer); see `syncLines`.
   const existingLines = await splitLines(tx, transactionId);
@@ -533,8 +529,8 @@ export async function applyUpdate(
       transferTransactionId: transferTo ? undefined : null,
     })
     .where(eq(transaction.id, transactionId));
-  // YNAB (2026-10-17, EVERYCENT-174): moving an imported transaction to another payee makes a
-  // renaming rule, so the next import of that name lands on it.
+  // Moving an imported transaction to another payee makes a renaming rule, so the next import of
+  // that name lands on it.
   if (
     payeeId &&
     !transferTo &&
@@ -562,7 +558,7 @@ export async function applyUpdate(
     await keepAttachment(tx, other.id, transactionId);
     await tx.delete(transaction).where(eq(transaction.id, other.id));
   } else if (other && transferTo) {
-    // Between currencies the other side keeps its own amount (EVERYCENT-55) unless it's given,
+    // Between currencies the other side keeps its own amount unless it's given,
     // cleared (null: the date's rate), or no longer fits (another currency, or the same way).
     let otherAmount = -amount;
     if (account.currency !== transferTo.currency) {
@@ -578,9 +574,9 @@ export async function applyUpdate(
             ? 0n
             : await defaultOtherAmount(tx, fx, transactionId, transferTo.currency));
     }
-    // Date, amount and memo are shared; cleared, flag and category stay per side. YNAB copies a
-    // memo edit on either side to the other (2026-10-15, EVERYCENT-158); only a changed memo is
-    // copied, so saving a row leaves a memo set apart by the bulk Memo action alone.
+    // Date, amount and memo are shared; cleared, flag and category stay per side. A memo edit on
+    // either side is copied to the other; only a changed memo is copied, so saving a row leaves a
+    // memo set apart by the bulk Memo action alone.
     const keep = usesCategory(transferTo, account) ? other.categoryId : null;
     await tx
       .update(transaction)
@@ -595,7 +591,7 @@ export async function applyUpdate(
             ? await resolveCategory(tx, budgetId, transferTo, account, keep)
             : undefined,
         memo: body.memo !== undefined && body.memo !== existing.memo ? body.memo : undefined,
-        // Approving one side approves the other (YNAB, 2026-10-16); an undo takes both back.
+        // Approving one side approves the other; an undo takes both back.
         approved:
           body.approved !== undefined && body.approved !== existing.approved
             ? body.approved
@@ -618,7 +614,7 @@ export async function applyUpdate(
     );
   }
   await syncBases(tx, transactionId);
-  // An edit updates the payee's auto-categorization default (EVERYCENT-182).
+  // An edit updates the payee's auto-categorization default.
   await notePayeeCategorizations(tx, budgetId, [transactionId]);
   return account.id;
 }
@@ -668,7 +664,7 @@ function categoryOnSplit(): never {
 /**
  * The other side of a split's transfer line: the split owns its date, amount, account and payee,
  * so only memo, cleared and (where one applies) the category change here. The memo is shared
- * with the line, as in YNAB (2026-10-15, EVERYCENT-158).
+ * with the line.
  */
 async function updateSplitTransferSide(
   tx: Db,

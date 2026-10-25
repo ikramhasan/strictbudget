@@ -14,7 +14,7 @@ const report = (body: unknown, client = "203.0.113.7") =>
     body: JSON.stringify(body),
   });
 
-describe("POST /v1/client-errors (EVERYCENT-106)", () => {
+describe("POST /v1/client-errors", () => {
   it("logs a web app error without a session, keeping the page's path only", async () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     const res = await report({

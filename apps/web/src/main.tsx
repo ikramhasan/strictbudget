@@ -1,6 +1,6 @@
-import { Toaster } from "@everycent/ui/components/sonner";
-import { TooltipProvider } from "@everycent/ui/components/tooltip";
-import { ThemeProvider } from "@everycent/ui/lib/theme";
+import { Toaster } from "@strictbudget/ui/components/sonner";
+import { TooltipProvider } from "@strictbudget/ui/components/tooltip";
+import { ThemeProvider } from "@strictbudget/ui/lib/theme";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";

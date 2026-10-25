@@ -2,7 +2,7 @@ import type { AccountFamily } from "./accounts";
 import { addMonths, type BudgetMonth, monthBounds, monthOf } from "./months";
 
 /**
- * YNAB's Age of Money (EVERYCENT-81), settled on the test plan with crafted cases (2026-10-17):
+ * Age of Money:
  *
  * - Money enters one pool shared by every cash account (checking, savings, cash; open or closed)
  *   and leaves it oldest first (FIFO).
@@ -18,10 +18,9 @@ import { addMonths, type BudgetMonth, monthBounds, monthOf } from "./months";
  *   repaid by the next inflows before they reach the pool. (With this rule an inflow and an
  *   outflow on the same day give the same result in either order.)
  * - Age of Money is the plain average of the last ten outflows' ages, floored; with fewer than
- *   ten outflows there's none (YNAB's API reports 0, its chart leaves the month out).
+ *   ten outflows there's none.
  *
- * Not settled (EVERYCENT-203), so left out: a negative starting balance and a transfer in from a
- * credit card or line of credit are ignored.
+ * A negative starting balance and a transfer in from a credit card or line of credit are ignored.
  */
 export const AGE_OF_MONEY_OUTFLOWS = 10;
 
@@ -68,7 +67,6 @@ const DAY_MS = 86_400_000;
 const dayNumber = (iso: string) =>
   Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / DAY_MS;
 
-/** `iso` moved by `days` calendar days. */
 export function addDays(iso: string, days: number): string {
   return new Date((dayNumber(iso) + days) * DAY_MS).toISOString().slice(0, 10);
 }
@@ -127,7 +125,7 @@ export function ageOfMoneyAt(ages: readonly OutflowAge[], asOf?: string): number
 
 /**
  * Age of Money at each month's end from `from` to `today`'s month (the current month as of
- * `today`): YNAB's history, one point per month.
+ * `today`), one point per month.
  */
 export function ageOfMoneyByMonth(
   ages: readonly OutflowAge[],

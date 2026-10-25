@@ -39,9 +39,8 @@ function send(method: string, path: string, cookie: string, body?: unknown) {
 const json = async <T>(res: Response) => (await res.json()) as T;
 
 /**
- * YNAB's x-145 HELOC ("ihni7's Plan", 2026-10-14): a tracking liability owing $5,000 from Aug 1,
- * a $200 payment from checking on Sep 15, a $30 uncleared charge on Oct 2 and a monthly $200
- * transfer scheduled from checking for Nov 15.
+ * A tracking liability owing $5,000 from Aug 1, a $200 payment from checking on Sep 15, a $30
+ * uncleared charge on Oct 2 and a monthly $200 transfer scheduled from checking for Nov 15.
  */
 async function setup() {
   const { cookie } = await signUp(app);
@@ -151,7 +150,7 @@ async function setup() {
 }
 
 describe("update to a loan account", () => {
-  it("adds the loan and closes the tracking account as YNAB does", async () => {
+  it("adds the loan and closes the tracking account", async () => {
     const s = await setup();
     const before = await s.readyToAssign();
     const res = await s.update(s.heloc.id, {});
@@ -180,7 +179,7 @@ describe("update to a loan account", () => {
       type: "liability",
       closed: true,
       migratedToAccountId: loan.id,
-      // Zeroed by working balance: the uncleared items stay uncleared (YNAB: −$170 + $170).
+      // Zeroed by working balance: the uncleared items stay uncleared (−$170 + $170).
       balances: { cleared: "-17000", uncleared: "17000", working: "0" },
     });
     const history = await s.register(s.heloc.id);
@@ -198,7 +197,7 @@ describe("update to a loan account", () => {
 
     // Its own schedule and the one transferring into it are gone; others stay.
     expect(await s.scheduled()).toEqual(["x-145-other"]);
-    // Both accounts are off budget (YNAB: to_be_budgeted unchanged).
+    // Both accounts are off budget.
     expect(await s.readyToAssign()).toBe(before);
   });
 
@@ -208,7 +207,7 @@ describe("update to a loan account", () => {
     const activity = await json<{
       originalHistory: { accountId: string; months: Array<{ month: string; endBalance: string }> };
     }>(await send("GET", `${s.base}/accounts/${loan.id}/loan?today=${TODAY}`, s.cookie));
-    // YNAB: October $0.00, September −$4,800.00, August −$5,000.00.
+    // October $0.00, September −$4,800.00, August −$5,000.00.
     expect(activity.originalHistory).toEqual({
       accountId: s.heloc.id,
       months: [
@@ -224,8 +223,7 @@ describe("update to a loan account", () => {
     expect(plain.originalHistory).toBeNull();
   });
 
-  // YNAB, 2026-10-15 (EVERYCENT-165): "Re-open Account … Re-opening this account will erase the
-  // information that was migrated." Afterwards it can be updated again.
+  // Afterwards it can be updated again.
   it("erases the link when the original is reopened", async () => {
     const s = await setup();
     const { loan } = await json<{ loan: Account }>(await s.update(s.heloc.id, {}));
@@ -258,7 +256,7 @@ describe("update to a loan account", () => {
     }
     expect((await s.update(s.heloc.id, { type: "liability" })).status).toBe(400);
     expect((await s.update(s.heloc.id, { type: "checking" })).status).toBe(400);
-    // Pairing is required (YNAB's step has no Skip).
+    // Pairing is required.
     expect((await s.update(s.heloc.id, { pairedCategoryId: undefined })).status).toBe(400);
     expect((await s.update(s.heloc.id, {})).status).toBe(201);
     const again = await s.update(s.heloc.id, {});

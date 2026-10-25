@@ -1,4 +1,4 @@
-import type { BudgetMonth } from "@everycent/engine";
+import type { BudgetMonth } from "@strictbudget/engine";
 
 const MONTHS = [
   "January",

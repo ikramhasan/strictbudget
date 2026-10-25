@@ -7,7 +7,6 @@ describe("lastViewedMonth", () => {
     rememberMonth("b1", "2020-03");
     expect(lastViewedMonth("b1")).toBe("2020-03");
     expect(lastViewedMonth("b2")).toBeUndefined();
-    // The current month needs no ?month=.
     rememberMonth("b1", currentMonth());
     expect(lastViewedMonth("b1")).toBeUndefined();
   });

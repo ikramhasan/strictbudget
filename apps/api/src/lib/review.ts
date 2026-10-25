@@ -1,12 +1,12 @@
-import { sql } from "@everycent/db";
-import { category, subTransaction, transaction } from "@everycent/db/schema";
+import { sql } from "@strictbudget/db";
+import { category, subTransaction, transaction } from "@strictbudget/db/schema";
 import { and, count, eq, or, type SQL } from "drizzle-orm";
 import type { Db } from "./ledger";
 
 /**
- * YNAB's "This needs a category" (2026-10-16, EVERYCENT-65): a transaction left Uncategorized.
- * Transactions that take no category (transfers within the budget, tracking accounts, splits,
- * a card's Starting Balance) have none at all, so they never need one.
+ * A transaction that needs a category: one left Uncategorized. Transactions that take no category
+ * (transfers within the budget, tracking accounts, splits, a card's Starting Balance) have none at
+ * all, so they never need one.
  */
 export function needsCategorySql(categoryId: SQL | typeof transaction.categoryId): SQL {
   return sql`exists (
@@ -16,8 +16,8 @@ export function needsCategorySql(categoryId: SQL | typeof transaction.categoryId
 }
 
 /**
- * A split with a line left Uncategorized: YNAB counts it in the review banner and `Is: Needs
- * Category` even once approved, though the split's row has no icon (2026-10-17, EVERYCENT-179).
+ * A split with a line left Uncategorized: it counts in the review banner and `Is: Needs Category`
+ * even once approved, though the split's row has no icon.
  */
 export function splitNeedsCategorySql(transactionId: SQL | typeof transaction.id): SQL {
   return sql`exists (
@@ -29,8 +29,8 @@ export function splitNeedsCategorySql(transactionId: SQL | typeof transaction.id
 }
 
 /**
- * How many transactions in each account are unapproved or need a category: YNAB's "N new
- * transactions to approve or categorize" and the dot by the account in the sidebar.
+ * How many transactions in each account are unapproved or need a category: the review banner's
+ * count and the dot by the account in the sidebar.
  */
 export async function transactionsToReview(db: Db, budgetId: string) {
   const rows = await db
@@ -53,7 +53,7 @@ export async function transactionsToReview(db: Db, budgetId: string) {
 /**
  * Sets `approved` on these transactions and every transaction linked to them as a transfer:
  * plain transfers' other sides, and a split's transfer lines' counterparts (both ways). Approving
- * one side of a transfer approves the other in YNAB (2026-10-16); an undo takes them all back.
+ * one side of a transfer approves the other; an undo takes them all back.
  */
 export async function setApproval(db: Db, ids: readonly string[], approved: boolean) {
   if (ids.length === 0) return;

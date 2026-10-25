@@ -4,9 +4,14 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@everycent/ui/components/card";
-import { Checkbox } from "@everycent/ui/components/checkbox";
-import { Field, FieldContent, FieldDescription, FieldLabel } from "@everycent/ui/components/field";
+} from "@strictbudget/ui/components/card";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from "@strictbudget/ui/components/field";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { $api } from "@/lib/api";
@@ -21,9 +26,8 @@ type Changes = {
 };
 
 /**
- * Which emails the person gets (EVERYCENT-241): the monthly summary, per budget, and its AI
- * overview. Account and security emails aren't optional. The summary email's "Email settings"
- * link lands here (`/account?tab=notifications#settings-notifications`).
+ * Account and security emails aren't optional. The summary email's "Email settings" link lands
+ * here (`/account?tab=notifications#settings-notifications`).
  */
 export function NotificationsCard() {
   const queryClient = useQueryClient();
@@ -51,7 +55,7 @@ export function NotificationsCard() {
         <CardTitle>Notifications</CardTitle>
         <CardDescription>
           {email
-            ? "Choose the emails everycent sends you. Account and security emails always go out."
+            ? "Choose the emails strictbudget sends you. Account and security emails always go out."
             : "This server doesn't send email, so there are no notifications to choose."}
         </CardDescription>
       </CardHeader>
