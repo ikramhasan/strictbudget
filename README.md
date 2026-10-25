@@ -120,7 +120,9 @@ invitations are links you share yourself.
 
 To use strictbudget away from home, put it behind a reverse proxy with HTTPS (Caddy, nginx,
 Traefik, a Cloudflare Tunnel, …) and set `STRICTBUDGET_URL` to the public address, for example
-`https://budget.example.com`. Anyone who can open that address can create an account, so keep it
+`https://budget.example.com`. With the proxy on the same machine, also set
+`STRICTBUDGET_PORT=127.0.0.1:3000` so only the proxy can reach the app (Docker's published ports
+get past firewalls like ufw). Anyone who can open that address can create an account, so keep it
 private (a VPN, or the proxy's own sign-in) if you don't want that.
 
 ### Updating
