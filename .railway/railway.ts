@@ -26,8 +26,7 @@ export default defineRailway(() => {
   // Next to the service (Singapore); a bucket's region can't change once it exists.
   const files = bucket("attachments", { region: "sin" });
 
-  // The names match the live Railway project and service; rename them there first, then here.
-  const app = service("everycent", {
+  const app = service("strictbudget", {
     // Deploys every push to main once its CI checks pass. Needs Railway's GitHub app on the repo.
     source: github("ikramhasan/strictbudget", { branch: "main", checkSuites: true }),
     // Migrations and the job queue's schema, once per deploy, before the new version starts.
@@ -59,5 +58,5 @@ export default defineRailway(() => {
     },
   });
 
-  return project("everycent", { resources: [app, db, files] });
+  return project("strictbudget", { resources: [app, db, files] });
 });
