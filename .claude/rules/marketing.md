@@ -4,8 +4,9 @@ This file only exists on `feat/marketing`, the marketing scratchpad. If you can 
 that branch.
 
 - **Read `marketing/README.md` before any marketing work.** It's the playbook: the SEO strategy,
-  which skill to use for each step, how to use the Treg MCP for keyword and SERP data, the spending
-  cap, and the weekly SEO loop that scheduled runs follow.
+  which skill to use for each step, how to use Treg for keyword and SERP data (the MCP, or its
+  HTTP API with `TREG_API_KEY` when the MCP isn't connected), the spending cap, and the weekly
+  SEO loop that scheduled runs follow.
 - **Product context:** `.agents/product-marketing.md`. The marketing skills read it first.
 - **Content shows the real app.** When writing a post, page or tool, add screenshots of the
   app where they help. Reuse an image from `marketing/screenshots.md` when one fits and meets the
