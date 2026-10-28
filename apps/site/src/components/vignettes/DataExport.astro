@@ -1,0 +1,25 @@
+---
+import { DownloadSimpleIcon, FileCsvIcon, HardDrivesIcon } from "@phosphor-icons/react/ssr";
+
+const items = [
+  { Icon: DownloadSimpleIcon, label: "Full backup", sub: "JSON, restores in one step" },
+  { Icon: FileCsvIcon, label: "CSV export", sub: "Every transaction" },
+  { Icon: HardDrivesIcon, label: "Self host", sub: "Same app, your server" },
+];
+---
+
+<ul class="flex w-full flex-col gap-3 rounded-lg border bg-background p-4 shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
+  {
+    items.map(({ Icon, label, sub }) => (
+      <li class="flex items-center gap-3">
+        <span class="grid size-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary-ink">
+          <Icon size={16} aria-hidden="true" />
+        </span>
+        <span class="grid">
+          <span class="text-sm font-medium text-heading">{label}</span>
+          <span class="text-xs text-muted-foreground">{sub}</span>
+        </span>
+      </li>
+    ))
+  }
+</ul>

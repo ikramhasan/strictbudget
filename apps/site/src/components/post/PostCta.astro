@@ -1,0 +1,23 @@
+---
+import { ArrowRightIcon } from "@phosphor-icons/react/ssr";
+import { links, site } from "../../lib/site";
+import { buttonClass } from "../../lib/ui";
+
+interface Props {
+  title: string;
+  body: string;
+}
+const { title, body } = Astro.props;
+---
+
+<aside class="mt-4 flex flex-col gap-4 rounded-2xl border bg-secondary p-6 sm:p-8">
+  <p class="text-2xl font-semibold tracking-tight text-heading">{title}</p>
+  <p class="text-base text-muted-foreground">{body}</p>
+  <div class="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center">
+    <a href={links.signUp} class={buttonClass("default", "main", "w-fit")}>
+      Start your budget
+      <ArrowRightIcon size={16} aria-hidden="true" />
+    </a>
+    <span class="text-sm text-muted-foreground">{site.riskNote}</span>
+  </div>
+</aside>

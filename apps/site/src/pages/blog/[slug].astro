@@ -1,0 +1,213 @@
+---
+import { getCollection, render } from "astro:content";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  EnvelopeSimpleIcon,
+  LinkedinLogoIcon,
+  LinkSimpleIcon,
+} from "@phosphor-icons/react/ssr";
+import BlogCard from "../../components/BlogCard.astro";
+import BlogCover from "../../components/BlogCover.astro";
+import BudgetMini from "../../components/vignettes/BudgetMini.astro";
+import Base from "../../layouts/Base.astro";
+import { formatDate, readingTime, related } from "../../lib/posts";
+import { badgeClass, buttonClass, cn } from "../../lib/ui";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("blog");
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post, posts } }));
+}
+
+const { post, posts } = Astro.props;
+const { Content, headings } = await render(post);
+const sections = headings.filter((h) => h.depth === 2);
+const url = new URL(`/blog/${post.id}`, Astro.site).href;
+const more = related(posts, post.id);
+const initials = post.data.author
+  .split(" ")
+  .map((part) => part[0])
+  .join("");
+const shareButton =
+  "grid size-8 place-items-center rounded-lg border border-input bg-background shadow-xs transition-colors duration-300 ease-site outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring";
+
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.data.title,
+    description: post.data.description,
+    datePublished: post.data.date.toISOString(),
+    author: { "@type": "Person", name: post.data.author },
+    publisher: { "@type": "Organization", name: "strictbudget" },
+    mainEntityOfPage: url,
+    image: new URL("/og.png", Astro.site).href,
+  },
+];
+---
+
+<Base
+  title={`${post.data.title} | strictbudget`}
+  description={post.data.description}
+  current="Blog"
+  ogType="article"
+  jsonLd={jsonLd}
+>
+  <article>
+    <header class="mx-auto flex max-w-[728px] flex-col gap-6 px-6 pt-12 pb-12 sm:pt-20">
+      <a
+        href="/blog"
+        class="flex w-fit items-center gap-2 rounded-md text-sm font-medium text-muted-foreground transition-colors duration-300 ease-site outline-none hover:text-heading focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <ArrowLeftIcon size={16} aria-hidden="true" /> All posts
+      </a>
+      <div class="flex items-center gap-3">
+        <span class={badgeClass()}>{post.data.category}</span>
+        <span class="text-sm text-muted-foreground">
+          <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>{" · "}{readingTime(post.body ?? "")} min read
+        </span>
+      </div>
+      <h1 class="text-gradient pb-1 text-4xl font-semibold tracking-[-0.03em] sm:text-5xl sm:leading-none">
+        {post.data.title}
+      </h1>
+      <p class="text-xl text-muted-foreground">{post.data.dek}</p>
+      <div class="flex flex-wrap items-center justify-between gap-4 pt-2">
+        <div class="flex items-center gap-3 text-sm">
+          <span class="grid size-10 place-items-center rounded-full bg-primary font-semibold text-white">{initials}</span>
+          <span class="flex flex-col">
+            <span class="font-semibold text-heading">{post.data.author}</span>
+            <span class="text-muted-foreground">{post.data.authorRole}</span>
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" class={shareButton} data-copy-link={url} aria-label="Copy link">
+            <LinkSimpleIcon size={16} aria-hidden="true" />
+          </button>
+          <a
+            class={shareButton}
+            href={`mailto:?subject=${encodeURIComponent(post.data.title)}&body=${encodeURIComponent(url)}`}
+            aria-label="Share by email"
+          >
+            <EnvelopeSimpleIcon size={16} aria-hidden="true" />
+          </a>
+          <a
+            class={shareButton}
+            href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Share on LinkedIn"
+          >
+            <LinkedinLogoIcon size={16} aria-hidden="true" />
+          </a>
+          <span class="sr-only" aria-live="polite" data-copy-status></span>
+        </div>
+      </div>
+    </header>
+
+    <div class="mx-auto max-w-[1168px] px-6">
+      {
+        post.data.cover === "assign" ? (
+          <div class="flex aspect-[16/10] items-center justify-center rounded-2xl bg-cover-blue p-4 sm:aspect-[1120/480] sm:p-8">
+            <BudgetMini state="start" class="max-w-110 shadow-[0_16px_48px_rgb(26_26_26/0.08)]" />
+          </div>
+        ) : (
+          <BlogCover cover={post.data.cover} class="aspect-[16/10] sm:aspect-[1120/480]" />
+        )
+      }
+    </div>
+
+    <div class="mx-auto grid max-w-[1168px] gap-12 px-6 pt-12 pb-16 sm:pt-16 sm:pb-24 xl:grid-cols-[1fr_minmax(0,680px)_1fr] xl:gap-0">
+      <nav aria-label="On this page" class="hidden xl:block">
+        <div class="sticky top-28 flex flex-col gap-3 pr-10">
+          <p class="text-sm font-semibold text-heading">On this page</p>
+          <ul class="flex flex-col gap-3 text-sm">
+            {
+              sections.map((section) => (
+                <li>
+                  <a
+                    href={`#${section.slug}`}
+                    data-toc={section.slug}
+                    class="group/toc flex gap-2 rounded-sm text-muted-foreground transition-colors duration-300 ease-site outline-none hover:text-heading focus-visible:ring-2 focus-visible:ring-ring aria-[current=true]:font-medium aria-[current=true]:text-heading"
+                  >
+                    <span class="mt-2 size-1 shrink-0 rounded-full bg-border group-aria-[current=true]/toc:bg-primary" />
+                    {section.text}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </nav>
+      <div class="mx-auto flex w-full min-w-0 max-w-[680px] flex-col gap-12">
+        <div class="post-body"><Content /></div>
+        <footer class="flex gap-4 border-t pt-8">
+          <span class="grid size-12 shrink-0 place-items-center rounded-full bg-primary text-base font-semibold text-white">
+            {initials}
+          </span>
+          <div class="flex flex-col gap-1">
+            <p class="text-base font-semibold text-heading">Written by {post.data.author}</p>
+            <p class="text-base text-muted-foreground">
+              {post.data.authorRole}. Writes about the method, the app and the numbers behind both.
+            </p>
+          </div>
+        </footer>
+      </div>
+    </div>
+  </article>
+
+  <section class="bg-secondary px-6 py-16 sm:py-24" aria-labelledby="keep-reading">
+    <div class="mx-auto flex max-w-[1120px] flex-col gap-12">
+      <div class="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end">
+        <h2 id="keep-reading" class="text-3xl font-semibold tracking-tight text-heading sm:text-4xl">
+          Keep reading
+        </h2>
+        <a href="/blog" class={buttonClass("outline", "small", "shrink-0")}>
+          View all posts <ArrowRightIcon size={16} aria-hidden="true" />
+        </a>
+      </div>
+      <div class="grid gap-12 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        {more.map((p, i) => <BlogCard post={p} plainCover class={cn(i === 2 && "sm:max-lg:hidden")} />)}
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  // Copy link, with the result read out to screen readers.
+  const copy = document.querySelector<HTMLButtonElement>("[data-copy-link]");
+  const status = document.querySelector("[data-copy-status]");
+  copy?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(copy.dataset.copyLink ?? location.href);
+      if (status) status.textContent = "Link copied";
+    } catch {
+      if (status) status.textContent = "Couldn't copy the link. Copy it from the address bar.";
+    }
+  });
+
+  // Marks the contents entry for the section being read.
+  const entries = document.querySelectorAll<HTMLAnchorElement>("[data-toc]");
+  const headings = [...entries]
+    .map((a) => document.getElementById(a.dataset.toc ?? ""))
+    .filter((h): h is HTMLElement => h !== null);
+  if (headings.length > 0) {
+    const mark = () => {
+      let current = headings[0];
+      for (const h of headings) if (h.getBoundingClientRect().top < window.innerHeight * 0.3) current = h;
+      for (const a of entries) a.setAttribute("aria-current", String(a.dataset.toc === current?.id));
+    };
+    let frame = 0;
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!frame)
+          frame = requestAnimationFrame(() => {
+            frame = 0;
+            mark();
+          });
+      },
+      { passive: true },
+    );
+    mark();
+  }
+</script>

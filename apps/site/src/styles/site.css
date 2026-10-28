@@ -1,0 +1,154 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+@import "@strictbudget/ui/theme.css";
+
+@source "../**/*.{astro,mdx,ts,tsx}";
+@source "../../../../packages/ui/src/components/{accordion,badge,button}.tsx";
+
+/* The site sets in Geist; the app keeps Inter. Colours below are the site's own, on top of the
+   app's tokens: headings, the dark section, blog cover tints and the progress bar's palette
+   (apps/web/src/styles.css). */
+@theme inline {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --ease-site: cubic-bezier(0.22, 1, 0.36, 1);
+  --color-heading: #1a1a1a;
+  --color-primary-ink: color-mix(in oklch, var(--primary), black 12%);
+  --color-primary-glow: color-mix(in oklch, var(--primary), white 35%);
+  --color-ink: #181818;
+  --color-ink-card: #1f1f1f;
+  --color-ink-border: #313131;
+  --color-ink-foreground: #ececec;
+  --color-ink-muted: #9a9a9a;
+  --color-cover-blue: #eef2fc;
+  --color-cover-beige: #f3eee2;
+  --color-cover-green: #e9f6ec;
+  --color-bar-track: #f3eee2;
+  --color-bar-border: #ece7da;
+  --color-bar-funded: #77ba21;
+  --color-bar-underfunded: #f6c91d;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+/* The hero heading's gradient: the one place a gradient is used, on text only. */
+@utility text-gradient {
+  background-image: linear-gradient(to right, #000000, #666666);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* Scroll reveals. Hidden only once the script has marked the page, so nothing is lost without
+   JavaScript; each section rises 32px and fades in once. */
+.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(2rem);
+  transition:
+    opacity 700ms var(--ease-site),
+    transform 700ms var(--ease-site);
+}
+.js [data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* The tagline: each word lifts from 30% to full as the reader scrolls past it. */
+.js [data-tagline] [data-word] {
+  opacity: 0.3;
+  transition: opacity 500ms var(--ease-site);
+}
+.js [data-tagline] [data-word].is-on {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js [data-reveal] {
+    transform: none;
+    transition: opacity 700ms linear;
+  }
+}
+
+/* Blog post body: MDX renders plain elements, styled here instead of pulling in a prose plugin. */
+.post-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+  color: var(--foreground);
+
+  & > p:first-child {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+  & h2 {
+    margin-top: 1.5rem;
+    font-size: 1.5rem;
+    line-height: 2rem;
+    letter-spacing: -0.025rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    scroll-margin-top: 6rem;
+  }
+  & :where(p, li) > a {
+    color: var(--color-primary-ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  & strong {
+    font-weight: 600;
+    color: var(--color-heading);
+  }
+  & ol {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    counter-reset: step;
+  }
+  & ol > li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 2.5rem;
+  }
+  & ol > li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 9999px;
+    background: color-mix(in oklch, var(--primary) 10%, transparent);
+    color: var(--color-primary-ink);
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  & ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}

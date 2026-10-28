@@ -34,6 +34,14 @@
     {
       "includes": ["packages/ui/src/components/**", "packages/ui/src/hooks/**"],
       "linter": { "enabled": false }
+    },
+    {
+      "includes": ["**/*.astro"],
+      "linter": {
+        "rules": {
+          "correctness": { "noUnusedImports": "off", "noUnusedVariables": "off" }
+        }
+      }
     }
   ],
   "assist": { "actions": { "source": { "organizeImports": "on" } } }

@@ -1,0 +1,47 @@
+---
+import AvailablePill from "./AvailablePill.astro";
+import ProgressBar from "./ProgressBar.astro";
+
+// Category rows with targets, as the budget shows them: Available pill, progress bar and the
+// target's note (`categoryRowNote` in apps/web/src/lib/targets.ts).
+const rows = [
+  { name: "🚗 Car insurance", amount: "$142.38", funded: 100, strong: "Funded", rest: "" },
+  {
+    name: "✈️ Flights to Lisbon",
+    amount: "$380.00",
+    funded: 32,
+    strong: "$820.00 more needed",
+    rest: " by May 1",
+  },
+  {
+    name: "🏛️ Property tax",
+    amount: "$0.00",
+    funded: 0,
+    strong: "$918.55 more needed",
+    rest: " by Dec 1",
+  },
+];
+---
+
+<ul class="flex w-full flex-col divide-y rounded-lg border bg-background px-3 py-1 shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
+  {
+    rows.map((row) => (
+      <li class="flex flex-col gap-2 py-3">
+        <div class="flex items-center justify-between gap-2 text-sm">
+          <span>{row.name}</span>
+          <AvailablePill
+            amount={row.amount}
+            tone={row.funded === 100 ? "positive" : "caution"}
+            mark={row.funded === 100 ? "met" : "pie"}
+            funded={row.funded}
+          />
+        </div>
+        <ProgressBar percent={row.funded} tone={row.funded === 100 ? "funded" : "underfunded"} />
+        <p class="text-xs text-muted-foreground">
+          <span class="font-medium text-foreground">{row.strong}</span>
+          {row.rest}
+        </p>
+      </li>
+    ))
+  }
+</ul>

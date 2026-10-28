@@ -1,0 +1,23 @@
+---
+import { cn } from "../../lib/ui";
+
+// The app's category ProgressBar (apps/web/src/components/progress-bar.tsx), unspent money only:
+// green once the target is met, yellow while it asks for more.
+interface Props {
+  percent: number;
+  tone: "funded" | "underfunded";
+}
+const { percent, tone } = Astro.props;
+---
+
+<div
+  role="img"
+  aria-label={`Progress: ${tone === "funded" ? "On track" : "Needs more"}, ${percent}% available`}
+  class="flex h-1 overflow-hidden rounded-full bg-bar-track shadow-[inset_0_0_0_1px_var(--color-bar-border)]"
+>
+  <div
+    class={cn("h-full", tone === "funded" ? "bg-bar-funded" : "bg-bar-underfunded")}
+    style={`width: ${percent}%`}
+  >
+  </div>
+</div>

@@ -10,6 +10,7 @@ How to run strictbudget from source and work on it. To run it for yourself, see
 | Monorepo | pnpm workspaces (catalogs) + Turborepo, Biome |
 | API (`apps/api`) | Hono + @hono/zod-openapi on Node, Better Auth, Scalar docs |
 | Web (`apps/web`) | Vite + React 19, TanStack Router + Query, Tailwind v4, shadcn/ui |
+| Site (`apps/site`) | The marketing site and blog for the hosted service: Astro (static), MDX posts in `src/content/blog`, the UI package's tokens and components, Geist |
 | DB (`packages/db`) | PostgreSQL 17 + Drizzle ORM |
 | Engine (`packages/engine`) | Money: exact bigint minor-unit arithmetic, ISO 4217, FX |
 | API client (`packages/api-client`) | Generated from OpenAPI (openapi-typescript + openapi-fetch) |
@@ -27,6 +28,7 @@ Requirements: Node ≥ 24, pnpm (auto-selected via `packageManager`; root `.npmr
     pnpm dev
 
 - Web: http://localhost:5173
+- Site: http://localhost:4321 (the marketing site; not part of the Docker image)
 - API: http://localhost:3000. Docs are at http://localhost:3000/docs and the spec at `/openapi.json`.
 
 Every setting is described in `.env.example`.

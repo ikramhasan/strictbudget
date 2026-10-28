@@ -1,0 +1,28 @@
+---
+import { getCollection } from "astro:content";
+import BlogCard from "../../components/BlogCard.astro";
+import Base from "../../layouts/Base.astro";
+import { byDate } from "../../lib/posts";
+
+const posts = byDate(await getCollection("blog"));
+---
+
+<Base
+  title="Blog | strictbudget"
+  description="Guides and product notes on zero based budgeting, shared budgets and money in more than one currency."
+  current="Blog"
+>
+  <section class="mx-auto flex max-w-[1168px] flex-col gap-12 px-6 pt-12 pb-16 sm:pt-20 sm:pb-24">
+    <div class="flex max-w-[680px] flex-col gap-4">
+      <h1 class="text-gradient pb-1 text-4xl font-semibold tracking-[-0.03em] sm:text-5xl sm:leading-none">
+        Notes on budgeting on purpose
+      </h1>
+      <p class="text-lg text-muted-foreground">
+        Guides to the method, notes on how strictbudget works, and the numbers behind both.
+      </p>
+    </div>
+    <div class="grid gap-12 sm:grid-cols-2 sm:gap-x-4 lg:grid-cols-3">
+      {posts.map((post) => <BlogCard post={post} />)}
+    </div>
+  </section>
+</Base>

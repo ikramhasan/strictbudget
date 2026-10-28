@@ -1,0 +1,27 @@
+---
+import { ArrowRightIcon } from "@phosphor-icons/react/ssr";
+import BudgetMini from "../components/vignettes/BudgetMini.astro";
+import Base from "../layouts/Base.astro";
+import { buttonClass } from "../lib/ui";
+---
+
+<Base title="Page not found | strictbudget" description="This page doesn't exist or has moved.">
+  <section class="mx-auto flex max-w-[680px] flex-col items-center gap-6 px-6 pt-16 pb-24 text-center sm:pt-24">
+    <p class="text-sm font-semibold text-primary-ink">404</p>
+    <h1 class="text-gradient pb-1 text-4xl font-semibold tracking-[-0.03em] sm:text-5xl sm:leading-none">
+      This page has no job yet
+    </h1>
+    <p class="text-lg text-muted-foreground">
+      The link you followed doesn't exist or has moved. Everything else is still where you left it.
+    </p>
+    <div class="flex flex-col items-center gap-3 pt-2 sm:flex-row">
+      <a href="/" class={buttonClass("default", "main")}>Back to the home page</a>
+      <a href="/blog" class={buttonClass("outline", "main")}>
+        Read the blog <ArrowRightIcon size={16} aria-hidden="true" />
+      </a>
+    </div>
+    <div class="mt-8 w-full max-w-90 rounded-2xl bg-cover-blue p-6" aria-hidden="true">
+      <BudgetMini state="assigned" />
+    </div>
+  </section>
+</Base>

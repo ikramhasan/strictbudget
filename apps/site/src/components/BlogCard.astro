@@ -1,0 +1,42 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { ArrowRightIcon } from "@phosphor-icons/react/ssr";
+import { formatDate, readingTime } from "../lib/posts";
+import { badgeClass, cn } from "../lib/ui";
+import BlogCover from "./BlogCover.astro";
+
+interface Props {
+  post: CollectionEntry<"blog">;
+  class?: string;
+  /** Covers sit on white over a grey section. */
+  plainCover?: boolean;
+}
+const { post, class: className, plainCover = false } = Astro.props;
+const href = `/blog/${post.id}`;
+---
+
+<article class={cn("group relative flex flex-col gap-4", className)}>
+  <BlogCover
+    cover={post.data.cover}
+    class={cn(
+      "aspect-[363/216] transition-transform duration-500 ease-site group-hover:-translate-y-1 motion-reduce:group-hover:translate-y-0",
+      plainCover && "bg-background",
+    )}
+  />
+  <div class="flex items-center gap-3">
+    <span class={badgeClass()}>{post.data.category}</span>
+    <span class="text-sm text-muted-foreground">
+      <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>{" · "}{readingTime(post.body ?? "")} min read
+    </span>
+  </div>
+  <h3 class="text-xl font-semibold text-heading">
+    <a href={href} class="outline-none after:absolute after:inset-0 after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-ring">
+      {post.data.title}
+    </a>
+  </h3>
+  <p class="text-base text-muted-foreground">{post.data.description}</p>
+  <span class="inline-flex items-center gap-1 text-sm font-semibold text-primary-ink" aria-hidden="true">
+    Read the post
+    <ArrowRightIcon size={14} className="transition-transform duration-300 ease-site group-hover:translate-x-0.5" />
+  </span>
+</article>
