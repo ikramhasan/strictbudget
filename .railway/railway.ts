@@ -10,8 +10,9 @@ import {
 } from "railway/iac";
 
 /**
- * One service built from the repo's Dockerfile (API + web app on one origin), Postgres, and a
- * bucket for transaction attachments. The image is the same one any host runs.
+ * The app: one service built from the repo's Dockerfile (API + web app on one origin), Postgres,
+ * and a bucket for transaction attachments. The image is the same one any host runs. Next to it,
+ * the marketing site (apps/site), a static build served by Caddy.
  */
 /**
  * The service has the custom domain and a Railway one, so RAILWAY_PUBLIC_DOMAIN could name either.
@@ -19,16 +20,27 @@ import {
  * RAILWAY_PUBLIC_DOMAIN instead (`isPreviewDeploy` in apps/api/src/env.ts).
  */
 const PUBLIC_URL = "https://web.strictbudget.app";
+const REPO = "ikramhasan/strictbudget";
+// Singapore, next to the bucket.
+const REGION = "asia-southeast1-eqsg3a";
 
 export default defineRailway(() => {
-  const db = postgres("postgres");
+  const db = postgres("postgres", { region: REGION });
   // Private and S3-compatible; the API hands browsers presigned links (bucket egress is free).
-  // Next to the service (Singapore); a bucket's region can't change once it exists.
+  // A bucket's region can't change once it exists.
   const files = bucket("attachments", { region: "sin" });
 
   const app = service("strictbudget", {
     // Deploys every push to main once its CI checks pass. Needs Railway's GitHub app on the repo.
-    source: github("ikramhasan/strictbudget", { branch: "main", checkSuites: true }),
+    source: github(REPO, { branch: "main", checkSuites: true }),
+    build: {
+      builder: "DOCKERFILE",
+      dockerfilePath: "Dockerfile",
+      // Everything but the marketing site, which has its own service.
+      watchPatterns: ["**", "!/apps/site/**"],
+    },
+    replicas: { [REGION]: 1 },
+    domains: ["web.strictbudget.app"],
     // Migrations and the job queue's schema, once per deploy, before the new version starts.
     preDeploy: "node dist/migrate.mjs",
     healthcheck: "/v1/health",
@@ -40,12 +52,14 @@ export default defineRailway(() => {
       BETTER_AUTH_URL: PUBLIC_URL,
       WEB_ORIGIN: PUBLIC_URL,
       // Railway's edge overwrites X-Real-IP on every request and publishes no proxy ranges, so
-      // rate limits read it rather than X-Forwarded-For through TRUSTED_PROXIES.
+      // rate limits read it rather than X-Forwarded-For through TRUSTED_PROXIES. This holds only
+      // while the domains' DNS records aren't proxied by Cloudflare (its IP would be the client's).
       CLIENT_IP_HEADER: "x-real-ip",
+      OTEL_SERVICE_NAME: "strictbudget-api",
       BETTER_AUTH_SECRET: preserve(),
       RESEND_API_KEY: preserve(),
       FROM_EMAIL: preserve(),
-      OTEL_SERVICE_NAME: preserve(),
+      AI_API_KEY: preserve(),
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: preserve(),
       OTEL_EXPORTER_OTLP_TRACES_HEADERS: preserve(),
       OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: preserve(),
@@ -58,5 +72,24 @@ export default defineRailway(() => {
     },
   });
 
-  return project("strictbudget", { resources: [app, db, files] });
+  // strictbudget.app. Static, so it needs no variables; www redirects to the apex (its Caddyfile).
+  const site = service("site", {
+    source: github(REPO, { branch: "main", checkSuites: true }),
+    build: {
+      builder: "DOCKERFILE",
+      dockerfilePath: "apps/site/Dockerfile",
+      watchPatterns: [
+        "/apps/site/**",
+        "/packages/ui/**",
+        "/package.json",
+        "/pnpm-lock.yaml",
+        "/pnpm-workspace.yaml",
+      ],
+    },
+    replicas: { [REGION]: 1 },
+    domains: ["strictbudget.app", "www.strictbudget.app"],
+    healthcheck: "/",
+  });
+
+  return project("strictbudget", { resources: [app, site, db, files] });
 });
