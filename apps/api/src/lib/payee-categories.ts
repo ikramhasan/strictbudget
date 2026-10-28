@@ -7,7 +7,7 @@ import {
   payeePrefillCategory,
   payeeRecentCategories,
 } from "@strictbudget/engine";
-import { and, desc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
 import type { Db } from "./ledger";
 
 export interface PayeeCategories {
@@ -176,33 +176,49 @@ export async function notePayeeCategorizations(
     legacy.length > 0
       ? await payeeCategories(db, budgetId, legacy)
       : new Map<string, PayeeCategories>();
+  // Each payee's last three categorized transactions, in one query (an import touches hundreds).
+  const ranked = db
+    .select({
+      payeeId: transaction.payeeId,
+      categoryId: sql<string>`${transaction.categoryId}`.as("category_id"),
+      rank: sql<number>`row_number() over (partition by ${transaction.payeeId} order by ${transaction.date} desc, ${transaction.createdAt} desc, ${transaction.id} desc)`.as(
+        "rank",
+      ),
+    })
+    .from(transaction)
+    .innerJoin(category, eq(category.id, transaction.categoryId))
+    .where(
+      and(
+        eq(transaction.budgetId, budgetId),
+        inArray(transaction.payeeId, [...byPayee.keys()]),
+        sql`${category.internalKind} is distinct from 'uncategorized'`,
+      ),
+    )
+    .as("ranked");
+  const recent = await db
+    .select({ payeeId: ranked.payeeId, categoryId: ranked.categoryId })
+    .from(ranked)
+    .where(lte(ranked.rank, 3))
+    .orderBy(asc(ranked.payeeId), asc(ranked.rank));
+  const lastThree = new Map<string, string[]>();
+  for (const r of recent) {
+    if (r.payeeId) lastThree.set(r.payeeId, [...(lastThree.get(r.payeeId) ?? []), r.categoryId]);
+  }
+  // Payees ending on the same default are saved together.
+  const byDefault = new Map<string | null, string[]>();
   for (const p of rows) {
-    const lastThree = await db
-      .select({ categoryId: sql<string>`${transaction.categoryId}` })
-      .from(transaction)
-      .innerJoin(category, eq(category.id, transaction.categoryId))
-      .where(
-        and(
-          eq(transaction.budgetId, budgetId),
-          eq(transaction.payeeId, p.id),
-          sql`${category.internalKind} is distinct from 'uncategorized'`,
-        ),
-      )
-      .orderBy(desc(transaction.date), desc(transaction.createdAt), desc(transaction.id))
-      .limit(3);
     let current = p.autoCategorySaved
       ? p.autoCategoryId
       : (replayed.get(p.id)?.autoCategoryId ?? null);
     for (const categoryId of byPayee.get(p.id) ?? []) {
-      current = nextPayeeAutoCategory(
-        current,
-        lastThree.map((r) => r.categoryId),
-        categoryId,
-      );
+      current = nextPayeeAutoCategory(current, lastThree.get(p.id) ?? [], categoryId);
     }
+    byDefault.set(current, [...(byDefault.get(current) ?? []), p.id]);
+  }
+  for (const [autoCategoryId, ids] of byDefault) {
     await db
       .update(payee)
-      .set({ autoCategoryId: current, autoCategorySaved: true })
-      .where(eq(payee.id, p.id));
+      .set({ autoCategoryId, autoCategorySaved: true })
+      .where(inArray(payee.id, ids));
   }
 }
