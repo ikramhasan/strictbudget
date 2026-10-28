@@ -1,40 +1,235 @@
 ---
-title: Credit cards in a zero based budget
-description: Why spending on a card moves money into its payment category, and how to pay the balance without surprises.
-dek: A card purchase spends money you already assigned. The payment category is how the budget keeps it ready for the bill.
-date: 2026-09-12
+title: Budgeting with credit cards, with a real month of numbers
+description: How budgeting with credit cards works in a zero based budget. One household's October with a Visa paid in full and a Mastercard in debt, every number shown.
+dek: Nadia and Sam pay one card in full and are paying down the other. We follow every purchase, return, interest charge and payment through October.
+date: 2026-10-28
 category: Guides
 cover: card
 ---
 
+import Figure from "../../components/post/Figure.astro";
 import PostCta from "../../components/post/PostCta.astro";
 import Tip from "../../components/post/Tip.astro";
 
-A credit card feels like spending later. In a zero based budget it is spending now, with money you already have. The card's payment category makes sure that money is still there when the bill arrives.
+Budgeting with credit cards comes down to one rule: a card purchase spends money you already have. In a zero based budget, the moment you buy something on a card, the amount leaves the spending category and moves to the card's payment category. When the bill arrives, the money to pay it is already there. Debt from before you started budgeting is the one part that isn't, so you pay it down on purpose, a set amount each month.
 
-## Every card has a payment category
+Here is how that worked for one household in October, with every number their budget showed.
 
-When you add a credit card account, strictbudget creates a category for paying it. Unlike other categories, it fills itself as you spend.
+## Two cards, one October
+
+Nadia and Sam share one budget in strictbudget. They have two cards:
+
+- **Juniper**, a Visa they pay in full. Groceries, fuel, dining out and streaming go on it. The statement closes on the last day of the month and is due on the 21st.
+- **Harbor**, a Mastercard with $4,200.00 of debt they brought with them when they started budgeting in April. It charges 24.99% APR. They stopped using it and pay it down every month.
+
+On October 1st, Juniper owed $820.91, all of September's spending, and its payment category held exactly $820.91. Harbor owed $2,400.00.
+
+## Every card gets a payment category
+
+When you add a credit card account, strictbudget adds a category with the card's name to the Credit Card Payments group. Its Available is the money set aside for that card. You don't assign to it for everyday spending. It fills as you spend.
+
+A card's starting balance works differently. Harbor's $4,200.00 was debt they already owed, so it has no category (the register shows "Category not needed") and it didn't touch Ready to Assign. It showed up as debt the payment category didn't cover yet. Paying that down has [its own section](#paying-down-old-debt) below.
 
 ## What happens when you buy something
 
-Say Groceries has $612.40 and you pay $86.17 at the supermarket with your Visa. Groceries drops by $86.17, and the Visa payment category grows by $86.17. The money moved from "food this month" to "the card bill", so the purchase is already paid for in your plan.
+On October 2nd, Nadia spent $86.17 at FreshMart on the Juniper card. Groceries had $600.00 for the month.
 
-When the statement comes, you pay the card from checking, and the payment category goes back down. Nothing new had to be found.
+<div class="table-scroll">
 
-## When a category didn't have enough
+|                           |   Before |    After |
+| ------------------------- | -------: | -------: |
+| Groceries Available       |  $600.00 |  $513.83 |
+| Juniper payment Available |  $820.91 |  $907.08 |
+| Juniper balance owed      |  $820.91 |  $907.08 |
+| Ready to Assign           |    $0.00 |    $0.00 |
 
-If Groceries only had $50.00 and you spent $86.17 on the card, the $36.17 that wasn't covered can't move to the payment category. The budget shows it as credit overspending, in yellow, and the payment category won't cover the full balance. Move money into Groceries to fix it, and the payment category catches up.
+</div>
 
-<Tip title="Carrying a balance">
-  For debt you already had, assign money to the payment category directly. Its target can plan a monthly payment until the card is clear.
+The $86.17 moved from "food this month" to "the Visa bill". It was assigned before she paid, and now it waits for the statement.
+
+Here is Juniper's whole October. The last column is what the payment category held after each line.
+
+<div class="table-scroll">
+
+| Date   | Payee            | Category       |    Amount | Set aside |
+| ------ | ---------------- | -------------- | --------: | --------: |
+| Oct 2  | FreshMart        | Groceries      |   −$86.17 |   $907.08 |
+| Oct 4  | Luigi's          | Dining out     |   −$38.40 |   $945.48 |
+| Oct 5  | Streamly         | Streaming      |   −$15.99 |   $961.47 |
+| Oct 7  | Ridgeway Fuel    | Transportation |   −$52.30 | $1,013.77 |
+| Oct 9  | Stride Shoes     | Clothing       |   −$89.99 | $1,103.76 |
+| Oct 11 | Casa Verde       | Dining out     |   −$27.15 | $1,130.91 |
+| Oct 12 | FreshMart        | Groceries      |  −$142.83 | $1,273.74 |
+| Oct 16 | Stride Shoes     | Clothing       |   +$89.99 | $1,183.75 |
+| Oct 18 | Luigi's          | Dining out     |   −$54.45 | $1,238.20 |
+| Oct 19 | FreshMart        | Groceries      |  −$118.56 | $1,356.76 |
+| Oct 21 | Payment          | From Checking  |  +$820.91 |   $535.85 |
+| Oct 22 | Ridgeway Fuel    | Transportation |   −$48.75 |   $584.60 |
+| Oct 24 | Hana Sushi       | Dining out     |   −$24.50 |   $584.60 |
+| Oct 26 | FreshMart        | Groceries      |   −$97.41 |   $682.01 |
+
+</div>
+
+Almost every line moved the payment category by its own amount. The payment on the 21st took money out of it, and the $24.50 at Hana Sushi on the 24th added nothing. Both are explained below.
+
+## Paying the bill
+
+On the 21st they paid the September statement, $820.91, from Checking with Record Payment. A payment moves money between two of your own accounts, so it isn't spending. Checking went down by $820.91, and so did the card's balance and the payment category, from $1,356.76 to $535.85. Ready to Assign didn't move, because the spending was already counted when they paid with the card.
+
+**Statement balance or current balance?** The statement balance is what the card asks for by the due date, and paying it in full is what keeps most cards from charging interest. The current balance also includes purchases made since the statement closed. On the 21st, Juniper's payment category held enough for both, so either payment was fine. They paid the statement and left October's spending for November's bill.
+
+## Returns go back where they came from
+
+On the 9th they bought shoes for $89.99 on Juniper and returned them on the 16th. They put the refund in Clothing, the category the purchase came from. Clothing went from $169.37 to $79.38 and back to $169.37. The payment category rose by $89.99 and fell back by the same amount, because the card no longer owed it.
+
+## When a category runs out: credit overspending
+
+Dining out had $120.00 for October. Three dinners used exactly that: $38.40, $27.15 and $54.45. On the 24th they had sushi for $24.50 on the card anyway.
+
+With nothing left in Dining out, the $24.50 had no money behind it, so nothing moved to the payment category. Dining out showed −$24.50 in yellow, and Juniper's payment category held $682.01 for a balance of $706.51.
+
+<Figure caption="Dining out is $24.50 overspent on a credit card, so Juniper's payment category holds $682.01 of the $706.51 the card owes.">
+  <img
+    src="/screenshots/credit-card-overspent-960.webp"
+    srcset="/screenshots/credit-card-overspent-960.webp 960w, /screenshots/credit-card-overspent-1550.webp 1550w"
+    sizes="(min-width: 768px) 600px, 100vw"
+    width="1550"
+    height="1110"
+    alt="strictbudget budget screen while budgeting with credit cards: Dining out at −$24.50 in yellow, and the Juniper card's payment category at $682.01"
+    loading="lazy"
+    class="h-auto w-full rounded-lg border"
+  />
+</Figure>
+
+Selecting Juniper's payment category shows what's missing and where it came from: $24.50 of overspent categories.
+
+<Figure caption="The payment category's inspector: $24.50 of overspending to cover before the balance is paid for.">
+  <img
+    src="/screenshots/credit-card-overspent-inspector-382.webp"
+    srcset="/screenshots/credit-card-overspent-inspector-382.webp 382w, /screenshots/credit-card-overspent-inspector-764.webp 764w"
+    sizes="382px"
+    width="764"
+    height="1210"
+    alt="The Juniper credit card payment inspector asking to cover $24.50 in overspent categories, with Available for Payment at $682.01 against a current balance of $706.51"
+    loading="lazy"
+    class="h-auto w-full max-w-[382px] rounded-lg border"
+  />
+</Figure>
+
+They fixed it like any overspending: they moved $24.50 from "Stuff I forgot to plan for" to Dining out. The $24.50 then counted for the sushi, moved on to the payment category, and the payment category caught up with the card.
+
+<Figure caption="After moving $24.50, the payment category covers the whole $706.51, and the inspector offers Record Payment.">
+  <img
+    src="/screenshots/credit-card-covered-382.webp"
+    srcset="/screenshots/credit-card-covered-382.webp 382w, /screenshots/credit-card-covered-764.webp 764w"
+    sizes="382px"
+    width="764"
+    height="960"
+    alt="The Juniper credit card payment inspector saying there is enough money to pay off the current balance, with $706.51 available for payment and a Record Payment button"
+    loading="lazy"
+    class="h-auto w-full max-w-[382px] rounded-lg border"
+  />
+</Figure>
+
+**Why yellow, and why it matters.** Overspending from checking or a debit card shows in red, and strictbudget takes it out of next month's Ready to Assign, because that money already left the bank. Overspending on a credit card shows in yellow. No money left the bank yet. The purchase became new debt, so instead of touching next month, the card's payment category stays short by that amount until you cover it. Leave it, and next month's bill is $24.50 bigger than what's set aside for it. This is how card balances creep up in a budget that otherwise looks fine.
+
+<Tip title="Cover yellow before the month ends">
+  A yellow category means some card spending has no money behind it. Move money to it, or if you can't, plan to pay it off as debt with a payment target.
 </Tip>
+
+## Interest gets its own category
+
+strictbudget doesn't track a card's interest rate, so interest is spending like anything else. Nadia and Sam have a category called Interest & Fees with a target that refills it to $90.00 each month, a bit more than their largest charge so far ($87.47 in April).
+
+To estimate a month's interest, multiply what you owe by the APR and divide by 12. On $2,400.00 at 24.99%, that's $2,400.00 × 0.2499 ÷ 12 = $49.98. Card issuers work from your average daily balance, so the real charge can be a little different.
+
+The charge posted on the 3rd: $49.98, which they put in Interest & Fees. It's card spending, so $49.98 moved into Harbor's payment category, ready to be paid with the rest.
+
+## Paying down old debt
+
+Harbor's payment category has a target: Pay Specific Amount Monthly, $300.00. Each month they assign $300.00 to it, the interest arrives through Interest & Fees, and they pay the total. In October that was $300.00 + $49.98 = $349.98, paid on the 20th. Harbor went from $2,400.00 to $2,100.00.
+
+<Figure caption="Harbor's payment target is $300.00 a month, met for October. The card owes $2,100.00 after the payment.">
+  <img
+    src="/screenshots/credit-card-payoff-target-382.webp"
+    srcset="/screenshots/credit-card-payoff-target-382.webp 382w, /screenshots/credit-card-payoff-target-764.webp 764w"
+    sizes="382px"
+    width="764"
+    height="1440"
+    alt="The Harbor credit card payment category with a Pay Specific Amount Monthly target of $300.00 marked as met, and the card owing $2,100.00 after a $349.98 payment"
+    loading="lazy"
+    class="h-auto w-full max-w-[382px] rounded-lg border"
+  />
+</Figure>
+
+Since April they've paid $2,100.00 of the $4,200.00, plus $481.07 in interest. At the same pace, the last payment is in May 2027, with $174.94 more interest on the way: $343.73 in November, down to $306.25 in May as the balance shrinks.
+
+How much the size of the payment matters, for the $2,100.00 they still owe at 24.99% APR:
+
+<div class="table-scroll">
+
+| Monthly payment | Months to pay off | Interest paid |
+| --------------: | ----------------: | ------------: |
+|         $100.00 |                28 |       $690.01 |
+|         $150.00 |                17 |       $408.42 |
+|         $200.00 |                12 |       $294.32 |
+|         $350.00 |                 7 |       $166.54 |
+|         $500.00 |                 5 |       $120.37 |
+
+</div>
+
+Paying $100 a month instead of $350 takes 28 months instead of 7 and costs $523.47 more in interest. The table assumes the rate stays at 24.99% and nothing new goes on the card.
+
+**If you'd rather pick a date:** the other payment target, Pay Off Balance by Date, spreads what the card owes over the months left. For May 2027, that's $2,100.00 over seven months, $300.00 a month. It doesn't add interest, so keep an interest category next to it.
+
+**Can you keep using a card you're paying down?** Yes, as long as the category has the money. That spending moves into the payment category the way Juniper's does, and you pay it on top of the debt payment. Nadia and Sam stopped using Harbor anyway, which keeps the two jobs apart.
+
+## Check every card at once
+
+The Credit Card Health report puts each card next to its payment category. In October, Juniper is "Paid in full ready": $706.51 owed and $706.51 set aside. Harbor is "Unfunded debt": its $2,100.00 is old debt, paid down $300.00 a month, so nothing beyond each month's payment is set aside for it.
+
+<Figure caption="Credit Card Health for October: Juniper is ready to be paid in full, and Harbor's $2,100.00 is old debt being paid down.">
+  <img
+    src="/screenshots/credit-card-health-960.webp"
+    srcset="/screenshots/credit-card-health-960.webp 960w, /screenshots/credit-card-health-1560.webp 1560w"
+    sizes="(min-width: 768px) 600px, 100vw"
+    width="1560"
+    height="1490"
+    alt="Credit Card Health report: $2,806.51 owed on all cards, the Juniper card paid in full ready with six months of spending and payments, and the Harbor card listed as unfunded debt"
+    loading="lazy"
+    class="h-auto w-full rounded-lg border"
+  />
+</Figure>
+
+If a card you pay in full ever shows "Partly covered", some spending on it had no money behind it. That's credit overspending to go and cover.
+
+## Questions people ask
+
+### Should I pay the statement balance or the whole balance?
+
+Paying the statement balance in full by the due date avoids interest on most cards. If the payment category holds more, you can pay more. The money is set aside either way.
+
+### Where does cash back go?
+
+If the reward comes as a statement credit, categorize it to Ready to Assign. The card then owes less while its payment category keeps what it had, so the category holds more than the card owes, and you can move the difference to any category. A $25.00 credit on Juniper would leave $706.51 set aside for $681.51 owed, with $25.00 to move.
+
+### What if I paid more than I owed?
+
+A card balance above zero is your money, like a small checking account. Spending from it counts as cash until the balance is back at zero, and only what goes past zero becomes debt.
+
+### I already have card debt. Where do I start?
+
+Add the card with today's balance. Give its payment category a target you can meet every month, and add an interest category for the charges. From then on, as long as every purchase is covered, the balance goes down each month by what you assign to the payment category.
+
+### Is this how YNAB handles credit cards?
+
+Yes. strictbudget uses the same method, with payment categories, credit overspending and payment targets, so the habits carry over if you're coming from YNAB. You can bring a YNAB budget over with Import on the budgets page.
 
 ## The habit
 
-Treat the card like a debit card that pays you back in points. If the category has it, spend it. If not, move money first.
+Before you pay with a card, look at the category, not the card's limit. If the category has the money, the bill is already covered. If it doesn't, move money first.
 
 <PostCta
   title="Put your cards in the plan"
-  body="Add your cards and see the bill covered before it arrives."
+  body="Add your cards and see every bill covered before it arrives."
 />
