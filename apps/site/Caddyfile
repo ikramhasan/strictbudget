@@ -1,0 +1,27 @@
+# Serves the built site (apps/site/Dockerfile). TLS ends at the host's edge (Railway), so Caddy
+# speaks plain HTTP on $PORT.
+{
+	admin off
+	auto_https off
+}
+
+:{$PORT:8080} {
+	@www host www.strictbudget.app
+	redir @www https://strictbudget.app{uri} permanent
+
+	root * /srv
+	encode zstd gzip
+	# Astro fingerprints everything under /_astro, so those never change. Only files that exist: a
+	# 404 for one (e.g. a new page's asset asked of an old container) mustn't be cached for a year.
+	@fingerprinted {
+		path /_astro/*
+		file
+	}
+	header @fingerprinted Cache-Control "public, max-age=31536000, immutable"
+	file_server
+
+	handle_errors 404 {
+		rewrite * /404.html
+		file_server
+	}
+}

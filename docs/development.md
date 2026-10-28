@@ -28,7 +28,9 @@ Requirements: Node ≥ 24, pnpm (auto-selected via `packageManager`; root `.npmr
     pnpm dev
 
 - Web: http://localhost:5173
-- Site: http://localhost:4321 (the marketing site; not part of the Docker image)
+- Site: http://localhost:4321 (the marketing site; not part of the app's Docker image. It has its
+  own, `apps/site/Dockerfile`, a static build served by Caddy, deployed as the `site` service in
+  `.railway/railway.ts`)
 - API: http://localhost:3000. Docs are at http://localhost:3000/docs and the spec at `/openapi.json`.
 
 Every setting is described in `.env.example`.

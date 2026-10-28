@@ -84,5 +84,16 @@ jobs:
           curl -sf http://127.0.0.1:3000/v1/health
           curl -sf http://127.0.0.1:3000/ | grep -q 'id="root"'
           curl -sf http://127.0.0.1:3000/budgets | grep -q 'id="root"'
+      # The marketing site's image (apps/site/Dockerfile) builds and serves its pages.
+      - run: docker build -f apps/site/Dockerfile -t strictbudget-site:ci .
+      - name: Serve the site
+        run: |
+          docker run -d --name site -p 8080:8080 strictbudget-site:ci
+          for i in $(seq 30); do curl -sf http://127.0.0.1:8080/ >/dev/null && break; sleep 1; done
+          curl -sf http://127.0.0.1:8080/ | grep -q '<title>'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/no-such-page)" = 404
+          curl -sI -H 'Host: www.strictbudget.app' http://127.0.0.1:8080/ | grep -qi '^location: https://strictbudget.app/'
       - if: failure()
-        run: docker logs app || true
+        run: |
+          docker logs app || true
+          docker logs site || true
