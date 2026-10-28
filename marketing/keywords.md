@@ -24,11 +24,15 @@ not targets.
 - Budgeting as a couple or household: shared budgets, splitting bills.
 - Self-hosted and open-source budgeting apps.
 - Moving off YNAB: alternatives, YNAB vs …, importing a YNAB budget.
-- Credit cards in a budget, sinking funds, irregular income.
+- Credit cards in a budget (researched 2026-10-28, see `research/2026-10-28-credit-cards.md`),
+  sinking funds, irregular income.
 
 ## Long-tail targets
 
 | Keyword | Volume (country) | Difficulty (provider) | Intent | Page (planned or live) | Priority | Status |
 |---------|------------------|-----------------------|--------|------------------------|----------|--------|
+| budgeting with credit cards | 320 (US) | 8 (Serpstat) | informational | `/blog/credit-cards` | — | PR open |
+| credit card budget | 320 (US) | 9 (Serpstat) | informational | `/blog/credit-cards` | — | PR open |
+| ynab credit card payment | 260 (US) | 5 (Serpstat) | transactional | `/blog/credit-cards` (secondary) | — | PR open |
 
 Status: `target` → `briefed` → `PR open` → `published`.
