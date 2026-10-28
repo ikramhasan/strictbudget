@@ -7,8 +7,8 @@ ship (a blog post, a page, a free tool) goes to `main` through its own branch, c
 The repo is public, so everything pushed here is readable by anyone. Never commit tokens, API
 keys, or analytics exports with personal data.
 
-We don't use Plane for marketing (or at all any more), whatever `CLAUDE.md` on `main` says about
-it. State lives in the files below.
+Marketing state lives in the files below, not in GitHub Issues. `CLAUDE.md`'s issue workflow
+applies to product work that ships to `main`.
 
 ## Layout
 

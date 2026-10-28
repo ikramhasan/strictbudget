@@ -10,7 +10,7 @@ that branch.
 - **This branch is never merged into `main` and never opened as a PR.** To ship a blog post, page
   or free tool, merge `origin/main` into this branch and push, do the research here, then cut a
   new branch from `origin/main` that holds only the product files. The README has the steps.
-- **Plane is no longer used.** Ignore the Plane instructions in `CLAUDE.md` and `docs/plane.md`.
-  Marketing state lives in `marketing/`.
+- **Marketing state lives in `marketing/`**, not in GitHub Issues. `docs/issues.md` covers
+  product work that ships to `main`.
 - Everything else in `CLAUDE.md` still applies to anything that ships to `main`. That includes
   `pnpm check` before a PR and checking UI in the running app.
