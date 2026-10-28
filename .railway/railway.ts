@@ -25,7 +25,7 @@ const REPO = "ikramhasan/strictbudget";
 const REGION = "us-east4-eqdc4a";
 
 export default defineRailway(() => {
-  const db = postgres("postgres", { region: REGION });
+  const db = postgres("db", { region: REGION });
   // Private and S3-compatible; the API hands browsers presigned links (bucket egress is free).
   // A bucket's region can't change once it exists (iad is US East).
   const files = bucket("files", { region: "iad" });
