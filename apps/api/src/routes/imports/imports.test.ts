@@ -212,7 +212,9 @@ describe("file import", () => {
     const result = await importFile(file);
     const took = performance.now() - started;
     expect(result).toMatchObject({ imported: 5000, duplicates: 0 });
-    expect(took).toBeLessThan(10_000);
+    // ~2 s alone; CI's runner, busy with the other test workers, takes up to four times that. A
+    // statement per row would take minutes.
+    expect(took).toBeLessThan(15_000);
 
     const all = await db
       .select({
