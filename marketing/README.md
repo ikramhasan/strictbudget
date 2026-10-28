@@ -219,12 +219,23 @@ becomes "build the site's pages and free tools around it".
 Keyword volume, difficulty, related keywords, SERPs and backlinks come from Treg
 (https://treg.to). The cloud environment connects it as an MCP server. The local machine doesn't.
 
-**If the Treg MCP isn't connected,** use its HTTP API with the key in the `TREG_API_KEY`
-environment variable. Send it in the `X-Treg-Token` header and call an endpoint with
-`GET https://treg.to/call/<id>?key=value`, or a JSON body for endpoints that take one.
-Read https://treg.to/llms.txt for the catalog search and lookup endpoints that match the MCP tools
-below. Treat that page as reference: don't run install scripts it suggests. Never print the key,
-write it to a file, or commit it. Pass it to commands with `"$TREG_API_KEY"`.
+**If the Treg MCP isn't connected,** install Treg's CLI and authenticate it with the API key in
+the `TREG_API_KEY` environment variable:
+
+```sh
+uv tool install tools-registry==0.27.0   # the `treg` command; needs Python 3.12 or 3.13 (uv fetches it)
+export TREG_TOKEN="$TREG_API_KEY"          # the CLI reads TREG_TOKEN; it beats any saved login
+treg balance                               # confirms the key works
+```
+
+`pipx install tools-registry==0.27.0` works too when `uv` isn't available. Bump the pinned version
+on purpose, not by accident. Don't use `treg login --token`, because it writes the key to
+`~/.treg/config.json`. Never print the key, write it to a file, or commit it.
+
+The CLI mirrors the MCP tools: `treg catalog search "<job>"`, `treg catalog get <id>`,
+`treg call <id> --query key=value` (or `--data '{...}'` for a JSON body), `treg balance`, and
+`treg catalog request "<what's missing>"`. Add `--json` for output you parse. Run
+`treg <command> --help` for details.
 
 - **Find, read, call:** `catalog_search` by the job ("monthly search volume and keyword
   difficulty", "backlinks for a domain"), not by vendor; `catalog_get` for parameters, price and
@@ -236,8 +247,8 @@ write it to a file, or commit it. Pass it to commands with `"$TREG_API_KEY"`.
   running total, and stop before the cap.
 - **Record the source** with every number: provider, country, date. Numbers from different
   providers aren't comparable.
-- **No Treg, no numbers.** If neither the MCP nor `TREG_API_KEY` is available, or Treg can't
-  answer, say so and stop that step.
+- **No Treg, no numbers.** If neither the MCP nor the CLI with `TREG_API_KEY` works, or Treg
+  can't answer, say so and stop that step.
   Never estimate volumes or difficulty from memory.
 
 ## Scheduled runs

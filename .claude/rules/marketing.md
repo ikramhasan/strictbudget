@@ -5,7 +5,7 @@ that branch.
 
 - **Read `marketing/README.md` before any marketing work.** It's the playbook: the SEO strategy,
   which skill to use for each step, how to use Treg for keyword and SERP data (the MCP, or its
-  HTTP API with `TREG_API_KEY` when the MCP isn't connected), the spending cap, and the weekly
+  CLI with `TREG_API_KEY` when the MCP isn't connected), the spending cap, and the weekly
   SEO loop that scheduled runs follow.
 - **Product context:** `.agents/product-marketing.md`. The marketing skills read it first.
 - **Content shows the real app.** When writing a post, page or tool, add screenshots of the
