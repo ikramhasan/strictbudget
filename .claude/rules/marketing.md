@@ -12,6 +12,9 @@ that branch.
   app where they help. Reuse an image from `marketing/screenshots.md` when one fits and meets the
   bar; only capture when none does. No devtools, logos on every account, lived-in data, no empty
   states. The README's "Images from the app" has the full bar and the steps.
+- **Beat YNAB's version.** Before writing a post or page, check whether YNAB has content on the
+  topic. If it does, ours must be clearly ten times better (worked numbers, the real app, a usable
+  tool, completeness), and the brief says how. The README's "Beat YNAB's version" has the details.
 - **This branch is never merged into `main` and never opened as a PR.** To ship a blog post, page
   or free tool, merge `origin/main` into this branch and push, do the research here, then cut a
   new branch from `origin/main` that holds only the product files. The README has the steps.

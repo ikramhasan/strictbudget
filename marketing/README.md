@@ -47,6 +47,7 @@ On a conflict in app code, take `main`'s version. Only the marketing files are t
    `currency` | `sharing` | `card`). Pages and free tools go under `apps/site/src/pages/`. Copy a
    finished draft over with `git checkout feat/marketing -- <path>` if it was written here first.
    Add screenshots of the app wherever they help (see "Images from the app").
+   Before writing, check what YNAB has on the topic (see "Beat YNAB's version").
 4. **Confirm nothing from this branch leaked:** `git diff --stat origin/main...HEAD` must list
    only the files you meant to ship (never `.agents/`, `.claude/skills/<marketing skill>`,
    `skills-lock.json` or `marketing/`).
@@ -184,6 +185,28 @@ becomes "build the site's pages and free tools around it".
 - Pages AI assistants can quote: clear answers, real numbers, structured data (`ai-seo`, `schema`).
 - Never change prices, plans or product claims in content. They come from
   `.agents/product-marketing.md` and `apps/site/src/lib/site.ts`.
+
+### Beat YNAB's version
+
+YNAB teaches the same method to the same readers, and it ranks for most budgeting topics. Before
+writing a brief, search YNAB's site for the topic: its blog, guides, help articles and videos (a
+`site:ynab.com <topic>` search, then open what comes up). Also read the pages that rank top for the
+target keyword.
+
+If YNAB has a piece on it, ours has to be clearly, visibly better, ten times better, not a rewrite.
+Write down in the brief how it beats theirs, in concrete terms. For example:
+
+- **Worked numbers:** a real month with real amounts, where theirs stays general.
+- **The real app:** screenshots or a short walkthrough of each step (see "Images from the app").
+- **Something to use:** a calculator, template or checklist the reader can use right away.
+- **Complete:** answers the follow-up questions theirs leaves open, including edge cases
+  (irregular income, credit cards, shared budgets, other currencies).
+- **Current and specific:** up to date, with clear headings, a direct answer at the top, and no
+  filler.
+
+If you can't name at least two ways the piece will be clearly better, pick a different angle or a
+different keyword instead. Never copy YNAB's text, structure or images, and stay fair when you
+mention them (see `.agents/product-marketing.md`).
 
 ### 3. Get backlinks
 
