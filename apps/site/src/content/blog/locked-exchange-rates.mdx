@@ -1,0 +1,42 @@
+---
+title: What locked exchange rates mean for your categories
+description: Why a euro coffee bought in March keeps its dollar value in your budget, and when Revalue changes it.
+dek: Each account keeps its own currency, and every transaction is converted once, on its own date. Here is what that means for the money in your categories.
+date: 2026-10-09
+category: Product
+cover: currency
+---
+
+import PostCta from "../../components/post/PostCta.astro";
+import Tip from "../../components/post/Tip.astro";
+
+A budget has one currency. Your accounts don't have to: a euro checking account, a pound savings account and a dollar card can all sit in the same dollar budget. The budget needs every amount in dollars to add up, so each transaction is converted.
+
+## Converted once, on the transaction's date
+
+When you enter a €86.00 train pass dated October 11th, strictbudget looks up the rate for that day, 1 EUR = 1.1206 USD, and stores the converted amount with the transaction: $96.37. That dollar amount is what your Transportation category spends.
+
+It is locked. When the euro moves next week, the train pass still cost $96.37. Your categories don't drift because of the currency market, and a month you reconciled stays reconciled.
+
+## Where the rates come from
+
+Rates are market rates fetched daily. On a weekend or a holiday, the latest business day's rate is used. You can also type a rate by hand on a transaction, or set the budget's own rate for a date, which wins over the market rate for that budget.
+
+<Tip title="Around 150 currencies">
+  Any account can use any of them, and transfers between accounts in different currencies record both sides.
+</Tip>
+
+## Unrealized gain or loss
+
+Locked amounts mean a foreign account's balance in dollars is what you paid, not what it is worth today. The account register shows the difference as an unrealized gain or loss: a Berlin account holding €1,589.65 might show −$72.87 at today's rate.
+
+## When Revalue changes it
+
+Revalue settles that difference. It adds an FX Revaluation dated today for the gap between today's value and the booked one. In a budget account, the difference goes to Ready to Assign, where you give it a job like any other money. In a tracking account, your plan doesn't change.
+
+Most people revalue rarely: when they close a foreign account, or when the gap has grown large enough to matter for the plan.
+
+<PostCta
+  title="Budget in the currencies you use"
+  body="Add your accounts in their own currencies and let the budget do the converting."
+/>

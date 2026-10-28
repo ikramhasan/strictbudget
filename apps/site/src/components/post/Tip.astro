@@ -1,0 +1,16 @@
+---
+import { LightbulbIcon } from "@phosphor-icons/react/ssr";
+
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<aside class="flex gap-3 rounded-lg border bg-card px-4 py-3">
+  <LightbulbIcon size={20} className="mt-0.5 shrink-0 text-primary-ink" aria-hidden="true" />
+  <div class="flex flex-col gap-1 text-base">
+    <p class="font-semibold text-heading">{title}</p>
+    <div class="text-muted-foreground"><slot /></div>
+  </div>
+</aside>

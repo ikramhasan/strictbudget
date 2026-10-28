@@ -1,0 +1,75 @@
+---
+import { GithubLogoIcon } from "@phosphor-icons/react/ssr";
+import { links } from "../lib/site";
+
+const columns = [
+  {
+    heading: "Product",
+    items: [
+      { label: "Features", href: "/#features" },
+      { label: "How it works", href: "/#how-it-works" },
+      { label: "Pricing", href: "/#pricing" },
+      { label: "FAQ", href: "/#faq" },
+      { label: "Blog", href: "/blog" },
+      { label: "Sign in", href: links.signIn },
+    ],
+  },
+  {
+    heading: "Open source",
+    items: [
+      { label: "GitHub", href: links.github },
+      { label: "Self hosting guide", href: links.selfHosting },
+      { label: "API reference", href: links.apiReference },
+      { label: "Changelog", href: links.changelog },
+    ],
+  },
+  {
+    heading: "Legal",
+    items: [
+      { label: "Privacy policy", href: "/privacy" },
+      { label: "Terms of service", href: "/terms" },
+    ],
+  },
+];
+const linkClass =
+  "rounded-sm text-sm text-muted-foreground transition-colors duration-300 ease-site outline-none hover:text-heading focus-visible:ring-2 focus-visible:ring-ring";
+---
+
+<footer class="border-t px-6 pt-16 pb-12">
+  <div class="mx-auto flex max-w-[1120px] flex-col gap-12">
+    <div class="flex flex-col justify-between gap-12 lg:flex-row">
+      <div class="flex flex-col gap-3">
+        <a href="/" class="w-fit rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <img src="/logo.svg" alt="strictbudget home" width="117" height="24" class="h-6 w-auto" />
+        </a>
+        <p class="max-w-70 text-sm text-muted-foreground">
+          Zero based budgeting you can share, in every currency you use.
+        </p>
+      </div>
+      <div class="grid grid-cols-2 gap-x-8 gap-y-12 sm:grid-cols-3 lg:gap-16">
+        {
+          columns.map((column) => (
+            <div class="flex flex-col gap-3 lg:w-40">
+              <h2 class="text-sm font-semibold text-heading">{column.heading}</h2>
+              <ul class="flex flex-col gap-3">
+                {column.items.map((item) => (
+                  <li>
+                    <a href={item.href} class={linkClass}>
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+    <div class="flex items-center justify-between gap-4">
+      <p class="text-sm text-muted-foreground">© 2026 strictbudget. Open source under AGPL 3.0.</p>
+      <a href={links.github} aria-label="strictbudget on GitHub" class={linkClass}>
+        <GithubLogoIcon size={20} />
+      </a>
+    </div>
+  </div>
+</footer>

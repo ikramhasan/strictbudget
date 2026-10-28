@@ -1,0 +1,16 @@
+---
+import Base from "../layouts/Base.astro";
+
+interface Props {
+  title: string;
+  description: string;
+}
+const { title, description } = Astro.props;
+---
+
+<Base title={`${title} | strictbudget`} description={description} noindex>
+  <article class="mx-auto flex max-w-[728px] flex-col gap-6 px-6 pt-12 pb-24 sm:pt-20">
+    <h1 class="text-4xl font-semibold tracking-tight text-heading sm:text-5xl">{title}</h1>
+    <div class="post-body"><slot /></div>
+  </article>
+</Base>

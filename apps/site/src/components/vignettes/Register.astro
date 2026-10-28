@@ -1,0 +1,63 @@
+---
+// The account register for a euro account in a dollar budget: the balance strip and its first
+// transactions, each outflow with its value in the budget's currency.
+const rows = [
+  {
+    date: "10/21/2026",
+    payee: "Kino International",
+    category: "🍿 Entertainment",
+    eur: "€22.50",
+    usd: "$25.28",
+  },
+  { date: "10/16/2026", payee: "Edeka", category: "🛒 Groceries", eur: "€38.75", usd: "$43.61" },
+  { date: "10/11/2026", payee: "BVG", category: "🚇 Transportation", eur: "€86.00", usd: "$96.37" },
+];
+---
+
+<div class="flex w-full flex-col gap-4 rounded-lg border bg-background p-4 shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
+  <dl class="flex flex-wrap items-end gap-x-8 gap-y-2 rounded-lg border px-4 py-3 tabular-nums">
+    <div class="grid">
+      <dt class="text-xs text-muted-foreground">Working Balance</dt>
+      <dd class="text-lg/7 font-semibold">€1,589.65</dd>
+    </div>
+    <div class="grid">
+      <dt class="text-xs text-muted-foreground">Unrealized gain/loss</dt>
+      <dd class="flex flex-wrap items-center gap-x-2 text-base/7">
+        <span class="text-destructive">−$72.87</span>
+        <span class="text-xs text-muted-foreground">(at 1 EUR = 1.1193 USD)</span>
+        <span
+          class="inline-flex h-6 items-center rounded-md border border-input bg-background px-2 text-xs font-medium shadow-xs"
+          >Revalue</span
+        >
+      </dd>
+    </div>
+  </dl>
+  <table class="w-full overflow-hidden rounded-lg text-left text-sm ring-1 ring-border">
+    <thead class="bg-muted/50 text-xs text-muted-foreground">
+      <tr>
+        <th scope="col" class="hidden h-8 px-4 font-medium md:table-cell">Date</th>
+        <th scope="col" class="h-8 px-4 font-medium">Payee</th>
+        <th scope="col" class="hidden h-8 px-4 font-medium sm:table-cell">Category</th>
+        <th scope="col" class="h-8 px-4 text-right font-medium">Outflow</th>
+      </tr>
+    </thead>
+    <tbody class="tabular-nums">
+      {
+        rows.map((row) => (
+          <tr class="border-t">
+            <td class="hidden h-12 px-4 md:table-cell">{row.date}</td>
+            <td class="h-12 px-4">
+              {row.payee}
+              <span class="block text-xs text-muted-foreground sm:hidden">{row.category}</span>
+            </td>
+            <td class="hidden h-12 px-4 whitespace-nowrap sm:table-cell">{row.category}</td>
+            <td class="h-12 px-4 text-right">
+              {row.eur}
+              <span class="block text-xs text-muted-foreground">{row.usd}</span>
+            </td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>

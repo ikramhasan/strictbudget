@@ -1,0 +1,13 @@
+---
+interface Props {
+  caption: string;
+}
+const { caption } = Astro.props;
+---
+
+<figure class="flex flex-col gap-3 py-2">
+  <div class="flex justify-center rounded-2xl bg-cover-blue p-4 sm:p-10">
+    <slot />
+  </div>
+  <figcaption class="text-sm text-muted-foreground">{caption}</figcaption>
+</figure>

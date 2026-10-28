@@ -1,0 +1,19 @@
+---
+import LegalPage from "../components/LegalPage.astro";
+import { links } from "../lib/site";
+---
+
+<LegalPage title="Privacy policy" description="How strictbudget handles your data.">
+  <p>
+    The privacy policy for the hosted service will be published here before sign ups open. Until then,
+    here is what this website does today.
+  </p>
+  <ul>
+    <li>It sets no cookies and runs no analytics or third party trackers.</li>
+    <li>Its fonts and images are served from this site, not from a third party.</li>
+    <li>The share buttons on blog posts only contact LinkedIn or your email app when you click them.</li>
+  </ul>
+  <p>
+    Questions? Ask in <a href={links.discussions}>GitHub Discussions</a>.
+  </p>
+</LegalPage>

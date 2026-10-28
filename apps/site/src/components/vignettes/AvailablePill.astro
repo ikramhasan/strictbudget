@@ -1,0 +1,39 @@
+---
+import { CheckCircleIcon } from "@phosphor-icons/react/ssr";
+import { cn } from "../../lib/ui";
+
+// The app's AvailablePill (apps/web/src/components/move-money.tsx): green with money, yellow while
+// a target asks for more, grey at zero. `funded` is the share of the target for the pie.
+interface Props {
+  amount: string;
+  tone: "positive" | "caution" | "zero";
+  mark?: "met" | "pie";
+  funded?: number;
+}
+const { amount, tone, mark, funded = 0 } = Astro.props;
+const angle = (Math.min(Math.max(funded, 0), 99.9) / 100) * 2 * Math.PI;
+const x = (8 + 6 * Math.sin(angle)).toFixed(3);
+const y = (8 - 6 * Math.cos(angle)).toFixed(3);
+---
+
+<span
+  class={cn(
+    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm font-medium whitespace-nowrap tabular-nums",
+    tone === "positive" && "bg-green-100 text-green-900",
+    tone === "caution" && "bg-yellow-100 text-yellow-900",
+    tone === "zero" && "bg-muted text-muted-foreground",
+  )}
+>
+  {mark === "met" && <CheckCircleIcon size={14} aria-label="Target met" />}
+  {
+    mark === "pie" && (
+      <svg viewBox="0 0 16 16" class="size-3.5 shrink-0" role="img" aria-label={`Target ${funded}% funded`}>
+        <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5" />
+        {funded > 0 && (
+          <path d={`M8 8 L8 2 A6 6 0 ${angle > Math.PI ? 1 : 0} 1 ${x} ${y} Z`} fill="currentColor" />
+        )}
+      </svg>
+    )
+  }
+  {amount}
+</span>

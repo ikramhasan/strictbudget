@@ -1,0 +1,76 @@
+---
+import { LockSimpleIcon } from "@phosphor-icons/react/ssr";
+import { buttonClass, cn } from "../lib/ui";
+import AvailablePill from "./vignettes/AvailablePill.astro";
+import ProgressBar from "./vignettes/ProgressBar.astro";
+import Sharing from "./vignettes/Sharing.astro";
+
+// A post's cover: a piece of the app on a flat tint, not a stock photo.
+export type Cover = "assign" | "currency" | "sharing" | "card";
+interface Props {
+  cover: Cover;
+  class?: string;
+}
+const { cover, class: className } = Astro.props;
+const tint = {
+  assign: "bg-cover-blue",
+  currency: "bg-cover-beige",
+  sharing: "bg-cover-green",
+  card: "bg-cover-blue",
+}[cover];
+const lifted = "shadow-[0_8px_24px_rgb(0_0_0/0.06)]";
+---
+
+<div
+  aria-hidden="true"
+  class={cn("flex items-center justify-center overflow-hidden rounded-2xl p-8", tint, className)}
+>
+  <div class={cn("w-full max-w-90 rounded-lg", lifted)}>
+    {
+      cover === "assign" && (
+        <div class="flex items-center justify-between gap-3 rounded-lg bg-green-200 px-4 py-2 text-green-950">
+          <span class="grid">
+            <span class="text-2xl font-semibold tabular-nums">$4,812.37</span>
+            <span class="text-sm">Ready to Assign</span>
+          </span>
+          <span class={buttonClass("default", "small")}>Assign</span>
+        </div>
+      )
+    }
+    {
+      cover === "currency" && (
+        <div class="flex flex-col gap-3 rounded-lg border bg-background p-4 text-sm tabular-nums">
+          <div class="flex items-center justify-between gap-2">
+            <span class="grid">
+              <span class="font-medium">BVG</span>
+              <span class="text-xs text-muted-foreground">🚇 Transportation</span>
+            </span>
+            <span class="grid text-right">
+              <span class="font-medium">€86.00</span>
+              <span class="text-xs text-muted-foreground">$96.37</span>
+            </span>
+          </div>
+          <div class="flex items-center justify-between gap-2 border-t pt-3 text-xs text-muted-foreground">
+            Locked at 1 EUR = 1.1206 USD
+            <LockSimpleIcon size={14} />
+          </div>
+        </div>
+      )
+    }
+    {cover === "sharing" && <Sharing />}
+    {
+      cover === "card" && (
+        <div class="flex flex-col gap-2 rounded-lg border bg-background p-4">
+          <div class="flex items-center justify-between gap-2 text-sm">
+            <span>💳 Visa Card</span>
+            <AvailablePill amount="$512.02" tone="positive" mark="met" />
+          </div>
+          <ProgressBar percent={100} tone="funded" />
+          <p class="text-xs text-muted-foreground">
+            <span class="font-medium text-foreground">Covers the balance.</span> $512.02 owed on Visa
+          </p>
+        </div>
+      )
+    }
+  </div>
+</div>

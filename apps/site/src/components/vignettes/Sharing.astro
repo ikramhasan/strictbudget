@@ -1,0 +1,40 @@
+---
+// Who's on a shared budget and the latest entries in its change history.
+const members = [
+  ["M", "bg-[#4a6fd1]"],
+  ["D", "bg-[#d9922e]"],
+  ["A", "bg-[#2e9478]"],
+] as const;
+const changes = [
+  ["Maya moved $40.00 to Groceries", "2m"],
+  ["Daniel added Costco, $86.17", "1h"],
+  ["Ana set a target for Flights", "Tue"],
+] as const;
+---
+
+<div class="flex w-full flex-col gap-3 rounded-lg border bg-background p-4 shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
+  <div class="flex items-center gap-2">
+    <div class="flex -space-x-2" aria-hidden="true">
+      {
+        members.map(([initial, color]) => (
+          <span
+            class={`grid size-7 place-items-center rounded-full border-2 border-background text-xs font-semibold text-white ${color}`}
+          >
+            {initial}
+          </span>
+        ))
+      }
+    </div>
+    <span class="text-xs font-medium text-muted-foreground">3 people on Household</span>
+  </div>
+  <ul class="flex flex-col gap-3 border-t pt-3 text-xs">
+    {
+      changes.map(([text, time]) => (
+        <li class="flex justify-between gap-2">
+          <span>{text}</span>
+          <span class="text-muted-foreground">{time}</span>
+        </li>
+      ))
+    }
+  </ul>
+</div>

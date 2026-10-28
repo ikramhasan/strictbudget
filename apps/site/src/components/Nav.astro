@@ -1,0 +1,123 @@
+---
+import { links, navLinks } from "../lib/site";
+import { buttonClass, cn } from "../lib/ui";
+
+interface Props {
+  current?: string;
+}
+const { current } = Astro.props;
+---
+
+<header class="sticky top-0 z-50 px-4 pt-4">
+  <nav
+    aria-label="Main"
+    class="mx-auto flex max-w-[1120px] items-center gap-8 rounded-2xl border bg-background/80 p-2 shadow-[0_4px_16px_rgb(0_0_0/0.04)] backdrop-blur-lg lg:w-fit"
+  >
+    <a href="/" class="rounded-lg px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <img src="/logo.svg" alt="strictbudget home" width="117" height="24" class="h-6 w-auto" />
+    </a>
+    <ul class="hidden items-center gap-6 lg:flex">
+      {
+        navLinks.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              aria-current={link.label === current ? "page" : undefined}
+              class={cn(
+                "rounded-md text-sm font-medium text-muted-foreground transition-colors duration-300 ease-site outline-none hover:text-heading focus-visible:ring-2 focus-visible:ring-ring",
+                link.label === current && "font-semibold text-heading",
+              )}
+            >
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <div class="ml-auto flex items-center gap-1">
+      <a href={links.signIn} class={buttonClass("ghost", "small", "hidden lg:inline-flex")}>Sign in</a>
+      <a href={links.signUp} class={buttonClass("default", "small", "hidden sm:inline-flex")}>
+        Start your budget
+      </a>
+      <button
+        type="button"
+        id="menu-toggle"
+        aria-controls="mobile-menu"
+        aria-expanded="false"
+        aria-label="Open menu"
+        class="group/toggle relative grid size-9 place-items-center rounded-lg outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+      >
+        <span
+          aria-hidden="true"
+          class="absolute h-0.5 w-4.5 -translate-y-1 rounded-full bg-heading transition-transform duration-500 ease-site group-aria-expanded/toggle:translate-y-0 group-aria-expanded/toggle:rotate-45"
+        ></span>
+        <span
+          aria-hidden="true"
+          class="absolute h-0.5 w-4.5 translate-y-1 rounded-full bg-heading transition-transform duration-500 ease-site group-aria-expanded/toggle:translate-y-0 group-aria-expanded/toggle:-rotate-45"
+        ></span>
+      </button>
+    </div>
+  </nav>
+</header>
+
+<div
+  id="mobile-menu"
+  class="group/menu invisible fixed inset-0 z-40 bg-background/95 opacity-0 backdrop-blur-xl transition-[opacity,visibility] duration-300 ease-site data-open:visible data-open:opacity-100 lg:hidden"
+>
+  <div class="flex h-full flex-col gap-8 overflow-y-auto px-6 pt-28 pb-10">
+    <ul class="flex flex-col gap-2">
+      {
+        navLinks.map((link, i) => (
+          <li
+            class="translate-y-6 opacity-0 transition-[opacity,transform] duration-500 ease-site group-data-open/menu:translate-y-0 group-data-open/menu:opacity-100 motion-reduce:translate-y-0"
+            style={`transition-delay: ${Math.min(i * 60, 340)}ms`}
+          >
+            <a
+              href={link.href}
+              data-menu-link
+              aria-current={link.label === current ? "page" : undefined}
+              class={cn(
+                "block rounded-lg py-2 text-3xl font-semibold tracking-tight text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                link.label === current ? "text-heading" : "hover:text-heading",
+              )}
+            >
+              {link.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <div
+      class="mt-auto flex translate-y-6 flex-col gap-3 opacity-0 transition-[opacity,transform] delay-[340ms] duration-500 ease-site group-data-open/menu:translate-y-0 group-data-open/menu:opacity-100 motion-reduce:translate-y-0"
+    >
+      <a href={links.signUp} class={buttonClass("default", "main", "w-full")}>Start your budget</a>
+      <a href={links.signIn} class={buttonClass("outline", "main", "w-full")}>Sign in</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  const toggle = document.getElementById("menu-toggle");
+  const menu = document.getElementById("mobile-menu");
+  if (toggle && menu) {
+    const setOpen = (open: boolean) => {
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+      menu.toggleAttribute("data-open", open);
+      document.documentElement.style.overflow = open ? "hidden" : "";
+    };
+    toggle.addEventListener("click", () => setOpen(!menu.hasAttribute("data-open")));
+    for (const link of menu.querySelectorAll("[data-menu-link]")) {
+      link.addEventListener("click", () => setOpen(false));
+    }
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && menu.hasAttribute("data-open")) {
+        setOpen(false);
+        toggle.focus();
+      }
+    });
+    window.matchMedia("(min-width: 64rem)").addEventListener("change", (event) => {
+      if (event.matches) setOpen(false);
+    });
+  }
+</script>
