@@ -18,6 +18,7 @@ applies to product work that ships to `main`.
 | `.agents/skills/`, `.claude/skills/`, `skills-lock.json` | The marketing skills (coreyhaines31/marketingskills), pinned by hash. |
 | `marketing/keywords.md` | The keyword map: main keyword, clusters, long-tail targets and their status. |
 | `marketing/content-log.md` | Every page and post: idea, brief, PR open, published, refreshed. |
+| `marketing/screenshots.md` | Every app screenshot in use: what it shows, where, and whether it meets the bar. |
 | `marketing/briefs/` | One brief per piece (`<slug>.md`). |
 | `marketing/research/` | Dated research: keyword pulls, SERP notes, competitor notes (`YYYY-MM-DD-<topic>.md`). |
 | `marketing/runs/` | One log per automated run (`YYYY-MM-DD.md`). |
@@ -45,6 +46,7 @@ On a conflict in app code, take `main`'s version. Only the marketing files are t
    description), `dek`, `date`, `category` (`Guides` | `Product` | `Stories`), `cover` (`assign` |
    `currency` | `sharing` | `card`). Pages and free tools go under `apps/site/src/pages/`. Copy a
    finished draft over with `git checkout feat/marketing -- <path>` if it was written here first.
+   Add screenshots of the app wherever they help (see "Images from the app").
 4. **Confirm nothing from this branch leaked:** `git diff --stat origin/main...HEAD` must list
    only the files you meant to ship (never `.agents/`, `.claude/skills/<marketing skill>`,
    `skills-lock.json` or `marketing/`).
@@ -54,6 +56,102 @@ On a conflict in app code, take `main`'s version. Only the marketing files are t
    the target keyword and links the brief on this branch.
 7. **Back on `feat/marketing`:** set the piece's status in `content-log.md` and `keywords.md`,
    commit, push.
+
+## Images from the app
+
+Posts, pages and free tools show the real app wherever a screenshot helps the reader: the screen
+a guide walks through, the feature a comparison claims, the numbers a worked example uses. Leave
+them out where they'd only decorate.
+
+### Reuse before you capture
+
+1. Look through `marketing/screenshots.md` (the inventory), `apps/site/public/screenshots/` and
+   `docs/screenshots/`. Open each candidate and look at it; a file name doesn't tell you what's in
+   the image.
+2. If an existing image shows what's needed and meets the bar below, use it. Don't take a new
+   one.
+3. Capture only when nothing fits, or the closest image fails the bar or shows a screen that has
+   changed since. A replacement keeps the old path, so every page using it gets the better image.
+4. Record every new or replaced image in `marketing/screenshots.md`.
+
+### The bar
+
+- **No devtools or chrome:** no TanStack Router devtools button (bottom right), no React Query
+  devtools button (bottom left), no browser UI, cursor, toasts, or open menus and tooltips unless
+  they're the subject.
+- **Looks lived in:**
+  - Every account has a logo (no letter placeholders), and account names fit without being cut
+    off.
+  - Categories have targets, so prompts like "Enter your expected income" and $0.00 targets
+    don't show.
+  - Charts and reports have at least six months of history, with no empty months.
+  - No empty states, and no rows of zeros.
+- **Fictional but plausible:** made-up banks and payees, with logos you created for them. Never
+  use real banks' logos: strictbudget has no bank sync, and a real bank's logo would suggest an
+  integration. No real people's data.
+- **Consistent with the text:** the amounts in the image are the ones the post talks about.
+- **Readable:** 1440×900 viewport at 2× pixel density (2880×1800). Crop to the part being
+  discussed when the whole screen would be too small to read. Light theme, unless the piece is
+  about dark mode or shows both.
+
+### Setting up the data
+
+Use a local development database only, never the hosted app. `pnpm db:seed` creates the demo user
+(`demo@strictbudget.app` / `strictbudget-demo`) with "Demo Household": four USD accounts and two
+months of activity. That's below the bar on its own. Before capturing, add the following as the
+demo user, through the app or the API:
+- account logos (Edit account)
+- several more months of transactions
+- targets on categories
+- foreign-currency accounts when the piece is about currencies
+
+Write down what you added in `marketing/screenshots.md`, so the next capture can rebuild the same
+state.
+
+### Capturing
+
+The devtools only render in development builds (`import.meta.env.DEV` in
+`apps/web/src/routes/__root.tsx`). Capture from a production build of the web app instead:
+
+```sh
+pnpm --filter @strictbudget/web build
+pnpm --filter @strictbudget/web preview --port 5173 --strictPort   # with the API running
+```
+
+`vite preview` falls back to the dev server's proxy settings. Port 5173 keeps the address that
+sign-in expects. If this doesn't work, remove the devtools elements from the page before capturing,
+then fix these steps so the next run doesn't hit the same problem. Either way, look at the finished image and
+check it against the bar.
+
+Use the browser tool the session has, set to 1440×900 at a device pixel ratio of 2. Close the tabs
+you opened once you're done (see `CLAUDE.md`).
+
+### Files and embedding
+
+- Save WebP files at three widths from the 2× capture:
+  `apps/site/public/screenshots/<name>-960.webp`, `-1440.webp` and `-2880.webp`. Use `magick` or
+  sharp to resize.
+- They're product files, so they ship in the content PR to `main`. The inventory stays here.
+- In a post, wrap the image in the `Figure` component and give it a `srcset` like the home page's:
+
+  ```mdx
+  <Figure caption="What the reader should notice.">
+    <img
+      src="/screenshots/<name>-1440.webp"
+      srcset="/screenshots/<name>-960.webp 960w, /screenshots/<name>-1440.webp 1440w, /screenshots/<name>-2880.webp 2880w"
+      sizes="(min-width: 768px) 720px, 100vw"
+      width="2880"
+      height="1800"
+      alt="What the image shows, in plain words"
+      loading="lazy"
+      class="h-auto w-full rounded-lg border"
+    />
+  </Figure>
+  ```
+
+  Set `width` and `height` to the real pixel size, and write alt text that describes the image.
+  Search engines read it too. Check the post in the running site that it looks right in light and
+  dark.
 
 ## The strategy: SEO with zero followers
 

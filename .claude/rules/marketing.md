@@ -7,6 +7,10 @@ that branch.
   which skill to use for each step, how to use the Treg MCP for keyword and SERP data, the spending
   cap, and the weekly SEO loop that scheduled runs follow.
 - **Product context:** `.agents/product-marketing.md`. The marketing skills read it first.
+- **Content shows the real app.** When writing a post, page or tool, add screenshots of the
+  app where they help. Reuse an image from `marketing/screenshots.md` when one fits and meets the
+  bar; only capture when none does. No devtools, logos on every account, lived-in data, no empty
+  states. The README's "Images from the app" has the full bar and the steps.
 - **This branch is never merged into `main` and never opened as a PR.** To ship a blog post, page
   or free tool, merge `origin/main` into this branch and push, do the research here, then cut a
   new branch from `origin/main` that holds only the product files. The README has the steps.
