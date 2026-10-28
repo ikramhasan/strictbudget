@@ -56,8 +56,10 @@ Every setting is described in `.env.example`.
 
 ## Planning
 
-Open work, the roadmap and deliberate differences from YNAB are tracked in Plane, not in this
-repository: see [`plane.md`](plane.md).
+Open work is tracked in [GitHub Issues](https://github.com/ikramhasan/strictbudget/issues) and
+the [strictbudget project](https://github.com/users/ikramhasan/projects/1): see
+[`issues.md`](issues.md). The order of upcoming work is [`roadmap.md`](roadmap.md), and deliberate
+decisions are in [`design-notes/`](design-notes/README.md).
 
 ## Brand assets
 
