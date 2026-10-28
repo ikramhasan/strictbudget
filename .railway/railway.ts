@@ -21,14 +21,14 @@ import {
  */
 const PUBLIC_URL = "https://web.strictbudget.app";
 const REPO = "ikramhasan/strictbudget";
-// Singapore, next to the bucket.
-const REGION = "asia-southeast1-eqsg3a";
+// US East (Virginia), where most customers are, next to the bucket.
+const REGION = "us-east4-eqdc4a";
 
 export default defineRailway(() => {
   const db = postgres("postgres", { region: REGION });
   // Private and S3-compatible; the API hands browsers presigned links (bucket egress is free).
-  // A bucket's region can't change once it exists.
-  const files = bucket("attachments", { region: "sin" });
+  // A bucket's region can't change once it exists (iad is US East).
+  const files = bucket("files", { region: "iad" });
 
   const app = service("strictbudget", {
     // Deploys every push to main once its CI checks pass. Needs Railway's GitHub app on the repo.
