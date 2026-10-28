@@ -11,10 +11,11 @@ Every screenshot of the app that the site, the blog or the README uses. Check th
 | `docs/screenshots/multi-currency.webp` | Berlin Checking (EUR) register in a USD budget: each amount with its USD value, unrealized gain/loss, Revalue | 2880×1290 | Light | README | **No** (1, 2) | 2026-10-25 |
 | `docs/screenshots/reports.webp` | Reports overview: stat cards, Spending, Income and spending, Observations | 2880×1800 | Light | README | **No** (1, 2, 4) | 2026-10-25 |
 | `docs/screenshots/spending-breakdown.webp` | Spending Breakdown, Oct 2026: donut and category list | 2880×1800 | Light | README | **No** (1, 2) | 2026-10-25 |
-| `apps/site/public/screenshots/credit-card-overspent-{960,1440,2880}.webp` | Budget, Oct 2026, "Nadia & Sam": Dining out −$24.50 credit overspending, the Juniper (Visa) payment category's Overspent Categories alert, $682.01 of $706.51 set aside | 2880×1230 | Light | `/blog/credit-cards` | Yes | 2026-10-28 |
-| `apps/site/public/screenshots/credit-card-covered-{960,1440,2880}.webp` | Same budget after moving $24.50: Juniper payment $706.51, "You have enough money to pay off your current balance!", Record Payment | 2880×930 | Light | `/blog/credit-cards` | Yes | 2026-10-28 |
-| `apps/site/public/screenshots/credit-card-payoff-target-{960,1440,2880}.webp` | Harbor (Mastercard) payment category: Pay Specific Amount Monthly $300.00, target met, $2,100.00 owed | 2880×850 | Light | `/blog/credit-cards` | Yes | 2026-10-28 |
-| `apps/site/public/screenshots/credit-card-health-{960,1440,2880}.webp` | Credit Card Health report, Oct 2026: $2,806.51 owed, Juniper "Paid in full ready" with six months of bars, Harbor "Unfunded debt" | 2880×1800 | Light | `/blog/credit-cards` | Yes | 2026-10-28 |
+| `apps/site/public/screenshots/credit-card-overspent-{960,1550}.webp` | Budget rows, Oct 2026, "Nadia & Sam": Dining out −$24.50 credit overspending, Juniper (Visa) payment $682.01 | 1550×1110 (crop) | Light | `/blog/credit-cards` | Yes | 2026-10-28 |
+| `apps/site/public/screenshots/credit-card-overspent-inspector-{382,764}.webp` | Juniper payment inspector: Overspent Categories $24.50, Cover Overspent Categories, Available for Payment $682.01 of $706.51 | 764×1210 (crop) | Light | `/blog/credit-cards` | Yes | 2026-10-28 |
+| `apps/site/public/screenshots/credit-card-covered-{382,764}.webp` | Juniper payment inspector after moving $24.50: "You have enough money to pay off your current balance!", Record Payment, $706.51 | 764×960 (crop) | Light | `/blog/credit-cards` | Yes | 2026-10-28 |
+| `apps/site/public/screenshots/credit-card-payoff-target-{382,764}.webp` | Harbor (Mastercard) payment inspector: Pay Specific Amount Monthly $300.00, target met, $2,100.00 owed | 764×1440 (crop) | Light | `/blog/credit-cards` | Yes | 2026-10-28 |
+| `apps/site/public/screenshots/credit-card-health-{960,1560}.webp` | Credit Card Health report, Oct 2026: $2,806.51 owed, Juniper "Paid in full ready" with six months of bars, Harbor "Unfunded debt" | 1560×1490 (crop, 1024-wide viewport) | Light | `/blog/credit-cards` | Yes | 2026-10-28 |
 
 What fails the bar:
 
@@ -54,4 +55,10 @@ To capture: sign in once (the API rate-limits sign-ins), save the session cookie
 seed with `COOKIE_FILE`, build and preview the web app (see the README), then
 `marketing/screenshot-data/shot.mjs` with `BUDGET` set. The four images above came from the
 budget screen with Bills and Needs collapsed (and Wants for the Harbor one) and a payment
-category's checkbox ticked, cropped vertically only so each stays 2880 wide.
+category's checkbox ticked.
+
+Crops: a full 2880-wide screen shrinks to about 600 px in a post's figure, too small to read, so
+these are cropped to the part the text discusses (the budget rows, or one inspector panel) and
+saved at their own width plus a smaller one; the file suffix is the image's pixel width. The
+Credit Card Health report was captured at a 1024×1100 viewport (2×) instead of 1440×900, because
+its cards span the whole width and no crop of the 1440 capture stayed readable.

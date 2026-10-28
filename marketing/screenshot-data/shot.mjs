@@ -1,7 +1,8 @@
 // Usage: BUDGET=<id> COOKIE_FILE=<file> node shot.mjs <path-after-/budgets/ID> <out.png> [step...]
 // Opens the page in the production preview (localhost:5173) at 1440×900 @2x with the demo user's
 // session cookie and saves a screenshot. Steps: "role:<role>:<name>" clicks, "eval:<js>",
-// "wait:<ms>", or text to click. FULL=1 for a full-page shot, THEME=dark for dark.
+// "wait:<ms>", or text to click. FULL=1 for a full-page shot, THEME=dark for dark, VW/VH for
+// another viewport size.
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 const require = createRequire("/opt/");
@@ -16,7 +17,7 @@ const [, , path, out, ...clicks] = process.argv;
 const BUDGET = process.env.BUDGET;
 const browser = await chromium.launch();
 const context = await browser.newContext({
-  viewport: { width: 1440, height: 900 },
+  viewport: { width: Number(process.env.VW ?? 1440), height: Number(process.env.VH ?? 900) },
   deviceScaleFactor: 2,
   colorScheme: process.env.THEME === "dark" ? "dark" : "light",
 });

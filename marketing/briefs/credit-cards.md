@@ -23,7 +23,7 @@ YNAB's "How to Do Credit Cards in YNAB" is about 650 words with no worked amount
 1. **Worked numbers:** one household's October with two cards (a Visa paid in full, a Mastercard
    with old debt at 24.99% APR), every purchase, the return, the interest charge and both
    payments, with the balances before and after.
-2. **The real app:** four screenshots of that exact month: credit overspending and the
+2. **The real app:** five screenshots of that exact month: the overspent budget rows, the
    payment category's alert, the covered card with Record Payment, the debt card's $300 payment
    target, and the Credit Card Health report.
 3. **Complete:** returns, cash vs credit overspending, statement vs current balance, interest,
