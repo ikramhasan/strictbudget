@@ -6,11 +6,12 @@ import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/na
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@strictbudget/ui/components/tabs";
 import { cn } from "@strictbudget/ui/lib/utils";
-import { CalendarDays, ChevronDown, CircleCheck, Zap } from "lucide-react";
+import { CalendarDays, ChevronDown, CircleCheck, PiggyBank, Zap } from "lucide-react";
 import { type FormEvent, type ReactElement, type ReactNode, useState } from "react";
 import type { TargetMark } from "@/lib/budget-view";
 import { useDifferentiateWithoutColor } from "@/lib/display-options";
 import { type MoneyOption, minAmount, monthLabel } from "@/lib/months";
+import { savingsLast, savingsWarning } from "@/lib/savings";
 import { CategoryField } from "./register-fields";
 
 export interface MoveActions {
@@ -229,10 +230,13 @@ export function AvailableButton({
                 </NativeSelect>
               )
             }
-            options={(sources ?? []).filter(
-              (o) => (later || o.id !== categoryId) && BigInt(o.available) > 0n,
+            options={savingsLast(
+              (sources ?? []).filter(
+                (o) => (later || o.id !== categoryId) && BigInt(o.available) > 0n,
+              ),
             )}
             format={format}
+            takes={(source) => minAmount(BigInt(source.available), -BigInt(amount))}
             onCancel={() => setOpen(false)}
             onPick={async (source) => {
               setOpen(false);
@@ -281,6 +285,13 @@ function MoveForm({
   const [to, setTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const describe = describer(actions.options, format);
+  const typed = actions.parse(text);
+  // Moving money out of a savings category says what it does to its goal.
+  const warning = savingsWarning(
+    actions.options.find((o) => o.id === categoryId),
+    typeof typed === "bigint" ? typed : 0n,
+    format,
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -310,6 +321,7 @@ function MoveForm({
         />
         {error && <FieldError>{error}</FieldError>}
       </Field>
+      {warning && <SavingsWarning text={warning} />}
       <Field>
         <FieldLabel>To</FieldLabel>
         <CategoryField
@@ -406,6 +418,7 @@ function PickSourceForm({
   aside,
   options,
   format,
+  takes,
   onCancel,
   onPick,
 }: {
@@ -414,11 +427,14 @@ function PickSourceForm({
   aside?: ReactNode;
   options: readonly MoneyOption[];
   format: Format;
+  /** What picking `source` takes out of it, for the savings warning. */
+  takes: (source: MoneyOption) => bigint;
   onCancel: () => void;
   onPick: (source: MoneyOption) => Promise<void>;
 }) {
   const [from, setFrom] = useState<string | null>(null);
   const source = options.find((o) => o.id === from);
+  const warning = source ? savingsWarning(source, takes(source), format) : null;
   return (
     <form
       onSubmit={(event) => {
@@ -442,6 +458,7 @@ function PickSourceForm({
           autoFocus
         />
       </Field>
+      {warning && <SavingsWarning text={warning} />}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" size="sm" onClick={onCancel}>
           Cancel
@@ -518,10 +535,13 @@ export function FixThisButton({
               </NativeSelect>
             )
           }
-          options={(picked ?? []).filter(
-            (o) => o.id !== actions.readyToAssignId && BigInt(o.available) > 0n,
+          options={savingsLast(
+            (picked ?? []).filter(
+              (o) => o.id !== actions.readyToAssignId && BigInt(o.available) > 0n,
+            ),
           )}
           format={format}
+          takes={(source) => minAmount(BigInt(source.available), -BigInt(readyToAssign))}
           onCancel={() => setOpen(false)}
           onPick={async (source) => {
             setOpen(false);
@@ -532,6 +552,19 @@ export function FixThisButton({
         />
       </PopoverContent>
     </Popover>
+  );
+}
+
+/** What taking money out of a savings category does, before it's done. */
+function SavingsWarning({ text }: { text: string }) {
+  return (
+    <p
+      role="status"
+      className="flex items-start gap-2 rounded-md bg-amber-100 p-2.5 text-amber-950 text-sm dark:bg-amber-900/40 dark:text-amber-50"
+    >
+      <PiggyBank className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <span>{text}</span>
+    </p>
   );
 }
 

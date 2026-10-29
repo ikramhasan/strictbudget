@@ -77,6 +77,74 @@ describe("AvailableButton", () => {
     expect(actions.move).toHaveBeenCalledWith("rent", "food", 2000n);
   });
 
+  it("lists savings last and warns before covering from them", async () => {
+    const actions = makeActions();
+    actions.options = [
+      ...actions.options,
+      {
+        id: "fund",
+        name: "Emergency fund",
+        group: "Needs",
+        available: "1000000",
+        savings: { goal: { kind: "safety_fund", needed: 1_000_000n, funded: 1_000_000n } },
+      },
+    ];
+    render(
+      <AvailableButton
+        categoryId="phone"
+        categoryName="Phone"
+        amount="-1500"
+        format={format}
+        actions={actions}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Cover Phone: $-15, overspent" }));
+    await userEvent.click(screen.getByRole("combobox", { name: "Cover overspending from" }));
+    const options = await screen.findAllByRole("option");
+    expect(options.map((o) => o.textContent)).toEqual([
+      expect.stringContaining("Ready to Assign"),
+      expect.stringContaining("Rent"),
+      expect.stringContaining("Emergency fund"),
+    ]);
+    expect(screen.getByText("Savings")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("option", { name: /Emergency fund/ }));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Emergency fund will be $15 below its $10000, and its goal will ask for it back.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    expect(actions.move).toHaveBeenCalledWith("fund", "phone", 1500n);
+  });
+
+  it("warns when moving money out of savings", async () => {
+    const actions = makeActions();
+    actions.options = [
+      ...actions.options,
+      {
+        id: "trip",
+        name: "Vacation",
+        group: "Wants",
+        available: "40000",
+        savings: { goal: { kind: "save_up", needed: 150_000n, funded: 140_000n } },
+      },
+    ];
+    render(
+      <AvailableButton
+        categoryId="trip"
+        categoryName="Vacation"
+        amount="40000"
+        format={format}
+        actions={actions}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Move Vacation: $400" }));
+    const amount = screen.getByLabelText("Move");
+    await userEvent.clear(amount);
+    await userEvent.type(amount, "100");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Vacation's progress drops to $1300 of $1500.",
+    );
+  });
+
   it("covers overspending with as much as the source has", async () => {
     const actions = makeActions();
     render(

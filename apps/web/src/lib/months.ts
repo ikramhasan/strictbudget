@@ -109,6 +109,13 @@ export interface MoneyOption {
   group: string;
   /** What's available in it this month (Ready to Assign's own amount for Ready to Assign). */
   available: string;
+  /**
+   * Set on a savings category: its safety fund or save-up goal this month (the balance to keep or
+   * the goal, and what counts toward it), for saying what taking money out does.
+   */
+  savings?: {
+    goal: { kind: "safety_fund" | "save_up"; needed: bigint; funded: bigint } | null;
+  };
 }
 
 /**
@@ -117,6 +124,17 @@ export interface MoneyOption {
  */
 export function moneyOptions(list: CategoryList, month: BudgetMonthData): MoneyOption[] {
   const available = new Map(month.categories.map((c) => [c.categoryId, c.available]));
+  const needs = new Map(month.categories.map((c) => [c.categoryId, c.target]));
+  const savingsOf = (c: CategoryList["groups"][number]["categories"][number]) => {
+    const goal = c.target?.goal;
+    const need = needs.get(c.id);
+    return {
+      goal:
+        need && (goal === "safety_fund" || goal === "save_up")
+          ? { kind: goal, needed: BigInt(need.needed), funded: BigInt(need.funded) }
+          : null,
+    };
+  };
   return [
     {
       id: list.readyToAssignCategoryId,
@@ -134,6 +152,7 @@ export function moneyOptions(list: CategoryList, month: BudgetMonthData): MoneyO
             name: c.name,
             group: g.name,
             available: available.get(c.id) ?? "0",
+            ...(c.savings && { savings: savingsOf(c) }),
           })),
       ),
   ];
