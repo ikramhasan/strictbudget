@@ -109,6 +109,8 @@ describe("category targets", () => {
       startMonth: "2026-10",
       startDay: null,
       snoozedMonth: null,
+      goal: null,
+      goalAmount: null,
     });
     expect((await findCategory(rent.id))?.target?.amount).toBe("10000");
 

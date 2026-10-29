@@ -3,6 +3,7 @@ import {
   type CurrencyCode,
   TARGET_BEHAVIORS,
   TARGET_CADENCES,
+  TARGET_GOALS,
   TARGET_REPEAT_UNITS,
 } from "@strictbudget/engine";
 import { sql } from "drizzle-orm";
@@ -91,6 +92,12 @@ export const category = pgTable(
       .references(() => budgetAccount.id, { onDelete: "cascade" }),
     /** Spending pace: in or out whatever the automatic rule says; null follows it. */
     pace: text({ enum: PACE_SETTINGS }),
+    /**
+     * A savings category: money kept for a goal rather than spent this month. Shown apart from
+     * spending money, warned about when money leaves it, and left out of spending pace. Never on a
+     * payment category.
+     */
+    savings: boolean().notNull().default(false),
     ...timestamps,
   },
   (t) => [
@@ -206,6 +213,16 @@ export const categoryTarget = pgTable(
      * current month; earlier occurrences that month aren't asked for. Null for the whole month.
      */
     startDay: integer(),
+    /**
+     * A savings goal the target stands for (`TARGET_GOALS`), on the cadence and behaviour that
+     * work it out; null for an ordinary target.
+     */
+    goal: text({ enum: TARGET_GOALS }),
+    /**
+     * Minor units, in `currency`: the total to save (save up) or the balance to keep (safety
+     * fund). Null for other targets.
+     */
+    goalAmount: bigint({ mode: "bigint" }),
     /** YYYY-MM-01 of the month the target is snoozed for (a snooze lasts one month). */
     snoozedMonth: date({ mode: "string" }),
     ...timestamps,

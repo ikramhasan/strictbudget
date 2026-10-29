@@ -29,6 +29,7 @@ const data: CategoryListData = {
           hasTransactions: false,
           transactionCount: 0,
           hasAssignedMoney: false,
+          savings: false,
           target: null,
         },
         {
@@ -41,6 +42,7 @@ const data: CategoryListData = {
           hasTransactions: false,
           transactionCount: 0,
           hasAssignedMoney: false,
+          savings: false,
           target: null,
         },
         {
@@ -53,6 +55,7 @@ const data: CategoryListData = {
           hasTransactions: false,
           transactionCount: 0,
           hasAssignedMoney: false,
+          savings: false,
           target: null,
         },
       ],
@@ -81,6 +84,7 @@ const withCards: CategoryListData = {
           hasTransactions: false,
           transactionCount: 0,
           hasAssignedMoney: false,
+          savings: false,
           target: null,
         },
       ],
@@ -101,6 +105,7 @@ const withCards: CategoryListData = {
           hasTransactions: true,
           transactionCount: 0,
           hasAssignedMoney: false,
+          savings: false,
           target: null,
         },
         {
@@ -113,6 +118,7 @@ const withCards: CategoryListData = {
           hasTransactions: false,
           transactionCount: 0,
           hasAssignedMoney: false,
+          savings: false,
           target: null,
         },
       ],

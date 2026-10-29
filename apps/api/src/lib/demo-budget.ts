@@ -115,6 +115,31 @@ export async function seedDemoBudget(app: App, cookie: string, now = new Date())
     return found.id;
   };
 
+  // Savings goals: keep a $10,000 emergency fund (rebuilt at most $500 a month), and save $1,500
+  // for a holiday at $200 a month.
+  const goals = [
+    {
+      name: "Emergency fund",
+      behavior: "refill",
+      goal: "safety_fund",
+      amount: "50000",
+      of: "1000000",
+    },
+    { name: "Vacation", behavior: "set_aside", goal: "save_up", amount: "20000", of: "150000" },
+  ];
+  for (const { name, behavior, goal, amount, of } of goals) {
+    await call("PUT", `${base}/categories/${categoryId(name)}/target`, {
+      cadence: "monthly",
+      behavior,
+      goal,
+      amount,
+      goalAmount: of,
+      dueDay: null,
+      month: dayOf(now, -1, 1).slice(0, 7),
+      today,
+    });
+  }
+
   // The card's opening debt (450.00) has no spending behind it; assigning it to the card's payment
   // category last month covers the payment on the 20th.
   const payment = list.groups.find((g) => g.kind === "credit_card_payments")?.categories[0];

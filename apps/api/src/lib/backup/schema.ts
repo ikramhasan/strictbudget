@@ -19,6 +19,7 @@ import {
   SCHEDULE_FREQUENCIES,
   TARGET_BEHAVIORS,
   TARGET_CADENCES,
+  TARGET_GOALS,
   TARGET_REPEAT_UNITS,
   zCurrencyCode,
   zMinorUnits,
@@ -58,6 +59,7 @@ const BudgetSchema = z.object({
   expectedIncome: zMinorUnits.nullable(),
   expectedIncomeCurrency: zCurrencyCode.nullable(),
   loanSimulatorBannerDismissed: z.boolean(),
+  savingsSuggestionDismissed: z.boolean().nullish(),
   /** Missing from backups made before the AI settings existed. */
   aiEnabled: z.boolean().default(false),
   aiAssistantButton: z.boolean().default(false),
@@ -85,6 +87,8 @@ const CategorySchema = z.object({
   linkedAccountId: Ref,
   /** Spending pace's setting; backups from before it have none. */
   pace: z.enum(PACE_SETTINGS).nullish(),
+  /** Backups from before savings categories have none. */
+  savings: z.boolean().nullish(),
 });
 
 /** A file import's remembered settings, kept as they are (they only steer the import dialog). */
@@ -187,6 +191,9 @@ const TargetSchema = z.object({
   dueDate: Day.nullable(),
   repeatEvery: z.number().int().nullable(),
   repeatUnit: z.enum(TARGET_REPEAT_UNITS).nullable(),
+  /** Savings goals; backups from before them have none. */
+  goal: z.enum(TARGET_GOALS).nullish(),
+  goalAmount: zMinorUnits.nullish(),
   startMonth: MonthStart,
   startDay: z.number().int().nullable(),
   snoozedMonth: MonthStart.nullable(),

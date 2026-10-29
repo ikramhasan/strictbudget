@@ -27,6 +27,8 @@ const target = (extra: Partial<CategoryTarget> = {}): CategoryTarget => ({
   startMonth: "2026-10",
   startDay: null,
   snoozedMonth: null,
+  goal: null,
+  goalAmount: null,
   ...extra,
 });
 const need = (

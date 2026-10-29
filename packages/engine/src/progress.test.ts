@@ -168,3 +168,13 @@ describe("progressBar for a dated set aside with money left from its last period
     ).toEqual(["rollover 57.1[available 100]", "42.8[available 50]"]);
   });
 });
+
+describe("progressBar for a save-up goal", () => {
+  it("fills with everything put in, with what was spent on it eaten from the front", () => {
+    const saveUp = { ...target("set_aside"), goal: "save_up" as const };
+    // $3,000 goal: $1,000 carried in, $250 assigned, $500 spent.
+    const b = bar(fig(1_000_00n, 250_00n, -500_00n), saveUp, need(3_000_00n, 1_250_00n, 0n));
+    expect(drawn(b)).toEqual(["100[spent 16.6, available 25]"]);
+    expect(b.tone).toBe("funded");
+  });
+});

@@ -3,6 +3,8 @@ import type { MonthFigures } from "./months";
 import {
   type CategoryTarget,
   periodRollover,
+  saveUpPerMonth,
+  saveUpReachedMonth,
   targetInBase,
   targetNeed,
   targetPercent,
@@ -516,5 +518,164 @@ describe("targetInBase", () => {
     expect(targetInBase(t(100_01n, "USD"), "0.30771", "KWD").amount).toBe(30_775n);
     // KD 1.001 × 3.25 = $3.25325 → $3.26.
     expect(targetInBase(t(1_001n, "KWD"), "3.25", "USD").amount).toBe(3_26n);
+  });
+});
+
+describe("savings goals", () => {
+  describe("keep a safety fund ($10,000, at most $500 a month)", () => {
+    const fund = target("refill", "2026-10", { amount: 500_00n, goalAmount: 10_000_00n });
+
+    it("builds up at the monthly limit, then asks only what brings it back", () => {
+      expect(need([], fund)).toMatchObject({
+        needed: 10_000_00n,
+        funded: 0n,
+        underfunded: 500_00n,
+        monthAmount: 500_00n,
+      });
+      expect(need([f("2026-09", 9_800_00n)], fund)).toMatchObject({
+        funded: 9_800_00n,
+        underfunded: 200_00n,
+        monthAmount: 200_00n,
+      });
+      expect(need([f("2026-09", 10_000_00n)], fund)).toMatchObject({
+        underfunded: 0n,
+        monthAmount: 0n,
+      });
+    });
+
+    it("asks to refill after money is spent from it, at the limit", () => {
+      const h = [f("2026-09", 10_000_00n), f("2026-10", 0n, -1_200_00n)];
+      expect(targetNeed(h, fund, "2026-11", "2026-11")?.underfunded).toBe(500_00n);
+      const small = [f("2026-09", 10_000_00n), f("2026-10", 0n, -300_00n)];
+      expect(targetNeed(small, fund, "2026-11", "2026-11")?.underfunded).toBe(300_00n);
+    });
+
+    it("gives back what's put in beyond the balance", () => {
+      expect(need([f("2026-09", 10_000_00n), f("2026-10", 300_00n)], fund)?.overfunded).toBe(
+        300_00n,
+      );
+    });
+
+    it("all at once asks like a plain refill, but counts only what it asks in the month", () => {
+      const once = target("refill", "2026-10", { amount: 10_000_00n, goalAmount: 10_000_00n });
+      const plain = target("refill", "2026-10", { amount: 10_000_00n });
+      const h = [f("2026-09", 7_000_00n), f("2026-10", 1_000_00n, -50_00n)];
+      expect(need(h, once)).toEqual({ ...need(h, plain), monthAmount: 3_000_00n });
+      expect(need(h, once)?.underfunded).toBe(2_000_00n);
+      // A full fund adds nothing to the month's targets (Cost to Be Me).
+      expect(need([f("2026-09", 10_000_00n)], once)?.monthAmount).toBe(0n);
+      expect(need([f("2026-09", 10_000_00n)], plain)?.monthAmount).toBe(10_000_00n);
+    });
+  });
+
+  describe("save up for something ($3,000 at $250 a month)", () => {
+    const saveUp = (startMonth = "2026-10") =>
+      target("set_aside", startMonth, {
+        goal: "save_up",
+        amount: 250_00n,
+        goalAmount: 3_000_00n,
+      });
+
+    it("counts the money already in the category when the goal began", () => {
+      expect(need([f("2026-09", 1_000_00n)], saveUp())).toMatchObject({
+        needed: 3_000_00n,
+        funded: 1_000_00n,
+        underfunded: 250_00n,
+        monthAmount: 250_00n,
+        dueDate: null,
+      });
+      expect(need([f("2026-09", 1_000_00n), f("2026-10", 100_00n)], saveUp())).toMatchObject({
+        funded: 1_100_00n,
+        underfunded: 150_00n,
+      });
+    });
+
+    it("asks only for what's left, and nothing once reached", () => {
+      expect(need([f("2026-09", 2_900_00n)], saveUp())?.underfunded).toBe(100_00n);
+      expect(need([f("2026-09", 3_000_00n)], saveUp())).toMatchObject({
+        funded: 3_000_00n,
+        underfunded: 0n,
+        monthAmount: 0n,
+      });
+    });
+
+    it("stays reached when the money is spent on what it was for", () => {
+      const h = [f("2026-09", 3_000_00n, 0n), f("2026-10", 0n, -2_400_00n)];
+      expect(targetNeed(h, saveUp("2026-09"), "2026-11", "2026-11")).toMatchObject({
+        funded: 3_000_00n,
+        underfunded: 0n,
+        overfunded: 0n,
+      });
+    });
+
+    it("asks again when money is moved out of it", () => {
+      const h = [f("2026-09", 3_000_00n), f("2026-10", -500_00n)];
+      expect(targetNeed(h, saveUp("2026-09"), "2026-11", "2026-11")).toMatchObject({
+        funded: 2_500_00n,
+        underfunded: 250_00n,
+      });
+    });
+
+    it("gives back what's put in beyond the goal", () => {
+      expect(need([f("2026-09", 3_000_00n), f("2026-10", 200_00n)], saveUp())?.overfunded).toBe(
+        200_00n,
+      );
+    });
+  });
+
+  describe("save up by a date ($1,200 by March 2027)", () => {
+    const byMarch = target("set_aside", "2026-10", {
+      cadence: "custom",
+      goal: "save_up",
+      amount: 1_200_00n,
+      goalAmount: 1_200_00n,
+      dueDate: "2027-03-01",
+    });
+
+    it("spreads what's left over the months up to the date, rounding up", () => {
+      expect(need([], byMarch)).toMatchObject({
+        needed: 1_200_00n,
+        underfunded: 200_00n,
+        dueDate: "2027-03-01",
+      });
+      expect(need([f("2026-09", 600_00n)], byMarch)?.underfunded).toBe(100_00n);
+      expect(need([f("2026-09", 1_000_00n)], byMarch)?.underfunded).toBe(33_34n);
+    });
+
+    it("keeps asking for all that's left after the date", () => {
+      const h = [f("2026-10", 800_00n)];
+      expect(targetNeed(h, byMarch, "2027-05", "2027-05")).toMatchObject({
+        funded: 800_00n,
+        underfunded: 400_00n,
+      });
+    });
+
+    it("sets no money apart as left over from an earlier period", () => {
+      expect(periodRollover([f("2026-09", 500_00n)], byMarch, "2026-11")).toBe(0n);
+    });
+  });
+
+  it("works out when a goal is reached and what a date asks each month", () => {
+    expect(saveUpReachedMonth(1_000_00n, 250_00n, "2026-10", 250_00n)).toBe("2027-01");
+    expect(saveUpReachedMonth(1_000_00n, 250_00n, "2026-10")).toBe("2027-02");
+    expect(saveUpReachedMonth(100_00n, 250_00n, "2026-10", 250_00n)).toBe("2026-10");
+    expect(saveUpReachedMonth(0n, 250_00n, "2026-10")).toBeNull();
+    expect(saveUpReachedMonth(1_000_00n, 0n, "2026-10")).toBeNull();
+    expect(saveUpPerMonth(1_200_00n, "2026-10", "2027-03")).toBe(200_00n);
+    expect(saveUpPerMonth(1_000_00n, "2026-10", "2027-03")).toBe(166_67n);
+    expect(saveUpPerMonth(1_200_00n, "2027-05", "2027-03")).toBe(1_200_00n);
+    expect(saveUpPerMonth(0n, "2026-10", "2027-03")).toBe(0n);
+  });
+
+  it("converts a goal's amount with its target into the budget's currency", () => {
+    const eur = {
+      ...target("refill", "2026-10", { amount: 500_00n, goalAmount: 10_000_00n }),
+      currency: "EUR" as const,
+    };
+    expect(targetInBase(eur, "1.1", "USD")).toMatchObject({
+      amount: 550_00n,
+      goalAmount: 11_000_00n,
+      currency: "USD",
+    });
   });
 });

@@ -139,7 +139,7 @@ export const moveCategoryGroupHandler: RouteHandler<typeof moveCategoryGroup, En
 
 export const createCategoryHandler: RouteHandler<typeof createCategory, Env> = async (c) => {
   const { budgetId } = c.req.valid("param");
-  const { groupId, name } = c.req.valid("json");
+  const { groupId, name, savings } = c.req.valid("json");
   const { db } = c.var.deps;
   await loadBudgetAccess(c, budgetId, { category: ["create"] });
   const group = await findGroup(db, budgetId, groupId);
@@ -148,7 +148,7 @@ export const createCategoryHandler: RouteHandler<typeof createCategory, Env> = a
       "Payment categories are created automatically when you add a credit account",
     );
   }
-  const created = await insertCategory(db, budgetId, groupId, name);
+  const created = await insertCategory(db, budgetId, groupId, name, savings);
   return c.json(toCategoryJson(created), 201);
 };
 
@@ -162,6 +162,9 @@ export const updateCategoryHandler: RouteHandler<typeof updateCategory, Env> = a
     throw managedError(
       "A payment category is named after its account. Rename the account instead.",
     );
+  }
+  if (row.linkedAccountId && data.savings) {
+    throw managedError("A payment category pays its card, so it can't be a savings category.");
   }
   if (Object.keys(data).length > 0) {
     const [updated] = await db
@@ -318,18 +321,26 @@ export const setCategoryTargetHandler: RouteHandler<typeof setCategoryTarget, En
     dueDate,
     repeatEvery: repeat?.every ?? null,
     repeatUnit: repeat?.unit ?? null,
+    goal: body.goal ?? null,
+    goalAmount: body.goalAmount == null ? null : BigInt(body.goalAmount),
   };
   // A changed target starts in the month it's saved from; saving it unchanged only moves the
-  // start back. A new due day (or weekday) alone isn't a change.
+  // start back. A new due day (or weekday) alone isn't a change. A save-up goal keeps counting
+  // what was put in from its start however it's edited, as long as its currency stays.
   const unchanged =
     existing &&
-    existing.cadence === values.cadence &&
-    existing.behavior === values.behavior &&
-    existing.amount === values.amount &&
-    existing.currency === values.currency &&
-    existing.dueDate === values.dueDate &&
-    existing.repeatEvery === values.repeatEvery &&
-    existing.repeatUnit === values.repeatUnit;
+    ((existing.goal === "save_up" &&
+      values.goal === "save_up" &&
+      existing.currency === values.currency) ||
+      (existing.cadence === values.cadence &&
+        existing.behavior === values.behavior &&
+        existing.amount === values.amount &&
+        existing.currency === values.currency &&
+        existing.dueDate === values.dueDate &&
+        existing.repeatEvery === values.repeatEvery &&
+        existing.repeatUnit === values.repeatUnit &&
+        existing.goal === values.goal &&
+        existing.goalAmount === values.goalAmount));
   const startMonth = unchanged && existing.startMonth < start ? existing.startMonth : start;
   // A target made weekly in the current month starts on the day it's saved (its earlier weeks
   // aren't asked for); editing a weekly target keeps its start day while its start month stays.
@@ -393,6 +404,8 @@ export const restoreCategoryTargetHandler: RouteHandler<typeof restoreCategoryTa
     startMonth: `${snapshot.startMonth}-01`,
     startDay: snapshot.startDay,
     snoozedMonth: snapshot.snoozedMonth && `${snapshot.snoozedMonth}-01`,
+    goal: snapshot.goal,
+    goalAmount: snapshot.goalAmount === null ? null : BigInt(snapshot.goalAmount),
   };
   const existing = await findTarget(db, categoryId);
   const [target] = existing

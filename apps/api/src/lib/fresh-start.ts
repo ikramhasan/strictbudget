@@ -241,6 +241,7 @@ export async function copyIntoFreshStart(
       hidden: c.hidden,
       linkedAccountId: c.linkedAccountId ? (accountIds.get(c.linkedAccountId) ?? null) : null,
       pace: c.pace,
+      savings: c.savings,
     });
     const target = targets.get(c.id);
     if (target) {
@@ -257,6 +258,8 @@ export async function copyIntoFreshStart(
         dueDate: target.dueDate,
         repeatEvery: target.repeatEvery,
         repeatUnit: target.repeatUnit,
+        goal: target.goal,
+        goalAmount: target.goalAmount,
         startMonth: `${monthOf(date)}-01`,
         // A weekly target begun this month keeps its start day.
         startDay: monthOf(target.startMonth) === monthOf(date) ? target.startDay : null,

@@ -14,6 +14,7 @@ const cat = (id: string, groupId: string, name: string) => ({
   hasTransactions: false,
   transactionCount: 0,
   hasAssignedMoney: false,
+  savings: false,
   target: null,
 });
 

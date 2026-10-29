@@ -333,6 +333,7 @@ export {
   type StatementEntry,
   type StatementOptions,
 } from "./statement-import";
+export { looksLikeSavings } from "./savings";
 export { type SuggestedBudgetSettings, suggestFormatSettings } from "./suggest-format-settings";
 export {
   type CategoryTarget,
@@ -340,11 +341,15 @@ export {
   isPaymentTarget,
   PAYMENT_TARGET_CADENCES,
   periodRollover,
+  saveUpPerMonth,
+  saveUpReachedMonth,
   TARGET_BEHAVIORS,
   TARGET_CADENCES,
+  TARGET_GOALS,
   TARGET_REPEAT_UNITS,
   type TargetBehavior,
   type TargetCadence,
+  type TargetGoal,
   type TargetNeed,
   type TargetRepeatUnit,
   targetInBase,
@@ -354,5 +359,6 @@ export {
   weeklyDays,
   zTargetBehavior,
   zTargetCadence,
+  zTargetGoal,
 } from "./targets";
 export { fromWire, type MoneyWire, toWire, zCurrencyCode, zMinorUnits, zMoney } from "./wire";

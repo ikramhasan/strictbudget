@@ -40,6 +40,8 @@ const eurTarget: CategoryTarget = {
   startMonth: "2026-10",
   startDay: null,
   snoozedMonth: null,
+  goal: null,
+  goalAmount: null,
 };
 const need: TargetNeed = {
   needed: "162630",

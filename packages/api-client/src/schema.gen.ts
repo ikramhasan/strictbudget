@@ -2811,6 +2811,7 @@ export interface components {
                 expectedIncome: string | null;
                 expectedIncomeCurrency: components["schemas"]["CurrencyCode"] | null;
                 loanSimulatorBannerDismissed: boolean;
+                savingsSuggestionDismissed?: boolean | null;
                 /** @default false */
                 aiEnabled: boolean;
                 /** @default false */
@@ -2838,6 +2839,7 @@ export interface components {
                 linkedAccountId: string | null;
                 /** @enum {string|null} */
                 pace?: "include" | "exclude" | null;
+                savings?: boolean | null;
             }[];
             accounts: {
                 id: string;
@@ -2956,6 +2958,10 @@ export interface components {
                 repeatEvery: number | null;
                 /** @enum {string|null} */
                 repeatUnit: "month" | "year" | null;
+                /** @enum {string|null} */
+                goal?: "save_up" | "safety_fund" | "keep_saving" | null;
+                /** @description Amount in the currency's minor units (e.g. cents), as an integer string */
+                goalAmount?: string | null;
                 startMonth: string;
                 startDay: number | null;
                 snoozedMonth: string | null;
@@ -3220,6 +3226,8 @@ export interface components {
             transactionCount: number;
             /** @description Money assigned to it in some month (a delete returns it to Ready to Assign) */
             hasAssignedMoney: boolean;
+            /** @description A savings category: money kept for a goal (an emergency fund, a holiday, retirement) rather than spent this month. It's shown apart from spending money and left out of spending pace, and its target can be a savings goal. Payment categories can't be savings. */
+            savings: boolean;
             target: components["schemas"]["CategoryTarget"];
         };
         CategoryTarget: {
@@ -3251,6 +3259,13 @@ export interface components {
             startDay: number | null;
             /** @description The month it's snoozed for: it asks for nothing more that month only */
             snoozedMonth: string | null;
+            /**
+             * @description A savings goal, for savings categories, saved on the target that works it out. keep_saving ('Keep saving'): monthly set_aside, `amount` a month; money taken out of a savings category with this goal counts as saved, not spent, in reports. safety_fund ('Keep a safety fund'): monthly refill up to `goalAmount`, asking at most `amount` a month (equal to goalAmount for all at once). save_up ('Save up for something'): `goalAmount` in all, either `amount` a month (monthly set_aside) or by `dueDate` (custom one-time set_aside with amount = goalAmount); it counts what was put in (the money in the category when it began, plus Assigned since), so spending the money on what it was for doesn't undo it, and editing it keeps counting from its start. Null for an ordinary target
+             * @enum {string|null}
+             */
+            goal: "save_up" | "safety_fund" | "keep_saving" | null;
+            /** @description save_up: the total to save; safety_fund: the balance to keep. In `currency`'s minor units; null for other targets */
+            goalAmount: string | null;
         } | null;
         CreateCategoryGroup: {
             name: string;
@@ -3266,11 +3281,15 @@ export interface components {
         CreateCategory: {
             groupId: string;
             name: string;
+            /** @description A savings category: money kept for a goal (an emergency fund, a holiday, retirement) rather than spent this month. It's shown apart from spending money and left out of spending pace, and its target can be a savings goal. Payment categories can't be savings. */
+            savings?: boolean;
         };
         UpdateCategory: {
             name?: string;
             note?: string;
             hidden?: boolean;
+            /** @description A savings category: money kept for a goal (an emergency fund, a holiday, retirement) rather than spent this month. It's shown apart from spending money and left out of spending pace, and its target can be a savings goal. Payment categories can't be savings. */
+            savings?: boolean;
         };
         MoveCategory: {
             /** @description The group to move the category into */
@@ -3353,6 +3372,13 @@ export interface components {
              * @description The user's today (defaults to the server's UTC date): a target made weekly in this month asks only for the weeks from today
              */
             today?: string;
+            /**
+             * @description A savings goal, for savings categories, saved on the target that works it out. keep_saving ('Keep saving'): monthly set_aside, `amount` a month; money taken out of a savings category with this goal counts as saved, not spent, in reports. safety_fund ('Keep a safety fund'): monthly refill up to `goalAmount`, asking at most `amount` a month (equal to goalAmount for all at once). save_up ('Save up for something'): `goalAmount` in all, either `amount` a month (monthly set_aside) or by `dueDate` (custom one-time set_aside with amount = goalAmount); it counts what was put in (the money in the category when it began, plus Assigned since), so spending the money on what it was for doesn't undo it, and editing it keeps counting from its start. Null for an ordinary target
+             * @enum {string|null}
+             */
+            goal?: "save_up" | "safety_fund" | "keep_saving" | null;
+            /** @description save_up: the total to save; safety_fund: the balance to keep. In `currency`'s minor units; null for other targets */
+            goalAmount?: string | null;
         };
         SnoozeTarget: {
             /** @description The month to snooze; must be the user's current month */

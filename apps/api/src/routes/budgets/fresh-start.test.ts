@@ -30,6 +30,7 @@ type Category = {
   note: string;
   hidden: boolean;
   linkedAccountId: string | null;
+  savings: boolean;
   target: Record<string, unknown> | null;
 };
 type Group = { name: string; kind: string | null; hidden: boolean; categories: Category[] };
@@ -334,8 +335,10 @@ describe("fresh start", () => {
       dueDay: 5,
       month: "2026-08",
     });
+    await send("PATCH", `${base}/categories/${rent.id}`, owner.cookie, { savings: true });
     const fresh = await json<Budget>(await freshStart(budget.id, owner.cookie));
     const copy = (await categories(fresh.id)).find((c) => c.name === rent.name);
+    expect(copy?.savings).toBe(true);
     expect(copy?.target).toEqual({
       cadence: "monthly",
       behavior: "refill",
@@ -348,6 +351,8 @@ describe("fresh start", () => {
       startMonth: "2026-10",
       startDay: null,
       snoozedMonth: null,
+      goal: null,
+      goalAmount: null,
     });
   });
 

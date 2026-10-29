@@ -21,7 +21,12 @@ afterAll(close);
 const TODAY = "2026-10-15";
 
 type Account = { id: string; name: string; balances: Record<string, string> };
-type Category = { id: string; name: string };
+type Category = {
+  id: string;
+  name: string;
+  savings?: boolean;
+  target?: { goal: string | null; goalAmount: string | null } | null;
+};
 type Group = { id: string; name: string; kind: string | null; categories: Category[] };
 type Month = { firstMonth: string; lastMonth: string; readyToAssign: string };
 type Imported = { budget: TestBudget; counts: Record<string, number> };
@@ -75,6 +80,19 @@ async function richBudget() {
   const [groceries, transport] = groups.find((g) => g.name === "Needs")?.categories ?? [];
   if (!rent || !phone || !power || !groceries || !transport) throw new Error("categories missing");
   await send("PATCH", `${base}/categories/${power.id}`, cookie, { hidden: true });
+  await send("PATCH", `${base}/categories/${transport.id}`, cookie, { savings: true });
+  await ok(
+    send("PUT", `${base}/categories/${transport.id}/target`, cookie, {
+      cadence: "monthly",
+      behavior: "set_aside",
+      goal: "save_up",
+      amount: "25000",
+      goalAmount: "300000",
+      dueDay: null,
+      month: "2026-09",
+      today: TODAY,
+    }),
+  );
   await send("PUT", `${base}/reports/spending-pace/categories/${rent.id}`, cookie, {
     pace: "include",
   });
@@ -295,6 +313,13 @@ describe("budget backup", () => {
       ).categories.map((c) => [c.name, c.setting]);
     expect(await paceSettings(newBase)).toEqual(await paceSettings(base));
     expect(await paceSettings(newBase)).toContainEqual(["🏠 Rent/Mortgage", "include"]);
+
+    const savings = async (b: string) =>
+      (await ok<{ groups: Group[] }>(send("GET", `${b}/categories`, cookie))).groups
+        .flatMap((g) => g.categories)
+        .map((c) => [c.name, c.savings, c.target?.goal ?? null, c.target?.goalAmount ?? null]);
+    expect(await savings(newBase)).toEqual(await savings(base));
+    expect(await savings(newBase)).toContainEqual(["🚘 Transportation", true, "save_up", "300000"]);
 
     const accounts = async (b: string) =>
       (await ok<{ accounts: unknown[] }>(send("GET", `${b}/accounts?today=${TODAY}`, cookie)))

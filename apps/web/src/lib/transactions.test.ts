@@ -313,6 +313,7 @@ describe("register drafts", () => {
               hasTransactions: false,
               transactionCount: 0,
               hasAssignedMoney: false,
+              savings: false,
               target: null,
             },
           ],
@@ -333,6 +334,7 @@ describe("register drafts", () => {
               hasTransactions: false,
               transactionCount: 0,
               hasAssignedMoney: false,
+              savings: false,
               target: null,
             },
             {
@@ -345,6 +347,7 @@ describe("register drafts", () => {
               hasTransactions: false,
               transactionCount: 0,
               hasAssignedMoney: false,
+              savings: false,
               target: null,
             },
           ],

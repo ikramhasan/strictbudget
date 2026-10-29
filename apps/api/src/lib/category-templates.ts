@@ -1,6 +1,6 @@
 import { newId, sql } from "@strictbudget/db";
 import { category, categoryGroup, categoryTarget } from "@strictbudget/db/schema";
-import { type CurrencyCode, currencyExponent } from "@strictbudget/engine";
+import { type CurrencyCode, currencyExponent, looksLikeSavings } from "@strictbudget/engine";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { CATEGORY_TEMPLATE_DATA } from "./category-template-data";
 import { templateCategoryNote } from "./category-template-notes";
@@ -134,6 +134,8 @@ export async function importCategoryTemplate(
       name: c.name,
       sortOrder: i,
       note: templateCategoryNote(template.id, c.name) ?? "",
+      // A savings group's categories are savings, as is one named like savings anywhere.
+      savings: looksLikeSavings(g.name) || looksLikeSavings(c.name),
       amount: c.amount,
     }));
     await tx.insert(category).values(rows.map(({ amount: _, ...row }) => row));

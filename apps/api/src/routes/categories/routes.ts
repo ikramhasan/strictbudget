@@ -7,6 +7,7 @@ import {
   zMinorUnits,
   zTargetBehavior,
   zTargetCadence,
+  zTargetGoal,
 } from "@strictbudget/engine";
 import { jsonError } from "../../lib/errors";
 import { serverToday } from "../../lib/ledger";
@@ -28,6 +29,22 @@ const DueDay = z
   .describe("Day of the month it's due; null is the last day. Only changes the wording");
 const Weekday = z.number().int().min(0).max(6).describe("The weekday it's due, 0 = Sunday");
 const RepeatUnit = z.enum(TARGET_REPEAT_UNITS);
+
+const Goal = zTargetGoal.describe(
+  "A savings goal, for savings categories, saved on the target that works it out. keep_saving " +
+    "('Keep saving'): monthly set_aside, `amount` a month; money taken out of a savings category " +
+    "with this goal counts as saved, not spent, in reports. safety_fund ('Keep a safety fund'): " +
+    "monthly refill up to `goalAmount`, asking at most `amount` a month (equal to goalAmount for " +
+    "all at once). save_up ('Save up for something'): `goalAmount` in all, either `amount` a month " +
+    "(monthly set_aside) or by `dueDate` (custom one-time set_aside with amount = goalAmount); it " +
+    "counts what was put in (the money in the category when it began, plus Assigned since), so " +
+    "spending the money on what it was for doesn't undo it, and editing it keeps counting from its " +
+    "start. Null for an ordinary target",
+);
+const GoalAmount = zMinorUnits.describe(
+  "save_up: the total to save; safety_fund: the balance to keep. In `currency`'s minor units; " +
+    "null for other targets",
+);
 
 const TargetSchema = z
   .object({
@@ -81,6 +98,8 @@ const TargetSchema = z
     snoozedMonth: zMonth
       .nullable()
       .describe("The month it's snoozed for: it asks for nothing more that month only"),
+    goal: Goal.nullable(),
+    goalAmount: GoalAmount.nullable(),
   })
   .openapi("CategoryTarget");
 
@@ -156,6 +175,8 @@ const SetTargetSchema = z
           "The user's today (defaults to the server's UTC date): a target made weekly in this " +
             "month asks only for the weeks from today",
         ),
+      goal: Goal.nullable().optional(),
+      goalAmount: Amount.nullable().optional().describe(GoalAmount.description ?? ""),
     }),
   )
   .superRefine((v, ctx) => {
@@ -163,6 +184,7 @@ const SetTargetSchema = z
     if (v.cadence === "payoff_by_date" && v.dueMonth < (v.today ?? serverToday()).slice(0, 7)) {
       ctx.addIssue({ code: "custom", path: ["dueMonth"], message: "Choose this month or later" });
     }
+    goalIssues(v, ctx);
     if (v.cadence !== "custom") return;
     if (v.behavior !== "balance" && v.dueDate === null) {
       ctx.addIssue({ code: "custom", path: ["dueDate"], message: "Choose when it's due" });
@@ -175,6 +197,62 @@ const SetTargetSchema = z
     }
   })
   .openapi("SetCategoryTarget");
+
+/** The shapes each savings goal is saved on (see `Goal`). */
+function goalIssues(
+  v: {
+    cadence: string;
+    behavior?: string;
+    amount?: string;
+    dueDate?: string | null;
+    repeat?: unknown;
+    goal?: string | null;
+    goalAmount?: string | null;
+  },
+  ctx: z.RefinementCtx,
+) {
+  const issue = (message: string, path = "goal") =>
+    ctx.addIssue({ code: "custom", path: [path], message });
+  const goalAmount = v.goalAmount == null ? null : BigInt(v.goalAmount);
+  const amount = v.amount === undefined ? null : BigInt(v.amount);
+  switch (v.goal ?? null) {
+    case null:
+      if (goalAmount !== null) issue("Only savings goals have a goal amount", "goalAmount");
+      return;
+    case "keep_saving":
+      if (v.cadence !== "monthly" || v.behavior !== "set_aside")
+        issue("Keep saving is a monthly set aside");
+      if (goalAmount !== null) issue("Keep saving has no goal amount", "goalAmount");
+      return;
+    case "safety_fund":
+      if (v.cadence !== "monthly" || v.behavior !== "refill")
+        issue("A safety fund is a monthly refill");
+      if (goalAmount === null) issue("Enter the balance to keep", "goalAmount");
+      else if (amount !== null && amount > goalAmount)
+        issue("It can't ask for more a month than the balance to keep", "amount");
+      return;
+    case "save_up": {
+      if (goalAmount === null) return issue("Enter how much to save", "goalAmount");
+      const monthly = v.cadence === "monthly" && v.behavior === "set_aside";
+      const dated =
+        v.cadence === "custom" && v.behavior === "set_aside" && !v.repeat && Boolean(v.dueDate);
+      if (!monthly && !dated)
+        return issue("Save up is a monthly set aside, or a one-time set aside by a date");
+      if (dated && amount !== goalAmount)
+        issue("Saving up by a date sets aside the goal amount", "amount");
+      if (monthly && amount !== null && amount > goalAmount)
+        issue("It can't ask for more a month than the goal", "amount");
+    }
+  }
+}
+
+const Savings = z
+  .boolean()
+  .describe(
+    "A savings category: money kept for a goal (an emergency fund, a holiday, retirement) rather " +
+      "than spent this month. It's shown apart from spending money and left out of spending " +
+      "pace, and its target can be a savings goal. Payment categories can't be savings.",
+  );
 
 export const CategorySchema = z
   .object({
@@ -195,6 +273,7 @@ export const CategorySchema = z
     hasAssignedMoney: z
       .boolean()
       .describe("Money assigned to it in some month (a delete returns it to Ready to Assign)"),
+    savings: Savings,
     target: TargetSchema.nullable(),
   })
   .openapi("Category");
@@ -398,7 +477,11 @@ export const createCategory = createRoute({
   summary: "Add a category at the end of a group",
   request: {
     params: BudgetParams,
-    body: json(z.object({ groupId: z.string(), name: Name }).openapi("CreateCategory")),
+    body: json(
+      z
+        .object({ groupId: z.string(), name: Name, savings: Savings.optional() })
+        .openapi("CreateCategory"),
+    ),
   },
   responses: {
     201: { description: "Created", content: { "application/json": { schema: CategorySchema } } },
@@ -428,6 +511,7 @@ export const updateCategory = createRoute({
           name: Name.optional(),
           note: Note.optional(),
           hidden: z.boolean().optional(),
+          savings: Savings.optional(),
         })
         .openapi("UpdateCategory"),
     ),
