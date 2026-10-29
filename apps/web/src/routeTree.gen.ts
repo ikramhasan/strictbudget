@@ -35,10 +35,12 @@ import { Route as AuthedBudgetsBudgetIdAccountsAccountIdRouteImport } from './ro
 import { Route as AuthedBudgetsBudgetIdReportsIndexRouteImport } from './routes/_authed/budgets/$budgetId/reports/index'
 import { Route as AuthedBudgetsBudgetIdReportsAgeOfMoneyRouteImport } from './routes/_authed/budgets/$budgetId/reports/age-of-money'
 import { Route as AuthedBudgetsBudgetIdReportsBudgetVsActualRouteImport } from './routes/_authed/budgets/$budgetId/reports/budget-vs-actual'
+import { Route as AuthedBudgetsBudgetIdReportsCategoryHistoryRouteImport } from './routes/_authed/budgets/$budgetId/reports/category-history'
 import { Route as AuthedBudgetsBudgetIdReportsCreditCardHealthRouteImport } from './routes/_authed/budgets/$budgetId/reports/credit-card-health'
 import { Route as AuthedBudgetsBudgetIdReportsIncomeExpenseRouteImport } from './routes/_authed/budgets/$budgetId/reports/income-expense'
 import { Route as AuthedBudgetsBudgetIdReportsNetWorthRouteImport } from './routes/_authed/budgets/$budgetId/reports/net-worth'
 import { Route as AuthedBudgetsBudgetIdReportsSpendingBreakdownRouteImport } from './routes/_authed/budgets/$budgetId/reports/spending-breakdown'
+import { Route as AuthedBudgetsBudgetIdReportsSpendingByFlagRouteImport } from './routes/_authed/budgets/$budgetId/reports/spending-by-flag'
 import { Route as AuthedBudgetsBudgetIdReportsSpendingPaceRouteImport } from './routes/_authed/budgets/$budgetId/reports/spending-pace'
 import { Route as AuthedBudgetsBudgetIdReportsSpendingTrendsRouteImport } from './routes/_authed/budgets/$budgetId/reports/spending-trends'
 
@@ -180,6 +182,12 @@ const AuthedBudgetsBudgetIdReportsBudgetVsActualRoute =
     path: '/reports/budget-vs-actual',
     getParentRoute: () => AuthedBudgetsBudgetIdRoute,
   } as any)
+const AuthedBudgetsBudgetIdReportsCategoryHistoryRoute =
+  AuthedBudgetsBudgetIdReportsCategoryHistoryRouteImport.update({
+    id: '/reports/category-history',
+    path: '/reports/category-history',
+    getParentRoute: () => AuthedBudgetsBudgetIdRoute,
+  } as any)
 const AuthedBudgetsBudgetIdReportsCreditCardHealthRoute =
   AuthedBudgetsBudgetIdReportsCreditCardHealthRouteImport.update({
     id: '/reports/credit-card-health',
@@ -202,6 +210,12 @@ const AuthedBudgetsBudgetIdReportsSpendingBreakdownRoute =
   AuthedBudgetsBudgetIdReportsSpendingBreakdownRouteImport.update({
     id: '/reports/spending-breakdown',
     path: '/reports/spending-breakdown',
+    getParentRoute: () => AuthedBudgetsBudgetIdRoute,
+  } as any)
+const AuthedBudgetsBudgetIdReportsSpendingByFlagRoute =
+  AuthedBudgetsBudgetIdReportsSpendingByFlagRouteImport.update({
+    id: '/reports/spending-by-flag',
+    path: '/reports/spending-by-flag',
     getParentRoute: () => AuthedBudgetsBudgetIdRoute,
   } as any)
 const AuthedBudgetsBudgetIdReportsSpendingPaceRoute =
@@ -241,10 +255,12 @@ export interface FileRoutesByFullPath {
   '/budgets/$budgetId/accounts/$accountId': typeof AuthedBudgetsBudgetIdAccountsAccountIdRoute
   '/budgets/$budgetId/reports/age-of-money': typeof AuthedBudgetsBudgetIdReportsAgeOfMoneyRoute
   '/budgets/$budgetId/reports/budget-vs-actual': typeof AuthedBudgetsBudgetIdReportsBudgetVsActualRoute
+  '/budgets/$budgetId/reports/category-history': typeof AuthedBudgetsBudgetIdReportsCategoryHistoryRoute
   '/budgets/$budgetId/reports/credit-card-health': typeof AuthedBudgetsBudgetIdReportsCreditCardHealthRoute
   '/budgets/$budgetId/reports/income-expense': typeof AuthedBudgetsBudgetIdReportsIncomeExpenseRoute
   '/budgets/$budgetId/reports/net-worth': typeof AuthedBudgetsBudgetIdReportsNetWorthRoute
   '/budgets/$budgetId/reports/spending-breakdown': typeof AuthedBudgetsBudgetIdReportsSpendingBreakdownRoute
+  '/budgets/$budgetId/reports/spending-by-flag': typeof AuthedBudgetsBudgetIdReportsSpendingByFlagRoute
   '/budgets/$budgetId/reports/spending-pace': typeof AuthedBudgetsBudgetIdReportsSpendingPaceRoute
   '/budgets/$budgetId/reports/spending-trends': typeof AuthedBudgetsBudgetIdReportsSpendingTrendsRoute
   '/budgets/$budgetId/accounts/': typeof AuthedBudgetsBudgetIdAccountsIndexRoute
@@ -273,10 +289,12 @@ export interface FileRoutesByTo {
   '/budgets/$budgetId/accounts/$accountId': typeof AuthedBudgetsBudgetIdAccountsAccountIdRoute
   '/budgets/$budgetId/reports/age-of-money': typeof AuthedBudgetsBudgetIdReportsAgeOfMoneyRoute
   '/budgets/$budgetId/reports/budget-vs-actual': typeof AuthedBudgetsBudgetIdReportsBudgetVsActualRoute
+  '/budgets/$budgetId/reports/category-history': typeof AuthedBudgetsBudgetIdReportsCategoryHistoryRoute
   '/budgets/$budgetId/reports/credit-card-health': typeof AuthedBudgetsBudgetIdReportsCreditCardHealthRoute
   '/budgets/$budgetId/reports/income-expense': typeof AuthedBudgetsBudgetIdReportsIncomeExpenseRoute
   '/budgets/$budgetId/reports/net-worth': typeof AuthedBudgetsBudgetIdReportsNetWorthRoute
   '/budgets/$budgetId/reports/spending-breakdown': typeof AuthedBudgetsBudgetIdReportsSpendingBreakdownRoute
+  '/budgets/$budgetId/reports/spending-by-flag': typeof AuthedBudgetsBudgetIdReportsSpendingByFlagRoute
   '/budgets/$budgetId/reports/spending-pace': typeof AuthedBudgetsBudgetIdReportsSpendingPaceRoute
   '/budgets/$budgetId/reports/spending-trends': typeof AuthedBudgetsBudgetIdReportsSpendingTrendsRoute
   '/budgets/$budgetId/accounts': typeof AuthedBudgetsBudgetIdAccountsIndexRoute
@@ -308,10 +326,12 @@ export interface FileRoutesById {
   '/_authed/budgets/$budgetId/accounts/$accountId': typeof AuthedBudgetsBudgetIdAccountsAccountIdRoute
   '/_authed/budgets/$budgetId/reports/age-of-money': typeof AuthedBudgetsBudgetIdReportsAgeOfMoneyRoute
   '/_authed/budgets/$budgetId/reports/budget-vs-actual': typeof AuthedBudgetsBudgetIdReportsBudgetVsActualRoute
+  '/_authed/budgets/$budgetId/reports/category-history': typeof AuthedBudgetsBudgetIdReportsCategoryHistoryRoute
   '/_authed/budgets/$budgetId/reports/credit-card-health': typeof AuthedBudgetsBudgetIdReportsCreditCardHealthRoute
   '/_authed/budgets/$budgetId/reports/income-expense': typeof AuthedBudgetsBudgetIdReportsIncomeExpenseRoute
   '/_authed/budgets/$budgetId/reports/net-worth': typeof AuthedBudgetsBudgetIdReportsNetWorthRoute
   '/_authed/budgets/$budgetId/reports/spending-breakdown': typeof AuthedBudgetsBudgetIdReportsSpendingBreakdownRoute
+  '/_authed/budgets/$budgetId/reports/spending-by-flag': typeof AuthedBudgetsBudgetIdReportsSpendingByFlagRoute
   '/_authed/budgets/$budgetId/reports/spending-pace': typeof AuthedBudgetsBudgetIdReportsSpendingPaceRoute
   '/_authed/budgets/$budgetId/reports/spending-trends': typeof AuthedBudgetsBudgetIdReportsSpendingTrendsRoute
   '/_authed/budgets/$budgetId/accounts/': typeof AuthedBudgetsBudgetIdAccountsIndexRoute
@@ -343,10 +363,12 @@ export interface FileRouteTypes {
     | '/budgets/$budgetId/accounts/$accountId'
     | '/budgets/$budgetId/reports/age-of-money'
     | '/budgets/$budgetId/reports/budget-vs-actual'
+    | '/budgets/$budgetId/reports/category-history'
     | '/budgets/$budgetId/reports/credit-card-health'
     | '/budgets/$budgetId/reports/income-expense'
     | '/budgets/$budgetId/reports/net-worth'
     | '/budgets/$budgetId/reports/spending-breakdown'
+    | '/budgets/$budgetId/reports/spending-by-flag'
     | '/budgets/$budgetId/reports/spending-pace'
     | '/budgets/$budgetId/reports/spending-trends'
     | '/budgets/$budgetId/accounts/'
@@ -375,10 +397,12 @@ export interface FileRouteTypes {
     | '/budgets/$budgetId/accounts/$accountId'
     | '/budgets/$budgetId/reports/age-of-money'
     | '/budgets/$budgetId/reports/budget-vs-actual'
+    | '/budgets/$budgetId/reports/category-history'
     | '/budgets/$budgetId/reports/credit-card-health'
     | '/budgets/$budgetId/reports/income-expense'
     | '/budgets/$budgetId/reports/net-worth'
     | '/budgets/$budgetId/reports/spending-breakdown'
+    | '/budgets/$budgetId/reports/spending-by-flag'
     | '/budgets/$budgetId/reports/spending-pace'
     | '/budgets/$budgetId/reports/spending-trends'
     | '/budgets/$budgetId/accounts'
@@ -409,10 +433,12 @@ export interface FileRouteTypes {
     | '/_authed/budgets/$budgetId/accounts/$accountId'
     | '/_authed/budgets/$budgetId/reports/age-of-money'
     | '/_authed/budgets/$budgetId/reports/budget-vs-actual'
+    | '/_authed/budgets/$budgetId/reports/category-history'
     | '/_authed/budgets/$budgetId/reports/credit-card-health'
     | '/_authed/budgets/$budgetId/reports/income-expense'
     | '/_authed/budgets/$budgetId/reports/net-worth'
     | '/_authed/budgets/$budgetId/reports/spending-breakdown'
+    | '/_authed/budgets/$budgetId/reports/spending-by-flag'
     | '/_authed/budgets/$budgetId/reports/spending-pace'
     | '/_authed/budgets/$budgetId/reports/spending-trends'
     | '/_authed/budgets/$budgetId/accounts/'
@@ -617,6 +643,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedBudgetsBudgetIdReportsBudgetVsActualRouteImport
       parentRoute: typeof AuthedBudgetsBudgetIdRoute
     }
+    '/_authed/budgets/$budgetId/reports/category-history': {
+      id: '/_authed/budgets/$budgetId/reports/category-history'
+      path: '/reports/category-history'
+      fullPath: '/budgets/$budgetId/reports/category-history'
+      preLoaderRoute: typeof AuthedBudgetsBudgetIdReportsCategoryHistoryRouteImport
+      parentRoute: typeof AuthedBudgetsBudgetIdRoute
+    }
     '/_authed/budgets/$budgetId/reports/credit-card-health': {
       id: '/_authed/budgets/$budgetId/reports/credit-card-health'
       path: '/reports/credit-card-health'
@@ -645,6 +678,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedBudgetsBudgetIdReportsSpendingBreakdownRouteImport
       parentRoute: typeof AuthedBudgetsBudgetIdRoute
     }
+    '/_authed/budgets/$budgetId/reports/spending-by-flag': {
+      id: '/_authed/budgets/$budgetId/reports/spending-by-flag'
+      path: '/reports/spending-by-flag'
+      fullPath: '/budgets/$budgetId/reports/spending-by-flag'
+      preLoaderRoute: typeof AuthedBudgetsBudgetIdReportsSpendingByFlagRouteImport
+      parentRoute: typeof AuthedBudgetsBudgetIdRoute
+    }
     '/_authed/budgets/$budgetId/reports/spending-pace': {
       id: '/_authed/budgets/$budgetId/reports/spending-pace'
       path: '/reports/spending-pace'
@@ -671,10 +711,12 @@ interface AuthedBudgetsBudgetIdRouteChildren {
   AuthedBudgetsBudgetIdAccountsAccountIdRoute: typeof AuthedBudgetsBudgetIdAccountsAccountIdRoute
   AuthedBudgetsBudgetIdReportsAgeOfMoneyRoute: typeof AuthedBudgetsBudgetIdReportsAgeOfMoneyRoute
   AuthedBudgetsBudgetIdReportsBudgetVsActualRoute: typeof AuthedBudgetsBudgetIdReportsBudgetVsActualRoute
+  AuthedBudgetsBudgetIdReportsCategoryHistoryRoute: typeof AuthedBudgetsBudgetIdReportsCategoryHistoryRoute
   AuthedBudgetsBudgetIdReportsCreditCardHealthRoute: typeof AuthedBudgetsBudgetIdReportsCreditCardHealthRoute
   AuthedBudgetsBudgetIdReportsIncomeExpenseRoute: typeof AuthedBudgetsBudgetIdReportsIncomeExpenseRoute
   AuthedBudgetsBudgetIdReportsNetWorthRoute: typeof AuthedBudgetsBudgetIdReportsNetWorthRoute
   AuthedBudgetsBudgetIdReportsSpendingBreakdownRoute: typeof AuthedBudgetsBudgetIdReportsSpendingBreakdownRoute
+  AuthedBudgetsBudgetIdReportsSpendingByFlagRoute: typeof AuthedBudgetsBudgetIdReportsSpendingByFlagRoute
   AuthedBudgetsBudgetIdReportsSpendingPaceRoute: typeof AuthedBudgetsBudgetIdReportsSpendingPaceRoute
   AuthedBudgetsBudgetIdReportsSpendingTrendsRoute: typeof AuthedBudgetsBudgetIdReportsSpendingTrendsRoute
   AuthedBudgetsBudgetIdAccountsIndexRoute: typeof AuthedBudgetsBudgetIdAccountsIndexRoute
@@ -693,6 +735,8 @@ const AuthedBudgetsBudgetIdRouteChildren: AuthedBudgetsBudgetIdRouteChildren = {
     AuthedBudgetsBudgetIdReportsAgeOfMoneyRoute,
   AuthedBudgetsBudgetIdReportsBudgetVsActualRoute:
     AuthedBudgetsBudgetIdReportsBudgetVsActualRoute,
+  AuthedBudgetsBudgetIdReportsCategoryHistoryRoute:
+    AuthedBudgetsBudgetIdReportsCategoryHistoryRoute,
   AuthedBudgetsBudgetIdReportsCreditCardHealthRoute:
     AuthedBudgetsBudgetIdReportsCreditCardHealthRoute,
   AuthedBudgetsBudgetIdReportsIncomeExpenseRoute:
@@ -701,6 +745,8 @@ const AuthedBudgetsBudgetIdRouteChildren: AuthedBudgetsBudgetIdRouteChildren = {
     AuthedBudgetsBudgetIdReportsNetWorthRoute,
   AuthedBudgetsBudgetIdReportsSpendingBreakdownRoute:
     AuthedBudgetsBudgetIdReportsSpendingBreakdownRoute,
+  AuthedBudgetsBudgetIdReportsSpendingByFlagRoute:
+    AuthedBudgetsBudgetIdReportsSpendingByFlagRoute,
   AuthedBudgetsBudgetIdReportsSpendingPaceRoute:
     AuthedBudgetsBudgetIdReportsSpendingPaceRoute,
   AuthedBudgetsBudgetIdReportsSpendingTrendsRoute:

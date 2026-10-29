@@ -54,9 +54,9 @@
 
 ## Other reports
 
-- Built: Budget vs Actual, Spending pace. Open: cash-flow forecast ([#64](https://github.com/ikramhasan/strictbudget/issues/64)), cash flow Sankey
-  ([#86](https://github.com/ikramhasan/strictbudget/issues/86)), category history ([#87](https://github.com/ikramhasan/strictbudget/issues/87)), payees and recurring charges ([#88](https://github.com/ikramhasan/strictbudget/issues/88)), savings rate and
-  income sources ([#89](https://github.com/ikramhasan/strictbudget/issues/89)), debt payoff and interest paid ([#90](https://github.com/ikramhasan/strictbudget/issues/90)), spending by flag ([#91](https://github.com/ikramhasan/strictbudget/issues/91));
+- Built: Budget vs Actual, Category history, Spending pace, Spending by flag. Open: cash-flow forecast ([#64](https://github.com/ikramhasan/strictbudget/issues/64)), cash flow Sankey
+  ([#86](https://github.com/ikramhasan/strictbudget/issues/86)), payees and recurring charges ([#88](https://github.com/ikramhasan/strictbudget/issues/88)), savings rate and
+  income sources ([#89](https://github.com/ikramhasan/strictbudget/issues/89)), debt payoff and interest paid ([#90](https://github.com/ikramhasan/strictbudget/issues/90));
   later: monthly review and year in review ([#92](https://github.com/ikramhasan/strictbudget/issues/92)), saved reports, dashboard and PDF ([#65](https://github.com/ikramhasan/strictbudget/issues/65)).
 
 ### Budget vs Actual
@@ -79,6 +79,44 @@
   Assigned.
 - Filters: range and categories only (Assigned has no account, payee or flag). Export: one CSV/TSV
   of the variance table with group totals and a total row.
+
+### Category history
+
+- One category or group (a picker; the plan's first visible category by default), month by month
+  over the range's months that the plan has (Last 12 Months by default): Assigned and Spent
+  (−Activity) as bars, Available as a line, what the target asked as a dashed step line, and a dot
+  along the top of months with money moved in or out (the tooltip and table list the moves). The
+  numbers come from the same per-month code as Budget vs Actual (`routes/reports/plan-figures.ts`),
+  so both equal the plan screen's.
+- **Targets have no history** (one `category_target` row per category, overwritten in place): the
+  line is the current target's month amount from its start month, as Budget vs Actual's tick.
+  Keeping target history is [#132](https://github.com/ikramhasan/strictbudget/issues/132).
+- A month counts for "Target met" when the target asks for money in it; it's met when nothing is
+  left underfunded (the plan's Funded). For a group, every category whose target asks must be met.
+- Moves listed are between categories, deletion moves included; assigning from or returning to
+  Ready to Assign is what Assigned shows, so it isn't. For a group, moves between its own
+  categories are left out.
+- Overspent months are shaded in the plan's cash red or credit yellow. A group's month counts as
+  overspent when any of its categories ended overspent, even if the group's total is positive
+  (only a negative Available is coloured).
+- Ready to Assign and credit card payment categories (and their group) have no spending plan and
+  aren't offered; the API refuses them. Uncategorized is offered (no Assigned).
+- The category inspector shows the 12 months up to the inspected month in small under the
+  breakdown, opening the report on that range. Export: one CSV/TSV of the months.
+
+### Spending by flag
+
+- Spending is Spending Breakdown's (the plan's Activity, refunds netted in), read through the
+  activity sums grouped by flag; the API needed nothing new. A split's lines count under the
+  split's flag (split lines have none of their own), and each side of a transfer keeps its own.
+- One bar per flag with a custom name or spending in the range, in the app's flag order, each in
+  its flag's colour and by its custom name; unflagged spending is a tile of its own, which opens
+  like a flag. A flag opens on its categories (the breakdown's bar list) and its months; rows and
+  bars open the drill-down. A reimbursement flagged like the spending nets it out.
+- Defaults to Last 12 Months (trips and projects span months). Filters: range, categories,
+  accounts and payees. Export: one CSV/TSV of flag × category sums.
+- The rows are keyed by a plain string, so tags ([#52](https://github.com/ikramhasan/strictbudget/issues/52)) can reuse the view. A line can carry
+  several tags, so per-tag shares won't add up to 100% and the view mustn't show them as if they do.
 
 ### Spending pace
 

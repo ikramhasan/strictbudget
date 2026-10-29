@@ -10534,6 +10534,198 @@
           "targetAmount"
         ]
       },
+      "CategoryHistory": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "$ref": "#/components/schemas/CurrencyCode",
+            "description": "The budget's currency, every amount's"
+          },
+          "firstMonth": {
+            "type": "string",
+            "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$",
+            "description": "The plan's first month"
+          },
+          "name": {
+            "type": "string",
+            "description": "The category's or group's name"
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "The category or group is hidden"
+          },
+          "months": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryHistoryMonth"
+            },
+            "description": "The range's months that the plan shows, oldest first; a group's are summed"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/CategoryHistoryStats"
+          }
+        },
+        "required": [
+          "currency",
+          "firstMonth",
+          "name",
+          "hidden",
+          "months",
+          "stats"
+        ]
+      },
+      "CategoryHistoryMonth": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$"
+          },
+          "assigned": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "The plan's Assigned (money moves included)"
+          },
+          "activity": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "The plan's Activity; spending is negative"
+          },
+          "available": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "The plan's Available at the month's end"
+          },
+          "cashOverspent": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "The cash part of a negative Available (≤ 0); a group's sums its overspent categories', so it can be below zero while the group's Available isn't"
+          },
+          "creditOverspent": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "The credit part of a negative Available (≤ 0), likewise"
+          },
+          "targetAmount": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "What the target asks of the month (the plan's month targets); null without a target. Targets have no history: the current target applies from its start month"
+          },
+          "targetMet": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Whether the month's Assigned covered what the target asked (nothing left underfunded); null when no target asked for money that month"
+          },
+          "moves": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CategoryHistoryMove"
+            },
+            "description": "Money moved between this and other categories in the month, newest first (assigning from or returning to Ready to Assign is what Assigned shows, so it's not listed)"
+          }
+        },
+        "required": [
+          "month",
+          "assigned",
+          "activity",
+          "available",
+          "cashOverspent",
+          "creditOverspent",
+          "targetAmount",
+          "targetMet",
+          "moves"
+        ]
+      },
+      "CategoryHistoryMove": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string",
+            "description": "The side in the category or group (for a group: which of its categories)"
+          },
+          "otherCategoryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The category on the other side; null once it's deleted"
+          },
+          "otherDeletedCategory": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The name of a deleted category on the other side"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Positive moved in, negative moved out"
+          },
+          "movedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Who moved it; null once their account is gone"
+          }
+        },
+        "required": [
+          "id",
+          "categoryId",
+          "otherCategoryId",
+          "otherDeletedCategory",
+          "amount",
+          "movedAt",
+          "userName"
+        ]
+      },
+      "CategoryHistoryStats": {
+        "type": "object",
+        "properties": {
+          "averageAssigned": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Amount in the currency's minor units (e.g. cents), as an integer string"
+          },
+          "averageSpent": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Average of −Activity"
+          },
+          "monthsOverspent": {
+            "type": "integer",
+            "description": "Months ending overspent (for a group: any of its categories)"
+          },
+          "targetMonths": {
+            "type": "integer",
+            "description": "Months a target asked for money"
+          },
+          "targetMonthsMet": {
+            "type": "integer",
+            "description": "Of those, months the target was met"
+          }
+        },
+        "required": [
+          "averageAssigned",
+          "averageSpent",
+          "monthsOverspent",
+          "targetMonths",
+          "targetMonthsMet"
+        ]
+      },
       "CreditCardHealth": {
         "type": "object",
         "properties": {
@@ -24506,6 +24698,139 @@
           },
           "404": {
             "description": "No such budget, or the caller isn't a member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/budgets/{budgetId}/reports/category-history": {
+      "get": {
+        "operationId": "getCategoryHistory",
+        "tags": [
+          "Reports"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "summary": "One category's or group's plan numbers month by month, with its target and moves",
+        "description": "Each month's Assigned, Activity and Available as the plan shows them, what the target asked of the month, and the money moved in and out. Pass `categoryId` or `groupId`. Ready to Assign and credit card payment categories have no spending plan and are refused. Transactions after `today` don't count yet.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "budgetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "The category (or pass `groupId`)"
+            },
+            "required": false,
+            "description": "The category (or pass `groupId`)",
+            "name": "categoryId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "The category group, its categories summed"
+            },
+            "required": false,
+            "description": "The category group, its categories summed",
+            "name": "groupId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$",
+              "description": "First month, YYYY-MM"
+            },
+            "required": true,
+            "description": "First month, YYYY-MM",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$",
+              "description": "Last month, YYYY-MM (inclusive)"
+            },
+            "required": true,
+            "description": "Last month, YYYY-MM (inclusive)",
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "The user's today; later transactions don't count. Defaults to the server's UTC date."
+            },
+            "required": false,
+            "description": "The user's today; later transactions don't count. Defaults to the server's UTC date.",
+            "name": "today",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryHistory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query, `from` after `to`, both or neither of `categoryId` and `groupId`, or a category without a spending plan (Ready to Assign, a card payment)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The account's email address isn't confirmed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such budget or category, or the caller isn't a member",
             "content": {
               "application/json": {
                 "schema": {

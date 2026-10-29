@@ -81,6 +81,7 @@ async function setup() {
       ...input,
     });
     expect(res.status).toBe(201);
+    return json<{ id: string; transferTransactionId: string | null }>(res);
   };
   await add({ date: "2026-09-15", amount: "-4000", categoryId: groceries.id });
   await add({ date: "2026-10-02", amount: "-5000", categoryId: groceries.id, flag: "red" });
@@ -126,6 +127,7 @@ async function setup() {
   return {
     cookie,
     base,
+    add,
     sums,
     lines,
     checking,
@@ -254,6 +256,78 @@ describe("report activity", () => {
       other.cookie,
     );
     expect(hidden.status).toBe(404);
+  });
+});
+
+describe("spending by flag", () => {
+  it("files a flagged split's lines under its flag and their own categories", async () => {
+    const t = await setup();
+    await t.add({
+      date: "2026-10-10",
+      amount: "-4000",
+      flag: "blue",
+      subtransactions: [
+        { amount: "-1500", categoryId: t.groceries.id },
+        { amount: "-2500", categoryId: t.phone.id },
+      ],
+    });
+    await t.add({ date: "2026-10-11", amount: "-500", categoryId: t.groceries.id, flag: "blue" });
+    const { rows } = await t.sums({ from: "2026-10", to: "2026-10", groupBy: "flag,category" });
+    const blue = rows.filter((r) => r.flag === "blue");
+    // The whole transaction and the split line in Groceries merge into one sum.
+    expect(netBy(blue, "categoryId")).toEqual({ [t.groceries.id]: "-2000", [t.phone.id]: "-2500" });
+    expect(blue.find((r) => r.categoryId === t.groceries.id)?.count).toBe(2);
+    const red = rows.filter((r) => r.flag === "red");
+    expect(netBy(red, "categoryId")).toEqual({ [t.groceries.id]: "-5000" });
+    // Every line counts once: the flags' sums add up to the month's spending.
+    const all = (await t.sums({ from: "2026-10", to: "2026-10" })).rows[0]?.net;
+    expect(rows.reduce((sum, r) => sum + BigInt(r.net), 0n).toString()).toBe(all);
+  });
+
+  it("gives one flag's spending month by month", async () => {
+    const t = await setup();
+    await t.add({ date: "2026-09-20", amount: "-700", categoryId: t.rent.id, flag: "red" });
+    const { rows } = await t.sums({
+      from: "2026-09",
+      to: "2026-10",
+      groupBy: "month",
+      flags: "red",
+    });
+    expect(netBy(rows, "month")).toEqual({ "2026-09": "-700", "2026-10": "-5000" });
+    const byFlagMonth = await t.sums({ from: "2026-09", to: "2026-10", groupBy: "flag,month" });
+    expect(
+      Object.fromEntries(byFlagMonth.rows.map((r) => [`${r.flag}:${r.month}`, r.net])),
+    ).toEqual({
+      "red:2026-09": "-700",
+      "red:2026-10": "-5000",
+      "null:2026-09": "-4000",
+      "null:2026-10": "-40500",
+    });
+  });
+
+  it("counts a transfer to a tracking account under its own side's flag", async () => {
+    const t = await setup();
+    const out = await t.add({
+      date: "2026-10-12",
+      amount: "-1200",
+      transferAccountId: t.house.id,
+      flag: "purple",
+    });
+    // Flags are kept per side: the tracking account's side gets another one.
+    const res = await send(
+      "PATCH",
+      `${t.base}/transactions/${out.transferTransactionId}?today=${TODAY}`,
+      t.cookie,
+      { flag: "green" },
+    );
+    expect(res.status).toBe(200);
+    const { rows } = await t.sums({ from: "2026-10", to: "2026-10", groupBy: "flag,category" });
+    expect(rows.filter((r) => r.flag === "purple")).toMatchObject([
+      { categoryId: t.uncategorized.id, net: "-1200" },
+    ]);
+    expect(rows.some((r) => r.flag === "green")).toBe(false);
+    const { total } = await t.lines({ from: "2026-10", to: "2026-10", flags: "purple" });
+    expect(total).toBe("-1200");
   });
 });
 

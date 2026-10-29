@@ -2297,6 +2297,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/budgets/{budgetId}/reports/category-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One category's or group's plan numbers month by month, with its target and moves
+         * @description Each month's Assigned, Activity and Available as the plan shows them, what the target asked of the month, and the money moved in and out. Pass `categoryId` or `groupId`. Ready to Assign and credit card payment categories have no spending plan and are refused. Transactions after `today` don't count yet.
+         */
+        get: operations["getCategoryHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/budgets/{budgetId}/reports/credit-card-health": {
         parameters: {
             query?: never;
@@ -5404,6 +5424,65 @@ export interface components {
             creditOverspent: string;
             /** @description What the category's target asks of the month (the plan's month targets) */
             targetAmount: string | null;
+        };
+        CategoryHistory: {
+            /** @description The budget's currency, every amount's */
+            currency: components["schemas"]["CurrencyCode"];
+            /** @description The plan's first month */
+            firstMonth: string;
+            /** @description The category's or group's name */
+            name: string;
+            /** @description The category or group is hidden */
+            hidden: boolean;
+            /** @description The range's months that the plan shows, oldest first; a group's are summed */
+            months: components["schemas"]["CategoryHistoryMonth"][];
+            stats: components["schemas"]["CategoryHistoryStats"];
+        };
+        CategoryHistoryMonth: {
+            month: string;
+            /** @description The plan's Assigned (money moves included) */
+            assigned: string;
+            /** @description The plan's Activity; spending is negative */
+            activity: string;
+            /** @description The plan's Available at the month's end */
+            available: string;
+            /** @description The cash part of a negative Available (≤ 0); a group's sums its overspent categories', so it can be below zero while the group's Available isn't */
+            cashOverspent: string;
+            /** @description The credit part of a negative Available (≤ 0), likewise */
+            creditOverspent: string;
+            /** @description What the target asks of the month (the plan's month targets); null without a target. Targets have no history: the current target applies from its start month */
+            targetAmount: string | null;
+            /** @description Whether the month's Assigned covered what the target asked (nothing left underfunded); null when no target asked for money that month */
+            targetMet: boolean | null;
+            /** @description Money moved between this and other categories in the month, newest first (assigning from or returning to Ready to Assign is what Assigned shows, so it's not listed) */
+            moves: components["schemas"]["CategoryHistoryMove"][];
+        };
+        CategoryHistoryMove: {
+            id: string;
+            /** @description The side in the category or group (for a group: which of its categories) */
+            categoryId: string;
+            /** @description The category on the other side; null once it's deleted */
+            otherCategoryId: string | null;
+            /** @description The name of a deleted category on the other side */
+            otherDeletedCategory: string | null;
+            /** @description Positive moved in, negative moved out */
+            amount: string;
+            /** Format: date-time */
+            movedAt: string;
+            /** @description Who moved it; null once their account is gone */
+            userName: string | null;
+        };
+        CategoryHistoryStats: {
+            /** @description Amount in the currency's minor units (e.g. cents), as an integer string */
+            averageAssigned: string;
+            /** @description Average of −Activity */
+            averageSpent: string;
+            /** @description Months ending overspent (for a group: any of its categories) */
+            monthsOverspent: number;
+            /** @description Months a target asked for money */
+            targetMonths: number;
+            /** @description Of those, months the target was met */
+            targetMonthsMet: number;
         };
         CreditCardHealth: {
             month: string;
@@ -14667,6 +14746,75 @@ export interface operations {
                 };
             };
             /** @description No such budget, or the caller isn't a member */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getCategoryHistory: {
+        parameters: {
+            query: {
+                /** @description The category (or pass `groupId`) */
+                categoryId?: string;
+                /** @description The category group, its categories summed */
+                groupId?: string;
+                /** @description First month, YYYY-MM */
+                from: string;
+                /** @description Last month, YYYY-MM (inclusive) */
+                to: string;
+                /** @description The user's today; later transactions don't count. Defaults to the server's UTC date. */
+                today?: string;
+            };
+            header?: never;
+            path: {
+                budgetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The history */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryHistory"];
+                };
+            };
+            /** @description Invalid query, `from` after `to`, both or neither of `categoryId` and `groupId`, or a category without a spending plan (Ready to Assign, a card payment) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The account's email address isn't confirmed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such budget or category, or the caller isn't a member */
             404: {
                 headers: {
                     [name: string]: unknown;

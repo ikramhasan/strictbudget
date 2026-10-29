@@ -23,8 +23,8 @@ export const monthQueryOptions = (budgetId: string, month: BudgetMonth, today = 
   });
 
 /**
- * Refetches every month, and spending pace and credit card health (built from the same figures):
- * call after anything that changes assigned amounts or activity.
+ * Refetches every month, and spending pace, credit card health and category history (built from
+ * the same figures): call after anything that changes assigned amounts or activity.
  */
 export function invalidateMonths(queryClient: QueryClient) {
   return Promise.all([
@@ -34,6 +34,9 @@ export function invalidateMonths(queryClient: QueryClient) {
     }),
     queryClient.invalidateQueries({
       queryKey: ["get", "/v1/budgets/{budgetId}/reports/credit-card-health"],
+    }),
+    queryClient.invalidateQueries({
+      queryKey: ["get", "/v1/budgets/{budgetId}/reports/category-history"],
     }),
   ]);
 }

@@ -15,8 +15,10 @@ export const PARITY_REPORTS = [
 
 export const EXTRA_REPORTS = [
   { to: "/budgets/$budgetId/reports/budget-vs-actual", label: "Budget vs Actual" },
+  { to: "/budgets/$budgetId/reports/category-history", label: "Category History" },
   { to: "/budgets/$budgetId/reports/spending-pace", label: "Spending Pace" },
   { to: "/budgets/$budgetId/reports/credit-card-health", label: "Credit Card Health" },
+  { to: "/budgets/$budgetId/reports/spending-by-flag", label: "Spending by Flag" },
 ] as const;
 
 /** Every report's tab, kept reachable from every report. */
