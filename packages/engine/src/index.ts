@@ -294,6 +294,7 @@ export {
   toDelimited,
 } from "./reports";
 export { divideRounded, type RoundingMode } from "./rounding";
+export { looksLikeSavings } from "./savings";
 export {
   firstOccurrenceAfter,
   nextOccurrence,
@@ -333,7 +334,6 @@ export {
   type StatementEntry,
   type StatementOptions,
 } from "./statement-import";
-export { looksLikeSavings } from "./savings";
 export { type SuggestedBudgetSettings, suggestFormatSettings } from "./suggest-format-settings";
 export {
   type CategoryTarget,

@@ -299,7 +299,11 @@ export function targetNeed(
         : target.amount);
     // What this month's Assigned has to reach: refill counts what was carried in (below zero
     // when more was carried in than the target).
-    const due = !holds ? needed : cap === null ? needed - carried : min(target.amount, cap - carried);
+    const due = !holds
+      ? needed
+      : cap === null
+        ? needed - carried
+        : min(target.amount, cap - carried);
     return {
       needed,
       funded: holds ? carried + figures.assigned : figures.assigned,
