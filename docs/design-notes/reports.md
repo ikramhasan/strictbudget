@@ -54,9 +54,9 @@
 
 ## Other reports
 
-- Built: Budget vs Actual, Spending pace. Open: cash-flow forecast ([#64](https://github.com/ikramhasan/strictbudget/issues/64)), cash flow Sankey
+- Built: Budget vs Actual, Spending pace, Spending by flag. Open: cash-flow forecast ([#64](https://github.com/ikramhasan/strictbudget/issues/64)), cash flow Sankey
   ([#86](https://github.com/ikramhasan/strictbudget/issues/86)), category history ([#87](https://github.com/ikramhasan/strictbudget/issues/87)), payees and recurring charges ([#88](https://github.com/ikramhasan/strictbudget/issues/88)), savings rate and
-  income sources ([#89](https://github.com/ikramhasan/strictbudget/issues/89)), debt payoff and interest paid ([#90](https://github.com/ikramhasan/strictbudget/issues/90)), spending by flag ([#91](https://github.com/ikramhasan/strictbudget/issues/91));
+  income sources ([#89](https://github.com/ikramhasan/strictbudget/issues/89)), debt payoff and interest paid ([#90](https://github.com/ikramhasan/strictbudget/issues/90));
   later: monthly review and year in review ([#92](https://github.com/ikramhasan/strictbudget/issues/92)), saved reports, dashboard and PDF ([#65](https://github.com/ikramhasan/strictbudget/issues/65)).
 
 ### Budget vs Actual
@@ -79,6 +79,20 @@
   Assigned.
 - Filters: range and categories only (Assigned has no account, payee or flag). Export: one CSV/TSV
   of the variance table with group totals and a total row.
+
+### Spending by flag
+
+- Spending is Spending Breakdown's (the plan's Activity, refunds netted in), read through the
+  activity sums grouped by flag; the API needed nothing new. A split's lines count under the
+  split's flag (split lines have none of their own), and each side of a transfer keeps its own.
+- One bar per flag with a custom name or spending in the range, in the app's flag order, each in
+  its flag's colour and by its custom name; unflagged spending is a tile of its own, which opens
+  like a flag. A flag opens on its categories (the breakdown's bar list) and its months; rows and
+  bars open the drill-down. A reimbursement flagged like the spending nets it out.
+- Defaults to Last 12 Months (trips and projects span months). Filters: range, categories,
+  accounts and payees. Export: one CSV/TSV of flag × category sums.
+- The rows are keyed by a plain string, so tags ([#52](https://github.com/ikramhasan/strictbudget/issues/52)) can reuse the view. A line can carry
+  several tags, so per-tag shares won't add up to 100% and the view mustn't show them as if they do.
 
 ### Spending pace
 

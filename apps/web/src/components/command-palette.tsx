@@ -124,6 +124,7 @@ const REPORTS = [
   { to: "/budgets/$budgetId/reports/net-worth", label: "Net Worth" },
   { to: "/budgets/$budgetId/reports/age-of-money", label: "Age of Money" },
   { to: "/budgets/$budgetId/reports/credit-card-health", label: "Credit Card Health" },
+  { to: "/budgets/$budgetId/reports/spending-by-flag", label: "Spending by Flag" },
 ] as const;
 
 const THEMES: readonly { value: Theme; label: string; icon: LucideIcon }[] = [

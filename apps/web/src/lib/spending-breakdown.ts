@@ -15,7 +15,7 @@ import {
 } from "@strictbudget/engine";
 import { z } from "zod";
 import type { CategoryList } from "./categories";
-import { COLOR_LABEL, type Flag, type FlagColor } from "./flags";
+import { COLOR_LABEL, type Flag, type FlagColor, flagName } from "./flags";
 import {
   monthLabel,
   planColors,
@@ -166,9 +166,7 @@ export function breakdownRows(
     if (by === "payee")
       return key === NONE ? "No payee" : (names.payees.find((p) => p.id === key)?.name ?? "");
     if (by === "account") return names.accounts.find((a) => a.id === key)?.name ?? "";
-    if (key === NONE) return "No flag";
-    const flag = names.flags.find((f) => f.color === key);
-    return flag?.name || COLOR_LABEL[key as FlagColor] || key;
+    return flagName(key === NONE ? null : (key as FlagColor), names.flags);
   };
   return sums.map((sum, index) => {
     const key = keyOf(sum, by);
