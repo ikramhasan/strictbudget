@@ -414,6 +414,13 @@
       "when": 1792885495979,
       "tag": "0058_strictbudget_rename",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1793299874121,
+      "tag": "0059_savings_rate",
+      "breakpoints": true
     }
   ]
 }

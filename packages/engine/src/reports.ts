@@ -208,3 +208,24 @@ export function plainAmount(amount: bigint, exponent: number, numberFormat: Numb
   const mark = NUMBER_FORMAT_SPECS[numberFormat].decimal;
   return `${negative ? "-" : ""}${whole}${exponent ? `${mark}${fraction}` : ""}`;
 }
+
+/** How many income sources a report shows by name before folding the rest into "Other". */
+export const TOP_INCOME_SOURCES = 5;
+
+/**
+ * The `limit` largest items by `size`, largest first (ties keep their order), and the rest, which
+ * a report folds into one "Other" (the savings rate's income sources, the cash flow's sources).
+ * Nothing is folded when only one item would be: "Other" then names a single source.
+ */
+export function foldTail<T>(
+  items: readonly T[],
+  limit: number,
+  size: (item: T) => bigint,
+): { top: T[]; rest: T[] } {
+  const sorted = items
+    .map((item, i) => ({ item, i, size: size(item) }))
+    .sort((a, b) => (a.size > b.size ? -1 : a.size < b.size ? 1 : a.i - b.i))
+    .map((s) => s.item);
+  if (sorted.length <= limit + 1) return { top: sorted, rest: [] };
+  return { top: sorted.slice(0, limit), rest: sorted.slice(limit) };
+}

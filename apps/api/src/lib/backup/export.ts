@@ -86,6 +86,7 @@ const readers: { [S in Section]: Reader<S> } = {
           internalKind: category.internalKind,
           linkedAccountId: category.linkedAccountId,
           pace: category.pace,
+          countsAsSaving: category.countsAsSaving,
         })
         .from(category)
         .where(eq(category.budgetId, budgetId))
@@ -432,6 +433,7 @@ export async function writeBackup(
       aiEnabled: budget.aiEnabled,
       aiAssistantButton: budget.aiAssistantButton,
       viewOrder: budget.viewOrder,
+      savingsRateGoal: budget.savingsRateGoal,
     },
   };
   const opening = JSON.stringify(head);

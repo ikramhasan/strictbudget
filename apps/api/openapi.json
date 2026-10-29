@@ -862,6 +862,15 @@
             "format": "date-time",
             "description": "When the signed-in user last opened this budget; null if never"
           },
+          "savingsRateGoal": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 10000,
+            "description": "The savings rate report's goal in basis points (2000 = 20%); null for none"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -881,6 +890,7 @@
           "role",
           "archivedAt",
           "lastUsedAt",
+          "savingsRateGoal",
           "createdAt",
           "updatedAt"
         ]
@@ -1319,6 +1329,14 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "savingsRateGoal": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 10000
               }
             },
             "required": [
@@ -1438,6 +1456,9 @@
                     "exclude",
                     null
                   ]
+                },
+                "countsAsSaving": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -2703,6 +2724,15 @@
               "DD-MM-YYYY"
             ],
             "description": "How dates are displayed"
+          },
+          "savingsRateGoal": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 10000,
+            "description": "The savings rate goal in basis points (2000 = 20%); null clears it"
           }
         },
         "additionalProperties": false,
@@ -11054,6 +11084,422 @@
           "pace"
         ]
       },
+      "SavingsRate": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "$ref": "#/components/schemas/CurrencyCode",
+            "description": "The budget's currency, every amount's"
+          },
+          "firstMonth": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$",
+            "description": "Month of the budget's oldest transaction, null when there's none"
+          },
+          "goal": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The budget's goal in basis points (2000 = 20%); null for none"
+          },
+          "months": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SavingsRateMonth"
+            }
+          },
+          "total": {
+            "$ref": "#/components/schemas/SavingsRateFigures"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SavingsRateCategory"
+            },
+            "description": "The categories that can count as saving, in plan order (hidden ones only when they do)"
+          }
+        },
+        "required": [
+          "currency",
+          "firstMonth",
+          "goal",
+          "months",
+          "total",
+          "categories"
+        ]
+      },
+      "SavingsRateMonth": {
+        "type": "object",
+        "properties": {
+          "income": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Income v Expense's income (Ready to Assign, no starting balances)"
+          },
+          "incomeFromTracking": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "The part of `income` brought back in from tracking asset accounts: not income for the saving rate, and taken off `movedToTracking`"
+          },
+          "netIncome": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Income v Expense's net income: left over"
+          },
+          "savedViaCategories": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Spending in categories that count as saving, added back (a refund lowers it)"
+          },
+          "movedToTracking": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Moved from budget accounts to tracking asset accounts in other categories, less what came back"
+          },
+          "saved": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "netIncome + savedViaCategories + movedToTracking"
+          },
+          "rate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Percent: saved ÷ (income − incomeFromTracking); null when that is ≤ 0"
+          },
+          "plainRate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Income v Expense's rate in percent: netIncome ÷ income; null when income ≤ 0"
+          },
+          "month": {
+            "type": "string",
+            "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$"
+          },
+          "rollingRate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "`rate` over the 12 months ending with this one"
+          },
+          "rollingPlainRate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "`plainRate` over the 12 months ending with this one"
+          }
+        },
+        "required": [
+          "income",
+          "incomeFromTracking",
+          "netIncome",
+          "savedViaCategories",
+          "movedToTracking",
+          "saved",
+          "rate",
+          "plainRate",
+          "month",
+          "rollingRate",
+          "rollingPlainRate"
+        ]
+      },
+      "SavingsRateFigures": {
+        "type": "object",
+        "properties": {
+          "income": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Income v Expense's income (Ready to Assign, no starting balances)"
+          },
+          "incomeFromTracking": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "The part of `income` brought back in from tracking asset accounts: not income for the saving rate, and taken off `movedToTracking`"
+          },
+          "netIncome": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Income v Expense's net income: left over"
+          },
+          "savedViaCategories": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Spending in categories that count as saving, added back (a refund lowers it)"
+          },
+          "movedToTracking": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Moved from budget accounts to tracking asset accounts in other categories, less what came back"
+          },
+          "saved": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "netIncome + savedViaCategories + movedToTracking"
+          },
+          "rate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Percent: saved ÷ (income − incomeFromTracking); null when that is ≤ 0"
+          },
+          "plainRate": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Income v Expense's rate in percent: netIncome ÷ income; null when income ≤ 0"
+          }
+        },
+        "required": [
+          "income",
+          "incomeFromTracking",
+          "netIncome",
+          "savedViaCategories",
+          "movedToTracking",
+          "saved",
+          "rate",
+          "plainRate"
+        ],
+        "description": "The whole range"
+      },
+      "SavingsRateCategory": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "groupName": {
+            "type": "string"
+          },
+          "countsAsSaving": {
+            "type": "boolean"
+          },
+          "suggested": {
+            "type": "boolean",
+            "description": "Not marked, but most of its outflows in the range went to tracking asset accounts"
+          },
+          "spent": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Its net spending in the range (negative)"
+          }
+        },
+        "required": [
+          "categoryId",
+          "name",
+          "groupId",
+          "groupName",
+          "countsAsSaving",
+          "suggested",
+          "spent"
+        ]
+      },
+      "CategorySaving": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string"
+          },
+          "countsAsSaving": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "categoryId",
+          "countsAsSaving"
+        ]
+      },
+      "SetCategorySaving": {
+        "type": "object",
+        "properties": {
+          "countsAsSaving": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "countsAsSaving"
+        ]
+      },
+      "CashFlow": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "$ref": "#/components/schemas/CurrencyCode",
+            "description": "The budget's currency, every amount's"
+          },
+          "income": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Income v Expense's total income"
+          },
+          "spending": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Income v Expense's total expenses (negative)"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowSource"
+            },
+            "description": "Payees whose income nets above zero"
+          },
+          "paidBack": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowSource"
+            },
+            "description": "Payees whose income nets below zero, as the amount paid back"
+          },
+          "refunds": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/CashFlowCategory"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "groupId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "groupId"
+                  ]
+                }
+              ]
+            },
+            "description": "Categories where more came back than was spent"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowGroup"
+            },
+            "description": "Uncategorized first, then the plan's groups in order"
+          },
+          "saved": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Income left over (≥ 0)"
+          },
+          "fromSavings": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Spending beyond income (≥ 0)"
+          }
+        },
+        "required": [
+          "currency",
+          "income",
+          "spending",
+          "sources",
+          "paidBack",
+          "refunds",
+          "groups",
+          "saved",
+          "fromSavings"
+        ]
+      },
+      "CashFlowSource": {
+        "type": "object",
+        "properties": {
+          "payeeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null: income without a payee"
+          },
+          "name": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Positive"
+          }
+        },
+        "required": [
+          "payeeId",
+          "name",
+          "amount"
+        ]
+      },
+      "CashFlowCategory": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Positive"
+          }
+        },
+        "required": [
+          "categoryId",
+          "name",
+          "amount"
+        ]
+      },
+      "CashFlowGroup": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null: Uncategorized, and categories outside the plan's groups"
+          },
+          "name": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Its categories' sum"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowCategory"
+            }
+          }
+        },
+        "required": [
+          "groupId",
+          "name",
+          "amount",
+          "categories"
+        ]
+      },
       "ExportSelection": {
         "type": "object",
         "properties": {
@@ -13434,7 +13880,7 @@
             "apiKeyAuth": []
           }
         ],
-        "summary": "Rename a budget or change its formats",
+        "summary": "Rename a budget, change its formats or set its savings rate goal",
         "parameters": [
           {
             "schema": {
@@ -24646,7 +25092,7 @@
           }
         ],
         "summary": "A month's spending pace: money left to spend day by day against an even pace",
-        "description": "Money to spend is each category's Available carried in plus the month's Assigned; spending is its net activity. The plan's line adds up the categories in pace: card payment categories never are; by default bills (a monthly target due on a set day, a dated yearly or custom target, a debt target), savings (a \"Have a balance of\" target), categories with a scheduled transaction and hidden ones aren't either, and a category's own setting overrides that. `groupId` or `categoryId` picks the line instead. A past month is finished; a future one is a 400.",
+        "description": "Money to spend is each category's Available carried in plus the month's Assigned; spending is its net activity. The plan's line adds up the categories in pace: card payment categories never are; by default bills (a monthly target due on a set day, a dated yearly or custom target, a debt target), savings (marked \"Counts as saving\", or a \"Have a balance of\" target), categories with a scheduled transaction and hidden ones aren't either, and a category's own setting overrides that. `groupId` or `categoryId` picks the line instead. A past month is finished; a future one is a 400.",
         "parameters": [
           {
             "schema": {
@@ -24768,7 +25214,7 @@
           }
         ],
         "summary": "Keep a category in or out of spending pace",
-        "description": "Null goes back to the automatic rule (bills, savings, scheduled and hidden out).",
+        "description": "Null goes back to the automatic rule (bills, savings, scheduled and hidden out; savings are categories marked \"Counts as saving\" and ones with a \"Have a balance of\" target).",
         "parameters": [
           {
             "schema": {
@@ -24840,6 +25286,340 @@
           },
           "404": {
             "description": "No such budget or category, or the caller isn't a member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/budgets/{budgetId}/reports/savings-rate": {
+      "get": {
+        "operationId": "getSavingsRate",
+        "tags": [
+          "Reports"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "summary": "Savings rate by month, with a rolling 12-month rate and what counts as saving",
+        "description": "Income and spending are Income v Expense's. The rate adds back spending in categories that count as saving and money moved to tracking asset accounts (not loans or liabilities). Each spending line is in one bucket only: a transfer to a tracking account in a saving category counts under the category. The rolling rate sums the 12 months up to each month (fewer before the budget's first transaction), it doesn't average monthly rates. Transactions after `today` don't count yet.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "budgetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$",
+              "description": "First month, YYYY-MM (from 0001-01)"
+            },
+            "required": true,
+            "description": "First month, YYYY-MM (from 0001-01)",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$",
+              "description": "Last month, YYYY-MM (inclusive); at most 1200 months after `from`"
+            },
+            "required": true,
+            "description": "Last month, YYYY-MM (inclusive); at most 1200 months after `from`",
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "The user's today; later transactions don't count. Defaults to the server's UTC date."
+            },
+            "required": false,
+            "description": "The user's today; later transactions don't count. Defaults to the server's UTC date.",
+            "name": "today",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavingsRate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query, `from` after `to` or before 0001-01, or a range over 1200 months",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The account's email address isn't confirmed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such budget, or the caller isn't a member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/budgets/{budgetId}/reports/savings-rate/categories/{categoryId}": {
+      "put": {
+        "operationId": "setCategorySaving",
+        "tags": [
+          "Reports"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "summary": "Mark a category as \"Counts as saving\", or unmark it",
+        "description": "Spending in a category that counts as saving is added back in the savings rate, and spending pace leaves the category out by default.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "budgetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "categoryId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCategorySaving"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The category's setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategorySaving"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid setting, or an internal or card payment category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role can't change categories, or the account's email address isn't confirmed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such budget or category, or the caller isn't a member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/budgets/{budgetId}/reports/cash-flow": {
+      "get": {
+        "operationId": "getCashFlow",
+        "tags": [
+          "Reports"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "summary": "Where the money came from and where it went (the cash flow Sankey's flows)",
+        "description": "Income v Expense's income per payee and spending per category, each on the side its sign puts it: income `sources` (and income `paidBack` when a payee nets below zero), spending by `groups` and their categories (and `refunds` when a category got back more than it spent). What's left is `saved`; a shortfall comes in `fromSavings`. Every amount is positive and sources + refunds + fromSavings = groups + paidBack + saved, exactly. Transactions after `today` don't count yet.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "budgetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$",
+              "description": "First month, YYYY-MM"
+            },
+            "required": true,
+            "description": "First month, YYYY-MM",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$",
+              "description": "Last month, YYYY-MM (inclusive)"
+            },
+            "required": true,
+            "description": "Last month, YYYY-MM (inclusive)",
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated budget account ids"
+            },
+            "required": false,
+            "description": "Comma-separated budget account ids",
+            "name": "accountIds",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "The user's today; later transactions don't count. Defaults to the server's UTC date."
+            },
+            "required": false,
+            "description": "The user's today; later transactions don't count. Defaults to the server's UTC date.",
+            "name": "today",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The flows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashFlow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query, or `from` after `to`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The account's email address isn't confirmed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such budget, or the caller isn't a member",
             "content": {
               "application/json": {
                 "schema": {

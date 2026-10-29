@@ -317,6 +317,33 @@ describe("fresh start", () => {
     expect(res.status).toBe(400);
   });
 
+  it('carries over "Counts as saving" and the savings rate goal', async () => {
+    const { owner, budget, base } = await setup();
+    const { groups } = await json<{ groups: Group[] }>(
+      await send("GET", `${base}/categories`, owner.cookie),
+    );
+    const saving = groups.find((g) => !g.kind)?.categories[0];
+    if (!saving) throw new Error("starter data missing");
+    await send("PUT", `${base}/reports/savings-rate/categories/${saving.id}`, owner.cookie, {
+      countsAsSaving: true,
+    });
+    await send("PATCH", base, owner.cookie, { savingsRateGoal: 2000 });
+    const fresh = await json<Budget & { savingsRateGoal: number | null }>(
+      await freshStart(budget.id, owner.cookie, "Household 2027"),
+    );
+    expect(fresh.savingsRateGoal).toBe(2000);
+    const report = await json<{ categories: { name: string; countsAsSaving: boolean }[] }>(
+      await send(
+        "GET",
+        `/v1/budgets/${fresh.id}/reports/savings-rate?from=2026-10&to=2026-10&today=${TODAY}`,
+        owner.cookie,
+      ),
+    );
+    expect(report.categories.filter((c) => c.countsAsSaving).map((c) => c.name)).toEqual([
+      saving.name,
+    ]);
+  });
+
   it("copies targets, starting in the fresh start's month", async () => {
     const { owner, budget, base } = await setup();
     const categories = async (b: string) =>

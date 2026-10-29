@@ -47,7 +47,12 @@ export const REPORT_GROUPINGS = [
   "account",
   "flag",
 ] as const;
-export type ReportGrouping = (typeof REPORT_GROUPINGS)[number];
+/**
+ * The public groupings, plus `saving` (the savings rate's buckets): "category" for a line in a
+ * category that counts as saving, else "tracking" for a transfer to or from a tracking asset
+ * account, else null. Each line gets exactly one, so nothing counts twice.
+ */
+export type ReportGrouping = (typeof REPORT_GROUPINGS)[number] | "saving";
 
 /**
  * Which lines a report reads. `null` in `payeeIds` or `flags` matches lines with no payee or no
@@ -156,6 +161,15 @@ function groupExpression(grouping: ReportGrouping, source: LineSource): SQL<stri
       return sql<string>`${transaction.accountId}`;
     case "flag":
       return sql<string | null>`${transaction.flag}`;
+    case "saving":
+      // Loan and liability accounts aren't saving (that's debt payoff), only assets.
+      return sql<string | null>`case
+        when ${category.countsAsSaving} then 'category'
+        when exists (
+          select 1 from payee tp join budget_account ta on ta.id = tp.transfer_account_id
+          where tp.id = ${source.payeeId} and ta.type = 'asset'
+        ) then 'tracking'
+      end`;
   }
 }
 

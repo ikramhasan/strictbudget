@@ -179,6 +179,7 @@ export async function importBackup(tx: Tx, doc: Backup, budgetId: string): Promi
       hidden: c.hidden,
       linkedAccountId: accounts.ref(c.linkedAccountId),
       pace: c.pace ?? null,
+      countsAsSaving: c.countsAsSaving ?? false,
     });
   }
   await insertChunks(tx, category, listed);
@@ -446,6 +447,7 @@ export async function importBackup(tx: Tx, doc: Backup, budgetId: string): Promi
       loanSimulatorBannerDismissed: doc.budget.loanSimulatorBannerDismissed,
       aiEnabled: doc.budget.aiEnabled,
       aiAssistantButton: doc.budget.aiAssistantButton,
+      savingsRateGoal: doc.budget.savingsRateGoal ?? null,
       viewOrder:
         doc.budget.viewOrder?.flatMap((key) =>
           presets.has(key) ? [key] : views.has(key) ? [views.get(key)] : [],

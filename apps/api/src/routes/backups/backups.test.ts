@@ -78,6 +78,10 @@ async function richBudget() {
   await send("PUT", `${base}/reports/spending-pace/categories/${rent.id}`, cookie, {
     pace: "include",
   });
+  await send("PUT", `${base}/reports/savings-rate/categories/${transport.id}`, cookie, {
+    countsAsSaving: true,
+  });
+  await send("PATCH", base, cookie, { savingsRateGoal: 1500 });
   const assign = (categoryId: string, month: string, assigned: string) =>
     ok(
       send("PUT", `${base}/months/${month}/categories/${categoryId}`, cookie, {
@@ -295,6 +299,19 @@ describe("budget backup", () => {
       ).categories.map((c) => [c.name, c.setting]);
     expect(await paceSettings(newBase)).toEqual(await paceSettings(base));
     expect(await paceSettings(newBase)).toContainEqual(["🏠 Rent/Mortgage", "include"]);
+    const savingSettings = async (b: string) => {
+      const r = await ok<{
+        goal: number | null;
+        categories: { name: string; countsAsSaving: boolean }[];
+      }>(send("GET", `${b}/reports/savings-rate?from=2026-10&to=2026-10&today=${TODAY}`, cookie));
+      return {
+        goal: r.goal,
+        saving: r.categories.filter((c) => c.countsAsSaving).map((c) => c.name),
+      };
+    };
+    expect(await savingSettings(newBase)).toEqual(await savingSettings(base));
+    expect((await savingSettings(newBase)).goal).toBe(1500);
+    expect((await savingSettings(newBase)).saving).toHaveLength(1);
 
     const accounts = async (b: string) =>
       (await ok<{ accounts: unknown[] }>(send("GET", `${b}/accounts?today=${TODAY}`, cookie)))

@@ -32,6 +32,7 @@ export function toBudgetJson({ budget: b, role, lastUsedAt }: BudgetAccess) {
     role,
     archivedAt: b.archivedAt?.toISOString() ?? null,
     lastUsedAt: lastUsedAt?.toISOString() ?? null,
+    savingsRateGoal: b.savingsRateGoal,
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),
   };

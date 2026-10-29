@@ -4,6 +4,7 @@ import {
   changeOf,
   comparisonRange,
   exportDelimiter,
+  foldTail,
   monthsIn,
   percentOf,
   plainAmount,
@@ -141,5 +142,29 @@ describe("export text", () => {
     expect(plainAmount(5n, 2, "dot_comma")).toBe("0,05");
     expect(plainAmount(-1234n, 0, "comma_dot")).toBe("-1234");
     expect(plainAmount(12345n, 3, "comma_dot")).toBe("12.345");
+  });
+});
+
+describe("foldTail", () => {
+  const size = (n: number) => BigInt(n);
+  it("keeps the largest, largest first, and folds the rest", () => {
+    expect(foldTail([3, 9, 1, 7, 5, 2, 8], 3, size)).toEqual({
+      top: [9, 8, 7],
+      rest: [5, 3, 2, 1],
+    });
+  });
+
+  it("keeps ties in their order", () => {
+    const items = [
+      { id: "a", n: 5 },
+      { id: "b", n: 5 },
+      { id: "c", n: 1 },
+    ];
+    expect(foldTail(items, 1, (i) => BigInt(i.n)).top.map((i) => i.id)).toEqual(["a"]);
+  });
+
+  it("doesn't fold a single item into Other", () => {
+    expect(foldTail([1, 2, 3], 2, size)).toEqual({ top: [3, 2, 1], rest: [] });
+    expect(foldTail([], 5, size)).toEqual({ top: [], rest: [] });
   });
 });

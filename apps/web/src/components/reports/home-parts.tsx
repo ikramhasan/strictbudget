@@ -13,8 +13,9 @@ export type ReportTarget = {
     | "/budgets/$budgetId/reports/net-worth"
     | "/budgets/$budgetId/reports/income-expense"
     | "/budgets/$budgetId/reports/age-of-money"
-    | "/budgets/$budgetId/reports/spending-pace";
-  search?: ReportSearch;
+    | "/budgets/$budgetId/reports/spending-pace"
+    | "/budgets/$budgetId/reports/savings-rate";
+  search?: ReportSearch & { mode?: "saving" | "plain" };
 };
 
 /** A tiny trend line; `values` are display numbers (chartNumber), oldest first. */

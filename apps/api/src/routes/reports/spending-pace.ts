@@ -79,7 +79,8 @@ export const getSpendingPace = createRoute({
     "Money to spend is each category's Available carried in plus the month's " +
     "Assigned; spending is its net activity. The plan's line adds up the categories in pace: " +
     "card payment categories never are; by default bills (a monthly target due on a set day, a " +
-    'dated yearly or custom target, a debt target), savings (a "Have a balance of" target), ' +
+    'dated yearly or custom target, a debt target), savings (marked "Counts as saving", or a ' +
+    '"Have a balance of" target), ' +
     "categories with a scheduled transaction and hidden ones aren't either, and a category's own setting overrides that. `groupId` or " +
     "`categoryId` picks the line instead. A past month is finished; a future one is a 400.",
   request: {
@@ -145,7 +146,9 @@ export const setCategoryPace = createRoute({
   security: authSecurity,
   middleware: [requireAuth] as const,
   summary: "Keep a category in or out of spending pace",
-  description: "Null goes back to the automatic rule (bills, savings, scheduled and hidden out).",
+  description:
+    "Null goes back to the automatic rule (bills, savings, scheduled and hidden out; savings are " +
+    'categories marked "Counts as saving" and ones with a "Have a balance of" target).',
   request: {
     params: BudgetParams.extend({
       categoryId: z.string().openapi({ param: { name: "categoryId", in: "path" } }),
@@ -187,6 +190,7 @@ async function paceCategories(db: Db, budgetId: string) {
       name: category.name,
       hidden: category.hidden,
       pace: category.pace,
+      countsAsSaving: category.countsAsSaving,
       groupId: categoryGroup.id,
       groupName: categoryGroup.name,
       groupHidden: categoryGroup.hidden,
@@ -237,7 +241,8 @@ async function automaticReasons(db: Db, budgetId: string): Promise<Map<string, P
     if (s.categoryId) reasons.set(s.categoryId, "scheduled");
   }
   for (const t of targets) {
-    // "Have a balance of…" is saving up, not spending.
+    // "Have a balance of…" is saving up, not spending (as is a category marked "Counts as saving",
+    // checked in the handler).
     if (t.behavior === "balance") {
       reasons.set(t.categoryId, "saving");
       continue;
@@ -298,8 +303,14 @@ export const getSpendingPaceHandler: RouteHandler<typeof getSpendingPace, Env> =
   const listed = categories.flatMap((cat) => {
     const f = figures.get(cat.id);
     if (!f) return [];
+    // Hidden first, then "Counts as saving" (savings rate's setting), then targets and schedules:
+    // an investment category with a scheduled transfer is saving, not a scheduled bill.
     const reason: PaceReason | null =
-      cat.hidden || cat.groupHidden ? "hidden" : (reasons.get(cat.id) ?? null);
+      cat.hidden || cat.groupHidden
+        ? "hidden"
+        : cat.countsAsSaving
+          ? "saving"
+          : (reasons.get(cat.id) ?? null);
     const included = cat.pace ? cat.pace === "include" : reason === null;
     const input = {
       month,

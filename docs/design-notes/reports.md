@@ -54,9 +54,9 @@
 
 ## Other reports
 
-- Built: Budget vs Actual, Spending pace. Open: cash-flow forecast ([#64](https://github.com/ikramhasan/strictbudget/issues/64)), cash flow Sankey
-  ([#86](https://github.com/ikramhasan/strictbudget/issues/86)), category history ([#87](https://github.com/ikramhasan/strictbudget/issues/87)), payees and recurring charges ([#88](https://github.com/ikramhasan/strictbudget/issues/88)), savings rate and
-  income sources ([#89](https://github.com/ikramhasan/strictbudget/issues/89)), debt payoff and interest paid ([#90](https://github.com/ikramhasan/strictbudget/issues/90)), spending by flag ([#91](https://github.com/ikramhasan/strictbudget/issues/91));
+- Built: Budget vs Actual, Spending pace, Savings rate and income sources ([#89](https://github.com/ikramhasan/strictbudget/issues/89)), Cash flow
+  ([#86](https://github.com/ikramhasan/strictbudget/issues/86)). Open: cash-flow forecast ([#64](https://github.com/ikramhasan/strictbudget/issues/64)), category history ([#87](https://github.com/ikramhasan/strictbudget/issues/87)), payees and
+  recurring charges ([#88](https://github.com/ikramhasan/strictbudget/issues/88)), debt payoff and interest paid ([#90](https://github.com/ikramhasan/strictbudget/issues/90)), spending by flag ([#91](https://github.com/ikramhasan/strictbudget/issues/91));
   later: monthly review and year in review ([#92](https://github.com/ikramhasan/strictbudget/issues/92)), saved reports, dashboard and PDF ([#65](https://github.com/ikramhasan/strictbudget/issues/65)).
 
 ### Budget vs Actual
@@ -95,13 +95,60 @@
   is forgotten).
 - **Left out of the plan's line by default** (each category's switch overrides this, stored as
   `category.pace`): card payment categories (always; they aren't listed), bills (a monthly target
-  due on a set day, a dated yearly or custom target, a debt target), savings (a "Have a balance
-  of…" target, standing in for "Counts as saving" from [#89](https://github.com/ikramhasan/strictbudget/issues/89) until it lands: [#119](https://github.com/ikramhasan/strictbudget/issues/119)),
-  categories with any scheduled transaction or scheduled split line, and hidden categories. Savings
-  with no target still count until the user switches them off.
+  due on a set day, a dated yearly or custom target, a debt target), savings (categories marked
+  "Counts as saving" on the Savings rate report, and ones with a "Have a balance of…" target, so
+  existing savings categories stay out without the flag: [#119](https://github.com/ikramhasan/strictbudget/issues/119)), categories with any
+  scheduled transaction or scheduled split line, and hidden categories. Hidden comes first, then
+  "Counts as saving", so an investment category with a scheduled transfer reads as saving. Savings
+  with neither still count until the user switches them off.
 - A group's line counts that group's categories that are in pace; a single category's line shows
   it even when it's out of pace. Past months show the finished burndown; future months return 400
   and the report doesn't offer them.
+
+### Savings rate and income sources
+
+- **Two rates, and a toggle between them.** The plain rate is Income v Expense's (net income ÷
+  income), so it can be checked against YNAB. The default rate counts savings, which is
+  strictbudget's own, a deliberate difference from YNAB: (left over + spending in categories that
+  count as saving + money moved to tracking asset accounts) ÷ income. In YNAB, money funded into
+  investments through a category shows only as spending.
+- **Each spending line is in one bucket**, decided in SQL: its category counts as saving, else it
+  is a transfer to a tracking **asset** account, else it is ordinary spending. A transfer to the
+  brokerage in an Investments category that counts as saving is counted once. Loan and liability
+  accounts aren't saving (debt payoff is [#90](https://github.com/ikramhasan/strictbudget/issues/90)).
+  Refunds and money brought back into a bucket net against it.
+- **Income stays Income v Expense's.** Money brought back from a tracking asset account into Ready
+  to Assign is income there. The saving rate takes it off its income and off "moved", so moving
+  $1,000 out and $400 back saves $600.
+- **"Counts as saving"** is a per-category setting (`category.counts_as_saving`, off by default).
+  It is switched on the report itself, as Spending pace's switch is. A category is suggested when
+  at least half of its outflows in the range went to tracking accounts. The goal is per budget,
+  in basis points, and is drawn as a dashed line.
+- A month with no income (or none left after money from tracking accounts) has no rate: a gap,
+  not 0% or ∞. The rolling 12-month rate sums the window's money (fewer months before the first
+  transaction); it doesn't average monthly rates.
+- **Income sources:** the five largest payees in the range, the rest folded into "Other income".
+  The cash flow report folds the same way, with one helper (`foldTail`). Steadiness counts months
+  received up to the current month. The headline compares with the previous period of the same
+  length.
+- The Reports home tile is still Income v Expense's rate of the last complete month. It opens this
+  report on the plain rate, so the two numbers match.
+
+### Cash flow
+
+- A Sankey (Recharts' `Sankey`): income sources → Income → groups (Uncategorized first, then plan
+  order) → an expanded group's categories, with what's left going to **Saved**. When spending
+  exceeds income, the shortfall comes into Income **from savings**. Income and spending are Income
+  v Expense's, so the totals agree, and every node's inflows equal its outflows in minor units.
+- A Sankey can't draw a negative flow, so each net goes to the side its sign puts it on. A
+  category that got back more than it spent feeds Income as **Refunds**; a payee whose income nets
+  below zero flows out as **Income paid back**. Saved − from savings is still Income v Expense's
+  net income.
+- Sources fold to the top five and "Other income", the same way as the savings rate's income
+  sources. Groups, and an expanded group's categories, under 2% of the flow fold into "Other".
+  "Show small flows" turns the folding off; it and the expanded groups are kept in the URL. The
+  tooltip shows the share of income, or of the money spent when nothing came in.
+- On phones (under 768px) the report is its table: a Sankey doesn't fit 400px.
 
 ## Rules every report follows
 

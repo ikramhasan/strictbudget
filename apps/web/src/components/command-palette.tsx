@@ -120,6 +120,8 @@ const REPORTS = [
   { to: "/budgets/$budgetId/reports/spending-trends", label: "Spending Trends" },
   { to: "/budgets/$budgetId/reports/spending-pace", label: "Spending Pace" },
   { to: "/budgets/$budgetId/reports/income-expense", label: "Income v Expense" },
+  { to: "/budgets/$budgetId/reports/savings-rate", label: "Savings Rate" },
+  { to: "/budgets/$budgetId/reports/cash-flow", label: "Cash Flow" },
   { to: "/budgets/$budgetId/reports/budget-vs-actual", label: "Budget vs Actual" },
   { to: "/budgets/$budgetId/reports/net-worth", label: "Net Worth" },
   { to: "/budgets/$budgetId/reports/age-of-money", label: "Age of Money" },

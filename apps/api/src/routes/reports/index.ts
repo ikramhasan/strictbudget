@@ -1,10 +1,17 @@
 import { createRouter } from "../../lib/router";
 import { getAgeOfMoney, getAgeOfMoneyHandler } from "./age-of-money";
 import { getBudgetVsActual, getBudgetVsActualHandler } from "./budget-vs-actual";
+import { getCashFlow, getCashFlowHandler } from "./cash-flow";
 import { getCreditCardHealth, getCreditCardHealthHandler } from "./credit-card-health";
 import { getReportActivityHandler, listReportTransactionsHandler } from "./handlers";
 import { getNetWorthReport, getNetWorthReportHandler } from "./net-worth";
 import { getReportActivity, listReportTransactions } from "./routes";
+import {
+  getSavingsRate,
+  getSavingsRateHandler,
+  setCategorySaving,
+  setCategorySavingHandler,
+} from "./savings-rate";
 import {
   getSpendingPace,
   getSpendingPaceHandler,
@@ -20,4 +27,7 @@ export const reportsRouter = createRouter()
   .openapi(getBudgetVsActual, getBudgetVsActualHandler)
   .openapi(getCreditCardHealth, getCreditCardHealthHandler)
   .openapi(getSpendingPace, getSpendingPaceHandler)
-  .openapi(setCategoryPace, setCategoryPaceHandler);
+  .openapi(setCategoryPace, setCategoryPaceHandler)
+  .openapi(getSavingsRate, getSavingsRateHandler)
+  .openapi(setCategorySaving, setCategorySavingHandler)
+  .openapi(getCashFlow, getCashFlowHandler);

@@ -15,6 +15,7 @@ import {
 } from "../../middleware/require-auth";
 
 const BudgetName = z.string().trim().min(1).max(100);
+const SavingsRateGoal = z.number().int().min(0).max(10000);
 
 export const BudgetSchema = z
   .object({
@@ -36,6 +37,9 @@ export const BudgetSchema = z
       .datetime()
       .nullable()
       .describe("When the signed-in user last opened this budget; null if never"),
+    savingsRateGoal: SavingsRateGoal.nullable().describe(
+      "The savings rate report's goal in basis points (2000 = 20%); null for none",
+    ),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })
@@ -64,6 +68,9 @@ const UpdateBudgetSchema = z
     numberFormat: zNumberFormat.optional(),
     currencySymbolPosition: zCurrencySymbolPosition.optional(),
     dateFormat: zDateFormat.optional(),
+    savingsRateGoal: SavingsRateGoal.nullable()
+      .optional()
+      .describe("The savings rate goal in basis points (2000 = 20%); null clears it"),
   })
   .openapi("UpdateBudget", { description: "The currency can't be changed after creation." });
 
@@ -132,7 +139,7 @@ export const updateBudget = createRoute({
   tags: ["Budgets"],
   security: authSecurity,
   middleware: [requireAuth] as const,
-  summary: "Rename a budget or change its formats",
+  summary: "Rename a budget, change its formats or set its savings rate goal",
   request: {
     params: BudgetParams,
     body: { required: true, content: { "application/json": { schema: UpdateBudgetSchema } } },

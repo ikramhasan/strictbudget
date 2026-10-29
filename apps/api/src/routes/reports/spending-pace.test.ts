@@ -239,6 +239,43 @@ describe("spending pace", () => {
     expect(pace.categories.every((c) => c.setting === null)).toBe(true);
   });
 
+  it('leaves out categories marked "Counts as saving", before their schedules', async () => {
+    const t = await setup();
+    const mark = (categoryId: string, countsAsSaving: boolean) =>
+      send(
+        "PUT",
+        `/v1/budgets/${t.budgetId}/reports/savings-rate/categories/${categoryId}`,
+        t.cookie,
+        { countsAsSaving },
+      );
+    // Groceries has no target or schedule; Phone has a scheduled transaction.
+    expect((await mark(t.ids.groceries, true)).status).toBe(200);
+    expect((await mark(t.ids.phone, true)).status).toBe(200);
+    let pace = await t.read();
+    const byId = () => new Map(pace.categories.map((c) => [c.categoryId, c]));
+    expect(byId().get(t.ids.groceries)).toMatchObject({ included: false, reason: "saving" });
+    expect(byId().get(t.ids.phone)).toMatchObject({ included: false, reason: "saving" });
+    // The balance target still stands in.
+    expect(byId().get(t.ids.holiday)).toMatchObject({ included: false, reason: "saving" });
+    expect(pace.line.start).toBe("0");
+    // A category's own setting still wins.
+    await t.setPace(t.ids.groceries, "include");
+    pace = await t.read();
+    expect(byId().get(t.ids.groceries)).toMatchObject({
+      included: true,
+      setting: "include",
+      reason: "saving",
+    });
+    expect(pace.line.start).toBe("30000");
+    // Unmarked, the automatic rule is back to its own reasons.
+    await t.setPace(t.ids.groceries, null);
+    await mark(t.ids.groceries, false);
+    await mark(t.ids.phone, false);
+    pace = await t.read();
+    expect(byId().get(t.ids.groceries)).toMatchObject({ included: true, reason: null });
+    expect(byId().get(t.ids.phone)).toMatchObject({ included: false, reason: "scheduled" });
+  });
+
   it("draws one category's or one group's line", async () => {
     const t = await setup();
     await t.spend(t.ids.rent, "2026-11-01", "-120000");
