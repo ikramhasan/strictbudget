@@ -996,6 +996,19 @@ const paymentFigures = (p: NonNullable<BudgetMonthData["categories"][number]["pa
     bigint
   >;
 
+/**
+ * What counts toward a save-up goal before this month, and this month's Assigned: the goal's own
+ * progress (`saveUp`), or for a new goal the money carried in, which is where it would start.
+ */
+function savedSoFar(
+  totals: Parameters<typeof breakdown>[0] & { target: { funded: string } | null },
+  saveUp: boolean,
+) {
+  const b = breakdown(totals);
+  const funded = totals.target ? BigInt(totals.target.funded) : 0n;
+  return { before: saveUp ? funded - b.assigned : b.carried, assigned: b.assigned };
+}
+
 interface ListedCategory {
   name: string;
   note: string;
@@ -1246,6 +1259,7 @@ function Inspector({
               format={format}
               currency={targetCurrency}
               debt={pairedLoan !== undefined || category.target?.cadence === "debt_monthly"}
+              month={month.month}
             />
           ) : (
             <TargetSection
@@ -1258,6 +1272,14 @@ function Inspector({
               toInput={assign.toInput}
               dateFormat={budget.dateFormat}
               currency={targetCurrency}
+              savings={
+                category.savings && !pairedLoan
+                  ? {
+                      month: month.month,
+                      saved: savedSoFar(totals, category.target?.goal === "save_up"),
+                    }
+                  : undefined
+              }
               onSave={(input) => targetActions.save(only, month.month, input, category.target)}
               onDelete={() => targetActions.remove(only, category.target)}
               onAssign={

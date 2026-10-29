@@ -1,4 +1,9 @@
-import { type CurrencyCode, type DateFormat, targetPercent } from "@strictbudget/engine";
+import {
+  type BudgetMonth,
+  type CurrencyCode,
+  type DateFormat,
+  targetPercent,
+} from "@strictbudget/engine";
 import { Button } from "@strictbudget/ui/components/button";
 import { Field, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
 import { Input } from "@strictbudget/ui/components/input";
@@ -14,6 +19,7 @@ import type { LoanPlan } from "@/lib/loan-planner";
 import {
   type CategoryTarget,
   DUE_DAY_OPTIONS,
+  goalReachLine,
   isPaymentTarget,
   MONTH_OPTIONS,
   PAYMENT_TARGET_OPTIONS,
@@ -30,6 +36,7 @@ import {
 import { CurrencyPicker } from "./currency-picker";
 import { DebtTargetEditor } from "./debt-target-editor";
 import { DateField } from "./register-fields";
+import { SavingsGoalEditor } from "./savings-goal-editor";
 
 type Format = (minorUnits: string) => string;
 
@@ -122,6 +129,7 @@ export function TargetSection({
   payment,
   debt,
   currency,
+  savings,
 }: {
   name: string;
   target: CategoryTarget | null;
@@ -158,14 +166,22 @@ export function TargetSection({
   debt?: { plan: LoanPlan | null; unpairedCategoryId?: string };
   /** Spending targets can be in their own currency; without this, the budget's only. */
   currency?: TargetCurrency;
+  /**
+   * A savings category: the section offers savings goals, starting from `month` (the month on
+   * screen), with `saved` already counting toward a save-up goal (see `SavingsGoalEditor`).
+   */
+  savings?: { month: BudgetMonth; saved: { before: bigint; assigned: bigint } };
 }) {
   const [editing, setEditing] = useState(false);
+  // A savings category edits savings goals unless it has (or asks for) another kind of target.
+  const [otherTarget, setOtherTarget] = useState(Boolean(target && !target.goal));
   // The target's own amounts read in its currency; what it needs (converted) in the budget's.
   const targetFormat =
     target && currency && target.currency !== currency.budgetCurrency
       ? currency.moneyIn(target.currency).format
       : format;
-  const title = debt ? "Debt Payment Target" : "Target";
+  const goalSection = Boolean(savings && !debt && (!target || target.goal));
+  const title = debt ? "Debt Payment Target" : goalSection ? "Savings Goal" : "Target";
   if (editing && debt) {
     return (
       <DebtTargetEditor
@@ -212,9 +228,33 @@ export function TargetSection({
   if (payment && paymentAlertShows({ target, need, ...payment })) {
     return payment.alert(() => setEditing(true));
   }
+  if (editing && savings && !otherTarget) {
+    return (
+      <SavingsGoalEditor
+        target={target}
+        saved={savings.saved}
+        month={savings.month}
+        money={{ format, parse, toInput }}
+        currency={currency}
+        onCancel={() => setEditing(false)}
+        onOtherTarget={() => setOtherTarget(true)}
+        onSave={async (input) => {
+          if (await onSave(input)) setEditing(false);
+        }}
+        onDelete={
+          target
+            ? async () => {
+                if (await onDelete()) setEditing(false);
+              }
+            : undefined
+        }
+      />
+    );
+  }
   if (editing) {
     return (
       <TargetEditor
+        onSavingsGoal={savings ? () => setOtherTarget(false) : undefined}
         target={target}
         format={format}
         parse={parse}
@@ -239,13 +279,26 @@ export function TargetSection({
     // Without a rate to the budget's currency, what the target needs is unknown.
     return (
       <Section title={title}>
-        <p className="font-medium text-sm">{targetHeading(target, targetFormat(target.amount))}</p>
+        <p className="font-medium text-sm">{headingOf(target, targetFormat)}</p>
         <p className="text-muted-foreground text-sm">
           No {target.currency} to {currency.budgetCurrency} exchange rate is available yet, so this
           target can't say what it needs. It's left out of Underfunded until there is one.
         </p>
         <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
           Edit Target
+        </Button>
+      </Section>
+    );
+  }
+  if ((!target || !need) && goalSection) {
+    return (
+      <Section title={title}>
+        <p className="font-medium text-sm">What are you saving {name} for?</p>
+        <p className="text-muted-foreground text-sm">
+          Set a goal and we'll tell you how much to put in each month, and how close you are.
+        </p>
+        <Button size="sm" variant="secondary" className="w-fit" onClick={() => setEditing(true)}>
+          Set a Savings Goal
         </Button>
       </Section>
     );
@@ -278,7 +331,17 @@ export function TargetSection({
       onEdit={() => setEditing(true)}
       onSnooze={onSnooze}
       snoozeLocked={snoozeLocked}
+      month={savings?.month}
     />
+  );
+}
+
+/** The inspector heading, a savings goal's amount formatted too. */
+function headingOf(target: CategoryTarget, format: Format) {
+  return targetHeading(
+    target,
+    format(target.amount),
+    target.goalAmount === null ? undefined : format(target.goalAmount),
   );
 }
 
@@ -295,6 +358,7 @@ function TargetSummary({
   onEdit,
   onSnooze,
   snoozeLocked = false,
+  month,
 }: {
   title: string;
   target: CategoryTarget;
@@ -307,6 +371,8 @@ function TargetSummary({
   onEdit?: () => void;
   onSnooze?: (snoozed: boolean) => Promise<void>;
   snoozeLocked?: boolean;
+  /** The month on screen, for when a save-up goal gets there. */
+  month?: BudgetMonth;
 }) {
   const percent = targetPercent({ needed: BigInt(need.needed), funded: BigInt(need.funded) });
   const message = targetMessage(target, need, format, payment?.month);
@@ -318,12 +384,23 @@ function TargetSummary({
       : target.amount,
   );
   const converted = currency?.conversion;
+  // A save-up goal saving so much a month says when it gets there, in the budget's currency.
+  const reach = month
+    ? goalReachLine(target, need, month, BigInt(converted?.amountInBase ?? target.amount))
+    : "";
+  const dueLine = reach || targetDueLine(target, need, targetFormat(target.amount));
   return (
     <Section title={title}>
-      {kind && <p className="font-medium text-sm">{kind}</p>}
+      {kind && (
+        <p className={target.goal ? "text-muted-foreground text-xs" : "font-medium text-sm"}>
+          {kind}
+        </p>
+      )}
       <div className="grid gap-0.5">
-        <p className="font-medium text-sm">{targetHeading(target, headingAmount)}</p>
-        <p className="text-muted-foreground text-xs">{targetDueLine(target, need)}</p>
+        <p className="font-medium text-sm">
+          {target.goal ? headingOf(target, targetFormat) : targetHeading(target, headingAmount)}
+        </p>
+        {dueLine && <p className="text-muted-foreground text-xs">{dueLine}</p>}
         {converted && (
           <p
             className="text-muted-foreground text-xs"
@@ -378,7 +455,7 @@ function TargetSummary({
       </dl>
       {onEdit && (
         <Button size="sm" variant="secondary" onClick={onEdit}>
-          Edit Target
+          {target.goal ? "Edit Goal" : "Edit Target"}
         </Button>
       )}
       {onEdit && (onSnooze || (snoozeLocked && !payment)) && (
@@ -396,7 +473,7 @@ function TargetSummary({
               disabled={!onSnooze}
               onCheckedChange={(checked) => void onSnooze?.(checked)}
             />
-            Snooze target for this month
+            Snooze {target.goal ? "goal" : "target"} for this month
           </Label>
           <SnoozeHelp />
         </div>
@@ -416,6 +493,7 @@ export function ReadOnlyTarget({
   currency,
   debt = false,
   payment,
+  month,
 }: {
   target: CategoryTarget | null;
   need: TargetNeed | null;
@@ -423,9 +501,11 @@ export function ReadOnlyTarget({
   currency?: TargetCurrency;
   debt?: boolean;
   payment?: { month: string; fundedSpending: string; paymentsMade: string };
+  /** The month on screen, for when a save-up goal gets there. */
+  month?: BudgetMonth;
 }) {
   if (!target) return null;
-  const title = debt ? "Debt Payment Target" : "Target";
+  const title = debt ? "Debt Payment Target" : target.goal ? "Savings Goal" : "Target";
   const targetFormat =
     currency && target.currency !== currency.budgetCurrency
       ? currency.moneyIn(target.currency).format
@@ -433,7 +513,7 @@ export function ReadOnlyTarget({
   if (currency?.rateMissing) {
     return (
       <Section title={title}>
-        <p className="font-medium text-sm">{targetHeading(target, targetFormat(target.amount))}</p>
+        <p className="font-medium text-sm">{headingOf(target, targetFormat)}</p>
         <p className="text-muted-foreground text-sm">
           No {target.currency} to {currency.budgetCurrency} exchange rate is available yet, so this
           target can't say what it needs.
@@ -451,6 +531,7 @@ export function ReadOnlyTarget({
       targetFormat={targetFormat}
       currency={currency}
       payment={payment}
+      month={month}
     />
   );
 }
@@ -556,6 +637,7 @@ function TargetEditor({
   onSave,
   onCancel,
   onDelete,
+  onSavingsGoal,
 }: {
   target: CategoryTarget | null;
   format: Format;
@@ -566,6 +648,8 @@ function TargetEditor({
   onSave: (input: TargetInput) => Promise<void>;
   onCancel: () => void;
   onDelete?: () => Promise<void>;
+  /** On a savings category: switches to the savings goal form. */
+  onSavingsGoal?: () => void;
 }) {
   const nextMonth = firstOfNextMonth();
   // The target's currency (the budget's by default); its amount is typed in it.
@@ -846,6 +930,15 @@ function TargetEditor({
               </Field>
             )}
           </>
+        )}
+        {onSavingsGoal && (
+          <button
+            type="button"
+            onClick={onSavingsGoal}
+            className="w-fit text-muted-foreground text-xs underline underline-offset-2 hover:text-foreground"
+          >
+            Use a savings goal instead
+          </button>
         )}
         <div className="flex flex-wrap items-center gap-2">
           {onDelete && (
