@@ -5,22 +5,26 @@ mobile, production readiness, collaboration and multi-currency are built. What's
 is one [milestone](https://github.com/ikramhasan/strictbudget/milestones) each; the issues and
 their status are on the [project board](https://github.com/users/ikramhasan/projects/1).
 
-1. [Cycle 14b · Reports II](https://github.com/ikramhasan/strictbudget/milestone/1): strictbudget's
+1. [Cycle 14c · Savings](https://github.com/ikramhasan/strictbudget/milestone/8): savings
+   categories (spending or savings), savings goals (save up, safety fund, keep saving), warnings
+   when money leaves savings, saving shown apart from spending in reports, and a one-time
+   suggestion for existing budgets. See [savings](design-notes/savings.md).
+2. [Cycle 14b · Reports II](https://github.com/ikramhasan/strictbudget/milestone/1): strictbudget's
    own reports on top of the reports foundation: cash flow (Sankey), budget vs actual, category
    history, payees and recurring charges, savings rate and income sources, debt payoff and
    interest, cash-flow forecast, spending by flag.
-2. [Cycle 16 · Bank sync](https://github.com/ikramhasan/strictbudget/milestone/2): provider
+3. [Cycle 16 · Bank sync](https://github.com/ikramhasan/strictbudget/milestone/2): provider
    abstraction, linking accounts, background import, pending transactions, reconnect and unlink.
-3. [Cycle 17b · Self-hosting and one-click deploys](https://github.com/ikramhasan/strictbudget/milestone/3):
+4. [Cycle 17b · Self-hosting and one-click deploys](https://github.com/ikramhasan/strictbudget/milestone/3):
    published images, Docker Compose on a VPS, the Railway template and the self-hosting guide.
-4. [Cycle 20 · Extras: tags, attachments, bills, reviews and saved reports](https://github.com/ikramhasan/strictbudget/milestone/4)
-5. [Cycle 21 · Extras: app experience](https://github.com/ikramhasan/strictbudget/milestone/5):
+5. [Cycle 20 · Extras: tags, attachments, bills, reviews and saved reports](https://github.com/ikramhasan/strictbudget/milestone/4)
+6. [Cycle 21 · Extras: app experience](https://github.com/ikramhasan/strictbudget/milestone/5):
    installable PWA, translations, Hide Amounts, notifications, Google and Apple sign-in, payee
    locations, the library watch list.
-6. [Cycle 22 · AI assistant](https://github.com/ikramhasan/strictbudget/milestone/6): opt-in
+7. [Cycle 22 · AI assistant](https://github.com/ikramhasan/strictbudget/milestone/6): opt-in
    foundation, categorization and payee cleanup, natural-language entry and receipts, chat with
    your budget, suggestions and detection, narrative and forecasting.
-7. [Cycle 23 · Platform: public API, webhooks, mobile, billing](https://github.com/ikramhasan/strictbudget/milestone/7)
+8. [Cycle 23 · Platform: public API, webhooks, mobile, billing](https://github.com/ikramhasan/strictbudget/milestone/7)
 
 Issues with no milestone are follow-ups to pick into a milestone when one starts. Milestone due
 dates are weekly placeholders; move them when a milestone starts.

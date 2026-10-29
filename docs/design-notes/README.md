@@ -15,6 +15,7 @@ By area:
 - [Keyboard, mobile and accessibility](keyboard-mobile-accessibility.md)
 - [File import and export](file-import-export.md)
 - [Budget screen toolbar](budget-toolbar.md)
+- [Savings](savings.md): savings categories, savings goals, saving in reports
 
 The rest is below.
 
@@ -140,6 +141,8 @@ The rest is below.
 - A payment target in a month before its card account existed asks nothing. The opening month is
   the card's first transaction's month; the month API marks the need `beforeOpening`.
 - A category's history is reassigned on delete, but its target is deleted with it.
+- Savings goals (save up, safety fund, keep saving) are targets with a `goal`; see
+  [savings](savings.md).
 
 ## Credit lifecycle and loans
 

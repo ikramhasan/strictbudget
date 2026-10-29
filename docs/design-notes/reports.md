@@ -6,6 +6,15 @@
   Trends, Net Worth, Income v Expense, Age of Money) keep fixed definitions of what counts as
   spending and income, transfers, card payments and starting balances, and a CSV/TSV export in a
   stable layout. Their charts, interactions and extra views are strictbudget's own.
+- **Saving isn't spending** (a deliberate difference from YNAB, see [savings](savings.md)):
+  report activity's `saving` kind is a transfer to or from a tracking **asset** account (any
+  category; loans and liabilities stay spending) and any line in a savings category whose goal is
+  Keep saving. `spending` leaves those lines out, so Spending Breakdown, Trends, the drill-down,
+  Reports home and spending pace never count them; `spending` + `saving` is the plan's Activity.
+  Spending Breakdown notes what was saved and links to Income v Expense, which has a **Saved**
+  section (positive, per category, before Net Income; in the export too). Net Income stays income
+  + expenses − saved (what's left over, the same number as before); its savings rate row is (Net
+  Income + Saved) ÷ Income. Budget vs Actual keeps the plan's own Activity.
 - **Reports home** is the entry point ("Overview", the first tab). The five core reports follow as
   tabs, then the other reports (Budget vs Actual first).
 - **Comparison mode and drill-down on every report.** Drill-down opens one side sheet; its rows
@@ -133,10 +142,10 @@
   is forgotten).
 - **Left out of the plan's line by default** (each category's switch overrides this, stored as
   `category.pace`): card payment categories (always; they aren't listed), bills (a monthly target
-  due on a set day, a dated yearly or custom target, a debt target), savings (a "Have a balance
-  of…" target, standing in for "Counts as saving" from [#89](https://github.com/ikramhasan/strictbudget/issues/89) until it lands: [#119](https://github.com/ikramhasan/strictbudget/issues/119)),
-  categories with any scheduled transaction or scheduled split line, and hidden categories. Savings
-  with no target still count until the user switches them off.
+  due on a set day, a dated yearly or custom target, a debt target), savings (a savings category
+  whatever its target or schedules, or a "Have a balance of…" target), categories with any
+  scheduled transaction or scheduled split line, and hidden categories (hidden wins). Reconciling
+  with #89's "Counts as saving" is [#141](https://github.com/ikramhasan/strictbudget/issues/141).
 - A group's line counts that group's categories that are in pace; a single category's line shows
   it even when it's out of pace. Past months show the finished burndown; future months return 400
   and the report doesn't offer them.
