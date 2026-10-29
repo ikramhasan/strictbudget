@@ -151,4 +151,43 @@
     flex-direction: column;
     gap: 0.5rem;
   }
+  & h3 {
+    margin-top: 0.5rem;
+    margin-bottom: -0.75rem;
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+    color: var(--color-heading);
+    scroll-margin-top: 6rem;
+  }
+  /* Wrap a table in <div class="table-scroll"> so a wide one scrolls on a phone. */
+  & .table-scroll {
+    overflow-x: auto;
+  }
+  & table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 1rem;
+    line-height: 1.5rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  & th {
+    font-weight: 600;
+    color: var(--color-heading);
+    text-align: left;
+  }
+  & [align="right"] {
+    text-align: right;
+  }
+  & :where(th, td) {
+    padding: 0.5rem 0.75rem 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    @media (width >= 40rem) {
+      padding-right: 1rem;
+    }
+  }
+  & :where(th, td):last-child {
+    padding-right: 0;
+  }
 }
