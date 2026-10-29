@@ -1,6 +1,12 @@
 import type { RouteHandler } from "@hono/zod-openapi";
 import { newId } from "@strictbudget/db";
-import { budgetAccount, category, categoryGroup, categoryTarget } from "@strictbudget/db/schema";
+import {
+  budget,
+  budgetAccount,
+  category,
+  categoryGroup,
+  categoryTarget,
+} from "@strictbudget/db/schema";
 import { monthOf } from "@strictbudget/engine";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { loadBudgetAccess } from "../../lib/budget-access";
@@ -33,6 +39,7 @@ import type {
   moveCategoryGroup,
   restoreCategoryTarget,
   setCategoryTarget,
+  setSavingsSuggestion,
   snoozeCategoryTarget,
   updateCategory,
   updateCategoryGroup,
@@ -135,6 +142,19 @@ export const moveCategoryGroupHandler: RouteHandler<typeof moveCategoryGroup, En
     await writeOrder(tx, categoryGroup, order);
   });
   return c.json(await listCategoryTree(db, budgetId), 200);
+};
+
+export const setSavingsSuggestionHandler: RouteHandler<typeof setSavingsSuggestion, Env> = async (
+  c,
+) => {
+  const { budgetId } = c.req.valid("param");
+  const { dismissed } = c.req.valid("json");
+  await loadBudgetAccess(c, budgetId, { category: ["update"] });
+  await c.var.deps.db
+    .update(budget)
+    .set({ savingsSuggestionDismissed: dismissed })
+    .where(eq(budget.id, budgetId));
+  return c.json({ dismissed }, 200);
 };
 
 export const createCategoryHandler: RouteHandler<typeof createCategory, Env> = async (c) => {

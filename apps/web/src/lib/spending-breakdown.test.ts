@@ -21,6 +21,7 @@ const category = (id: string, groupId: string, name: string) =>
 const categories: CategoryList = {
   readyToAssignCategoryId: "rta",
   uncategorizedCategoryId: "unc",
+  savingsSuggestionDismissed: false,
   groups: [
     {
       id: "g-test",

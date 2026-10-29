@@ -48,6 +48,12 @@ makes "for a goal" a first-class answer instead of a naming convention.
   This pickers say what it does to the goal ("…will be $1,200.00 below its $10,000.00, and its
   goal will ask for it back", "…progress drops to $1,300.00 of $1,500.00"), and cover / Fix This
   list savings last under "Savings". Later months' Fix This sources get the general note.
+- **Existing budgets** get a one-time "These look like savings" card in the plan's inspector
+  column (current month, editors, nothing selected): visible spending categories with a "Have a
+  balance of…" target or named like savings (or in a group named like savings), all ticked. "Mark
+  as Savings" or "Not now" puts it away for everyone on the budget
+  (`budget.savings_suggestion_dismissed`, kept by a fresh start); nothing changes without a click.
+  It doesn't come back for categories added later.
 - **Reports**: saving is not spending; see [reports](reports.md) ("Saving isn't spending").
   Spending a save-up goal or a safety fund on what it's for is spending.
 

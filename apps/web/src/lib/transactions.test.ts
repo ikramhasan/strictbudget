@@ -296,6 +296,7 @@ describe("register drafts", () => {
     const list: CategoryList = {
       readyToAssignCategoryId: "rta",
       uncategorizedCategoryId: "uncat",
+      savingsSuggestionDismissed: false,
       groups: [
         {
           id: "cc",

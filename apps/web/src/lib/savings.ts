@@ -1,3 +1,5 @@
+import { looksLikeSavings } from "@strictbudget/engine";
+import type { CategoryList } from "./categories";
 import type { MoneyOption } from "./months";
 
 type Format = (minorUnits: string) => string;
@@ -42,4 +44,27 @@ export function savingsWarning(
     return `${option.name}'s progress drops to ${f(after > 0n ? after : 0n)} of ${f(goal.needed)}.`;
   }
   return `This takes ${f(amount)} out of the money you've set aside in ${option.name}.`;
+}
+
+/**
+ * Categories an existing budget may want to mark as savings: visible spending categories (not a
+ * card's payment category) with a "Have a balance of…" target, or named like savings, or in a
+ * group named like savings ("Emergency fund", "Savings: Car"). In the plan's order.
+ */
+export function savingsSuggestions(list: CategoryList): { id: string; name: string }[] {
+  return list.groups
+    .filter((g) => !g.hidden && !g.kind)
+    .flatMap((g) =>
+      g.categories
+        .filter(
+          (c) =>
+            !c.hidden &&
+            !c.savings &&
+            !c.linkedAccountId &&
+            (c.target?.behavior === "balance" ||
+              looksLikeSavings(c.name) ||
+              looksLikeSavings(g.name)),
+        )
+        .map((c) => ({ id: c.id, name: c.name })),
+    );
 }

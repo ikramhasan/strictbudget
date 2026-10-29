@@ -81,6 +81,7 @@ describe("exportRows", () => {
   const categories: CategoryList = {
     readyToAssignCategoryId: "rta",
     uncategorizedCategoryId: "unc",
+    savingsSuggestionDismissed: false,
     groups: [
       {
         id: "g",

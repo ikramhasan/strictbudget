@@ -3035,12 +3035,17 @@
           "uncategorizedCategoryId": {
             "type": "string",
             "description": "The internal Uncategorized category (reports filter and group by it)"
+          },
+          "savingsSuggestionDismissed": {
+            "type": "boolean",
+            "description": "The plan's one-time \"These look like savings\" suggestion was answered, for everyone on the budget (see setSavingsSuggestion)"
           }
         },
         "required": [
           "groups",
           "readyToAssignCategoryId",
-          "uncategorizedCategoryId"
+          "uncategorizedCategoryId",
+          "savingsSuggestionDismissed"
         ]
       },
       "CategoryGroup": {
@@ -3687,6 +3692,29 @@
         "required": [
           "month",
           "snoozed"
+        ]
+      },
+      "SavingsSuggestion": {
+        "type": "object",
+        "properties": {
+          "dismissed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "dismissed"
+        ]
+      },
+      "SetSavingsSuggestion": {
+        "type": "object",
+        "properties": {
+          "dismissed": {
+            "type": "boolean",
+            "description": "True once answered; false shows it again"
+          }
+        },
+        "required": [
+          "dismissed"
         ]
       },
       "CategoryTemplateList": {
@@ -16131,6 +16159,96 @@
           },
           "409": {
             "description": "MANAGED_CATEGORY: credit card payment targets can't be snoozed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/budgets/{budgetId}/savings-suggestion": {
+      "put": {
+        "operationId": "setSavingsSuggestion",
+        "tags": [
+          "Categories"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "summary": "Answer the plan's suggestion to mark savings-like categories as savings",
+        "description": "Existing budgets are offered, once, to mark categories that look like savings (a balance target, a name such as Emergency fund) as savings categories. Marking them is updateCategory; this records that the suggestion was answered (or put back).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "budgetId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSavingsSuggestion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavingsSuggestion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The caller's role can't edit categories, or the account's email address isn't confirmed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such budget, group or category, or the caller isn't a member",
             "content": {
               "application/json": {
                 "schema": {

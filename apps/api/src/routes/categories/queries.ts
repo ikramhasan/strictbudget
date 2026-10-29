@@ -1,5 +1,6 @@
 import { newId, sql } from "@strictbudget/db";
 import {
+  budget,
   category,
   categoryAssignment,
   categoryGroup,
@@ -115,9 +116,14 @@ export async function listCategoryTree(db: Db, budgetId: string) {
     .from(categoryTarget)
     .where(eq(categoryTarget.budgetId, budgetId));
   const targets = new Map(targetRows.map((t) => [t.categoryId, t]));
+  const [settings] = await db
+    .select({ dismissed: budget.savingsSuggestionDismissed })
+    .from(budget)
+    .where(eq(budget.id, budgetId));
   return {
     readyToAssignCategoryId: await internalCategoryId(db, budgetId, "ready_to_assign"),
     uncategorizedCategoryId: await internalCategoryId(db, budgetId, "uncategorized"),
+    savingsSuggestionDismissed: settings?.dismissed ?? false,
     groups: groups.map((g) =>
       toGroupJson(
         g,

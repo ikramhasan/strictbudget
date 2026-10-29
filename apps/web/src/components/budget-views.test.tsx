@@ -23,6 +23,7 @@ const category = (id: string, groupId: string, name: string, hidden = false) => 
 const categories: CategoryList = {
   readyToAssignCategoryId: "rta",
   uncategorizedCategoryId: "uncat",
+  savingsSuggestionDismissed: false,
   groups: [
     {
       id: "g1",

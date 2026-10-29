@@ -12,6 +12,7 @@ import { CategoryList, type CategoryListActions } from "./category-list";
 const data: CategoryListData = {
   readyToAssignCategoryId: "rta",
   uncategorizedCategoryId: "uncat",
+  savingsSuggestionDismissed: false,
   groups: [
     {
       id: "g1",
@@ -67,6 +68,7 @@ const data: CategoryListData = {
 const withCards: CategoryListData = {
   readyToAssignCategoryId: "rta",
   uncategorizedCategoryId: "uncat",
+  savingsSuggestionDismissed: false,
   groups: [
     {
       id: "cc",

@@ -294,7 +294,11 @@ export async function copyIntoFreshStart(
   // The budget's settings carry over, its AI settings with them.
   await tx
     .update(budget)
-    .set({ aiEnabled: old.aiEnabled, aiAssistantButton: old.aiAssistantButton })
+    .set({
+      aiEnabled: old.aiEnabled,
+      aiAssistantButton: old.aiAssistantButton,
+      savingsSuggestionDismissed: old.savingsSuggestionDismissed,
+    })
     .where(eq(budget.id, newBudgetId));
 
   await tx

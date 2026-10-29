@@ -302,6 +302,12 @@ export const CategoryListSchema = z
     uncategorizedCategoryId: z
       .string()
       .describe("The internal Uncategorized category (reports filter and group by it)"),
+    savingsSuggestionDismissed: z
+      .boolean()
+      .describe(
+        'The plan\'s one-time "These look like savings" suggestion was answered, for everyone ' +
+          "on the budget (see setSavingsSuggestion)",
+      ),
   })
   .openapi("CategoryList");
 
@@ -350,6 +356,44 @@ export const listCategories = createRoute({
     },
     401: jsonError("Not signed in"),
     403: jsonError("The account's email address isn't confirmed"),
+    404: notFound,
+  },
+});
+
+export const setSavingsSuggestion = createRoute({
+  method: "put",
+  path: "/budgets/{budgetId}/savings-suggestion",
+  operationId: "setSavingsSuggestion",
+  tags: ["Categories"],
+  security: authSecurity,
+  middleware: [requireAuth] as const,
+  summary: "Answer the plan's suggestion to mark savings-like categories as savings",
+  description:
+    "Existing budgets are offered, once, to mark categories that look like savings (a balance " +
+    "target, a name such as Emergency fund) as savings categories. Marking them is " +
+    "updateCategory; this records that the suggestion was answered (or put back).",
+  request: {
+    params: BudgetParams,
+    body: json(
+      z
+        .object({ dismissed: z.boolean().describe("True once answered; false shows it again") })
+        .openapi("SetSavingsSuggestion"),
+    ),
+  },
+  responses: {
+    200: {
+      description: "Saved",
+      content: {
+        "application/json": {
+          schema: z.object({ dismissed: z.boolean() }).openapi("SavingsSuggestion"),
+        },
+      },
+    },
+    400: jsonError("Invalid input"),
+    401: jsonError("Not signed in"),
+    403: jsonError(
+      "The caller's role can't edit categories, or the account's email address isn't confirmed",
+    ),
     404: notFound,
   },
 });

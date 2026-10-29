@@ -1,5 +1,11 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { createBudget, createTestApp, resetDatabase, signUp } from "../../../test/helpers";
+import {
+  createBudget,
+  createTestApp,
+  resetDatabase,
+  shareBudget,
+  signUp,
+} from "../../../test/helpers";
 import { STARTER_SAVINGS } from "../../lib/starter-categories";
 
 const { app, db, close } = createTestApp();
@@ -90,7 +96,19 @@ async function setup() {
   };
   const need = async (categoryId: string, m: string, today = TODAY) =>
     (await month(m, today)).categories.find((c) => c.categoryId === categoryId)?.target;
-  return { cookie, base, groups, categories, named, setTarget, assign, spend, month, need };
+  return {
+    cookie,
+    budgetId: budget.id,
+    base,
+    groups,
+    categories,
+    named,
+    setTarget,
+    assign,
+    spend,
+    month,
+    need,
+  };
 }
 
 describe("savings categories", () => {
@@ -361,5 +379,33 @@ describe("savings goals", () => {
     });
     expect(res.status).toBe(200);
     expect((await categories()).find((c) => c.id === fund.id)?.target).toEqual(before);
+  });
+});
+
+describe("the savings suggestion", () => {
+  it("is answered once for everyone on the budget, by an editor, and kept by a fresh start", async () => {
+    const { cookie, budgetId, base } = await setup();
+    const dismissed = async (b = base, as = cookie) =>
+      (
+        await json<{ savingsSuggestionDismissed: boolean }>(
+          await send("GET", `${b}/categories`, as),
+        )
+      ).savingsSuggestionDismissed;
+    expect(await dismissed()).toBe(false);
+    const viewer = await shareBudget(app, cookie, budgetId, { role: "viewer" });
+    const refused = await send("PUT", `${base}/savings-suggestion`, viewer.cookie, {
+      dismissed: true,
+    });
+    expect(refused.status).toBe(403);
+    const editor = await shareBudget(app, cookie, budgetId, { name: "Sam", role: "editor" });
+    const res = await send("PUT", `${base}/savings-suggestion`, editor.cookie, { dismissed: true });
+    expect(res.status).toBe(200);
+    expect(await json<{ dismissed: boolean }>(res)).toEqual({ dismissed: true });
+    expect(await dismissed(base, viewer.cookie)).toBe(true);
+
+    const fresh = await json<{ id: string }>(
+      await send("POST", `${base}/fresh-start`, cookie, { name: "Fresh", date: TODAY }),
+    );
+    expect(await dismissed(`/v1/budgets/${fresh.id}`)).toBe(true);
   });
 });

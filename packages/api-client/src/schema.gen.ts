@@ -908,6 +908,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/budgets/{budgetId}/savings-suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Answer the plan's suggestion to mark savings-like categories as savings
+         * @description Existing budgets are offered, once, to mark categories that look like savings (a balance target, a name such as Emergency fund) as savings categories. Marking them is updateCategory; this records that the suggestion was answered (or put back).
+         */
+        put: operations["setSavingsSuggestion"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/budgets/{budgetId}/category-templates": {
         parameters: {
             query?: never;
@@ -3199,6 +3219,8 @@ export interface components {
             readyToAssignCategoryId: string;
             /** @description The internal Uncategorized category (reports filter and group by it) */
             uncategorizedCategoryId: string;
+            /** @description The plan's one-time "These look like savings" suggestion was answered, for everyone on the budget (see setSavingsSuggestion) */
+            savingsSuggestionDismissed: boolean;
         };
         CategoryGroup: {
             id: string;
@@ -3389,6 +3411,13 @@ export interface components {
              * @description The user's today. Defaults to the server's UTC date.
              */
             today?: string;
+        };
+        SavingsSuggestion: {
+            dismissed: boolean;
+        };
+        SetSavingsSuggestion: {
+            /** @description True once answered; false shows it again */
+            dismissed: boolean;
         };
         CategoryTemplateList: {
             templates: components["schemas"]["CategoryTemplate"][];
@@ -9230,6 +9259,68 @@ export interface operations {
             };
             /** @description MANAGED_CATEGORY: credit card payment targets can't be snoozed */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setSavingsSuggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                budgetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetSavingsSuggestion"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavingsSuggestion"];
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller's role can't edit categories, or the account's email address isn't confirmed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such budget, group or category, or the caller isn't a member */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
