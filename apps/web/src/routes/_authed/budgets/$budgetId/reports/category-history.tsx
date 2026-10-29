@@ -94,7 +94,8 @@ function Report() {
       request: {
         budgetId: budget.id,
         range: { from: month, to: month },
-        kind: "spending",
+        // The plan's Activity, saving included, as the cell shows.
+        kind: "activity",
         filters:
           "categoryId" in subject
             ? { categoryIds: subject.categoryId }

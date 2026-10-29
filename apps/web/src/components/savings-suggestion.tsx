@@ -106,16 +106,19 @@ export function SavingsSuggestion({
 export function SavingsSuggestionPanel({
   budgetId,
   list,
+  exclude,
   updateCategory,
 }: {
   budgetId: string;
   list: CategoryList;
+  /** Categories never to suggest (paired with a loan). */
+  exclude?: ReadonlySet<string>;
   updateCategory: (categoryId: string, patch: { savings: boolean }) => Promise<void>;
 }) {
   const queryClient = useQueryClient();
   const answer = $api.useMutation("put", "/v1/budgets/{budgetId}/savings-suggestion");
   if (list.savingsSuggestionDismissed) return null;
-  const categories = savingsSuggestions(list);
+  const categories = savingsSuggestions(list).filter((c) => !exclude?.has(c.id));
   if (categories.length === 0) return null;
   const dismiss = async () => {
     try {
@@ -132,7 +135,12 @@ export function SavingsSuggestionPanel({
       categories={categories}
       onMark={async (ids) => {
         for (const id of ids) await updateCategory(id, { savings: true });
-        await dismiss();
+        // A failed update shows its own toast; the suggestion stays until every one is marked.
+        const fresh = await queryClient.fetchQuery(categoriesQueryOptions(budgetId));
+        const marked = new Set(
+          fresh.groups.flatMap((g) => g.categories.filter((c) => c.savings).map((c) => c.id)),
+        );
+        if (ids.every((id) => marked.has(id))) await dismiss();
       }}
       onDismiss={dismiss}
     />

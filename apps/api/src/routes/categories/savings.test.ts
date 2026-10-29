@@ -162,6 +162,26 @@ describe("savings categories", () => {
   });
 });
 
+describe("loan-paired categories", () => {
+  it("can't be savings: they pay the loan", async () => {
+    const { cookie, base, named } = await setup();
+    const car = await named("🚘 Transportation");
+    const loan = await send("POST", `${base}/accounts`, cookie, {
+      name: "Car loan",
+      type: "auto_loan",
+      balance: "-1000000",
+      date: "2026-08-20",
+      interestRate: "5",
+      minimumPayment: "30000",
+      pairedCategoryId: car.id,
+    });
+    expect(loan.status).toBe(201);
+    const res = await send("PATCH", `${base}/categories/${car.id}`, cookie, { savings: true });
+    expect(res.status).toBe(409);
+    expect((await named("🚘 Transportation")).savings).toBe(false);
+  });
+});
+
 describe("savings goals", () => {
   it("keeps a safety fund: builds up at the monthly limit and refills after spending", async () => {
     const { named, setTarget, assign, spend, need, month } = await setup();

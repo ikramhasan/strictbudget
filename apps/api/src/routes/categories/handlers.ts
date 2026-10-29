@@ -186,6 +186,15 @@ export const updateCategoryHandler: RouteHandler<typeof updateCategory, Env> = a
   if (row.linkedAccountId && data.savings) {
     throw managedError("A payment category pays its card, so it can't be a savings category.");
   }
+  if (data.savings && !row.savings) {
+    const [loan] = await db
+      .select({ id: budgetAccount.id })
+      .from(budgetAccount)
+      .where(eq(budgetAccount.pairedCategoryId, categoryId));
+    if (loan) {
+      throw managedError("This category pays a loan, so it can't be a savings category.");
+    }
+  }
   if (Object.keys(data).length > 0) {
     const [updated] = await db
       .update(category)

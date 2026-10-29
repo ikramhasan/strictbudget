@@ -165,6 +165,16 @@ function BudgetPage() {
   const history = useUndo();
   const targetActions = useTargetActions(budget.id, history.record);
   const accounts = useQuery(accountsQueryOptions(budget.id));
+  /** Categories paired with a loan: they pay the loan, so they're never offered as savings. */
+  const loanCategoryIds = useMemo(
+    () =>
+      new Set(
+        (accounts.data?.accounts ?? []).flatMap((a) =>
+          a.pairedCategoryId ? [a.pairedCategoryId] : [],
+        ),
+      ),
+    [accounts.data],
+  );
   const [addingAccount, setAddingAccount] = useState(false);
   const { collapsed, setCollapsed } = useCollapsedGroups(budget.id);
   const { filter, setFilter } = useBudgetFilter(budget.id);
@@ -771,6 +781,7 @@ function BudgetPage() {
             collapsed={collapsed}
             onCollapsedChange={setCollapsed}
             addGroupDisabled={Boolean(customView)}
+            loanCategoryIds={loanCategoryIds}
           />
         </div>
       )}
@@ -815,6 +826,7 @@ function BudgetPage() {
         <SavingsSuggestionPanel
           budgetId={budget.id}
           list={categories.data}
+          exclude={loanCategoryIds}
           updateCategory={actions.updateCategory}
         />
       )}
@@ -1280,8 +1292,9 @@ function Inspector({
               toInput={assign.toInput}
               dateFormat={budget.dateFormat}
               currency={targetCurrency}
+              // A goal stays a goal on a category switched back to spending.
               savings={
-                category.savings && !pairedLoan
+                (category.savings || category.target?.goal) && !pairedLoan
                   ? {
                       month: month.month,
                       saved: savedSoFar(totals, category.target?.goal === "save_up"),

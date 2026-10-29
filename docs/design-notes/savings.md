@@ -23,10 +23,10 @@ makes "for a goal" a first-class answer instead of a naming convention.
 - **Savings categories** (`category.savings`): a category is Spending or Savings, chosen when it's
   created (or in the rename popover and the inspector). Savings rows carry a piggy bank; the month
   summary splits Available into **In Savings** (savings categories' positive Available, hidden ones
-  included under All) and **Available to Spend**. Payment categories can't be savings; a loan's
-  paired category isn't offered it. New budgets start with Emergency fund and Vacation as savings;
-  template imports mark categories in savings groups or named like savings (`looksLikeSavings`,
-  whole words, so "Emergency Radio" doesn't count).
+  included under All) and **Available to Spend**. Payment categories can't be savings, nor can a
+  loan's paired category (the API refuses both; the UI doesn't offer them). New budgets start with
+  Emergency fund and Vacation as savings; template imports mark categories in savings groups or
+  named like savings (`looksLikeSavings`, whole words, so "Emergency Radio" doesn't count).
 - **Savings goals** (`category_target.goal`, `goal_amount`), stored on the target cadence that
   works them out, so Underfunded, Cost to Be Me, snooze, currency and undo work unchanged:
   - **Save up for something**: a total by a date (custom one-time set aside) or so much a month

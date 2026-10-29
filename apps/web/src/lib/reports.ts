@@ -22,7 +22,7 @@ import { monthName, monthLabel as shortMonthLabel } from "./months";
 
 export type ReportSum = components["schemas"]["ReportSum"];
 export type ReportTransaction = components["schemas"]["ReportTransaction"];
-export type ReportKind = "spending" | "income" | "saving";
+export type ReportKind = "spending" | "income" | "saving" | "activity";
 export type ReportGrouping = "month" | "day" | "group" | "category" | "payee" | "account" | "flag";
 
 const month = z.string().refine(isBudgetMonth).optional().catch(undefined);

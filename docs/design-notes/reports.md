@@ -14,7 +14,9 @@
   Spending Breakdown notes what was saved and links to Income v Expense, which has a **Saved**
   section (positive, per category, before Net Income; in the export too). Net Income stays income
   + expenses − saved (what's left over, the same number as before); its savings rate row is (Net
-  Income + Saved) ÷ Income. Budget vs Actual keeps the plan's own Activity.
+  Income + Saved) ÷ Income. Reports that show the plan's Activity (Budget vs Actual and Category
+  History's drill-downs, spending pace's daily run-down of Available) read kind `activity`
+  (spending + saving). Spending by Flag and the monthly summary read `spending`.
 - **Reports home** is the entry point ("Overview", the first tab). The five core reports follow as
   tabs, then the other reports (Budget vs Actual first).
 - **Comparison mode and drill-down on every report.** Drill-down opens one side sheet; its rows

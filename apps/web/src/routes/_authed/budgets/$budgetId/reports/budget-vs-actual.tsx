@@ -78,7 +78,8 @@ function Report() {
       request: {
         budgetId: budget.id,
         range: month ? { from: month, to: month } : state.range,
-        kind: "spending",
+        // The plan's Activity, saving included, as the cell shows.
+        kind: "activity",
         filters: { categoryIds: row.categoryId },
       },
     });

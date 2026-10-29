@@ -219,6 +219,35 @@ describe("spending pace", () => {
     );
   });
 
+  it("runs Available down with saving lines too, as the plan does", async () => {
+    const t = await setup();
+    const base = `/v1/budgets/${t.budgetId}`;
+    const brokerage = (await (
+      await send("POST", `${base}/accounts`, t.cookie, {
+        name: "Brokerage",
+        type: "asset",
+        balance: "0",
+        date: "2026-10-01",
+      })
+    ).json()) as { id: string };
+    const { accounts } = (await (await send("GET", `${base}/accounts`, t.cookie)).json()) as {
+      accounts: { id: string; type: string }[];
+    };
+    const checking = accounts.find((a) => a.type === "checking");
+    // $50 of Groceries' money moved to the brokerage is saving, not spending, yet it leaves
+    // Groceries' Available, so pace counts it.
+    const res = await send("POST", `${base}/transactions?today=2026-11-10`, t.cookie, {
+      accountId: checking?.id,
+      date: "2026-11-05",
+      amount: "-5000",
+      transferAccountId: brokerage.id,
+      categoryId: t.ids.groceries,
+    });
+    expect(res.status).toBe(201);
+    const groceries = (await t.read()).categories.find((c) => c.categoryId === t.ids.groceries);
+    expect(groceries?.pace).toMatchObject({ start: "30000", spent: "5000", remaining: "25000" });
+  });
+
   it("counts refunds, money assigned mid-month and money moved out", async () => {
     const t = await setup();
     await t.spend(t.ids.groceries, "2026-11-03", "-15000");

@@ -37,9 +37,11 @@ import { type Db, internalCategoryId, internalPayeeId } from "./ledger";
  *   a transfer to (or back from) a tracking asset account, whatever its category, and any line in
  *   a savings category whose goal is Keep saving. Spending a save-up goal or a safety fund on what
  *   it's for is spending.
+ * - `activity`: `spending` and `saving` together: the plan's category Activity, for reports that
+ *   show it (Budget vs Actual, Category History, spending pace).
  * - `income`: lines on budget accounts categorized to Ready to Assign, except starting balances.
  */
-export const REPORT_KINDS = ["spending", "income", "saving"] as const;
+export const REPORT_KINDS = ["spending", "income", "saving", "activity"] as const;
 export type ReportKind = (typeof REPORT_KINDS)[number];
 
 export const REPORT_GROUPINGS = [
@@ -143,10 +145,12 @@ function whereFor(budgetId: string, ids: ReportIds, filter: ReportFilter, source
       ? and(spent, sql`not ${savingLine(source)}`)
       : filter.kind === "saving"
         ? and(spent, savingLine(source))
-        : and(
-            eq(source.categoryId as SQL, ids.readyToAssign),
-            or(isNull(source.payeeId), ne(source.payeeId, ids.startingBalance)),
-          );
+        : filter.kind === "activity"
+          ? spent
+          : and(
+              eq(source.categoryId as SQL, ids.readyToAssign),
+              or(isNull(source.payeeId), ne(source.payeeId, ids.startingBalance)),
+            );
   return and(
     eq(transaction.budgetId, budgetId),
     gte(transaction.date, filter.start),

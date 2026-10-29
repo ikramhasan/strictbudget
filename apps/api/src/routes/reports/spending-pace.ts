@@ -286,7 +286,8 @@ export const getSpendingPaceHandler: RouteHandler<typeof getSpendingPace, Env> =
     budgetMonthJson(deps.db, deps, budget, month, today),
     paceCategories(deps.db, budgetId),
     automaticReasons(deps.db, budgetId),
-    reportSums(deps.db, budgetId, { kind: "spending", start, end: end < today ? end : today }, [
+    // The plan's Activity day by day, saving included, to run Available down.
+    reportSums(deps.db, budgetId, { kind: "activity", start, end: end < today ? end : today }, [
       "category",
       "day",
     ]),

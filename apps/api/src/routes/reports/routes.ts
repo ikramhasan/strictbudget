@@ -29,8 +29,8 @@ const ReportQuery = z.object({
       "`spending`: lines on budget accounts with a category other than Ready to Assign " +
         "(transfers between budget accounts drop out), except saving lines. `saving`: the lines " +
         "that leave the plan as saving instead: transfers to or from tracking asset accounts, " +
-        "and lines in savings categories whose goal is Keep saving (`spending` + `saving` is the " +
-        "plan's Activity). `income`: lines on budget accounts categorized to Ready to Assign, " +
+        "and lines in savings categories whose goal is Keep saving. `activity`: both, the plan's " +
+        "category Activity. `income`: lines on budget accounts categorized to Ready to Assign, " +
         "starting balances left out",
     ),
   accountIds: list(z.string(), "Comma-separated account ids"),

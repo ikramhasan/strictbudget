@@ -200,6 +200,7 @@ export function CategoryList({
   collapsed = NO_GROUPS,
   onCollapsedChange,
   addGroupDisabled = false,
+  loanCategoryIds,
 }: {
   data: CategoryListData;
   actions: CategoryListActions;
@@ -208,6 +209,8 @@ export function CategoryList({
   onCollapsedChange?: (collapsed: ReadonlySet<string>) => void;
   /** Greys out the header's "Add a category group" button (as in a custom view). */
   addGroupDisabled?: boolean;
+  /** Categories paired with a loan, which aren't offered as savings. */
+  loanCategoryIds?: ReadonlySet<string>;
 }) {
   // A viewer can't add, rename, hide, delete or reorder.
   const readOnly = useOptionalBudget()?.readOnly ?? false;
@@ -565,6 +568,7 @@ export function CategoryList({
                       return (
                         <CategoryRow
                           key={categoryId}
+                          loanPaired={loanCategoryIds?.has(categoryId) ?? false}
                           category={category}
                           index={index}
                           groupId={groupId}
@@ -905,6 +909,7 @@ function CategoryRow({
   onDelete,
   keyEdit = false,
   onKeyEditStarted,
+  loanPaired = false,
 }: {
   category: Category;
   index: number;
@@ -917,6 +922,8 @@ function CategoryRow({
   /** Up/Down arrived here: open the Assigned amount for typing. */
   keyEdit?: boolean;
   onKeyEditStarted?: () => void;
+  /** Paired with a loan: not offered as savings. */
+  loanPaired?: boolean;
 }) {
   const { format, assign, move, selection } = figures ?? {};
   const isPayment = Boolean(category.linkedAccountId);
@@ -1010,7 +1017,7 @@ function CategoryRow({
             nameLockedReason={
               isPayment ? "Named after its credit account. Rename the account instead." : undefined
             }
-            withKind={!isPayment}
+            withKind={!isPayment && (!loanPaired || category.savings)}
             initial={{ name: category.name, note: category.note, savings: category.savings }}
             onSubmit={({ name, note, savings }) =>
               actions.updateCategory(category.id, {

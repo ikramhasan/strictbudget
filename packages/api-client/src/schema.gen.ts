@@ -14530,8 +14530,8 @@ export interface operations {
                 from: string;
                 /** @description Last month, YYYY-MM (inclusive) */
                 to: string;
-                /** @description `spending`: lines on budget accounts with a category other than Ready to Assign (transfers between budget accounts drop out), except saving lines. `saving`: the lines that leave the plan as saving instead: transfers to or from tracking asset accounts, and lines in savings categories whose goal is Keep saving (`spending` + `saving` is the plan's Activity). `income`: lines on budget accounts categorized to Ready to Assign, starting balances left out */
-                kind?: "spending" | "income" | "saving";
+                /** @description `spending`: lines on budget accounts with a category other than Ready to Assign (transfers between budget accounts drop out), except saving lines. `saving`: the lines that leave the plan as saving instead: transfers to or from tracking asset accounts, and lines in savings categories whose goal is Keep saving. `activity`: both, the plan's category Activity. `income`: lines on budget accounts categorized to Ready to Assign, starting balances left out */
+                kind?: "spending" | "income" | "saving" | "activity";
                 /** @description Comma-separated account ids */
                 accountIds?: string;
                 /** @description Comma-separated category group ids */
@@ -14613,8 +14613,8 @@ export interface operations {
                 from: string;
                 /** @description Last month, YYYY-MM (inclusive) */
                 to: string;
-                /** @description `spending`: lines on budget accounts with a category other than Ready to Assign (transfers between budget accounts drop out), except saving lines. `saving`: the lines that leave the plan as saving instead: transfers to or from tracking asset accounts, and lines in savings categories whose goal is Keep saving (`spending` + `saving` is the plan's Activity). `income`: lines on budget accounts categorized to Ready to Assign, starting balances left out */
-                kind?: "spending" | "income" | "saving";
+                /** @description `spending`: lines on budget accounts with a category other than Ready to Assign (transfers between budget accounts drop out), except saving lines. `saving`: the lines that leave the plan as saving instead: transfers to or from tracking asset accounts, and lines in savings categories whose goal is Keep saving. `activity`: both, the plan's category Activity. `income`: lines on budget accounts categorized to Ready to Assign, starting balances left out */
+                kind?: "spending" | "income" | "saving" | "activity";
                 /** @description Comma-separated account ids */
                 accountIds?: string;
                 /** @description Comma-separated category group ids */
