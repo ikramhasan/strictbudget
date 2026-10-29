@@ -1204,7 +1204,7 @@ function Inspector({
         }
         available={available}
         upcoming={upcoming}
-        history={<CategoryHistoryPanel categoryId={only} month={month.month} />}
+        history={<CategoryHistoryPanel key={only} categoryId={only} month={month.month} />}
         note={category.note}
         onNoteChange={(note) => onNoteChange(only, note)}
         target={
