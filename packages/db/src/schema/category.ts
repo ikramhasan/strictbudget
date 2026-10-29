@@ -91,6 +91,12 @@ export const category = pgTable(
       .references(() => budgetAccount.id, { onDelete: "cascade" }),
     /** Spending pace: in or out whatever the automatic rule says; null follows it. */
     pace: text({ enum: PACE_SETTINGS }),
+    /**
+     * Savings rate: spending in this category is money put aside (investments, savings funded
+     * through a category), added back as saving rather than counted as spent. Spending pace leaves
+     * it out by default.
+     */
+    countsAsSaving: boolean().notNull().default(false),
     ...timestamps,
   },
   (t) => [

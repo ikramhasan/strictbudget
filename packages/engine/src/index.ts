@@ -276,6 +276,7 @@ export {
   comparisonRange,
   type DelimitedCell,
   exportDelimiter,
+  foldTail,
   type MonthRange,
   monthsIn,
   percentOf,
@@ -291,9 +292,18 @@ export {
   shareLabel,
   shiftRange,
   splitSpending,
+  TOP_INCOME_SOURCES,
   toDelimited,
 } from "./reports";
 export { divideRounded, type RoundingMode } from "./rounding";
+export {
+  addSavings,
+  NO_SAVINGS,
+  rollingSavings,
+  type SavingsFigures,
+  type SavingsMonth,
+  savingsFigures,
+} from "./savings-rate";
 export {
   firstOccurrenceAfter,
   nextOccurrence,

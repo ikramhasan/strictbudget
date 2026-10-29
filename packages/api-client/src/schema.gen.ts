@@ -523,7 +523,7 @@ export interface paths {
         delete: operations["deleteBudget"];
         options?: never;
         head?: never;
-        /** Rename a budget or change its formats */
+        /** Rename a budget, change its formats or set its savings rate goal */
         patch: operations["updateBudget"];
         trace?: never;
     };
@@ -2357,6 +2357,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/budgets/{budgetId}/reports/savings-rate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Savings rate by month, with a rolling 12-month rate and what counts as saving
+         * @description Income and spending are Income v Expense's. The rate adds back spending in categories that count as saving and money moved to tracking asset accounts (not loans or liabilities). Each spending line is in one bucket only: a transfer to a tracking account in a saving category counts under the category. The rolling rate sums the 12 months up to each month (fewer before the budget's first transaction), it doesn't average monthly rates. Transactions after `today` don't count yet.
+         */
+        get: operations["getSavingsRate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/budgets/{budgetId}/reports/savings-rate/categories/{categoryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Mark a category as "Counts as saving", or unmark it
+         * @description Spending in a category that counts as saving is added back in the savings rate, and spending pace leaves the category out by default.
+         */
+        put: operations["setCategorySaving"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/budgets/{budgetId}/events": {
         parameters: {
             query?: never;
@@ -2710,6 +2750,8 @@ export interface components {
              * @description When the signed-in user last opened this budget; null if never
              */
             lastUsedAt: string | null;
+            /** @description The savings rate report's goal in basis points (2000 = 20%); null for none */
+            savingsRateGoal: number | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2796,6 +2838,7 @@ export interface components {
                 /** @default false */
                 aiAssistantButton: boolean;
                 viewOrder: string[] | null;
+                savingsRateGoal?: number | null;
             };
             categoryGroups: {
                 id: string;
@@ -2818,6 +2861,7 @@ export interface components {
                 linkedAccountId: string | null;
                 /** @enum {string|null} */
                 pace?: "include" | "exclude" | null;
+                countsAsSaving?: boolean;
             }[];
             accounts: {
                 id: string;
@@ -3078,6 +3122,8 @@ export interface components {
              * @enum {string}
              */
             dateFormat?: "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD" | "DD.MM.YYYY" | "YYYY/MM/DD" | "DD-MM-YYYY";
+            /** @description The savings rate goal in basis points (2000 = 20%); null clears it */
+            savingsRateGoal?: number | null;
         };
         FreshStart: {
             /**
@@ -5558,6 +5604,78 @@ export interface components {
         SetCategoryPace: {
             /** @enum {string|null} */
             pace: "include" | "exclude" | null;
+        };
+        SavingsRate: {
+            /** @description The budget's currency, every amount's */
+            currency: components["schemas"]["CurrencyCode"];
+            /** @description Month of the budget's oldest transaction, null when there's none */
+            firstMonth: string | null;
+            /** @description The budget's goal in basis points (2000 = 20%); null for none */
+            goal: number | null;
+            months: components["schemas"]["SavingsRateMonth"][];
+            total: components["schemas"]["SavingsRateFigures"];
+            /** @description The categories that can count as saving, in plan order (hidden ones only when they do) */
+            categories: components["schemas"]["SavingsRateCategory"][];
+        };
+        SavingsRateMonth: {
+            /** @description Income v Expense's income (Ready to Assign, no starting balances) */
+            income: string;
+            /** @description The part of `income` brought back in from tracking asset accounts: not income for the saving rate, and taken off `movedToTracking` */
+            incomeFromTracking: string;
+            /** @description Income v Expense's net income: left over */
+            netIncome: string;
+            /** @description Spending in categories that count as saving, added back (a refund lowers it) */
+            savedViaCategories: string;
+            /** @description Moved from budget accounts to tracking asset accounts in other categories, less what came back */
+            movedToTracking: string;
+            /** @description netIncome + savedViaCategories + movedToTracking */
+            saved: string;
+            /** @description Percent: saved ÷ (income − incomeFromTracking); null when that is ≤ 0 */
+            rate: number | null;
+            /** @description Income v Expense's rate in percent: netIncome ÷ income; null when income ≤ 0 */
+            plainRate: number | null;
+            month: string;
+            /** @description `rate` over the 12 months ending with this one */
+            rollingRate: number | null;
+            /** @description `plainRate` over the 12 months ending with this one */
+            rollingPlainRate: number | null;
+        };
+        /** @description The whole range */
+        SavingsRateFigures: {
+            /** @description Income v Expense's income (Ready to Assign, no starting balances) */
+            income: string;
+            /** @description The part of `income` brought back in from tracking asset accounts: not income for the saving rate, and taken off `movedToTracking` */
+            incomeFromTracking: string;
+            /** @description Income v Expense's net income: left over */
+            netIncome: string;
+            /** @description Spending in categories that count as saving, added back (a refund lowers it) */
+            savedViaCategories: string;
+            /** @description Moved from budget accounts to tracking asset accounts in other categories, less what came back */
+            movedToTracking: string;
+            /** @description netIncome + savedViaCategories + movedToTracking */
+            saved: string;
+            /** @description Percent: saved ÷ (income − incomeFromTracking); null when that is ≤ 0 */
+            rate: number | null;
+            /** @description Income v Expense's rate in percent: netIncome ÷ income; null when income ≤ 0 */
+            plainRate: number | null;
+        };
+        SavingsRateCategory: {
+            categoryId: string;
+            name: string;
+            groupId: string;
+            groupName: string;
+            countsAsSaving: boolean;
+            /** @description Not marked, but most of its outflows in the range went to tracking asset accounts */
+            suggested: boolean;
+            /** @description Its net spending in the range (negative) */
+            spent: string;
+        };
+        CategorySaving: {
+            categoryId: string;
+            countsAsSaving: boolean;
+        };
+        SetCategorySaving: {
+            countsAsSaving: boolean;
         };
         ExportSelection: {
             selection: components["schemas"]["TransactionSelection"];
@@ -14835,6 +14953,134 @@ export interface operations {
                 };
             };
             /** @description Invalid setting, or a category pace doesn't list (card payments, internal) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller's role can't change categories, or the account's email address isn't confirmed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such budget or category, or the caller isn't a member */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getSavingsRate: {
+        parameters: {
+            query: {
+                /** @description First month, YYYY-MM (from 0001-01) */
+                from: string;
+                /** @description Last month, YYYY-MM (inclusive); at most 1200 months after `from` */
+                to: string;
+                /** @description The user's today; later transactions don't count. Defaults to the server's UTC date. */
+                today?: string;
+            };
+            header?: never;
+            path: {
+                budgetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The report */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavingsRate"];
+                };
+            };
+            /** @description Invalid query, `from` after `to` or before 0001-01, or a range over 1200 months */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The account's email address isn't confirmed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such budget, or the caller isn't a member */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    setCategorySaving: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                budgetId: string;
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCategorySaving"];
+            };
+        };
+        responses: {
+            /** @description The category's setting */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategorySaving"];
+                };
+            };
+            /** @description Invalid setting, or an internal or card payment category */
             400: {
                 headers: {
                     [name: string]: unknown;

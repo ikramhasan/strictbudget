@@ -193,8 +193,8 @@ The rest is below.
 - The setup flow (`/budgets/$id/setup`) is a checklist: "Personalize plan", "Add accounts" and
   "Fund categories" (which opens the budget to assign).
 - Fresh start (`apps/api/src/lib/fresh-start.ts`) asks for the new plan's name and copies
-  partners, categories (with their targets, which start in the fresh start's month, and their
-  notes), payees, accounts (with their stars), custom views and their order, and scheduled
+  partners, categories (with their targets, which start in the fresh start's month, their notes,
+  their spending pace setting and "Counts as saving"), the savings rate goal and AI settings, payees, accounts (with their stars), custom views and their order, and scheduled
   transactions (future-dated transactions are schedules). It also copies payee renaming rules and
   payee categorization settings with their auto-categorization defaults. It doesn't copy month
   notes or expected income. The old plan becomes "Name (Archived on YYYY-MM-DD)"; it can fresh

@@ -54,9 +54,9 @@
 
 ## Other reports
 
-- Built: Budget vs Actual, Spending pace. Open: cash-flow forecast ([#64](https://github.com/ikramhasan/strictbudget/issues/64)), cash flow Sankey
+- Built: Budget vs Actual, Spending pace, Savings rate and income sources. Open: cash-flow forecast ([#64](https://github.com/ikramhasan/strictbudget/issues/64)), cash flow Sankey
   ([#86](https://github.com/ikramhasan/strictbudget/issues/86)), category history ([#87](https://github.com/ikramhasan/strictbudget/issues/87)), payees and recurring charges ([#88](https://github.com/ikramhasan/strictbudget/issues/88)), savings rate and
-  income sources ([#89](https://github.com/ikramhasan/strictbudget/issues/89)), debt payoff and interest paid ([#90](https://github.com/ikramhasan/strictbudget/issues/90)), spending by flag ([#91](https://github.com/ikramhasan/strictbudget/issues/91));
+  income sources ([#89](https://github.com/ikramhasan/strictbudget/issues/89), built), debt payoff and interest paid ([#90](https://github.com/ikramhasan/strictbudget/issues/90)), spending by flag ([#91](https://github.com/ikramhasan/strictbudget/issues/91));
   later: monthly review and year in review ([#92](https://github.com/ikramhasan/strictbudget/issues/92)), saved reports, dashboard and PDF ([#65](https://github.com/ikramhasan/strictbudget/issues/65)).
 
 ### Budget vs Actual
@@ -102,6 +102,35 @@
 - A group's line counts that group's categories that are in pace; a single category's line shows
   it even when it's out of pace. Past months show the finished burndown; future months return 400
   and the report doesn't offer them.
+
+### Savings rate and income sources
+
+- **Two rates, and a toggle between them.** The plain rate is Income v Expense's (net income ÷
+  income), so it can be checked against YNAB. The default rate counts savings, which is
+  strictbudget's own, a deliberate difference from YNAB: (left over + spending in categories that
+  count as saving + money moved to tracking asset accounts) ÷ income. In YNAB, money funded into
+  investments through a category shows only as spending.
+- **Each spending line is in one bucket**, decided in SQL: its category counts as saving, else it
+  is a transfer to a tracking **asset** account, else it is ordinary spending. A transfer to the
+  brokerage in an Investments category that counts as saving is counted once. Loan and liability
+  accounts aren't saving (debt payoff is [#90](https://github.com/ikramhasan/strictbudget/issues/90)).
+  Refunds and money brought back into a bucket net against it.
+- **Income stays Income v Expense's.** Money brought back from a tracking asset account into Ready
+  to Assign is income there. The saving rate takes it off its income and off "moved", so moving
+  $1,000 out and $400 back saves $600.
+- **"Counts as saving"** is a per-category setting (`category.counts_as_saving`, off by default).
+  It is switched on the report itself, as Spending pace's switch is. A category is suggested when
+  at least half of its outflows in the range went to tracking accounts. The goal is per budget,
+  in basis points, and is drawn as a dashed line.
+- A month with no income (or none left after money from tracking accounts) has no rate: a gap,
+  not 0% or ∞. The rolling 12-month rate sums the window's money (fewer months before the first
+  transaction); it doesn't average monthly rates.
+- **Income sources:** the five largest payees in the range, the rest folded into "Other income".
+  The cash flow report folds the same way, with one helper (`foldTail`). Steadiness counts months
+  received up to the current month. The headline compares with the previous period of the same
+  length.
+- The Reports home tile is still Income v Expense's rate of the last complete month. It opens this
+  report on the plain rate, so the two numbers match.
 
 ## Rules every report follows
 

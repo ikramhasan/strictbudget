@@ -241,6 +241,7 @@ export async function copyIntoFreshStart(
       hidden: c.hidden,
       linkedAccountId: c.linkedAccountId ? (accountIds.get(c.linkedAccountId) ?? null) : null,
       pace: c.pace,
+      countsAsSaving: c.countsAsSaving,
     });
     const target = targets.get(c.id);
     if (target) {
@@ -288,10 +289,14 @@ export async function copyIntoFreshStart(
   await copyPayeeCategories(tx, old.id, { categoryIds, payeeIds });
   await copySchedules(tx, old.id, newBudgetId, { accountIds, categoryIds, payeeIds });
   await copyViews(tx, old, newBudgetId, categoryIds);
-  // The budget's settings carry over, its AI settings with them.
+  // The budget's settings carry over, its AI settings and savings rate goal with them.
   await tx
     .update(budget)
-    .set({ aiEnabled: old.aiEnabled, aiAssistantButton: old.aiAssistantButton })
+    .set({
+      aiEnabled: old.aiEnabled,
+      aiAssistantButton: old.aiAssistantButton,
+      savingsRateGoal: old.savingsRateGoal,
+    })
     .where(eq(budget.id, newBudgetId));
 
   await tx

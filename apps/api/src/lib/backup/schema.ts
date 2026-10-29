@@ -63,6 +63,8 @@ const BudgetSchema = z.object({
   aiAssistantButton: z.boolean().default(false),
   /** Preset view keys and `views` ids. */
   viewOrder: z.array(z.string()).nullable(),
+  /** The savings rate goal in basis points; missing from backups made before it existed. */
+  savingsRateGoal: z.number().int().min(0).max(10000).nullish(),
 });
 
 const CategoryGroupSchema = z.object({
@@ -85,6 +87,8 @@ const CategorySchema = z.object({
   linkedAccountId: Ref,
   /** Spending pace's setting; backups from before it have none. */
   pace: z.enum(PACE_SETTINGS).nullish(),
+  /** Savings rate's "Counts as saving"; missing from backups made before it existed. */
+  countsAsSaving: z.boolean().optional(),
 });
 
 /** A file import's remembered settings, kept as they are (they only steer the import dialog). */

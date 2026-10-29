@@ -137,8 +137,9 @@ function ReportsHome() {
                   label: "Savings rate over the last 12 months",
                 }}
                 target={{
-                  to: "/budgets/$budgetId/reports/income-expense",
-                  search: { range: "last_12_months" },
+                  to: "/budgets/$budgetId/reports/savings-rate",
+                  // The tile is Income v Expense's rate; the report opens on the same one.
+                  search: { range: "last_12_months", mode: "plain" },
                 }}
               />
             )}

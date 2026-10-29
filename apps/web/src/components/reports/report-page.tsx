@@ -16,6 +16,7 @@ export const PARITY_REPORTS = [
 export const EXTRA_REPORTS = [
   { to: "/budgets/$budgetId/reports/budget-vs-actual", label: "Budget vs Actual" },
   { to: "/budgets/$budgetId/reports/spending-pace", label: "Spending Pace" },
+  { to: "/budgets/$budgetId/reports/savings-rate", label: "Savings Rate" },
   { to: "/budgets/$budgetId/reports/credit-card-health", label: "Credit Card Health" },
 ] as const;
 

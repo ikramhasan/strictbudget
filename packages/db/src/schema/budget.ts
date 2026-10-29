@@ -75,6 +75,8 @@ export const budget = pgTable("budget", {
   aiEnabled: boolean().notNull().default(false),
   /** The floating AI chat button shows on this budget's pages. Only on while `aiEnabled` is. */
   aiAssistantButton: boolean().notNull().default(false),
+  /** The savings rate report's goal line, in basis points (2000 = 20%); null for none. */
+  savingsRateGoal: integer(),
   ...timestamps,
 });
 
