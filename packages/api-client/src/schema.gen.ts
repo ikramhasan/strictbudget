@@ -2397,6 +2397,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/budgets/{budgetId}/reports/cash-flow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Where the money came from and where it went (the cash flow Sankey's flows)
+         * @description Income v Expense's income per payee and spending per category, each on the side its sign puts it: income `sources` (and income `paidBack` when a payee nets below zero), spending by `groups` and their categories (and `refunds` when a category got back more than it spent). What's left is `saved`; a shortfall comes in `fromSavings`. Every amount is positive and sources + refunds + fromSavings = groups + paidBack + saved, exactly. Transactions after `today` don't count yet.
+         */
+        get: operations["getCashFlow"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/budgets/{budgetId}/events": {
         parameters: {
             query?: never;
@@ -5676,6 +5696,49 @@ export interface components {
         };
         SetCategorySaving: {
             countsAsSaving: boolean;
+        };
+        CashFlow: {
+            /** @description The budget's currency, every amount's */
+            currency: components["schemas"]["CurrencyCode"];
+            /** @description Income v Expense's total income */
+            income: string;
+            /** @description Income v Expense's total expenses (negative) */
+            spending: string;
+            /** @description Payees whose income nets above zero */
+            sources: components["schemas"]["CashFlowSource"][];
+            /** @description Payees whose income nets below zero, as the amount paid back */
+            paidBack: components["schemas"]["CashFlowSource"][];
+            /** @description Categories where more came back than was spent */
+            refunds: (components["schemas"]["CashFlowCategory"] & {
+                groupId: string | null;
+            })[];
+            /** @description Uncategorized first, then the plan's groups in order */
+            groups: components["schemas"]["CashFlowGroup"][];
+            /** @description Income left over (≥ 0) */
+            saved: string;
+            /** @description Spending beyond income (≥ 0) */
+            fromSavings: string;
+        };
+        CashFlowSource: {
+            /** @description null: income without a payee */
+            payeeId: string | null;
+            name: string;
+            /** @description Positive */
+            amount: string;
+        };
+        CashFlowCategory: {
+            categoryId: string;
+            name: string;
+            /** @description Positive */
+            amount: string;
+        };
+        CashFlowGroup: {
+            /** @description null: Uncategorized, and categories outside the plan's groups */
+            groupId: string | null;
+            name: string;
+            /** @description Its categories' sum */
+            amount: string;
+            categories: components["schemas"]["CashFlowCategory"][];
         };
         ExportSelection: {
             selection: components["schemas"]["TransactionSelection"];
@@ -15108,6 +15171,73 @@ export interface operations {
                 };
             };
             /** @description No such budget or category, or the caller isn't a member */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getCashFlow: {
+        parameters: {
+            query: {
+                /** @description First month, YYYY-MM */
+                from: string;
+                /** @description Last month, YYYY-MM (inclusive) */
+                to: string;
+                /** @description Comma-separated budget account ids */
+                accountIds?: string;
+                /** @description The user's today; later transactions don't count. Defaults to the server's UTC date. */
+                today?: string;
+            };
+            header?: never;
+            path: {
+                budgetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The flows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashFlow"];
+                };
+            };
+            /** @description Invalid query, or `from` after `to` */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The account's email address isn't confirmed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such budget, or the caller isn't a member */
             404: {
                 headers: {
                     [name: string]: unknown;

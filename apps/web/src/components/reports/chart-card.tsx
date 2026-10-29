@@ -21,6 +21,7 @@ export function ChartCard({
   table,
   fileName,
   className,
+  forceTable,
 }: {
   title: string;
   view: ChartView;
@@ -32,6 +33,8 @@ export function ChartCard({
   /** The PNG's name, without ".png". */
   fileName: string;
   className?: string;
+  /** Show the table without the chart toggle (a chart that can't fit, e.g. on a phone). */
+  forceTable?: boolean;
 }) {
   const chartRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
@@ -53,7 +56,7 @@ export function ChartCard({
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="font-semibold">{title}</h2>
         <div className="ml-auto flex items-center gap-1">
-          {view === "chart" && !loading && !empty && (
+          {view === "chart" && !forceTable && !loading && !empty && (
             <Button
               variant="ghost"
               size="icon"
@@ -65,21 +68,23 @@ export function ChartCard({
               <ImageDown />
             </Button>
           )}
-          <ToggleGroup
-            type="single"
-            variant="outline"
-            size="sm"
-            value={view}
-            onValueChange={(v) => v && onViewChange(v as ChartView)}
-            aria-label="Show as"
-          >
-            <ToggleGroupItem value="chart" aria-label="Chart">
-              <ChartColumn />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="table" aria-label="Table">
-              <Table2 />
-            </ToggleGroupItem>
-          </ToggleGroup>
+          {!forceTable && (
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              value={view}
+              onValueChange={(v) => v && onViewChange(v as ChartView)}
+              aria-label="Show as"
+            >
+              <ToggleGroupItem value="chart" aria-label="Chart">
+                <ChartColumn />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="table" aria-label="Table">
+                <Table2 />
+              </ToggleGroupItem>
+            </ToggleGroup>
+          )}
         </div>
       </div>
       {loading ? (
@@ -88,7 +93,7 @@ export function ChartCard({
         <div className="grid h-40 place-items-center text-center text-muted-foreground text-sm">
           {empty}
         </div>
-      ) : view === "chart" ? (
+      ) : view === "chart" && !forceTable ? (
         <div ref={chartRef} className="min-w-0 bg-background">
           {chart}
         </div>

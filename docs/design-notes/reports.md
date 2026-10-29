@@ -54,9 +54,9 @@
 
 ## Other reports
 
-- Built: Budget vs Actual, Spending pace, Savings rate and income sources. Open: cash-flow forecast ([#64](https://github.com/ikramhasan/strictbudget/issues/64)), cash flow Sankey
-  ([#86](https://github.com/ikramhasan/strictbudget/issues/86)), category history ([#87](https://github.com/ikramhasan/strictbudget/issues/87)), payees and recurring charges ([#88](https://github.com/ikramhasan/strictbudget/issues/88)), savings rate and
-  income sources ([#89](https://github.com/ikramhasan/strictbudget/issues/89), built), debt payoff and interest paid ([#90](https://github.com/ikramhasan/strictbudget/issues/90)), spending by flag ([#91](https://github.com/ikramhasan/strictbudget/issues/91));
+- Built: Budget vs Actual, Spending pace, Savings rate and income sources ([#89](https://github.com/ikramhasan/strictbudget/issues/89)), Cash flow
+  ([#86](https://github.com/ikramhasan/strictbudget/issues/86)). Open: cash-flow forecast ([#64](https://github.com/ikramhasan/strictbudget/issues/64)), category history ([#87](https://github.com/ikramhasan/strictbudget/issues/87)), payees and
+  recurring charges ([#88](https://github.com/ikramhasan/strictbudget/issues/88)), debt payoff and interest paid ([#90](https://github.com/ikramhasan/strictbudget/issues/90)), spending by flag ([#91](https://github.com/ikramhasan/strictbudget/issues/91));
   later: monthly review and year in review ([#92](https://github.com/ikramhasan/strictbudget/issues/92)), saved reports, dashboard and PDF ([#65](https://github.com/ikramhasan/strictbudget/issues/65)).
 
 ### Budget vs Actual
@@ -131,6 +131,22 @@
   length.
 - The Reports home tile is still Income v Expense's rate of the last complete month. It opens this
   report on the plain rate, so the two numbers match.
+
+### Cash flow
+
+- A Sankey (Recharts' `Sankey`): income sources → Income → groups (Uncategorized first, then plan
+  order) → an expanded group's categories, with what's left going to **Saved**. When spending
+  exceeds income, the shortfall comes into Income **from savings**. Income and spending are Income
+  v Expense's, so the totals agree, and every node's inflows equal its outflows in minor units.
+- A Sankey can't draw a negative flow, so each net goes to the side its sign puts it on. A
+  category that got back more than it spent feeds Income as **Refunds**; a payee whose income nets
+  below zero flows out as **Income paid back**. Saved − from savings is still Income v Expense's
+  net income.
+- Sources fold to the top five and "Other income", the same way as the savings rate's income
+  sources. Groups, and an expanded group's categories, under 2% of the flow fold into "Other".
+  "Show small flows" turns the folding off; it and the expanded groups are kept in the URL. The
+  tooltip shows the share of income, or of the money spent when nothing came in.
+- On phones (under 768px) the report is its table: a Sankey doesn't fit 400px.
 
 ## Rules every report follows
 

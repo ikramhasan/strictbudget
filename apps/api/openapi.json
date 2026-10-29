@@ -11336,6 +11336,170 @@
           "countsAsSaving"
         ]
       },
+      "CashFlow": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "$ref": "#/components/schemas/CurrencyCode",
+            "description": "The budget's currency, every amount's"
+          },
+          "income": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Income v Expense's total income"
+          },
+          "spending": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Income v Expense's total expenses (negative)"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowSource"
+            },
+            "description": "Payees whose income nets above zero"
+          },
+          "paidBack": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowSource"
+            },
+            "description": "Payees whose income nets below zero, as the amount paid back"
+          },
+          "refunds": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/CashFlowCategory"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "groupId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "groupId"
+                  ]
+                }
+              ]
+            },
+            "description": "Categories where more came back than was spent"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowGroup"
+            },
+            "description": "Uncategorized first, then the plan's groups in order"
+          },
+          "saved": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Income left over (≥ 0)"
+          },
+          "fromSavings": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Spending beyond income (≥ 0)"
+          }
+        },
+        "required": [
+          "currency",
+          "income",
+          "spending",
+          "sources",
+          "paidBack",
+          "refunds",
+          "groups",
+          "saved",
+          "fromSavings"
+        ]
+      },
+      "CashFlowSource": {
+        "type": "object",
+        "properties": {
+          "payeeId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null: income without a payee"
+          },
+          "name": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Positive"
+          }
+        },
+        "required": [
+          "payeeId",
+          "name",
+          "amount"
+        ]
+      },
+      "CashFlowCategory": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Positive"
+          }
+        },
+        "required": [
+          "categoryId",
+          "name",
+          "amount"
+        ]
+      },
+      "CashFlowGroup": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "null: Uncategorized, and categories outside the plan's groups"
+          },
+          "name": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Its categories' sum"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowCategory"
+            }
+          }
+        },
+        "required": [
+          "groupId",
+          "name",
+          "amount",
+          "categories"
+        ]
+      },
       "ExportSelection": {
         "type": "object",
         "properties": {
@@ -25333,6 +25497,129 @@
           },
           "404": {
             "description": "No such budget or category, or the caller isn't a member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/budgets/{budgetId}/reports/cash-flow": {
+      "get": {
+        "operationId": "getCashFlow",
+        "tags": [
+          "Reports"
+        ],
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "summary": "Where the money came from and where it went (the cash flow Sankey's flows)",
+        "description": "Income v Expense's income per payee and spending per category, each on the side its sign puts it: income `sources` (and income `paidBack` when a payee nets below zero), spending by `groups` and their categories (and `refunds` when a category got back more than it spent). What's left is `saved`; a shortfall comes in `fromSavings`. Every amount is positive and sources + refunds + fromSavings = groups + paidBack + saved, exactly. Transactions after `today` don't count yet.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "budgetId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$",
+              "description": "First month, YYYY-MM"
+            },
+            "required": true,
+            "description": "First month, YYYY-MM",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$",
+              "description": "Last month, YYYY-MM (inclusive)"
+            },
+            "required": true,
+            "description": "Last month, YYYY-MM (inclusive)",
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated budget account ids"
+            },
+            "required": false,
+            "description": "Comma-separated budget account ids",
+            "name": "accountIds",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "description": "The user's today; later transactions don't count. Defaults to the server's UTC date."
+            },
+            "required": false,
+            "description": "The user's today; later transactions don't count. Defaults to the server's UTC date.",
+            "name": "today",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The flows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashFlow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query, or `from` after `to`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The account's email address isn't confirmed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such budget, or the caller isn't a member",
             "content": {
               "application/json": {
                 "schema": {

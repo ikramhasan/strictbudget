@@ -1,6 +1,7 @@
 import { createRouter } from "../../lib/router";
 import { getAgeOfMoney, getAgeOfMoneyHandler } from "./age-of-money";
 import { getBudgetVsActual, getBudgetVsActualHandler } from "./budget-vs-actual";
+import { getCashFlow, getCashFlowHandler } from "./cash-flow";
 import { getCreditCardHealth, getCreditCardHealthHandler } from "./credit-card-health";
 import { getReportActivityHandler, listReportTransactionsHandler } from "./handlers";
 import { getNetWorthReport, getNetWorthReportHandler } from "./net-worth";
@@ -28,4 +29,5 @@ export const reportsRouter = createRouter()
   .openapi(getSpendingPace, getSpendingPaceHandler)
   .openapi(setCategoryPace, setCategoryPaceHandler)
   .openapi(getSavingsRate, getSavingsRateHandler)
-  .openapi(setCategorySaving, setCategorySavingHandler);
+  .openapi(setCategorySaving, setCategorySavingHandler)
+  .openapi(getCashFlow, getCashFlowHandler);
