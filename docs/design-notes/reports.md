@@ -95,10 +95,12 @@
   is forgotten).
 - **Left out of the plan's line by default** (each category's switch overrides this, stored as
   `category.pace`): card payment categories (always; they aren't listed), bills (a monthly target
-  due on a set day, a dated yearly or custom target, a debt target), savings (a "Have a balance
-  of…" target, standing in for "Counts as saving" from [#89](https://github.com/ikramhasan/strictbudget/issues/89) until it lands: [#119](https://github.com/ikramhasan/strictbudget/issues/119)),
-  categories with any scheduled transaction or scheduled split line, and hidden categories. Savings
-  with no target still count until the user switches them off.
+  due on a set day, a dated yearly or custom target, a debt target), savings (categories marked
+  "Counts as saving" on the Savings rate report, and ones with a "Have a balance of…" target, so
+  existing savings categories stay out without the flag: [#119](https://github.com/ikramhasan/strictbudget/issues/119)), categories with any
+  scheduled transaction or scheduled split line, and hidden categories. Hidden comes first, then
+  "Counts as saving", so an investment category with a scheduled transfer reads as saving. Savings
+  with neither still count until the user switches them off.
 - A group's line counts that group's categories that are in pace; a single category's line shows
   it even when it's out of pace. Past months show the finished burndown; future months return 400
   and the report doesn't offer them.

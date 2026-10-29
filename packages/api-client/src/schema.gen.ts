@@ -2326,7 +2326,7 @@ export interface paths {
         };
         /**
          * A month's spending pace: money left to spend day by day against an even pace
-         * @description Money to spend is each category's Available carried in plus the month's Assigned; spending is its net activity. The plan's line adds up the categories in pace: card payment categories never are; by default bills (a monthly target due on a set day, a dated yearly or custom target, a debt target), savings (a "Have a balance of" target), categories with a scheduled transaction and hidden ones aren't either, and a category's own setting overrides that. `groupId` or `categoryId` picks the line instead. A past month is finished; a future one is a 400.
+         * @description Money to spend is each category's Available carried in plus the month's Assigned; spending is its net activity. The plan's line adds up the categories in pace: card payment categories never are; by default bills (a monthly target due on a set day, a dated yearly or custom target, a debt target), savings (marked "Counts as saving", or a "Have a balance of" target), categories with a scheduled transaction and hidden ones aren't either, and a category's own setting overrides that. `groupId` or `categoryId` picks the line instead. A past month is finished; a future one is a 400.
          */
         get: operations["getSpendingPace"];
         put?: never;
@@ -2347,7 +2347,7 @@ export interface paths {
         get?: never;
         /**
          * Keep a category in or out of spending pace
-         * @description Null goes back to the automatic rule (bills, savings, scheduled and hidden out).
+         * @description Null goes back to the automatic rule (bills, savings, scheduled and hidden out; savings are categories marked "Counts as saving" and ones with a "Have a balance of" target).
          */
         put: operations["setCategoryPace"];
         post?: never;
