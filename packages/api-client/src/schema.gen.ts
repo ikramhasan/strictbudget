@@ -908,6 +908,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/budgets/{budgetId}/savings-suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Answer the plan's suggestion to mark savings-like categories as savings
+         * @description Existing budgets are offered, once, to mark categories that look like savings (a balance target, a name such as Emergency fund) as savings categories. Marking them is updateCategory; this records that the suggestion was answered (or put back).
+         */
+        put: operations["setSavingsSuggestion"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/budgets/{budgetId}/category-templates": {
         parameters: {
             query?: never;
@@ -2346,7 +2366,7 @@ export interface paths {
         };
         /**
          * A month's spending pace: money left to spend day by day against an even pace
-         * @description Money to spend is each category's Available carried in plus the month's Assigned; spending is its net activity. The plan's line adds up the categories in pace: card payment categories never are; by default bills (a monthly target due on a set day, a dated yearly or custom target, a debt target), savings (a "Have a balance of" target), categories with a scheduled transaction and hidden ones aren't either, and a category's own setting overrides that. `groupId` or `categoryId` picks the line instead. A past month is finished; a future one is a 400.
+         * @description Money to spend is each category's Available carried in plus the month's Assigned; spending is its net activity. The plan's line adds up the categories in pace: card payment categories never are; by default bills (a monthly target due on a set day, a dated yearly or custom target, a debt target), savings (a savings category, or a "Have a balance of" target), categories with a scheduled transaction and hidden ones aren't either, and a category's own setting overrides that. `groupId` or `categoryId` picks the line instead. A past month is finished; a future one is a 400.
          */
         get: operations["getSpendingPace"];
         put?: never;
@@ -2811,6 +2831,7 @@ export interface components {
                 expectedIncome: string | null;
                 expectedIncomeCurrency: components["schemas"]["CurrencyCode"] | null;
                 loanSimulatorBannerDismissed: boolean;
+                savingsSuggestionDismissed?: boolean | null;
                 /** @default false */
                 aiEnabled: boolean;
                 /** @default false */
@@ -2838,6 +2859,7 @@ export interface components {
                 linkedAccountId: string | null;
                 /** @enum {string|null} */
                 pace?: "include" | "exclude" | null;
+                savings?: boolean | null;
             }[];
             accounts: {
                 id: string;
@@ -2956,6 +2978,10 @@ export interface components {
                 repeatEvery: number | null;
                 /** @enum {string|null} */
                 repeatUnit: "month" | "year" | null;
+                /** @enum {string|null} */
+                goal?: "save_up" | "safety_fund" | "keep_saving" | null;
+                /** @description Amount in the currency's minor units (e.g. cents), as an integer string */
+                goalAmount?: string | null;
                 startMonth: string;
                 startDay: number | null;
                 snoozedMonth: string | null;
@@ -3193,6 +3219,8 @@ export interface components {
             readyToAssignCategoryId: string;
             /** @description The internal Uncategorized category (reports filter and group by it) */
             uncategorizedCategoryId: string;
+            /** @description The plan's one-time "These look like savings" suggestion was answered, for everyone on the budget (see setSavingsSuggestion) */
+            savingsSuggestionDismissed: boolean;
         };
         CategoryGroup: {
             id: string;
@@ -3220,6 +3248,8 @@ export interface components {
             transactionCount: number;
             /** @description Money assigned to it in some month (a delete returns it to Ready to Assign) */
             hasAssignedMoney: boolean;
+            /** @description A savings category: money kept for a goal (an emergency fund, a holiday, retirement) rather than spent this month. It's shown apart from spending money and left out of spending pace, and its target can be a savings goal. Payment categories can't be savings. */
+            savings: boolean;
             target: components["schemas"]["CategoryTarget"];
         };
         CategoryTarget: {
@@ -3251,6 +3281,13 @@ export interface components {
             startDay: number | null;
             /** @description The month it's snoozed for: it asks for nothing more that month only */
             snoozedMonth: string | null;
+            /**
+             * @description A savings goal, for savings categories, saved on the target that works it out. keep_saving ('Keep saving'): monthly set_aside, `amount` a month; money taken out of a savings category with this goal counts as saved, not spent, in reports. safety_fund ('Keep a safety fund'): monthly refill up to `goalAmount`, asking at most `amount` a month (equal to goalAmount for all at once). save_up ('Save up for something'): `goalAmount` in all, either `amount` a month (monthly set_aside) or by `dueDate` (custom one-time set_aside with amount = goalAmount); it counts what was put in (the money in the category when it began, plus Assigned since), so spending the money on what it was for doesn't undo it, and editing it keeps counting from its start. Null for an ordinary target
+             * @enum {string|null}
+             */
+            goal: "save_up" | "safety_fund" | "keep_saving" | null;
+            /** @description save_up: the total to save; safety_fund: the balance to keep. In `currency`'s minor units; null for other targets */
+            goalAmount: string | null;
         } | null;
         CreateCategoryGroup: {
             name: string;
@@ -3266,11 +3303,15 @@ export interface components {
         CreateCategory: {
             groupId: string;
             name: string;
+            /** @description A savings category: money kept for a goal (an emergency fund, a holiday, retirement) rather than spent this month. It's shown apart from spending money and left out of spending pace, and its target can be a savings goal. Payment categories can't be savings. */
+            savings?: boolean;
         };
         UpdateCategory: {
             name?: string;
             note?: string;
             hidden?: boolean;
+            /** @description A savings category: money kept for a goal (an emergency fund, a holiday, retirement) rather than spent this month. It's shown apart from spending money and left out of spending pace, and its target can be a savings goal. Payment categories can't be savings. */
+            savings?: boolean;
         };
         MoveCategory: {
             /** @description The group to move the category into */
@@ -3353,6 +3394,13 @@ export interface components {
              * @description The user's today (defaults to the server's UTC date): a target made weekly in this month asks only for the weeks from today
              */
             today?: string;
+            /**
+             * @description A savings goal, for savings categories, saved on the target that works it out. keep_saving ('Keep saving'): monthly set_aside, `amount` a month; money taken out of a savings category with this goal counts as saved, not spent, in reports. safety_fund ('Keep a safety fund'): monthly refill up to `goalAmount`, asking at most `amount` a month (equal to goalAmount for all at once). save_up ('Save up for something'): `goalAmount` in all, either `amount` a month (monthly set_aside) or by `dueDate` (custom one-time set_aside with amount = goalAmount); it counts what was put in (the money in the category when it began, plus Assigned since), so spending the money on what it was for doesn't undo it, and editing it keeps counting from its start. Null for an ordinary target
+             * @enum {string|null}
+             */
+            goal?: "save_up" | "safety_fund" | "keep_saving" | null;
+            /** @description save_up: the total to save; safety_fund: the balance to keep. In `currency`'s minor units; null for other targets */
+            goalAmount?: string | null;
         };
         SnoozeTarget: {
             /** @description The month to snooze; must be the user's current month */
@@ -3363,6 +3411,13 @@ export interface components {
              * @description The user's today. Defaults to the server's UTC date.
              */
             today?: string;
+        };
+        SavingsSuggestion: {
+            dismissed: boolean;
+        };
+        SetSavingsSuggestion: {
+            /** @description True once answered; false shows it again */
+            dismissed: boolean;
         };
         CategoryTemplateList: {
             templates: components["schemas"]["CategoryTemplate"][];
@@ -9213,6 +9268,68 @@ export interface operations {
             };
         };
     };
+    setSavingsSuggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                budgetId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetSavingsSuggestion"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavingsSuggestion"];
+                };
+            };
+            /** @description Invalid input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The caller's role can't edit categories, or the account's email address isn't confirmed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description No such budget, group or category, or the caller isn't a member */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     listCategoryTemplates: {
         parameters: {
             query?: never;
@@ -14413,8 +14530,8 @@ export interface operations {
                 from: string;
                 /** @description Last month, YYYY-MM (inclusive) */
                 to: string;
-                /** @description `spending`: lines on budget accounts with a category other than Ready to Assign (the plan's Activity; transfers between budget accounts drop out). `income`: lines on budget accounts categorized to Ready to Assign, starting balances left out */
-                kind?: "spending" | "income";
+                /** @description `spending`: lines on budget accounts with a category other than Ready to Assign (transfers between budget accounts drop out), except saving lines. `saving`: the lines that leave the plan as saving instead: transfers to or from tracking asset accounts, and lines in savings categories whose goal is Keep saving. `activity`: both, the plan's category Activity. `income`: lines on budget accounts categorized to Ready to Assign, starting balances left out */
+                kind?: "spending" | "income" | "saving" | "activity";
                 /** @description Comma-separated account ids */
                 accountIds?: string;
                 /** @description Comma-separated category group ids */
@@ -14496,8 +14613,8 @@ export interface operations {
                 from: string;
                 /** @description Last month, YYYY-MM (inclusive) */
                 to: string;
-                /** @description `spending`: lines on budget accounts with a category other than Ready to Assign (the plan's Activity; transfers between budget accounts drop out). `income`: lines on budget accounts categorized to Ready to Assign, starting balances left out */
-                kind?: "spending" | "income";
+                /** @description `spending`: lines on budget accounts with a category other than Ready to Assign (transfers between budget accounts drop out), except saving lines. `saving`: the lines that leave the plan as saving instead: transfers to or from tracking asset accounts, and lines in savings categories whose goal is Keep saving. `activity`: both, the plan's category Activity. `income`: lines on budget accounts categorized to Ready to Assign, starting balances left out */
+                kind?: "spending" | "income" | "saving" | "activity";
                 /** @description Comma-separated account ids */
                 accountIds?: string;
                 /** @description Comma-separated category group ids */

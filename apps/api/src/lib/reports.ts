@@ -30,12 +30,18 @@ import { type Db, internalCategoryId, internalPayeeId } from "./ledger";
 /**
  * What a report sums:
  * - `spending`: lines on budget accounts with a category other than Inflow: Ready to Assign, split
- *   lines one by one. Transfers between budget accounts carry no category and drop out; a transfer
- *   to a tracking account counts under its category (Uncategorized when it has none). It's the
- *   plan's category Activity, so a report total equals Activity for the same month and category.
+ *   lines one by one, except saving lines. Transfers between budget accounts carry no category and
+ *   drop out; a transfer to a tracking liability (a loan tracked off budget) counts under its
+ *   category (Uncategorized when it has none). With `saving` it's the plan's category Activity.
+ * - `saving`: the lines of `spending`'s kind that leave the plan as saving rather than being spent:
+ *   a transfer to (or back from) a tracking asset account, whatever its category, and any line in
+ *   a savings category whose goal is Keep saving. Spending a save-up goal or a safety fund on what
+ *   it's for is spending.
+ * - `activity`: `spending` and `saving` together: the plan's category Activity, for reports that
+ *   show it (Budget vs Actual, Category History, spending pace).
  * - `income`: lines on budget accounts categorized to Ready to Assign, except starting balances.
  */
-export const REPORT_KINDS = ["spending", "income"] as const;
+export const REPORT_KINDS = ["spending", "income", "saving", "activity"] as const;
 export type ReportKind = (typeof REPORT_KINDS)[number];
 
 export const REPORT_GROUPINGS = [
@@ -118,14 +124,33 @@ async function reportIds(db: Db, budgetId: string): Promise<ReportIds> {
   };
 }
 
+/** A spending line that's saving (see `REPORT_KINDS`). */
+function savingLine(source: LineSource) {
+  return sql`(exists (
+      select 1 from payee tp join budget_account ta on ta.id = tp.transfer_account_id
+      where tp.id = ${source.payeeId} and ta.type = 'asset'
+    ) or (${category.savings} and exists (
+      select 1 from category_target ct
+      where ct.category_id = ${source.categoryId} and ct.goal = 'keep_saving'
+    )))`;
+}
+
 function whereFor(budgetId: string, ids: ReportIds, filter: ReportFilter, source: LineSource) {
+  const spent = and(
+    isNotNull(source.categoryId as SQL),
+    ne(source.categoryId as SQL, ids.readyToAssign),
+  );
   const kind =
     filter.kind === "spending"
-      ? and(isNotNull(source.categoryId as SQL), ne(source.categoryId as SQL, ids.readyToAssign))
-      : and(
-          eq(source.categoryId as SQL, ids.readyToAssign),
-          or(isNull(source.payeeId), ne(source.payeeId, ids.startingBalance)),
-        );
+      ? and(spent, sql`not ${savingLine(source)}`)
+      : filter.kind === "saving"
+        ? and(spent, savingLine(source))
+        : filter.kind === "activity"
+          ? spent
+          : and(
+              eq(source.categoryId as SQL, ids.readyToAssign),
+              or(isNull(source.payeeId), ne(source.payeeId, ids.startingBalance)),
+            );
   return and(
     eq(transaction.budgetId, budgetId),
     gte(transaction.date, filter.start),

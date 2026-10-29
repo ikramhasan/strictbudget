@@ -87,9 +87,13 @@ export function useCategoryActions(budgetId: string): CategoryListActions {
             }),
           "Couldn't move the category group.",
         ),
-      createCategory: (groupId, name) =>
+      createCategory: (groupId, name, savings = false) =>
         run(
-          () => createCategory.mutateAsync({ params: { path: budget }, body: { groupId, name } }),
+          () =>
+            createCategory.mutateAsync({
+              params: { path: budget },
+              body: { groupId, name, savings },
+            }),
           "Couldn't add the category.",
         ),
       updateCategory: (categoryId, body) =>

@@ -1,5 +1,6 @@
 import { newId, sql } from "@strictbudget/db";
 import {
+  budget,
   category,
   categoryAssignment,
   categoryGroup,
@@ -34,6 +35,8 @@ export function toTargetJson(t: TargetRow) {
     startMonth: monthOf(t.startMonth),
     startDay: t.startDay,
     snoozedMonth: t.snoozedMonth && monthOf(t.snoozedMonth),
+    goal: t.goal,
+    goalAmount: t.goalAmount?.toString() ?? null,
   };
 }
 
@@ -57,6 +60,7 @@ export function toCategoryJson(
     linkedAccountId: c.linkedAccountId,
     hasTransactions,
     ...usage,
+    savings: c.savings,
     target: target && toTargetJson(target),
   };
 }
@@ -112,9 +116,14 @@ export async function listCategoryTree(db: Db, budgetId: string) {
     .from(categoryTarget)
     .where(eq(categoryTarget.budgetId, budgetId));
   const targets = new Map(targetRows.map((t) => [t.categoryId, t]));
+  const [settings] = await db
+    .select({ dismissed: budget.savingsSuggestionDismissed })
+    .from(budget)
+    .where(eq(budget.id, budgetId));
   return {
     readyToAssignCategoryId: await internalCategoryId(db, budgetId, "ready_to_assign"),
     uncategorizedCategoryId: await internalCategoryId(db, budgetId, "uncategorized"),
+    savingsSuggestionDismissed: settings?.dismissed ?? false,
     groups: groups.map((g) =>
       toGroupJson(
         g,
@@ -179,11 +188,17 @@ export async function insertGroup(db: Db, budgetId: string, name: string) {
   return row;
 }
 
-export async function insertCategory(db: Db, budgetId: string, groupId: string, name: string) {
+export async function insertCategory(
+  db: Db,
+  budgetId: string,
+  groupId: string,
+  name: string,
+  savings = false,
+) {
   const sortOrder = await nextSortOrder(db, category, eq(category.groupId, groupId));
   const [row] = await db
     .insert(category)
-    .values({ id: newId(), budgetId, groupId, name, sortOrder })
+    .values({ id: newId(), budgetId, groupId, name, sortOrder, savings })
     .returning();
   if (!row) throw new Error("Category insert returned nothing");
   return row;

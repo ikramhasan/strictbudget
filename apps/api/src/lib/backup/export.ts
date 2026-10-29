@@ -86,6 +86,7 @@ const readers: { [S in Section]: Reader<S> } = {
           internalKind: category.internalKind,
           linkedAccountId: category.linkedAccountId,
           pace: category.pace,
+          savings: category.savings,
         })
         .from(category)
         .where(eq(category.budgetId, budgetId))
@@ -255,6 +256,8 @@ const readers: { [S in Section]: Reader<S> } = {
       dueDate: t.dueDate,
       repeatEvery: t.repeatEvery,
       repeatUnit: t.repeatUnit,
+      goal: t.goal,
+      goalAmount: t.goalAmount?.toString() ?? null,
       startMonth: t.startMonth,
       startDay: t.startDay,
       snoozedMonth: t.snoozedMonth,
@@ -429,6 +432,7 @@ export async function writeBackup(
       expectedIncome: str(budget.expectedIncome),
       expectedIncomeCurrency: budget.expectedIncomeCurrency,
       loanSimulatorBannerDismissed: budget.loanSimulatorBannerDismissed,
+      savingsSuggestionDismissed: budget.savingsSuggestionDismissed,
       aiEnabled: budget.aiEnabled,
       aiAssistantButton: budget.aiAssistantButton,
       viewOrder: budget.viewOrder,

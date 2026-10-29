@@ -22,6 +22,19 @@ export type TargetBehavior = (typeof TARGET_BEHAVIORS)[number];
 export const zTargetBehavior = z.enum(TARGET_BEHAVIORS);
 
 /**
+ * Savings goals, on a savings category, each stored on the target that works it out:
+ * - keep_saving: "Keep saving": a monthly "Set aside another…" (`amount` a month).
+ * - safety_fund: "Keep a safety fund": a monthly refill up to `goalAmount`, asking at most
+ *   `amount` a month (equal to `goalAmount` for all at once).
+ * - save_up: "Save up for something": `goalAmount` in all, either `amount` a month (monthly set
+ *   aside) or by a date (a one-time custom set aside, `amount` = `goalAmount`). Counts what was put
+ *   in, so spending the money on what it was for doesn't undo it.
+ */
+export const TARGET_GOALS = ["save_up", "safety_fund", "keep_saving"] as const;
+export type TargetGoal = (typeof TARGET_GOALS)[number];
+export const zTargetGoal = z.enum(TARGET_GOALS);
+
+/**
  * The four target tabs, then the two targets a credit card's payment category takes instead:
  * "Pay Specific Amount Monthly" (`payment_monthly`) and "Pay Off Balance by Date"
  * (`payoff_by_date`), then a loan's "Monthly Debt Payment" (`debt_monthly`).
@@ -77,6 +90,10 @@ export interface CategoryTarget {
   /** Custom: repeats every `repeatEvery` `repeatUnit`s; null for a one-time target. */
   repeatEvery: number | null;
   repeatUnit: TargetRepeatUnit | null;
+  /** The savings goal it stands for (`TARGET_GOALS`); null or absent for an ordinary target. */
+  goal?: TargetGoal | null;
+  /** Save up: the total to save. Safety fund: the balance to keep. Null otherwise. */
+  goalAmount?: bigint | null;
   /** The first month the target applies to. */
   startMonth: BudgetMonth;
   /**
@@ -117,14 +134,18 @@ export interface TargetNeed {
  * underfunded; cadence, dates and snoozes stay as they are. `rate` is "1 target currency = rate
  * budget currency" (today's rate). A target already in the budget's currency comes back as is.
  */
-export function targetInBase<T extends { amount: bigint; currency: CurrencyCode }>(
-  target: T,
-  rate: string,
-  budgetCurrency: CurrencyCode,
-): T {
+export function targetInBase<
+  T extends { amount: bigint; currency: CurrencyCode; goalAmount?: bigint | null },
+>(target: T, rate: string, budgetCurrency: CurrencyCode): T {
   if (target.currency === budgetCurrency) return target;
-  const amount = convert(money(target.amount, target.currency), rate, budgetCurrency, "ceil");
-  return { ...target, amount: amount.amount, currency: budgetCurrency };
+  const inBase = (amount: bigint) =>
+    convert(money(amount, target.currency), rate, budgetCurrency, "ceil").amount;
+  return {
+    ...target,
+    amount: inBase(target.amount),
+    ...(target.goalAmount != null && { goalAmount: inBase(target.goalAmount) }),
+    currency: budgetCurrency,
+  };
 }
 
 /** Months from `a` to `b`, counting both ends (a ≤ b). */
@@ -203,7 +224,9 @@ export function periodRollover(
   month: BudgetMonth,
 ): bigint {
   const dated = target.cadence === "yearly" || target.cadence === "custom";
-  if (!dated || target.behavior !== "set_aside" || !target.dueDate) return 0n;
+  // A save-up goal counts everything put in, so nothing is set apart as left over.
+  if (!dated || target.behavior !== "set_aside" || !target.dueDate || target.goal === "save_up")
+    return 0n;
   const period = periodOf(target, target.dueDate, month);
   if (!period || period.past) return 0n;
   const first =
@@ -240,6 +263,9 @@ function clampDay(date: string) {
  *
  * Payment categories (`owed`: what the card owes, zero when it isn't in debt): Pay Specific Amount
  * Monthly asks like a monthly "Set aside another…"; Pay Off Balance by Date see `payoffNeed`.
+ *
+ * Savings goals: a safety fund is a monthly refill up to `goalAmount` asking at most `amount` a
+ * month; save up see `saveUpNeed`; keep saving is a plain monthly set aside.
  */
 export function targetNeed(
   history: readonly MonthFigures[],
@@ -251,6 +277,7 @@ export function targetNeed(
   if (month < target.startMonth) return null;
   const figures = categoryMonth(history, month);
   if (target.cadence === "payoff_by_date") return payoffNeed(figures, target, month, owed);
+  if (target.goal === "save_up") return saveUpNeed(history, target, month, currentMonth);
   const carried = month <= currentMonth ? figures.carried : 0n;
   const holds = target.behavior !== "set_aside";
   // Balance counts what the category holds: carried in, Assigned and this month's activity.
@@ -263,18 +290,26 @@ export function targetNeed(
     target.cadence === "payment_monthly" ||
     target.cadence === "debt_monthly"
   ) {
+    // A safety fund refills up to its goal amount, asking at most `amount` a month.
+    const cap = target.cadence === "monthly" && holds ? (target.goalAmount ?? null) : null;
     const needed =
-      target.cadence === "weekly"
+      cap ??
+      (target.cadence === "weekly"
         ? target.amount * BigInt(weeklyDays(target, month).length)
-        : target.amount;
+        : target.amount);
     // What this month's Assigned has to reach: refill counts what was carried in (below zero
     // when more was carried in than the target).
-    const due = holds ? needed - carried : needed;
+    const due = !holds
+      ? needed
+      : cap === null
+        ? needed - carried
+        : min(target.amount, cap - carried);
     return {
       needed,
       funded: holds ? carried + figures.assigned : figures.assigned,
       underfunded: under(due, figures.assigned),
-      monthAmount: needed,
+      // A safety fund counts what it asks of the month: nothing once full.
+      monthAmount: cap === null ? needed : due > 0n ? due : 0n,
       overfunded: over(figures, due),
       dueDate: null,
       // The month's targets total counts every week, even those before a weekly target began.
@@ -338,6 +373,77 @@ export function targetNeed(
     overfunded: over(figures, share),
     dueDate: period.due,
   };
+}
+
+/**
+ * "Save up for something": `goalAmount` in all, `amount` a month (monthly) or by `dueDate` (custom,
+ * one-time). What counts is what was put in: the money in the category when the goal began
+ * (carried into its start month) plus every month's Assigned since. Spending the money on what it
+ * was saved for doesn't lower it; moving money out does.
+ *
+ * - Each month asks for what's left before it, at most `amount` (monthly), or spread over the
+ *   months left up to the due month, rounding up (dated). Past the due month it asks for all
+ *   that's left.
+ * - Reached, it asks for nothing; what's put in beyond the goal (up to Available) is over.
+ * - `needed` is the goal and `funded` what's been put in so far, this month's Assigned included.
+ */
+function saveUpNeed(
+  history: readonly MonthFigures[],
+  target: CategoryTarget,
+  month: BudgetMonth,
+  currentMonth: BudgetMonth,
+): TargetNeed {
+  const goal = target.goalAmount ?? target.amount;
+  const figures = categoryMonth(history, month);
+  // Money only counts as carried in once its month begins.
+  let before =
+    target.startMonth <= currentMonth ? categoryMonth(history, target.startMonth).carried : 0n;
+  if (before < 0n) before = 0n;
+  for (const h of history) {
+    if (h.month >= target.startMonth && h.month < month) before += h.assigned;
+  }
+  const left = goal - before;
+  const dueMonth = target.cadence === "custom" && target.dueDate ? monthOf(target.dueDate) : null;
+  let due = left;
+  if (left > 0n) {
+    due =
+      dueMonth === null
+        ? min(target.amount, left)
+        : ceilDiv(left, month > dueMonth ? 1n : BigInt(monthsThrough(month, dueMonth)));
+  }
+  return {
+    needed: goal,
+    funded: before + figures.assigned,
+    underfunded: under(due, figures.assigned),
+    monthAmount: due > 0n ? due : 0n,
+    overfunded: over(figures, due),
+    dueDate: dueMonth === null ? null : target.dueDate,
+  };
+}
+
+/**
+ * The month a save-up goal is reached at `perMonth` a month from the next month on, with `left`
+ * still to put in after this month's Assigned and `thisMonth` (what this month still asks) going
+ * in this month: `month` itself when that covers it ($100 left, $250 still asked), else a later
+ * one ($1,000 left, $250 still asked, $250 a month: three months on). Null when it's already
+ * reached, or never at nothing a month.
+ */
+export function saveUpReachedMonth(
+  left: bigint,
+  perMonth: bigint,
+  month: BudgetMonth,
+  thisMonth = 0n,
+): BudgetMonth | null {
+  if (left <= 0n) return null;
+  if (left <= thisMonth) return month;
+  if (perMonth <= 0n) return null;
+  return addMonths(month, Number(ceilDiv(left - thisMonth, perMonth)));
+}
+
+/** What a save-up goal with `left` still to put in asks each month to be reached by `dueMonth`. */
+export function saveUpPerMonth(left: bigint, month: BudgetMonth, dueMonth: BudgetMonth): bigint {
+  if (left <= 0n) return 0n;
+  return ceilDiv(left, month > dueMonth ? 1n : BigInt(monthsThrough(month, dueMonth)));
 }
 
 /**

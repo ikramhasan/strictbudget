@@ -296,6 +296,7 @@ describe("register drafts", () => {
     const list: CategoryList = {
       readyToAssignCategoryId: "rta",
       uncategorizedCategoryId: "uncat",
+      savingsSuggestionDismissed: false,
       groups: [
         {
           id: "cc",
@@ -313,6 +314,7 @@ describe("register drafts", () => {
               hasTransactions: false,
               transactionCount: 0,
               hasAssignedMoney: false,
+              savings: false,
               target: null,
             },
           ],
@@ -333,6 +335,7 @@ describe("register drafts", () => {
               hasTransactions: false,
               transactionCount: 0,
               hasAssignedMoney: false,
+              savings: false,
               target: null,
             },
             {
@@ -345,6 +348,7 @@ describe("register drafts", () => {
               hasTransactions: false,
               transactionCount: 0,
               hasAssignedMoney: false,
+              savings: false,
               target: null,
             },
           ],

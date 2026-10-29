@@ -12,6 +12,7 @@ import { CategoryList, type CategoryListActions } from "./category-list";
 const data: CategoryListData = {
   readyToAssignCategoryId: "rta",
   uncategorizedCategoryId: "uncat",
+  savingsSuggestionDismissed: false,
   groups: [
     {
       id: "g1",
@@ -29,6 +30,7 @@ const data: CategoryListData = {
           hasTransactions: false,
           transactionCount: 0,
           hasAssignedMoney: false,
+          savings: false,
           target: null,
         },
         {
@@ -41,6 +43,7 @@ const data: CategoryListData = {
           hasTransactions: false,
           transactionCount: 0,
           hasAssignedMoney: false,
+          savings: false,
           target: null,
         },
         {
@@ -53,6 +56,7 @@ const data: CategoryListData = {
           hasTransactions: false,
           transactionCount: 0,
           hasAssignedMoney: false,
+          savings: false,
           target: null,
         },
       ],
@@ -64,6 +68,7 @@ const data: CategoryListData = {
 const withCards: CategoryListData = {
   readyToAssignCategoryId: "rta",
   uncategorizedCategoryId: "uncat",
+  savingsSuggestionDismissed: false,
   groups: [
     {
       id: "cc",
@@ -81,6 +86,7 @@ const withCards: CategoryListData = {
           hasTransactions: false,
           transactionCount: 0,
           hasAssignedMoney: false,
+          savings: false,
           target: null,
         },
       ],
@@ -101,6 +107,7 @@ const withCards: CategoryListData = {
           hasTransactions: true,
           transactionCount: 0,
           hasAssignedMoney: false,
+          savings: false,
           target: null,
         },
         {
@@ -113,6 +120,7 @@ const withCards: CategoryListData = {
           hasTransactions: false,
           transactionCount: 0,
           hasAssignedMoney: false,
+          savings: false,
           target: null,
         },
       ],
@@ -300,7 +308,7 @@ describe("CategoryList", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add a category to Bills" }));
     await userEvent.type(screen.getByLabelText("New category in Bills"), "Water");
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
-    expect(actions.createCategory).toHaveBeenCalledWith("g1", "Water");
+    expect(actions.createCategory).toHaveBeenCalledWith("g1", "Water", false);
   });
 
   it("adds a category group", async () => {

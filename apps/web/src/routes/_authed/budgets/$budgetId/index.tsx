@@ -54,6 +54,7 @@ import { PageHeader } from "@/components/page-header";
 import { PageTitle } from "@/components/page-title";
 import { FutureMonthsPanel, ReadyToAssignBanner } from "@/components/ready-to-assign";
 import { RecentMoves } from "@/components/recent-moves";
+import { SavingsSuggestionPanel } from "@/components/savings-suggestion";
 import { SpendingPacePanel } from "@/components/spending-pace-panel";
 import {
   type MoneyIO,
@@ -71,6 +72,7 @@ import {
   breakdown,
   EMPTY_VIEW,
   filteredIds,
+  inSavings,
   isCaution,
   isPresetFilter,
   overspentCount,
@@ -163,6 +165,16 @@ function BudgetPage() {
   const history = useUndo();
   const targetActions = useTargetActions(budget.id, history.record);
   const accounts = useQuery(accountsQueryOptions(budget.id));
+  /** Categories paired with a loan: they pay the loan, so they're never offered as savings. */
+  const loanCategoryIds = useMemo(
+    () =>
+      new Set(
+        (accounts.data?.accounts ?? []).flatMap((a) =>
+          a.pairedCategoryId ? [a.pairedCategoryId] : [],
+        ),
+      ),
+    [accounts.data],
+  );
   const [addingAccount, setAddingAccount] = useState(false);
   const { collapsed, setCollapsed } = useCollapsedGroups(budget.id);
   const { filter, setFilter } = useBudgetFilter(budget.id);
@@ -261,7 +273,13 @@ function BudgetPage() {
       if (g.hidden) continue;
       for (const c of g.categories) {
         if (!c.hidden) {
-          map.set(c.id, { name: c.name, note: c.note, group: g.name, target: c.target });
+          map.set(c.id, {
+            name: c.name,
+            note: c.note,
+            group: g.name,
+            target: c.target,
+            savings: c.savings,
+          });
         }
       }
     }
@@ -763,6 +781,7 @@ function BudgetPage() {
             collapsed={collapsed}
             onCollapsedChange={setCollapsed}
             addGroupDisabled={Boolean(customView)}
+            loanCategoryIds={loanCategoryIds}
           />
         </div>
       )}
@@ -799,9 +818,18 @@ function BudgetPage() {
         shown={shown}
         listed={listed}
         onNoteChange={(categoryId, note) => actions.updateCategory(categoryId, { note })}
+        onSavingsChange={(categoryId, savings) => actions.updateCategory(categoryId, { savings })}
         targetActions={targetActions}
         onShowOverspent={() => setFilter("overspent")}
       />
+      {selection.size === 0 && month === today && !readOnly && categories.data && (
+        <SavingsSuggestionPanel
+          budgetId={budget.id}
+          list={categories.data}
+          exclude={loanCategoryIds}
+          updateCategory={actions.updateCategory}
+        />
+      )}
       {selection.size === 0 && month <= today && <SpendingPacePanel month={month} />}
       {/* Uncategorized alone has no Auto-Assign: money can't be assigned to it. */}
       {!(selection.size === 1 && selection.has(UNCATEGORIZED)) && autoAssignPanel(selection)}
@@ -988,11 +1016,25 @@ const paymentFigures = (p: NonNullable<BudgetMonthData["categories"][number]["pa
     bigint
   >;
 
+/**
+ * What counts toward a save-up goal before this month, and this month's Assigned: the goal's own
+ * progress (`saveUp`), or for a new goal the money carried in, which is where it would start.
+ */
+function savedSoFar(
+  totals: Parameters<typeof breakdown>[0] & { target: { funded: string } | null },
+  saveUp: boolean,
+) {
+  const b = breakdown(totals);
+  const funded = totals.target ? BigInt(totals.target.funded) : 0n;
+  return { before: saveUp ? funded - b.assigned : b.carried, assigned: b.assigned };
+}
+
 interface ListedCategory {
   name: string;
   note: string;
   group: string;
   target: CategoryTarget | null;
+  savings: boolean;
 }
 
 /**
@@ -1005,6 +1047,7 @@ function Inspector({
   shown,
   listed,
   onNoteChange,
+  onSavingsChange,
   targetActions,
   onShowOverspent,
 }: {
@@ -1013,6 +1056,7 @@ function Inspector({
   shown: ReadonlySet<string> | undefined;
   listed: ReadonlyMap<string, ListedCategory>;
   onNoteChange: (categoryId: string, note: string) => Promise<void>;
+  onSavingsChange: (categoryId: string, savings: boolean) => Promise<void>;
   targetActions: ReturnType<typeof useTargetActions>;
   onShowOverspent: () => void;
 }) {
@@ -1040,6 +1084,17 @@ function Inspector({
     return [...ids].flatMap((id) =>
       id !== UNCATEGORIZED ? [id] : uncategorized ? [uncategorized] : [],
     );
+  };
+  /** Savings categories, hidden ones included (the summary covers them under All). */
+  const savingsIds = new Set(
+    (categoryList.data?.groups ?? []).flatMap((g) =>
+      g.categories.filter((c) => c.savings).map((c) => c.id),
+    ),
+  );
+  /** What `ids` hold in savings, or undefined when none of them is a savings category. */
+  const savingsIn = (ids: Iterable<string>) => {
+    const list = [...ids];
+    return list.some((id) => savingsIds.has(id)) ? inSavings(month, list, savingsIds) : undefined;
   };
   const paidCard = accounts.data?.accounts.find(
     (a) => only !== undefined && a.paymentCategoryId === only && !a.closed,
@@ -1207,6 +1262,15 @@ function Inspector({
         history={<CategoryHistoryPanel key={only} categoryId={only} month={month.month} />}
         note={category.note}
         onNoteChange={(note) => onNoteChange(only, note)}
+        // A loan's paired category pays the loan, so it isn't offered as savings.
+        savings={
+          pairedLoan
+            ? undefined
+            : {
+                checked: category.savings,
+                onChange: assign && ((savings) => onSavingsChange(only, savings)),
+              }
+        }
         target={
           !assign ? (
             <ReadOnlyTarget
@@ -1215,6 +1279,7 @@ function Inspector({
               format={format}
               currency={targetCurrency}
               debt={pairedLoan !== undefined || category.target?.cadence === "debt_monthly"}
+              month={month.month}
             />
           ) : (
             <TargetSection
@@ -1227,6 +1292,15 @@ function Inspector({
               toInput={assign.toInput}
               dateFormat={budget.dateFormat}
               currency={targetCurrency}
+              // A goal stays a goal on a category switched back to spending.
+              savings={
+                (category.savings || category.target?.goal) && !pairedLoan
+                  ? {
+                      month: month.month,
+                      saved: savedSoFar(totals, category.target?.goal === "save_up"),
+                    }
+                  : undefined
+              }
               onSave={(input) => targetActions.save(only, month.month, input, category.target)}
               onDelete={() => targetActions.remove(only, category.target)}
               onAssign={
@@ -1271,6 +1345,7 @@ function Inspector({
       <MonthSummary
         month={month.month}
         totals={summarize(month, selection)}
+        savings={savingsIn(selection)}
         format={format}
         selectedNames={names}
         reportCategories={reportCategories(selection)}
@@ -1286,6 +1361,7 @@ function Inspector({
     <MonthSummary
       month={month.month}
       totals={summarize(month, ids)}
+      savings={savingsIn(ids)}
       format={format}
       reportCategories={shown ? reportCategories(shown) : undefined}
       // The whole plan's targets, whatever the view, in the current month only.

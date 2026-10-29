@@ -199,6 +199,55 @@ describe("spending pace", () => {
     expect(pace.categories.some((c) => c.name === "Visa")).toBe(false);
   });
 
+  it("leaves savings categories out, whatever their target or schedules say", async () => {
+    const t = await setup();
+    const base = `/v1/budgets/${t.budgetId}`;
+    // Phone has a scheduled transaction and rent a dated target; as savings both read as saving.
+    for (const id of [t.ids.phone, t.ids.rent, t.ids.groceries]) {
+      const res = await send("PATCH", `${base}/categories/${id}`, t.cookie, { savings: true });
+      expect(res.status).toBe(200);
+    }
+    const byId = new Map((await t.read()).categories.map((c) => [c.categoryId, c]));
+    for (const id of [t.ids.phone, t.ids.rent, t.ids.groceries]) {
+      expect(byId.get(id)).toMatchObject({ included: false, reason: "saving" });
+    }
+    // Hidden still wins, and a category's own setting overrides it.
+    expect(byId.get(t.ids.gym)).toMatchObject({ reason: "hidden" });
+    await t.setPace(t.ids.groceries, "include");
+    expect((await t.read()).categories.find((c) => c.categoryId === t.ids.groceries)).toMatchObject(
+      { included: true, reason: "saving" },
+    );
+  });
+
+  it("runs Available down with saving lines too, as the plan does", async () => {
+    const t = await setup();
+    const base = `/v1/budgets/${t.budgetId}`;
+    const brokerage = (await (
+      await send("POST", `${base}/accounts`, t.cookie, {
+        name: "Brokerage",
+        type: "asset",
+        balance: "0",
+        date: "2026-10-01",
+      })
+    ).json()) as { id: string };
+    const { accounts } = (await (await send("GET", `${base}/accounts`, t.cookie)).json()) as {
+      accounts: { id: string; type: string }[];
+    };
+    const checking = accounts.find((a) => a.type === "checking");
+    // $50 of Groceries' money moved to the brokerage is saving, not spending, yet it leaves
+    // Groceries' Available, so pace counts it.
+    const res = await send("POST", `${base}/transactions?today=2026-11-10`, t.cookie, {
+      accountId: checking?.id,
+      date: "2026-11-05",
+      amount: "-5000",
+      transferAccountId: brokerage.id,
+      categoryId: t.ids.groceries,
+    });
+    expect(res.status).toBe(201);
+    const groceries = (await t.read()).categories.find((c) => c.categoryId === t.ids.groceries);
+    expect(groceries?.pace).toMatchObject({ start: "30000", spent: "5000", remaining: "25000" });
+  });
+
   it("counts refunds, money assigned mid-month and money moved out", async () => {
     const t = await setup();
     await t.spend(t.ids.groceries, "2026-11-03", "-15000");

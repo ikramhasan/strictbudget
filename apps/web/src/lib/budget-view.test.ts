@@ -5,6 +5,7 @@ import {
   breakdown,
   filteredIds,
   fitsViewsBar,
+  inSavings,
   isCaution,
   matchesFilter,
   overspentCount,
@@ -151,6 +152,16 @@ describe("budget views", () => {
       cashOverspent: -2550n,
       creditOverspent: -150n,
     });
+  });
+});
+
+describe("inSavings", () => {
+  it("adds up what savings categories hold, leaving out any that are overspent", () => {
+    expect(inSavings(month, ["rent", "power", "food", UNCATEGORIZED], new Set(["food"]))).toBe(
+      1500n,
+    );
+    expect(inSavings(month, ["rent", "power", "food"], new Set(["power", "food"]))).toBe(1500n);
+    expect(inSavings(month, ["rent"], new Set(["food"]))).toBe(0n);
   });
 });
 

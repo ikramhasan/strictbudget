@@ -75,6 +75,7 @@ function assignedOptions(list: CategoryList, month: BudgetMonthData): MoneyOptio
           name: c.name,
           group: g.name,
           available: assigned.get(c.id) ?? "0",
+          ...(c.savings && { savings: { goal: null } }),
         })),
     );
 }

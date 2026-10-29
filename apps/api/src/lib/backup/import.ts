@@ -179,6 +179,7 @@ export async function importBackup(tx: Tx, doc: Backup, budgetId: string): Promi
       hidden: c.hidden,
       linkedAccountId: accounts.ref(c.linkedAccountId),
       pace: c.pace ?? null,
+      savings: c.savings ?? false,
     });
   }
   await insertChunks(tx, category, listed);
@@ -314,6 +315,8 @@ export async function importBackup(tx: Tx, doc: Backup, budgetId: string): Promi
       dueDate: t.dueDate,
       repeatEvery: t.repeatEvery,
       repeatUnit: t.repeatUnit,
+      goal: t.goal ?? null,
+      goalAmount: t.goalAmount == null ? null : big(t.goalAmount),
       startMonth: t.startMonth,
       startDay: t.startDay,
       snoozedMonth: t.snoozedMonth,
@@ -444,6 +447,7 @@ export async function importBackup(tx: Tx, doc: Backup, budgetId: string): Promi
       expectedIncome: bigOrNull(doc.budget.expectedIncome),
       expectedIncomeCurrency: doc.budget.expectedIncomeCurrency as CurrencyCode | null,
       loanSimulatorBannerDismissed: doc.budget.loanSimulatorBannerDismissed,
+      savingsSuggestionDismissed: doc.budget.savingsSuggestionDismissed ?? false,
       aiEnabled: doc.budget.aiEnabled,
       aiAssistantButton: doc.budget.aiAssistantButton,
       viewOrder:

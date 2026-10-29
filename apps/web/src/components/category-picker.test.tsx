@@ -14,12 +14,14 @@ const cat = (id: string, groupId: string, name: string) => ({
   hasTransactions: false,
   transactionCount: 0,
   hasAssignedMoney: false,
+  savings: false,
   target: null,
 });
 
 const data: CategoryList = {
   readyToAssignCategoryId: "rta",
   uncategorizedCategoryId: "uncat",
+  savingsSuggestionDismissed: false,
   groups: [
     {
       id: "bills",

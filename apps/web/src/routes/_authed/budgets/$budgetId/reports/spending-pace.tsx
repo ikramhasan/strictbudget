@@ -293,9 +293,10 @@ function CategoryPace({
           By category
         </h2>
         <p className="text-muted-foreground text-xs">
-          Bills (a target with a due date), savings (a balance target), categories with a scheduled
-          transaction and hidden ones are left out of the plan's pace by default, so a one-off
-          payment doesn't read as behind all month. Switch a category to count it or not.
+          Bills (a target with a due date), savings (savings categories and balance targets),
+          categories with a scheduled transaction and hidden ones are left out of the plan's pace by
+          default, so a one-off payment doesn't read as behind all month. Switch a category to count
+          it or not.
         </p>
       </div>
       <div className="overflow-x-auto">

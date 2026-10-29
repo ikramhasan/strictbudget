@@ -57,6 +57,11 @@ export const budget = pgTable("budget", {
    */
   loanSimulatorBannerDismissed: boolean().notNull().default(false),
   /**
+   * "These look like savings" in the plan's summary was answered (marked or "Not now"), for
+   * everyone on the budget.
+   */
+  savingsSuggestionDismissed: boolean().notNull().default(false),
+  /**
    * The order of the views Manage Views can rearrange: preset keys (`PRESET_BUDGET_VIEWS`) and
    * `budget_view` ids, shared by everyone on the budget. Null until first rearranged; entries it
    * lacks go last (see the views route).

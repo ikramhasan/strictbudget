@@ -31,7 +31,7 @@ import {
 } from "@strictbudget/ui/components/popover";
 import { useIsMobile } from "@strictbudget/ui/hooks/use-mobile";
 import { cn } from "@strictbudget/ui/lib/utils";
-import { ChevronRight, GripVertical, Plus, StickyNote } from "lucide-react";
+import { ChevronRight, GripVertical, PiggyBank, Plus, StickyNote } from "lucide-react";
 import { type MouseEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useOptionalBudget } from "@/lib/budget-context";
 import {
@@ -64,11 +64,11 @@ import { ProgressBar } from "./progress-bar";
 
 export interface CategoryListActions {
   createGroup: (name: string) => Promise<void>;
-  createCategory: (groupId: string, name: string) => Promise<void>;
+  createCategory: (groupId: string, name: string, savings?: boolean) => Promise<void>;
   updateGroup: (groupId: string, patch: { name?: string; hidden?: boolean }) => Promise<void>;
   updateCategory: (
     categoryId: string,
-    patch: { name?: string; note?: string; hidden?: boolean },
+    patch: { name?: string; note?: string; hidden?: boolean; savings?: boolean },
   ) => Promise<void>;
   /** `reassignTo` receives the history of categories that have transactions. */
   deleteGroup: (groupId: string, reassignTo?: string) => Promise<void>;
@@ -200,6 +200,7 @@ export function CategoryList({
   collapsed = NO_GROUPS,
   onCollapsedChange,
   addGroupDisabled = false,
+  loanCategoryIds,
 }: {
   data: CategoryListData;
   actions: CategoryListActions;
@@ -208,6 +209,8 @@ export function CategoryList({
   onCollapsedChange?: (collapsed: ReadonlySet<string>) => void;
   /** Greys out the header's "Add a category group" button (as in a custom view). */
   addGroupDisabled?: boolean;
+  /** Categories paired with a loan, which aren't offered as savings. */
+  loanCategoryIds?: ReadonlySet<string>;
 }) {
   // A viewer can't add, rename, hide, delete or reorder.
   const readOnly = useOptionalBudget()?.readOnly ?? false;
@@ -565,6 +568,7 @@ export function CategoryList({
                       return (
                         <CategoryRow
                           key={categoryId}
+                          loanPaired={loanCategoryIds?.has(categoryId) ?? false}
                           category={category}
                           index={index}
                           groupId={groupId}
@@ -843,7 +847,8 @@ function GroupSection({
                   title={`New category in ${group.name}`}
                   withEmoji
                   submitLabel="Add"
-                  onSubmit={({ name }) => actions.createCategory(group.id, name)}
+                  withKind
+                  onSubmit={({ name, savings }) => actions.createCategory(group.id, name, savings)}
                   trigger={
                     <Button
                       variant="ghost"
@@ -904,6 +909,7 @@ function CategoryRow({
   onDelete,
   keyEdit = false,
   onKeyEditStarted,
+  loanPaired = false,
 }: {
   category: Category;
   index: number;
@@ -916,6 +922,8 @@ function CategoryRow({
   /** Up/Down arrived here: open the Assigned amount for typing. */
   keyEdit?: boolean;
   onKeyEditStarted?: () => void;
+  /** Paired with a loan: not offered as savings. */
+  loanPaired?: boolean;
 }) {
   const { format, assign, move, selection } = figures ?? {};
   const isPayment = Boolean(category.linkedAccountId);
@@ -1009,8 +1017,15 @@ function CategoryRow({
             nameLockedReason={
               isPayment ? "Named after its credit account. Rename the account instead." : undefined
             }
-            initial={{ name: category.name, note: category.note }}
-            onSubmit={({ name, note }) => actions.updateCategory(category.id, { name, note })}
+            withKind={!isPayment && (!loanPaired || category.savings)}
+            initial={{ name: category.name, note: category.note, savings: category.savings }}
+            onSubmit={({ name, note, savings }) =>
+              actions.updateCategory(category.id, {
+                name,
+                note,
+                ...(savings !== category.savings && { savings }),
+              })
+            }
             actions={(close) => (
               <>
                 <Button
@@ -1056,6 +1071,13 @@ function CategoryRow({
               </Button>
             }
           />
+          {category.savings && (
+            <PiggyBank
+              className="size-3.5 shrink-0 text-muted-foreground"
+              aria-label="Savings category"
+              role="img"
+            />
+          )}
           {category.note && (
             <StickyNote
               className="size-3.5 shrink-0 text-muted-foreground"

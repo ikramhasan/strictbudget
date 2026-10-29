@@ -40,7 +40,7 @@ export function progressBar(
   figures: Pick<CategoryMonth, "carried" | "assigned" | "activity">,
   target:
     | (Pick<CategoryTarget, "cadence" | "behavior" | "amount" | "dueDay"> &
-        Partial<Pick<CategoryTarget, "startMonth" | "startDay">>)
+        Partial<Pick<CategoryTarget, "startMonth" | "startDay" | "goal">>)
     | null,
   need: TargetNeed | null,
   snoozed: boolean,
@@ -61,8 +61,10 @@ export function progressBar(
   } else {
     if (need.underfunded > 0n) tone = "underfunded";
     weekly = target.cadence === "weekly";
+    // A save-up goal fills with everything put in, as a dated target does.
     const setAsideMonthly =
       target.behavior === "set_aside" &&
+      target.goal !== "save_up" &&
       (weekly || target.cadence === "monthly" || target.cadence === "debt_monthly");
     const carriedIn = setAsideMonthly ? figures.carried : rollover;
     if (carriedIn > 0n) {

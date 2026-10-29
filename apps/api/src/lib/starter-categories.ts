@@ -4,7 +4,7 @@ import type { Db } from "./ledger";
 
 /**
  * Categories a new budget starts with, in order, without targets. The setup flow lets people
- * untick the ones they don't need.
+ * untick the ones they don't need. The ones in `STARTER_SAVINGS` start as savings categories.
  */
 export const STARTER_CATEGORIES: ReadonlyArray<{ group: string; categories: readonly string[] }> = [
   {
@@ -26,6 +26,9 @@ export const STARTER_CATEGORIES: ReadonlyArray<{ group: string; categories: read
     ],
   },
 ];
+
+/** Starter categories that hold money for a goal rather than for this month's spending. */
+export const STARTER_SAVINGS: ReadonlySet<string> = new Set(["😌 Emergency fund", "🏝️ Vacation"]);
 
 /** Every budget's internal group with Inflow: Ready to Assign and Uncategorized. */
 export async function seedInternalCategories(db: Database, budgetId: string): Promise<void> {
@@ -74,6 +77,7 @@ export async function seedStarterCategories(db: Db, budgetId: string): Promise<v
           groupId,
           name,
           sortOrder,
+          savings: STARTER_SAVINGS.has(name),
         })),
       ),
     );

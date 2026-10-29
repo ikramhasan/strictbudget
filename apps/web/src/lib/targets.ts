@@ -1,5 +1,10 @@
 import type { components } from "@strictbudget/api-client";
-import { type BudgetMonth, monthBounds } from "@strictbudget/engine";
+import {
+  type BudgetMonth,
+  monthBounds,
+  saveUpReachedMonth,
+  type TargetGoal,
+} from "@strictbudget/engine";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { toast } from "sonner";
@@ -74,7 +79,7 @@ const monthLabel = (iso: string) => MONTHS[Number(iso.slice(5, 7)) - 1] ?? "";
 export const shortDate = (iso: string) =>
   `${monthLabel(iso).slice(0, 3)} ${Number(iso.slice(8))} ${iso.slice(0, 4)}`;
 /** "Dec 2026", for a balance target's month. */
-const shortMonth = (iso: string) => `${monthLabel(iso).slice(0, 3)} ${iso.slice(0, 4)}`;
+export const shortMonth = (iso: string) => `${monthLabel(iso).slice(0, 3)} ${iso.slice(0, 4)}`;
 
 /**
  * Whether a target spreads a total over months up to a due date (yearly, custom, dated balance,
@@ -97,8 +102,31 @@ export const PAYMENT_TARGET_OPTIONS = [
 export const isDebtTarget = (target: Pick<CategoryTarget, "cadence">) =>
   target.cadence === "debt_monthly";
 
-/** A payment or debt target's kind, shown above the inspector's heading ("Monthly Debt Payment"). */
+/** The savings goals' names, in the editor's order. */
+export const GOAL_OPTIONS: { value: TargetGoal; label: string; use: string }[] = [
+  {
+    value: "save_up",
+    label: "Save up for something",
+    use: "A holiday, a car, a house deposit. Spending it on that won't undo your progress.",
+  },
+  {
+    value: "safety_fund",
+    label: "Keep a safety fund",
+    use: "An emergency fund: keep a balance and top it back up after you use it.",
+  },
+  {
+    value: "keep_saving",
+    label: "Keep saving",
+    use: "Retirement, investing or general savings: the same amount every month.",
+  },
+];
+
+/**
+ * A target's kind, shown above the inspector's heading: a savings goal ("Keep a safety fund") or a
+ * payment or debt target ("Monthly Debt Payment").
+ */
 export function paymentTargetKind(target: CategoryTarget) {
+  if (target.goal) return GOAL_OPTIONS.find((o) => o.value === target.goal)?.label ?? null;
   if (isDebtTarget(target)) return "Monthly Debt Payment";
   return PAYMENT_TARGET_OPTIONS.find((o) => o.value === target.cadence)?.label ?? null;
 }
@@ -114,9 +142,18 @@ function repeatPhrase(target: Pick<CategoryTarget, "repeatEvery" | "repeatUnit">
  * The inspector heading: "Set Aside Another $100.00 Each Month", "Refill Up to $10.00 Each Week",
  * "Set Aside Another $300.00 Every 2 Months", "Have a Balance of $300.00". Payment targets: "$30.00"
  * (Pay Specific Amount Monthly) and "Pay off $125.00" (Pay Off Balance by Date, `amount` being
- * what's still to pay off: what the target needs).
+ * what's still to pay off: what the target needs). Savings goals, with `goalAmount` formatted:
+ * "Save $3,000.00 by Mar 2027", "Save $3,000.00, $250.00 a Month", "Keep $10,000.00 Saved", "Save
+ * $400.00 Each Month".
  */
-export function targetHeading(target: CategoryTarget, amount: string) {
+export function targetHeading(target: CategoryTarget, amount: string, goalAmount = amount) {
+  if (target.goal === "save_up") {
+    return target.cadence === "custom" && target.dueDate
+      ? `Save ${goalAmount} by ${shortMonth(target.dueDate)}`
+      : `Save ${goalAmount}, ${amount} a Month`;
+  }
+  if (target.goal === "safety_fund") return `Keep ${goalAmount} Saved`;
+  if (target.goal === "keep_saving") return `Save ${amount} Each Month`;
   if (target.cadence === "payment_monthly") return amount;
   if (target.cadence === "debt_monthly") return `${amount} Needed Each Month`;
   if (target.cadence === "payoff_by_date") return `Pay off ${amount}`;
@@ -139,9 +176,22 @@ export function targetHeading(target: CategoryTarget, amount: string) {
 /**
  * The line under the heading: "By the End of the Month", "By the 15th of the Month", "By Saturday",
  * "By Dec 30 2026" (the current period's due date), "By Dec 2026", "Eventually"; for payment targets
- * "Each Month" and "By Mar 2027".
+ * "Each Month" and "By Mar 2027". Savings goals: a safety fund's top-up ("Refills All at Once",
+ * "Refills Up to $500.00 a Month", with `amount` formatted), keep saving "Every Month", save up
+ * nothing (see `goalReachLine`).
  */
-export function targetDueLine(target: CategoryTarget, need: Pick<TargetNeed, "dueDate"> | null) {
+export function targetDueLine(
+  target: CategoryTarget,
+  need: Pick<TargetNeed, "dueDate"> | null,
+  amount?: string,
+) {
+  if (target.goal === "save_up") return "";
+  if (target.goal === "keep_saving") return "Every Month";
+  if (target.goal === "safety_fund") {
+    return target.amount === target.goalAmount || !amount
+      ? "Refills All at Once"
+      : `Refills Up to ${amount} a Month`;
+  }
   if (target.cadence === "payment_monthly") return "Each Month";
   if (target.cadence === "payoff_by_date") {
     return target.dueDate ? `By ${shortMonth(target.dueDate)}` : "";
@@ -179,6 +229,17 @@ export function targetRowNote(
   format: Format,
 ) {
   const status = targetStatus(need);
+  // Savings goals: "Goal Reached" / "Full", "$1,100.00 of $3,000.00" while on track, else what
+  // this month still asks. A save-up goal past its date keeps asking.
+  if (target.goal === "save_up" || target.goal === "safety_fund") {
+    if (status === "met") {
+      return { met: true, text: target.goal === "save_up" ? "Goal Reached" : "Full" };
+    }
+    if (status === "onTrack") {
+      return { met: false, text: `${format(need.funded)} of ${format(need.needed)}` };
+    }
+    return { met: false, text: `${format(need.underfunded)} more needed this month` };
+  }
   // A one-time target past its due month reads like a met one ("Funded. Spent $10.00 of $30.00");
   // `categoryRowNote` drops it when nothing's in.
   if (status === "met" || need.pastDue) return { met: true, text: "Funded" };
@@ -237,6 +298,19 @@ export function targetLines(
       toGoLine,
     ];
   }
+  if (target.goal) {
+    const [neededLabel, fundedLabel] =
+      target.goal === "save_up"
+        ? ["Goal", "Saved So Far"]
+        : target.goal === "safety_fund"
+          ? ["Balance to Keep", "In the Fund"]
+          : ["To Save This Month", "Saved This Month"];
+    return [
+      { label: neededLabel, value: format(need.needed) },
+      { label: fundedLabel, value: format(need.funded) },
+      toGoLine,
+    ];
+  }
   const due = need.dueDate ? shortDate(need.dueDate) : null;
   const setAside = target.behavior === "set_aside";
   const [neededLabel, fundedLabel] =
@@ -275,6 +349,7 @@ export function targetMessage(
   // your target".
   if (need.beforeOpening) return { prompt: format("0"), suffix: " to meet your target" };
   const status = targetStatus(need);
+  if (target.goal) return goalMessage(target.goal, status, need, format);
   // Past a one-time target's due month there's no message unless it's met.
   if (need.pastDue && status !== "met") return null;
   if (status === "met") {
@@ -301,6 +376,66 @@ export function targetMessage(
     prompt: `${amount}${BigInt(need.funded) > 0n ? " more" : ""}`,
     suffix: " to meet your target",
   };
+}
+
+/** `targetMessage` for a savings goal; a save-up goal past its date keeps asking. */
+function goalMessage(
+  goal: TargetGoal,
+  status: ReturnType<typeof targetStatus>,
+  need: TargetNeed,
+  format: Format,
+) {
+  if (status === "met") {
+    return {
+      text:
+        goal === "save_up"
+          ? "You've reached your goal!"
+          : goal === "safety_fund"
+            ? "Your safety fund is full!"
+            : "You've saved this month's amount!",
+    };
+  }
+  if (status === "onTrack") {
+    return {
+      text:
+        goal === "safety_fund"
+          ? "You're on track: it's filling up."
+          : "You're on track to reach your goal!",
+    };
+  }
+  const started = BigInt(need.funded) > 0n;
+  return {
+    prompt: `${format(need.underfunded)}${started && goal !== "save_up" ? " more" : ""}`,
+    suffix:
+      goal === "save_up"
+        ? need.pastDue
+          ? " to reach your goal"
+          : " this month to stay on track"
+        : goal === "safety_fund"
+          ? started
+            ? " to top it up"
+            : " to start building it"
+          : " to save this month",
+  };
+}
+
+/**
+ * When a save-up goal saving a set amount each month (`perMonth`, in the budget's currency) gets
+ * there: "Goal Reached", "Reached This Month" once this month's share goes in, "Reached by Aug 2027".
+ * Empty for other targets and dated ones (their date is in the heading).
+ */
+export function goalReachLine(
+  target: CategoryTarget,
+  need: TargetNeed,
+  month: BudgetMonth,
+  perMonth: bigint,
+) {
+  if (target.goal !== "save_up" || target.cadence !== "monthly") return "";
+  const left = BigInt(need.needed) - BigInt(need.funded);
+  if (left <= 0n) return "Goal Reached";
+  const reached = saveUpReachedMonth(left, perMonth, month, BigInt(need.underfunded));
+  if (!reached) return "";
+  return reached === month ? "Reached This Month" : `Reached by ${shortMonth(`${reached}-01`)}`;
 }
 
 /** Create, replace and remove a category's target; failures show a toast. */

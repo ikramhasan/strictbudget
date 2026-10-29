@@ -45,7 +45,7 @@ const json = async <T>(res: Response) => (await res.json()) as T;
 
 /**
  * Card and cash spending, a split, a refund that leaves a category positive, transfers between
- * budget accounts (which drop out), an uncategorized transfer to a tracking account (which counts
+ * budget accounts (which drop out), an uncategorized transfer to a tracking liability (which counts
  * as Uncategorized), income and starting balances (which aren't income).
  */
 async function setup() {
@@ -59,7 +59,8 @@ async function setup() {
   const checking = await account("Checking", "checking", "100000");
   const savings = await account("Savings", "savings");
   const visa = await account("Visa", "credit_card");
-  const house = await account("House", "asset");
+  // A loan tracked off budget: paying it is spending, not saving (that's tracking assets).
+  const house = await account("House", "liability");
   const { groups, readyToAssignCategoryId } = await json<{
     groups: Group[];
     readyToAssignCategoryId: string;
@@ -328,6 +329,141 @@ describe("spending by flag", () => {
     expect(rows.some((r) => r.flag === "green")).toBe(false);
     const { total } = await t.lines({ from: "2026-10", to: "2026-10", flags: "purple" });
     expect(total).toBe("-1200");
+  });
+});
+
+describe("saving in reports", () => {
+  async function saving() {
+    const t = await setup();
+    const brokerage = await json<{ id: string }>(
+      await send("POST", `${t.base}/accounts`, t.cookie, {
+        name: "Brokerage",
+        type: "asset",
+        balance: "0",
+        date: "2026-08-20",
+      }),
+    );
+    const { groups } = await json<{
+      groups: { name: string; categories: { id: string; name: string }[] }[];
+    }>(await send("GET", `${t.base}/categories`, t.cookie));
+    const all = groups.flatMap((g) => g.categories);
+    const fund = all.find((c) => c.name.includes("Emergency fund"));
+    const vacation = all.find((c) => c.name.includes("Vacation"));
+    if (!fund || !vacation) throw new Error("starter savings missing");
+    const target = (categoryId: string, input: Record<string, unknown>) =>
+      send("PUT", `${t.base}/categories/${categoryId}/target`, t.cookie, {
+        dueDay: null,
+        month: "2026-10",
+        today: TODAY,
+        ...input,
+      });
+    // The emergency fund keeps saving into the brokerage; the vacation is saved up and spent.
+    expect(
+      (
+        await target(fund.id, {
+          cadence: "monthly",
+          behavior: "set_aside",
+          goal: "keep_saving",
+          amount: "20000",
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await target(vacation.id, {
+          cadence: "monthly",
+          behavior: "set_aside",
+          goal: "save_up",
+          amount: "10000",
+          goalAmount: "50000",
+        })
+      ).status,
+    ).toBe(200);
+    // Moved to the brokerage from Groceries' money, and back (both saving, whatever the category).
+    await t.add({
+      date: "2026-10-10",
+      amount: "-7000",
+      transferAccountId: brokerage.id,
+      categoryId: t.groceries.id,
+    });
+    await t.add({
+      date: "2026-10-11",
+      amount: "1000",
+      transferAccountId: brokerage.id,
+      categoryId: t.groceries.id,
+    });
+    // A 401(k) contribution recorded as a plain outflow from the keep-saving fund.
+    await t.add({ date: "2026-10-12", amount: "-15000", categoryId: fund.id, payeeName: "401k" });
+    // The holiday itself, paid from the save-up goal: spending.
+    await t.add({ date: "2026-10-13", amount: "-8000", categoryId: vacation.id });
+    // A split with a line to the brokerage.
+    await t.add({
+      date: "2026-10-14",
+      amount: "-3000",
+      subtransactions: [
+        { amount: "-1000", categoryId: t.groceries.id },
+        { amount: "-2000", categoryId: t.rent.id, transferAccountId: brokerage.id },
+      ],
+    });
+    return { ...t, fund, vacation };
+  }
+
+  it("keeps money that leaves the plan as saving out of spending", async () => {
+    const t = await saving();
+    const spent = await t.sums({ from: "2026-10", to: "2026-10", groupBy: "category" });
+    const saved = await t.sums({
+      from: "2026-10",
+      to: "2026-10",
+      groupBy: "category",
+      kind: "saving",
+    });
+    expect(netBy(saved.rows, "categoryId")).toEqual({
+      [t.groceries.id]: "-6000",
+      [t.fund.id]: "-15000",
+      [t.rent.id]: "-2000",
+    });
+    // Groceries keeps only its own spending; the vacation stays spending; the tracked loan too.
+    expect(netBy(spent.rows, "categoryId")).toEqual({
+      [t.groceries.id]: "-7000",
+      [t.rent.id]: "-10000",
+      [t.phone.id]: "500",
+      [t.vacation.id]: "-8000",
+      [t.uncategorized.id]: "-30000",
+    });
+  });
+
+  it("adds up to the plan's Activity with spending", async () => {
+    const t = await saving();
+    const query = { from: "2026-10", to: "2026-10", groupBy: "category" };
+    const spent = netBy((await t.sums(query)).rows, "categoryId");
+    const saved = netBy((await t.sums({ ...query, kind: "saving" })).rows, "categoryId");
+    const month = await json<{ categories: { categoryId: string; activity: string }[] }>(
+      await send("GET", `${t.base}/months/2026-10?today=${TODAY}`, t.cookie),
+    );
+    for (const id of [t.groceries.id, t.rent.id, t.fund.id, t.vacation.id]) {
+      const activity = month.categories.find((c) => c.categoryId === id)?.activity;
+      expect(BigInt(spent[id] ?? "0") + BigInt(saved[id] ?? "0"), id).toBe(BigInt(activity ?? ""));
+    }
+  });
+
+  it("lists saving lines in the drill-down and only there", async () => {
+    const t = await saving();
+    const saved = await t.lines({ from: "2026-10", to: "2026-10", kind: "saving" });
+    expect(saved.total).toBe("-23000");
+    expect(saved.count).toBe(4);
+    const groceries = await t.lines({
+      from: "2026-10",
+      to: "2026-10",
+      categoryIds: t.groceries.id,
+    });
+    expect(groceries.total).toBe("-7000");
+  });
+
+  it("counts a keep-saving fund's outflows as spending again once it's a spending category", async () => {
+    const t = await saving();
+    await send("PATCH", `${t.base}/categories/${t.fund.id}`, t.cookie, { savings: false });
+    const spent = await t.sums({ from: "2026-10", to: "2026-10", groupBy: "category" });
+    expect(netBy(spent.rows, "categoryId")[t.fund.id]).toBe("-15000");
   });
 });
 

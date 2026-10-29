@@ -10,6 +10,7 @@ import {
   moveCategoryHandler,
   restoreCategoryTargetHandler,
   setCategoryTargetHandler,
+  setSavingsSuggestionHandler,
   snoozeCategoryTargetHandler,
   updateCategoryGroupHandler,
   updateCategoryHandler,
@@ -25,6 +26,7 @@ import {
   moveCategoryGroup,
   restoreCategoryTarget,
   setCategoryTarget,
+  setSavingsSuggestion,
   snoozeCategoryTarget,
   updateCategory,
   updateCategoryGroup,
@@ -43,4 +45,5 @@ export const categoriesRouter = createRouter()
   .openapi(setCategoryTarget, setCategoryTargetHandler)
   .openapi(restoreCategoryTarget, restoreCategoryTargetHandler)
   .openapi(deleteCategoryTarget, deleteCategoryTargetHandler)
-  .openapi(snoozeCategoryTarget, snoozeCategoryTargetHandler);
+  .openapi(snoozeCategoryTarget, snoozeCategoryTargetHandler)
+  .openapi(setSavingsSuggestion, setSavingsSuggestionHandler);

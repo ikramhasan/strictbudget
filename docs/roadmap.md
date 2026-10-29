@@ -1,7 +1,7 @@
 # Roadmap
 
 Core budgeting, sharing, registers, payees, import and export, the first reports, keyboard and
-mobile, production readiness, collaboration and multi-currency are built. What's left, in order,
+mobile, production readiness, collaboration, multi-currency and savings are built. What's left, in order,
 is one [milestone](https://github.com/ikramhasan/strictbudget/milestones) each; the issues and
 their status are on the [project board](https://github.com/users/ikramhasan/projects/1).
 

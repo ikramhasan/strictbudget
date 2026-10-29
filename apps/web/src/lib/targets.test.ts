@@ -3,7 +3,9 @@ import {
   type CategoryTarget,
   categoryRowNote,
   dueDayIn,
+  goalReachLine,
   ordinal,
+  paymentTargetKind,
   payoffAmount,
   type TargetNeed,
   targetDueLine,
@@ -27,6 +29,8 @@ const target = (extra: Partial<CategoryTarget> = {}): CategoryTarget => ({
   startMonth: "2026-10",
   startDay: null,
   snoozedMonth: null,
+  goal: null,
+  goalAmount: null,
   ...extra,
 });
 const need = (
@@ -221,6 +225,96 @@ describe("target wording", () => {
       "To Go",
     ]);
     expect(targetMessage(eventually, need("30000", "0", "0"), format)).toBeNull();
+  });
+});
+
+describe("savings goal wording", () => {
+  const saveUp = target({ goal: "save_up", amount: "25000", goalAmount: "300000" });
+  const fund = target({
+    behavior: "refill",
+    goal: "safety_fund",
+    amount: "50000",
+    goalAmount: "1000000",
+  });
+  const keep = target({ goal: "keep_saving", amount: "40000" });
+
+  it("heads each goal and labels its kind", () => {
+    expect(targetHeading(saveUp, "$250.00", "$3,000.00")).toBe("Save $3,000.00, $250.00 a Month");
+    const dated = target({
+      cadence: "custom",
+      goal: "save_up",
+      amount: "120000",
+      goalAmount: "120000",
+      dueDate: "2027-03-31",
+    });
+    expect(targetHeading(dated, "$1,200.00")).toBe("Save $1,200.00 by Mar 2027");
+    expect(targetHeading(fund, "$500.00", "$10,000.00")).toBe("Keep $10,000.00 Saved");
+    expect(targetHeading(keep, "$400.00")).toBe("Save $400.00 Each Month");
+    expect(paymentTargetKind(fund)).toBe("Keep a safety fund");
+    expect(targetDueLine(fund, null, "$500.00")).toBe("Refills Up to $500.00 a Month");
+    expect(targetDueLine({ ...fund, amount: "1000000" }, null, "$10,000.00")).toBe(
+      "Refills All at Once",
+    );
+    expect(targetDueLine(saveUp, null)).toBe("");
+    expect(targetDueLine(keep, null)).toBe("Every Month");
+  });
+
+  it("notes progress under the row, and that a reached goal stays reached", () => {
+    expect(targetRowNote(saveUp, need("300000", "110000", "0"), "2026-10", format)).toEqual({
+      met: false,
+      text: "$1100.00 of $3000.00",
+    });
+    expect(targetRowNote(saveUp, need("300000", "110000", "15000"), "2026-10", format)).toEqual({
+      met: false,
+      text: "$150.00 more needed this month",
+    });
+    // A dated goal past its date keeps asking rather than reading Funded.
+    expect(
+      targetRowNote(saveUp, need("300000", "110000", "190000", null, true), "2027-05", format),
+    ).toEqual({ met: false, text: "$1900.00 more needed this month" });
+    expect(targetRowNote(fund, need("1000000", "1000000", "0"), "2026-10", format)).toEqual({
+      met: true,
+      text: "Full",
+    });
+    expect(
+      categoryRowNote(
+        saveUp,
+        need("300000", "300000", "0"),
+        bar("240000", "60000"),
+        "2026-10",
+        format,
+      ),
+    ).toEqual({ strong: "Goal Reached", rest: ". Spent $2400.00 of $3000.00" });
+  });
+
+  it("words the inspector's lines and messages per goal", () => {
+    expect(targetLines(fund, need("1000000", "900000", "0"), format).map((l) => l.label)).toEqual([
+      "Balance to Keep",
+      "In the Fund",
+      "To Go",
+    ]);
+    expect(targetMessage(saveUp, need("300000", "300000", "0"), format)).toEqual({
+      text: "You've reached your goal!",
+    });
+    expect(targetMessage(fund, need("1000000", "0", "50000"), format)).toEqual({
+      prompt: "$500.00",
+      suffix: " to start building it",
+    });
+    expect(targetMessage(fund, need("1000000", "880000", "50000"), format)).toEqual({
+      prompt: "$500.00 more",
+      suffix: " to top it up",
+    });
+    expect(targetMessage(saveUp, need("300000", "110000", "190000", null, true), format)).toEqual({
+      prompt: "$1900.00",
+      suffix: " to reach your goal",
+    });
+    expect(goalReachLine(saveUp, need("300000", "300000", "0"), "2026-10", 25000n)).toBe(
+      "Goal Reached",
+    );
+    expect(goalReachLine(saveUp, need("300000", "110000", "15000"), "2026-10", 25000n)).toBe(
+      "Reached by May 2027",
+    );
+    expect(goalReachLine(keep, need("40000", "0", "40000"), "2026-10", 40000n)).toBe("");
   });
 });
 

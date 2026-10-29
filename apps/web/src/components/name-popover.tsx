@@ -3,6 +3,8 @@ import { Field, FieldDescription, FieldLabel } from "@strictbudget/ui/components
 import { Input } from "@strictbudget/ui/components/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { Textarea } from "@strictbudget/ui/components/textarea";
+import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
+import { PiggyBank, Wallet } from "lucide-react";
 import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
 import { useOptionalBudget } from "@/lib/budget-context";
 import { EmojiButton } from "./emoji-button";
@@ -25,6 +27,8 @@ export function splitEmoji(name: string): { emoji: string; text: string } {
 export interface NameValues {
   name: string;
   note: string;
+  /** With `withKind`: a savings category rather than a spending one. */
+  savings?: boolean;
 }
 
 /**
@@ -37,6 +41,7 @@ export function NamePopover({
   initial = { name: "", note: "" },
   withNote = false,
   withEmoji = false,
+  withKind = false,
   submitLabel = "OK",
   nameLockedReason,
   onSubmit,
@@ -51,6 +56,8 @@ export function NamePopover({
    * picked one is put back at the start of the name. Not shown while the name is locked.
    */
   withEmoji?: boolean;
+  /** A Spending / Savings choice under the name, for a new category. */
+  withKind?: boolean;
   submitLabel?: string;
   /** Shows the name read-only with this explanation (e.g. payment categories). */
   nameLockedReason?: string;
@@ -84,7 +91,7 @@ export function NamePopover({
     const name = emoji ? `${emoji} ${trimmed}` : trimmed;
     setPending(true);
     try {
-      await onSubmit({ name, note: values.note });
+      await onSubmit({ name, note: values.note, ...(withKind && { savings: !!values.savings }) });
       setOpen(false);
     } finally {
       setPending(false);
@@ -122,6 +129,34 @@ export function NamePopover({
             </div>
             {nameLockedReason && <FieldDescription>{nameLockedReason}</FieldDescription>}
           </Field>
+          {withKind && (
+            <Field>
+              <FieldLabel id={`${id}-kind`}>What is it for?</FieldLabel>
+              <ToggleGroup
+                type="single"
+                size="sm"
+                spacing={0}
+                aria-labelledby={`${id}-kind`}
+                value={values.savings ? "savings" : "spending"}
+                onValueChange={(value) => {
+                  if (value) setValues((v) => ({ ...v, savings: value === "savings" }));
+                }}
+                className="w-full"
+              >
+                <ToggleGroupItem value="spending" className="flex-1">
+                  <Wallet aria-hidden /> Spending
+                </ToggleGroupItem>
+                <ToggleGroupItem value="savings" className="flex-1">
+                  <PiggyBank aria-hidden /> Savings
+                </ToggleGroupItem>
+              </ToggleGroup>
+              <FieldDescription>
+                {values.savings
+                  ? "Money you keep for a goal, like an emergency fund or a holiday. It's shown apart from what you can spend."
+                  : "Money for bills and everyday spending."}
+              </FieldDescription>
+            </Field>
+          )}
           {withNote && (
             <Field>
               <FieldLabel htmlFor={`${id}-note`}>Note</FieldLabel>
