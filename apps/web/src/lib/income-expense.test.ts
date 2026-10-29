@@ -155,3 +155,65 @@ describe("heatOf", () => {
     expect(heatOf(-100n, 0n)).toBeNull();
   });
 });
+
+describe("saved money in Income v Expense", () => {
+  const withSaving = buildIncomeExpense({
+    months: ["2026-09", "2026-10"],
+    income: [
+      { month: "2026-09", payeeId: "job", net: "500000" },
+      { month: "2026-10", payeeId: "job", net: "500000" },
+    ],
+    payees: [{ id: "job", name: "Employer" }],
+    expenses: [
+      { month: "2026-09", categoryId: "rent", net: "-300000" },
+      { month: "2026-10", categoryId: "rent", net: "-300000" },
+    ],
+    saving: [
+      { month: "2026-09", categoryId: "retire", net: "-50000" },
+      { month: "2026-10", categoryId: "retire", net: "-50000" },
+      // Moved to the brokerage from Rent's money, and some of it brought back.
+      { month: "2026-10", categoryId: "rent", net: "-20000" },
+      { month: "2026-10", categoryId: "uncat", net: "5000" },
+    ],
+    groups: [
+      { id: "bills", name: "Bills", categories: [{ id: "rent", name: "Rent" }] },
+      { id: "savings", name: "Savings", categories: [{ id: "retire", name: "Retirement" }] },
+    ],
+    uncategorizedCategoryId: "uncat",
+  });
+
+  it("lists what was saved per category, positive, apart from expenses", () => {
+    expect(withSaving.saved.map((c) => [c.name, c.values.months])).toEqual([
+      ["Uncategorized Transactions", [0n, -5000n]],
+      ["Rent", [0n, 20000n]],
+      ["Retirement", [50000n, 50000n]],
+    ]);
+    expect(withSaving.totalSaved.months).toEqual([50000n, 65000n]);
+    expect(withSaving.totalExpenses.months).toEqual([-300000n, -300000n]);
+  });
+
+  it("keeps Net Income what's left over, and counts saving in the savings rate", () => {
+    // $5,000 in, $3,000 spent, $500 saved: $1,500 left over; $2,000 not spent is 40%.
+    expect(withSaving.netIncome.months).toEqual([150000n, 135000n]);
+    expect(withSaving.savingsRate.months).toEqual([40, 40]);
+    expect(withSaving.savingsRate.total).toBe(40);
+  });
+
+  it("exports the Saved section before Net Income", () => {
+    const rows = incomeExpenseExportRows(withSaving, 2, "comma_dot").map((r) => r[0]);
+    expect(rows.slice(-6)).toEqual([
+      "Total Expenses",
+      "Saved",
+      "Uncategorized Transactions",
+      "Rent",
+      "Retirement",
+      "Net Income",
+    ]);
+  });
+
+  it("has no Saved section when nothing was saved", () => {
+    expect(buildIncomeExpense(input).saved).toEqual([]);
+    const rows = incomeExpenseExportRows(buildIncomeExpense(input), 2, "comma_dot");
+    expect(rows.some((r) => r[0] === "Saved")).toBe(false);
+  });
+});

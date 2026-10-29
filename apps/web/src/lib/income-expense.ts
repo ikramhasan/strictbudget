@@ -17,7 +17,12 @@ import { monthLabel } from "./reports";
  *   Sources" and "Total Income". The category filter doesn't touch it, the account filter does.
  * - Expense: "Uncategorized Transactions" first, then each group in budget order with its
  *   categories in budget order (hidden ones too), each a net (inflows positive), and "Total
- *   <Group>"; then "Total Expenses" and "Net Income" = income + expenses.
+ *   <Group>"; then "Total Expenses".
+ * - Saved: money that left the plan as saving (transfers to tracking asset accounts, Keep saving
+ *   goals' outflows) per category in budget order, as a positive amount (money brought back lowers
+ *   it), then "Total Saved". Left out of expenses, so spending is only spending.
+ * - "Net Income" = income + expenses − saved: what's left over, the same as when saving counted as
+ *   spending. The savings rate is (net income + saved) ÷ income: everything not spent.
  * - Only rows with activity in the range are listed (a category netting $0.00 with lines is).
  * - Each row has a cell per month, an Average (the total over the months, half away from zero)
  *   and a Total.
@@ -58,10 +63,13 @@ export interface IncomeExpenseTable {
   uncategorized: CategoryRow | null;
   groups: GroupRows[];
   totalExpenses: RowValues;
+  /** Categories with money saved (positive), in budget order; empty when nothing was saved. */
+  saved: CategoryRow[];
+  totalSaved: RowValues;
   netIncome: RowValues;
   /**
-   * Savings rate (net income ÷ income) per month, then Average and Total, in percent for display
-   * only; null when there's no income to divide by.
+   * Savings rate ((net income + saved) ÷ income) per month, then Average and Total, in percent
+   * for display only; null when there's no income to divide by.
    */
   savingsRate: { months: (number | null)[]; average: number | null; total: number | null };
 }
@@ -80,6 +88,8 @@ export interface IncomeExpenseInput {
   income: readonly Sum[];
   /** Spending sums grouped by month and category. */
   expenses: readonly Sum[];
+  /** Saving sums grouped by month and category (`kind=saving`). */
+  saving?: readonly Sum[];
   payees: readonly { id: string; name: string }[];
   /** The plan's groups in order (no internal or payment groups), categories in order. */
   groups: readonly {
@@ -168,8 +178,31 @@ export function buildIncomeExpense(input: IncomeExpenseInput): IncomeExpenseTabl
   });
   // Every spending line counts, even one whose category isn't in the plan's list.
   const totalExpenses = addValues([...spent.values()].map(rowValues), months.length);
-  const netIncome = addValues([totalIncome, totalExpenses], months.length);
-  const rate = (net: bigint, inc: bigint) => (inc > 0n ? percentOf(net, inc) : null);
+
+  // Saved money is what went out, so its sign flips: $150.00 saved, less what came back.
+  const savedCells = perMonth(input.saving ?? [], months, (s) => s.categoryId ?? NONE);
+  const positive = (cells: bigint[]) => rowValues(cells.map((c) => -c));
+  const inOrder = [
+    { id: input.uncategorizedCategoryId, name: UNCATEGORIZED },
+    ...input.groups.flatMap((g) => g.categories),
+  ];
+  const saved = inOrder.flatMap((c) => {
+    const cells = savedCells.get(c.id);
+    return cells ? [{ categoryId: c.id, name: c.name, values: positive(cells) }] : [];
+  });
+  const totalSaved = positive(
+    addValues([...savedCells.values()].map(rowValues), months.length).months,
+  );
+  const netIncome = rowValues(
+    months.map(
+      (_, i) =>
+        (totalIncome.months[i] ?? 0n) +
+        (totalExpenses.months[i] ?? 0n) -
+        (totalSaved.months[i] ?? 0n),
+    ),
+  );
+  const notSpent = addValues([netIncome, totalSaved], months.length);
+  const rate = (kept: bigint, inc: bigint) => (inc > 0n ? percentOf(kept, inc) : null);
   return {
     months: [...months],
     income,
@@ -177,11 +210,13 @@ export function buildIncomeExpense(input: IncomeExpenseInput): IncomeExpenseTabl
     uncategorized,
     groups,
     totalExpenses,
+    saved,
+    totalSaved,
     netIncome,
     savingsRate: {
-      months: netIncome.months.map((n, i) => rate(n, totalIncome.months[i] ?? 0n)),
-      average: rate(netIncome.total, totalIncome.total),
-      total: rate(netIncome.total, totalIncome.total),
+      months: notSpent.months.map((n, i) => rate(n, totalIncome.months[i] ?? 0n)),
+      average: rate(notSpent.total, totalIncome.total),
+      total: rate(notSpent.total, totalIncome.total),
     },
   };
 }
@@ -189,8 +224,9 @@ export function buildIncomeExpense(input: IncomeExpenseInput): IncomeExpenseTabl
 /**
  * Export rows: "Category", the months ("Aug 2026"), "Average", "Total"; then "All Income Sources"
  * carrying the income total, each payee, "Total Income", "Uncategorized Transactions", each group as
- * a row carrying its total followed by its categories (no "Total <Group>" rows), "Total Expenses"
- * and "Net Income". Text quoted, amounts plain.
+ * a row carrying its total followed by its categories (no "Total <Group>" rows), "Total Expenses",
+ * "Saved" carrying the saved total followed by its categories (when anything was saved) and "Net
+ * Income". Text quoted, amounts plain.
  */
 export function incomeExpenseExportRows(
   table: IncomeExpenseTable,
@@ -214,6 +250,9 @@ export function incomeExpenseExportRows(
       ...g.categories.map((c) => row(c.name, c.values)),
     ]),
     row("Total Expenses", table.totalExpenses),
+    ...(table.saved.length
+      ? [row("Saved", table.totalSaved), ...table.saved.map((c) => row(c.name, c.values))]
+      : []),
     row("Net Income", table.netIncome),
   ];
 }

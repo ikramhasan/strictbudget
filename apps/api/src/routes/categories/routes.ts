@@ -176,7 +176,9 @@ const SetTargetSchema = z
             "month asks only for the weeks from today",
         ),
       goal: Goal.nullable().optional(),
-      goalAmount: Amount.nullable().optional().describe(GoalAmount.description ?? ""),
+      goalAmount: Amount.nullable()
+        .optional()
+        .describe(GoalAmount.description ?? ""),
     }),
   )
   .superRefine((v, ctx) => {

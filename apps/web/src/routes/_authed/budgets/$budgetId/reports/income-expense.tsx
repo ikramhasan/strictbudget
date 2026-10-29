@@ -74,15 +74,26 @@ function Report() {
       filters: expenseFilter,
     }),
   );
+  // Money that left the plan as saving: out of expenses, into its own section.
+  const saving = useQuery(
+    reportActivityOptions({
+      budgetId,
+      range,
+      kind: "saving",
+      groupBy: ["month", "category"],
+      filters: expenseFilter,
+    }),
+  );
   const categories = useQuery(categoriesQueryOptions(budgetId));
   const [drill, setDrill] = useState<DrillDown | null>(null);
 
   const table =
-    income.data && expenses.data && categories.data
+    income.data && expenses.data && saving.data && categories.data
       ? buildIncomeExpense({
           months: monthsIn(range),
           income: income.data.rows,
           expenses: expenses.data.rows,
+          saving: saving.data.rows,
           payees: income.data.payees,
           groups: categories.data.groups.filter((g) => !g.kind),
           uncategorizedCategoryId: categories.data.uncategorizedCategoryId,
@@ -111,14 +122,22 @@ function Report() {
             ...(target.payeeId !== undefined && { payeeIds: target.payeeId ?? "none" }),
           },
         })
-      : open(title, column, {
-          kind: "spending",
-          filters: {
-            ...expenseFilter,
-            ...(target.categoryId && { categoryIds: target.categoryId }),
-            ...(target.groupId && { groupIds: target.groupId }),
-          },
-        });
+      : target.kind === "saving"
+        ? open(title, column, {
+            kind: "saving",
+            filters: {
+              ...expenseFilter,
+              ...(target.categoryId && { categoryIds: target.categoryId }),
+            },
+          })
+        : open(title, column, {
+            kind: "spending",
+            filters: {
+              ...expenseFilter,
+              ...(target.categoryId && { categoryIds: target.categoryId }),
+              ...(target.groupId && { groupIds: target.groupId }),
+            },
+          });
   const onChartPick = (series: ChartSeries, month: BudgetMonth) =>
     onPick({
       title: series === "income" ? "Income" : "Expenses",
@@ -179,6 +198,9 @@ function Report() {
                     Expenses
                   </th>
                   <th scope="col" className="px-2 py-1.5 text-right font-medium">
+                    Saved
+                  </th>
+                  <th scope="col" className="px-2 py-1.5 text-right font-medium">
                     Net Income
                   </th>
                 </tr>
@@ -189,7 +211,12 @@ function Report() {
                     <th scope="row" className="px-2 py-1.5 text-left font-normal">
                       {monthLabel(m, "long")}
                     </th>
-                    {[table.totalIncome, table.totalExpenses, table.netIncome].map((v, j) => (
+                    {[
+                      table.totalIncome,
+                      table.totalExpenses,
+                      table.totalSaved,
+                      table.netIncome,
+                    ].map((v, j) => (
                       <td key={j} className="px-2 py-1.5 text-right tabular-nums">
                         {formatAmount(money(v.months[i] ?? 0n, budget.currency))}
                       </td>
@@ -216,7 +243,7 @@ function Report() {
       </div>
       {table ? (
         <IncomeExpenseTable table={table} heat={search.heat === true} onPick={onPick} />
-      ) : income.isError || expenses.isError || categories.isError ? (
+      ) : income.isError || expenses.isError || saving.isError || categories.isError ? (
         <p className="text-muted-foreground text-sm">Couldn't load the report.</p>
       ) : (
         <Skeleton className="h-96 w-full" />

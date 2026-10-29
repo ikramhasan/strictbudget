@@ -135,8 +135,7 @@ describe("savings categories", () => {
       balance: "-5000",
       date: "2026-10-01",
     });
-    const payment = (await groups()).find((g) => g.kind === "credit_card_payments")
-      ?.categories[0];
+    const payment = (await groups()).find((g) => g.kind === "credit_card_payments")?.categories[0];
     if (!payment) throw new Error("payment category missing");
     const res = await send("PATCH", `${base}/categories/${payment.id}`, cookie, { savings: true });
     expect(res.status).toBe(409);
@@ -281,7 +280,12 @@ describe("savings goals", () => {
       return json<ErrorBody>(res);
     };
     await refused({ cadence: "monthly", behavior: "set_aside", amount: "100", goalAmount: "500" });
-    await refused({ cadence: "monthly", behavior: "set_aside", goal: "safety_fund", amount: "100" });
+    await refused({
+      cadence: "monthly",
+      behavior: "set_aside",
+      goal: "safety_fund",
+      amount: "100",
+    });
     await refused({
       cadence: "monthly",
       behavior: "refill",

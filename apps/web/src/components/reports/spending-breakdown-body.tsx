@@ -1,8 +1,8 @@
 import { type CurrencyCode, money } from "@strictbudget/engine";
 import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { ChevronRight, Flag } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ChevronRight, Flag, PiggyBank } from "lucide-react";
 import type { ReactNode } from "react";
 import { accountsQueryOptions } from "@/lib/accounts";
 import { useBudget } from "@/lib/budget-context";
@@ -80,6 +80,17 @@ export function SpendingBreakdownBody({
       filters: state.filters.accountIds ? { accountIds: state.filters.accountIds } : {},
     }),
   );
+
+  // Money that left the plan as saving, kept out of spending (shown in Income v Expense).
+  const saving = useQuery(
+    reportActivityOptions({
+      budgetId: budget.id,
+      range: state.range,
+      kind: "saving",
+      filters: state.filters,
+    }),
+  );
+  const saved = saving.data ? -saving.data.rows.reduce((s, r) => s + BigInt(r.net), 0n) : 0n;
 
   const uncategorizedId = categories.data?.uncategorizedCategoryId;
   // The lines of the opened group, for its largest transactions and its drill-downs.
@@ -225,6 +236,25 @@ export function SpendingBreakdownBody({
           )}
         </Stat>
       </dl>
+
+      {saved !== 0n && (
+        <p className="flex items-start gap-2 text-muted-foreground text-sm">
+          <PiggyBank className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>
+            {format(saved > 0n ? saved : -saved)}{" "}
+            {saved > 0n ? "saved" : "brought back from savings"} in this range isn't counted as
+            spending.{" "}
+            <Link
+              to="/budgets/$budgetId/reports/income-expense"
+              params={{ budgetId: budget.id }}
+              search={{ from: state.range.from, to: state.range.to }}
+              className="text-primary-text underline-offset-2 hover:underline"
+            >
+              See it in Income v Expense
+            </Link>
+          </span>
+        </p>
+      )}
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <ChartCard

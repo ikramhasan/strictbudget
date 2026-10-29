@@ -79,7 +79,8 @@ export const getSpendingPace = createRoute({
     "Money to spend is each category's Available carried in plus the month's " +
     "Assigned; spending is its net activity. The plan's line adds up the categories in pace: " +
     "card payment categories never are; by default bills (a monthly target due on a set day, a " +
-    'dated yearly or custom target, a debt target), savings (a "Have a balance of" target), ' +
+    'dated yearly or custom target, a debt target), savings (a savings category, or a "Have a ' +
+    'balance of" target), ' +
     "categories with a scheduled transaction and hidden ones aren't either, and a category's own setting overrides that. `groupId` or " +
     "`categoryId` picks the line instead. A past month is finished; a future one is a 400.",
   request: {
@@ -208,7 +209,7 @@ async function paceCategories(db: Db, budgetId: string) {
 /** Bills and lump sums: what the automatic rule leaves out, per category. */
 async function automaticReasons(db: Db, budgetId: string): Promise<Map<string, PaceReason>> {
   const reasons = new Map<string, PaceReason>();
-  const [targets, scheduled, scheduledLines] = await Promise.all([
+  const [targets, scheduled, scheduledLines, savings] = await Promise.all([
     db.select().from(categoryTarget).where(eq(categoryTarget.budgetId, budgetId)),
     db
       .selectDistinct({ categoryId: scheduledTransaction.categoryId })
@@ -232,6 +233,10 @@ async function automaticReasons(db: Db, budgetId: string): Promise<Map<string, P
           isNotNull(scheduledSubTransaction.categoryId),
         ),
       ),
+    db
+      .select({ id: category.id })
+      .from(category)
+      .where(and(eq(category.budgetId, budgetId), eq(category.savings, true))),
   ]);
   for (const s of [...scheduled, ...scheduledLines]) {
     if (s.categoryId) reasons.set(s.categoryId, "scheduled");
@@ -248,6 +253,8 @@ async function automaticReasons(db: Db, budgetId: string): Promise<Map<string, P
       t.cadence === "debt_monthly";
     if (dated) reasons.set(t.categoryId, "bill");
   }
+  // Savings categories hold money kept for a goal, whatever their target or schedules say.
+  for (const c of savings) reasons.set(c.id, "saving");
   return reasons;
 }
 

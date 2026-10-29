@@ -2346,7 +2346,7 @@ export interface paths {
         };
         /**
          * A month's spending pace: money left to spend day by day against an even pace
-         * @description Money to spend is each category's Available carried in plus the month's Assigned; spending is its net activity. The plan's line adds up the categories in pace: card payment categories never are; by default bills (a monthly target due on a set day, a dated yearly or custom target, a debt target), savings (a "Have a balance of" target), categories with a scheduled transaction and hidden ones aren't either, and a category's own setting overrides that. `groupId` or `categoryId` picks the line instead. A past month is finished; a future one is a 400.
+         * @description Money to spend is each category's Available carried in plus the month's Assigned; spending is its net activity. The plan's line adds up the categories in pace: card payment categories never are; by default bills (a monthly target due on a set day, a dated yearly or custom target, a debt target), savings (a savings category, or a "Have a balance of" target), categories with a scheduled transaction and hidden ones aren't either, and a category's own setting overrides that. `groupId` or `categoryId` picks the line instead. A past month is finished; a future one is a 400.
          */
         get: operations["getSpendingPace"];
         put?: never;
@@ -14439,8 +14439,8 @@ export interface operations {
                 from: string;
                 /** @description Last month, YYYY-MM (inclusive) */
                 to: string;
-                /** @description `spending`: lines on budget accounts with a category other than Ready to Assign (the plan's Activity; transfers between budget accounts drop out). `income`: lines on budget accounts categorized to Ready to Assign, starting balances left out */
-                kind?: "spending" | "income";
+                /** @description `spending`: lines on budget accounts with a category other than Ready to Assign (transfers between budget accounts drop out), except saving lines. `saving`: the lines that leave the plan as saving instead: transfers to or from tracking asset accounts, and lines in savings categories whose goal is Keep saving (`spending` + `saving` is the plan's Activity). `income`: lines on budget accounts categorized to Ready to Assign, starting balances left out */
+                kind?: "spending" | "income" | "saving";
                 /** @description Comma-separated account ids */
                 accountIds?: string;
                 /** @description Comma-separated category group ids */
@@ -14522,8 +14522,8 @@ export interface operations {
                 from: string;
                 /** @description Last month, YYYY-MM (inclusive) */
                 to: string;
-                /** @description `spending`: lines on budget accounts with a category other than Ready to Assign (the plan's Activity; transfers between budget accounts drop out). `income`: lines on budget accounts categorized to Ready to Assign, starting balances left out */
-                kind?: "spending" | "income";
+                /** @description `spending`: lines on budget accounts with a category other than Ready to Assign (transfers between budget accounts drop out), except saving lines. `saving`: the lines that leave the plan as saving instead: transfers to or from tracking asset accounts, and lines in savings categories whose goal is Keep saving (`spending` + `saving` is the plan's Activity). `income`: lines on budget accounts categorized to Ready to Assign, starting balances left out */
+                kind?: "spending" | "income" | "saving";
                 /** @description Comma-separated account ids */
                 accountIds?: string;
                 /** @description Comma-separated category group ids */

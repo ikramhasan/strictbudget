@@ -16,7 +16,8 @@ export type CellColumn = BudgetMonth | "range";
 
 export type RowTarget =
   | { kind: "income"; payeeId?: string | null }
-  | { kind: "spending"; categoryId?: string; groupId?: string };
+  | { kind: "spending"; categoryId?: string; groupId?: string }
+  | { kind: "saving"; categoryId?: string };
 
 export interface CellPick {
   title: string;
@@ -154,6 +155,7 @@ export function IncomeExpenseTable({
   const incomeOpen = !collapsed.income;
   const sourcesOpen = !collapsed["income-sources"];
   const expenseOpen = !collapsed.expense;
+  const savedOpen = !collapsed.saved;
   const rate = (value: number | null) =>
     value === null ? "—" : `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
 
@@ -253,6 +255,27 @@ export function IncomeExpenseTable({
               })}
             </>
           )}
+          {table.saved.length > 0 && (
+            <>
+              {section("saved", "Saved", "text-sky-700 dark:text-sky-400")}
+              {savedOpen && (
+                <>
+                  {table.saved.map((c) =>
+                    row(`saved-${c.categoryId}`, c.name, c.values, {
+                      pick: {
+                        title: `${c.name} (saved)`,
+                        target: { kind: "saving", categoryId: c.categoryId },
+                      },
+                    }),
+                  )}
+                  {row("saved-total", "Total Saved", table.totalSaved, {
+                    kind: "total",
+                    pick: { title: "Saved", target: { kind: "saving" } },
+                  })}
+                </>
+              )}
+            </>
+          )}
           <tr>
             <th
               scope="row"
@@ -273,7 +296,7 @@ export function IncomeExpenseTable({
             <th
               scope="row"
               className={cn(STICKY, "px-2 py-1.5 text-left font-normal text-muted-foreground")}
-              title="Net income as a share of income"
+              title="Net income plus what was saved, as a share of income"
             >
               Savings rate
             </th>

@@ -73,7 +73,7 @@ export function paceCallout(
 /** Why a category is out of pace by default, in words. */
 export const REASON_LABELS: Record<NonNullable<PaceCategory["reason"]>, string> = {
   bill: "A bill (its target has a due date)",
-  saving: "Saving up (a balance target)",
+  saving: "Savings (a savings category or a balance target)",
   scheduled: "Has a scheduled transaction",
   hidden: "Hidden",
 };
