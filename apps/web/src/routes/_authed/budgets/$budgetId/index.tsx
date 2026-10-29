@@ -71,6 +71,7 @@ import {
   breakdown,
   EMPTY_VIEW,
   filteredIds,
+  inSavings,
   isCaution,
   isPresetFilter,
   overspentCount,
@@ -261,7 +262,13 @@ function BudgetPage() {
       if (g.hidden) continue;
       for (const c of g.categories) {
         if (!c.hidden) {
-          map.set(c.id, { name: c.name, note: c.note, group: g.name, target: c.target });
+          map.set(c.id, {
+            name: c.name,
+            note: c.note,
+            group: g.name,
+            target: c.target,
+            savings: c.savings,
+          });
         }
       }
     }
@@ -799,6 +806,7 @@ function BudgetPage() {
         shown={shown}
         listed={listed}
         onNoteChange={(categoryId, note) => actions.updateCategory(categoryId, { note })}
+        onSavingsChange={(categoryId, savings) => actions.updateCategory(categoryId, { savings })}
         targetActions={targetActions}
         onShowOverspent={() => setFilter("overspent")}
       />
@@ -993,6 +1001,7 @@ interface ListedCategory {
   note: string;
   group: string;
   target: CategoryTarget | null;
+  savings: boolean;
 }
 
 /**
@@ -1005,6 +1014,7 @@ function Inspector({
   shown,
   listed,
   onNoteChange,
+  onSavingsChange,
   targetActions,
   onShowOverspent,
 }: {
@@ -1013,6 +1023,7 @@ function Inspector({
   shown: ReadonlySet<string> | undefined;
   listed: ReadonlyMap<string, ListedCategory>;
   onNoteChange: (categoryId: string, note: string) => Promise<void>;
+  onSavingsChange: (categoryId: string, savings: boolean) => Promise<void>;
   targetActions: ReturnType<typeof useTargetActions>;
   onShowOverspent: () => void;
 }) {
@@ -1040,6 +1051,17 @@ function Inspector({
     return [...ids].flatMap((id) =>
       id !== UNCATEGORIZED ? [id] : uncategorized ? [uncategorized] : [],
     );
+  };
+  /** Savings categories, hidden ones included (the summary covers them under All). */
+  const savingsIds = new Set(
+    (categoryList.data?.groups ?? []).flatMap((g) =>
+      g.categories.filter((c) => c.savings).map((c) => c.id),
+    ),
+  );
+  /** What `ids` hold in savings, or undefined when none of them is a savings category. */
+  const savingsIn = (ids: Iterable<string>) => {
+    const list = [...ids];
+    return list.some((id) => savingsIds.has(id)) ? inSavings(month, list, savingsIds) : undefined;
   };
   const paidCard = accounts.data?.accounts.find(
     (a) => only !== undefined && a.paymentCategoryId === only && !a.closed,
@@ -1207,6 +1229,15 @@ function Inspector({
         history={<CategoryHistoryPanel key={only} categoryId={only} month={month.month} />}
         note={category.note}
         onNoteChange={(note) => onNoteChange(only, note)}
+        // A loan's paired category pays the loan, so it isn't offered as savings.
+        savings={
+          pairedLoan
+            ? undefined
+            : {
+                checked: category.savings,
+                onChange: assign && ((savings) => onSavingsChange(only, savings)),
+              }
+        }
         target={
           !assign ? (
             <ReadOnlyTarget
@@ -1271,6 +1302,7 @@ function Inspector({
       <MonthSummary
         month={month.month}
         totals={summarize(month, selection)}
+        savings={savingsIn(selection)}
         format={format}
         selectedNames={names}
         reportCategories={reportCategories(selection)}
@@ -1286,6 +1318,7 @@ function Inspector({
     <MonthSummary
       month={month.month}
       totals={summarize(month, ids)}
+      savings={savingsIn(ids)}
       format={format}
       reportCategories={shown ? reportCategories(shown) : undefined}
       // The whole plan's targets, whatever the view, in the current month only.

@@ -306,7 +306,7 @@ describe("CategoryList", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add a category to Bills" }));
     await userEvent.type(screen.getByLabelText("New category in Bills"), "Water");
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
-    expect(actions.createCategory).toHaveBeenCalledWith("g1", "Water");
+    expect(actions.createCategory).toHaveBeenCalledWith("g1", "Water", false);
   });
 
   it("adds a category group", async () => {

@@ -54,6 +54,34 @@ describe("NamePopover withEmoji", () => {
   });
 });
 
+describe("NamePopover withKind", () => {
+  it("adds a spending category unless Savings is picked", async () => {
+    const onSubmit = vi.fn();
+    render(
+      <NamePopover
+        title="New category in Needs"
+        withKind
+        submitLabel="Add"
+        onSubmit={onSubmit}
+        trigger={<button type="button">Open</button>}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    expect(screen.getByRole("radio", { name: "Spending" })).toBeChecked();
+    expect(screen.getByText("Money for bills and everyday spending.")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("New category in Needs"), "Groceries");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    expect(onSubmit).toHaveBeenLastCalledWith({ name: "Groceries", note: "", savings: false });
+
+    await userEvent.click(screen.getByRole("button", { name: "Open" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Savings" }));
+    expect(screen.getByText(/Money you keep for a goal/)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("New category in Needs"), "House deposit");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    expect(onSubmit).toHaveBeenLastCalledWith({ name: "House deposit", note: "", savings: true });
+  });
+});
+
 describe("splitEmoji", () => {
   it.each([
     ["🏠 Rent/Mortgage", "🏠", "Rent/Mortgage"],

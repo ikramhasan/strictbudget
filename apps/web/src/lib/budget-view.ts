@@ -246,6 +246,24 @@ export function summarize(month: BudgetMonthData, ids: Iterable<string>): Breakd
   return sum;
 }
 
+/**
+ * What the given rows hold in savings categories (`savings`): their Available above zero, kept for
+ * a goal rather than for spending.
+ */
+export function inSavings(
+  month: BudgetMonthData,
+  ids: Iterable<string>,
+  savings: ReadonlySet<string>,
+): bigint {
+  const byId = new Map(month.categories.map((c) => [c.categoryId, c]));
+  let sum = 0n;
+  for (const id of ids) {
+    const available = savings.has(id) ? BigInt(byId.get(id)?.available ?? "0") : 0n;
+    if (available > 0n) sum += available;
+  }
+  return sum;
+}
+
 export function isPresetFilter(view: string): view is BudgetFilter {
   return (BUDGET_FILTERS as readonly string[]).includes(view);
 }

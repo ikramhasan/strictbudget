@@ -6,11 +6,13 @@ import {
   CollapsibleTrigger,
 } from "@strictbudget/ui/components/collapsible";
 import { Input } from "@strictbudget/ui/components/input";
+import { Label } from "@strictbudget/ui/components/label";
+import { Switch } from "@strictbudget/ui/components/switch";
 import { Textarea } from "@strictbudget/ui/components/textarea";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
-import { ChartColumn, ChevronDown, ChevronRight, SquarePen } from "lucide-react";
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { ChartColumn, ChevronDown, ChevronRight, PiggyBank, SquarePen } from "lucide-react";
+import { type FormEvent, type ReactNode, useEffect, useId, useState } from "react";
 import { useOptionalBudget } from "@/lib/budget-context";
 import type { Breakdown } from "@/lib/budget-view";
 import { monthName } from "@/lib/months";
@@ -88,10 +90,16 @@ export function MonthSummary({
   selectedNames,
   targets,
   reportCategories,
+  savings,
 }: {
   month: string;
   totals: Breakdown;
   format: Format;
+  /**
+   * What the rows hold in savings categories, split out of Available; undefined when none of them
+   * is a savings category.
+   */
+  savings?: bigint;
   /**
    * The categories the summary adds up, for its link to Spending Breakdown; undefined when it
    * covers the whole plan.
@@ -149,6 +157,22 @@ export function MonthSummary({
           format={format}
           hint={`The total amount of money you have available in ${name}.`}
         />
+        {savings !== undefined && (
+          <>
+            <Line
+              label="In Savings"
+              value={savings}
+              format={format}
+              hint="Money in savings categories, kept for a goal rather than for spending."
+            />
+            <Line
+              label="Available to Spend"
+              value={totals.available - savings}
+              format={format}
+              hint="Available, less what's in savings categories."
+            />
+          </>
+        )}
       </dl>
       {targets && (
         <>
@@ -300,10 +324,16 @@ export function CategoryInspector({
   history,
   pairedWith,
   loan,
+  savings,
 }: {
   name: string;
   totals: Breakdown;
   format: Format;
+  /**
+   * Whether it's a savings category, and the switch to change it (undefined for a viewer, who sees
+   * only that it's savings).
+   */
+  savings?: { checked: boolean; onChange?: (savings: boolean) => Promise<void> };
   /** A paired loan's "Paired with … Account" line, under the name. */
   pairedWith?: ReactNode;
   /** A paired loan's payment section (Available for Payment and Record Payment). */
@@ -355,9 +385,40 @@ export function CategoryInspector({
           {...{ shortfall, cashShortfall }}
         />
       )}
+      {savings && <SavingsSwitch {...savings} />}
       {target}
       {!uncategorized && <NoteField key={name} note={note} onChange={onNoteChange} />}
     </Panel>
+  );
+}
+
+/** Spending or savings: what the category's money is for. */
+function SavingsSwitch({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange?: (savings: boolean) => Promise<void>;
+}) {
+  const id = useId();
+  if (!onChange && !checked) return null;
+  return (
+    <div className="flex items-start gap-3 rounded-md border bg-muted/40 p-3">
+      <PiggyBank className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+      <div className="grid flex-1 gap-0.5">
+        <Label htmlFor={id} className="font-medium text-sm">
+          Savings category
+        </Label>
+        <p className="text-muted-foreground text-xs">
+          {checked
+            ? "Kept for a goal, so it's shown apart from what you can spend."
+            : "Turn on for money you keep for a goal, like an emergency fund or a holiday."}
+        </p>
+      </div>
+      {onChange && (
+        <Switch id={id} checked={checked} onCheckedChange={(next) => void onChange(next)} />
+      )}
+    </div>
   );
 }
 
