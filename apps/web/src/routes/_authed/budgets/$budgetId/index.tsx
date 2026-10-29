@@ -31,6 +31,7 @@ import { AutoAssignPanel } from "@/components/auto-assign";
 import { BudgetFilterBar } from "@/components/budget-filter-bar";
 import { BudgetOptionsMenu } from "@/components/budget-options-menu";
 import { type ViewDialog, ViewDialogs, ViewsMenu } from "@/components/budget-views";
+import { CategoryHistoryPanel } from "@/components/category-history-panel";
 import {
   CategoryInspector,
   MonthSummary,
@@ -1203,6 +1204,7 @@ function Inspector({
         }
         available={available}
         upcoming={upcoming}
+        history={<CategoryHistoryPanel categoryId={only} month={month.month} />}
         note={category.note}
         onNoteChange={(note) => onNoteChange(only, note)}
         target={

@@ -121,6 +121,7 @@ const REPORTS = [
   { to: "/budgets/$budgetId/reports/spending-pace", label: "Spending Pace" },
   { to: "/budgets/$budgetId/reports/income-expense", label: "Income v Expense" },
   { to: "/budgets/$budgetId/reports/budget-vs-actual", label: "Budget vs Actual" },
+  { to: "/budgets/$budgetId/reports/category-history", label: "Category History" },
   { to: "/budgets/$budgetId/reports/net-worth", label: "Net Worth" },
   { to: "/budgets/$budgetId/reports/age-of-money", label: "Age of Money" },
   { to: "/budgets/$budgetId/reports/credit-card-health", label: "Credit Card Health" },

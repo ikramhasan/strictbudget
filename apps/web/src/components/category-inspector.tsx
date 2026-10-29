@@ -297,6 +297,7 @@ export function CategoryInspector({
   uncategorized = false,
   target,
   upcoming,
+  history,
   pairedWith,
   loan,
 }: {
@@ -314,6 +315,8 @@ export function CategoryInspector({
   target?: ReactNode;
   /** The month's upcoming scheduled transactions, under the breakdown. */
   upcoming?: ReactNode;
+  /** The compact 12-month history chart, under the breakdown and upcoming transactions. */
+  history?: ReactNode;
 }) {
   const overspent = totals.available < 0n;
   const shortfall = format((-totals.available).toString());
@@ -344,6 +347,7 @@ export function CategoryInspector({
         <Line label="Credit Spending" value={totals.creditActivity} format={format} />
       </dl>
       {upcoming}
+      {history}
       {overspent && !loan && (
         <OverspentMessage
           totals={totals}

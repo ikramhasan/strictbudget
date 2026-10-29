@@ -54,8 +54,8 @@
 
 ## Other reports
 
-- Built: Budget vs Actual, Spending pace, Spending by flag. Open: cash-flow forecast ([#64](https://github.com/ikramhasan/strictbudget/issues/64)), cash flow Sankey
-  ([#86](https://github.com/ikramhasan/strictbudget/issues/86)), category history ([#87](https://github.com/ikramhasan/strictbudget/issues/87)), payees and recurring charges ([#88](https://github.com/ikramhasan/strictbudget/issues/88)), savings rate and
+- Built: Budget vs Actual, Category history, Spending pace, Spending by flag. Open: cash-flow forecast ([#64](https://github.com/ikramhasan/strictbudget/issues/64)), cash flow Sankey
+  ([#86](https://github.com/ikramhasan/strictbudget/issues/86)), payees and recurring charges ([#88](https://github.com/ikramhasan/strictbudget/issues/88)), savings rate and
   income sources ([#89](https://github.com/ikramhasan/strictbudget/issues/89)), debt payoff and interest paid ([#90](https://github.com/ikramhasan/strictbudget/issues/90));
   later: monthly review and year in review ([#92](https://github.com/ikramhasan/strictbudget/issues/92)), saved reports, dashboard and PDF ([#65](https://github.com/ikramhasan/strictbudget/issues/65)).
 
@@ -79,6 +79,30 @@
   Assigned.
 - Filters: range and categories only (Assigned has no account, payee or flag). Export: one CSV/TSV
   of the variance table with group totals and a total row.
+
+### Category history
+
+- One category or group (a picker; the plan's first visible category by default), month by month
+  over the range's months that the plan has (Last 12 Months by default): Assigned and Spent
+  (−Activity) as bars, Available as a line, what the target asked as a dashed step line, and a dot
+  along the top of months with money moved in or out (the tooltip and table list the moves). The
+  numbers come from the same per-month code as Budget vs Actual (`routes/reports/plan-figures.ts`),
+  so both equal the plan screen's.
+- **Targets have no history** (one `category_target` row per category, overwritten in place): the
+  line is the current target's month amount from its start month, as Budget vs Actual's tick.
+  Keeping target history is [#132](https://github.com/ikramhasan/strictbudget/issues/132).
+- A month counts for "Target met" when the target asks for money in it; it's met when nothing is
+  left underfunded (the plan's Funded). For a group, every category whose target asks must be met.
+- Moves listed are between categories, deletion moves included; assigning from or returning to
+  Ready to Assign is what Assigned shows, so it isn't. For a group, moves between its own
+  categories are left out.
+- Overspent months are shaded in the plan's cash red or credit yellow. A group's month counts as
+  overspent when any of its categories ended overspent, even if the group's total is positive
+  (only a negative Available is coloured).
+- Ready to Assign and credit card payment categories (and their group) have no spending plan and
+  aren't offered; the API refuses them. Uncategorized is offered (no Assigned).
+- The category inspector shows the 12 months up to the inspected month in small under the
+  breakdown, opening the report on that range. Export: one CSV/TSV of the months.
 
 ### Spending by flag
 

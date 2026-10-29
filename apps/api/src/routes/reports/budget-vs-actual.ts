@@ -4,10 +4,8 @@ import {
   addMonths,
   BUDGET_MONTH_PATTERN,
   type BudgetMonth,
-  categoryMonth,
   monthBounds,
   monthOf,
-  targetNeed,
   zCurrencyCode,
   zMinorUnits,
 } from "@strictbudget/engine";
@@ -18,7 +16,8 @@ import { enterDueScheduled, entryDate, userToday } from "../../lib/scheduled";
 import type { AuthedEnv } from "../../middleware/require-auth";
 import { authSecurity, requireAuth } from "../../middleware/require-auth";
 import type { AppEnv } from "../../types";
-import { budgetHistory, loadTargets, monthRange } from "../months/handlers";
+import { budgetHistory, loadTargets } from "../months/handlers";
+import { planFigures, planMonths } from "./plan-figures";
 
 const Month = z.string().regex(BUDGET_MONTH_PATTERN, "Expected a month as YYYY-MM");
 
@@ -102,12 +101,6 @@ export const getBudgetVsActual = createRoute({
   },
 });
 
-function monthsBetween(from: BudgetMonth, to: BudgetMonth) {
-  const months: BudgetMonth[] = [];
-  for (let m = from; m <= to; m = addMonths(m, 1)) months.push(m);
-  return months;
-}
-
 export const getBudgetVsActualHandler: RouteHandler<
   typeof getBudgetVsActual,
   AppEnv & AuthedEnv
@@ -123,14 +116,14 @@ export const getBudgetVsActualHandler: RouteHandler<
   }
   const from = query.from as BudgetMonth;
   const to = query.to as BudgetMonth;
-  // Only the plan's own months (as the plan screen offers them): months outside hold nothing, and
-  // the walk stays bounded however wide a range is asked for.
-  const { first, last } = await monthRange(db, budgetId, today);
   const lookBack = addMonths(to, -(HISTORY_MONTHS - 1));
-  const wanted = from < lookBack ? from : lookBack;
-  const start = wanted < first ? first : wanted;
-  const end = to > last ? last : to;
-  const months = start <= end ? monthsBetween(start, end) : [];
+  const { first, months } = await planMonths(
+    db,
+    budgetId,
+    from < lookBack ? from : lookBack,
+    to,
+    today,
+  );
 
   // The plan's history up to the range's end (or today): each month's numbers are the plan's for
   // that month, since later transactions never change an earlier month.
@@ -160,22 +153,18 @@ export const getBudgetVsActualHandler: RouteHandler<
   const listed = rows
     .filter((r) => r.internalKind !== "ready_to_assign" && !paymentCategories.has(r.id))
     .flatMap((r) => {
-      const entries = history.get(r.id) ?? [];
-      const target = targets.get(r.id);
-      const figures = months.map((month) => {
-        const f = categoryMonth(entries, month);
-        // Payment categories are left out, so no target here pays toward what a card owes.
-        const need = target ? targetNeed(entries, target, month, current) : null;
-        return {
-          month,
+      // Payment categories are left out, so no target here pays toward what a card owes.
+      const figures = planFigures(history.get(r.id) ?? [], targets.get(r.id), months, current).map(
+        (f) => ({
+          month: f.month,
           assigned: f.assigned.toString(),
           activity: f.activity.toString(),
           available: f.available.toString(),
           cashOverspent: f.cashOverspent.toString(),
           creditOverspent: f.creditOverspent.toString(),
-          targetAmount: need ? need.monthAmount.toString() : null,
-        };
-      });
+          targetAmount: f.need ? f.need.monthAmount.toString() : null,
+        }),
+      );
       const active = figures.some((f) => f.assigned !== "0" || f.activity !== "0");
       if (!active) return [];
       return [
