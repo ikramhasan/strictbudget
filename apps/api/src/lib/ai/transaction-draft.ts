@@ -209,7 +209,9 @@ export function checkDraft(
 /**
  * Reads a receipt (or invoice, bill, statement line) and fills in one transaction for the
  * account, choosing from the budget's own categories and payees so it doesn't make a new
- * "Walmart Inc" next to "Walmart". One structured AI request, not a conversation.
+ * "Walmart Inc" next to "Walmart". One structured AI request, not a conversation; with web
+ * search on, the model may first look the merchant up (`webTools`, which read only pages a search
+ * returned, so text planted in the file can't send budget data out).
  */
 export async function draftTransaction(input: {
   adapter: AnyTextAdapter;
