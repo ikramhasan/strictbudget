@@ -60,6 +60,7 @@ export default defineRailway(() => {
       RESEND_API_KEY: preserve(),
       FROM_EMAIL: preserve(),
       AI_API_KEY: preserve(),
+      TINYFISH_API_KEY: preserve(),
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: preserve(),
       OTEL_EXPORTER_OTLP_TRACES_HEADERS: preserve(),
       OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: preserve(),

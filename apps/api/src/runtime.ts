@@ -1,5 +1,6 @@
 import { createDb } from "@strictbudget/db";
 import type { Env } from "./env";
+import { createWebResearch } from "./lib/ai/web";
 import { createAuth } from "./lib/auth";
 import { ChangeBus } from "./lib/change-bus";
 import { QueuedEmailSender } from "./lib/email/queue";
@@ -30,6 +31,7 @@ export async function createRuntime(env: Env, { worker }: { worker: boolean }) {
     changes: new ChangeBus(listen),
     fxProviders: defaultFxProviders(),
     storage: createStorage(env),
+    web: createWebResearch(env),
   };
   if (worker) {
     await jobs.work(jobHandlers, deps);

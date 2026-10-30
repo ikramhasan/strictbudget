@@ -79,6 +79,11 @@ const EnvSchema = z
      */
     AI_API_KEY: optional(z.string().min(1)),
     AI_MODEL: optional(z.enum(ANTHROPIC_MODELS)).transform((v) => v ?? "claude-sonnet-5-5"),
+    /**
+     * A TinyFish API key: lets the assistant search the web and read pages, such as to find out
+     * what an unfamiliar payee is (`lib/ai/web.ts`). Unset, it does without.
+     */
+    TINYFISH_API_KEY: optional(z.string().min(1)),
   })
   .superRefine((env, ctx) => {
     const s3 = ["S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"] as const;

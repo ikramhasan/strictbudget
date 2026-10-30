@@ -157,6 +157,7 @@ export const draftTransactionFromFileHandler: RouteHandler<
       account: { name: account.name, currency: account.currency as CurrencyCode },
       file: read,
       today: today && ISO_DATE.test(today) ? today : new Date().toISOString().slice(0, 10),
+      web: c.var.deps.web,
     });
   } catch (error) {
     log.warn("AI couldn't draft a transaction", {

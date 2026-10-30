@@ -35,6 +35,7 @@
     "@tanstack/ai": "catalog:",
     "@tanstack/ai-anthropic": "catalog:",
     "@tanstack/ai-persistence": "catalog:",
+    "@tiny-fish/sdk": "catalog:",
     "better-auth": "catalog:",
     "bowser": "catalog:",
     "drizzle-orm": "catalog:",

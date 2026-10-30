@@ -63,6 +63,8 @@ const VERBS: Record<string, [doing: string, done: string]> = {
   calculate: ["Calculating", "Calculated"],
   present: ["Drawing", "Drew"],
   attach: ["Attaching", "Attached"],
+  search: ["Searching the", "Searched the"],
+  read: ["Reading", "Read"],
 };
 
 /** What a tool call did, for people: `listAccounts` → "Looked at accounts". */

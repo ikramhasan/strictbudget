@@ -35,6 +35,7 @@ export function generateOpenApiDocument() {
       changes: new ChangeBus(listen),
       fxProviders: [],
       storage: null,
+      web: null,
     }),
   );
 }

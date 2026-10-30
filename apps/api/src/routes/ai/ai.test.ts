@@ -29,6 +29,7 @@ type Settings = {
   unavailableReason: string | null;
   enabled: boolean;
   assistantButton: boolean;
+  webSearch: boolean;
 };
 
 function send(app: App, method: string, path: string, cookie: string, body?: unknown) {
@@ -59,6 +60,7 @@ describe("AI settings", () => {
       unavailableReason: null,
       enabled: false,
       assistantButton: false,
+      webSearch: false,
     });
 
     const on = await send(withAi.app, "PATCH", path, owner.cookie, {
@@ -90,6 +92,7 @@ describe("AI settings", () => {
       unavailableReason: "NOT_CONFIGURED",
       enabled: false,
       assistantButton: false,
+      webSearch: false,
     });
     const res = await send(withoutAi.app, "PATCH", path, owner.cookie, { enabled: true });
     expect(res.status).toBe(409);

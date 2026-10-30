@@ -20,10 +20,11 @@ import {
 } from "../../lib/ai/attachments";
 import { chatPersistence } from "../../lib/ai/persistence";
 import { aiSettings, aiUnavailableReason, assertAiAllowed } from "../../lib/ai/settings";
+import { webTools } from "../../lib/ai/web";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { AppError } from "../../lib/errors";
 import type { AuthedEnv } from "../../middleware/require-auth";
-import type { AppEnv } from "../../types";
+import type { AppDeps, AppEnv } from "../../types";
 import type {
   aiChat,
   deleteAiConversation,
@@ -38,7 +39,7 @@ type Env = AppEnv & AuthedEnv;
 export const getAiSettingsHandler: RouteHandler<typeof getAiSettings, Env> = async (c) => {
   const { budgetId } = c.req.valid("param");
   const { budget: b } = await loadBudgetAccess(c, budgetId);
-  return c.json(aiSettings(c.var.deps.env, b), 200);
+  return c.json(settingsJson(c.var.deps, b), 200);
 };
 
 export const updateAiSettingsHandler: RouteHandler<typeof updateAiSettings, Env> = async (c) => {
@@ -62,8 +63,12 @@ export const updateAiSettingsHandler: RouteHandler<typeof updateAiSettings, Env>
     .set({ aiEnabled: enabled, aiAssistantButton: assistantButton })
     .where(eq(budget.id, budgetId))
     .returning();
-  return c.json(aiSettings(env, updated ?? b), 200);
+  return c.json(settingsJson(c.var.deps, updated ?? b), 200);
 };
+
+function settingsJson(deps: AppDeps, b: Parameters<typeof aiSettings>[1]) {
+  return { ...aiSettings(deps.env, b), webSearch: deps.web !== null };
+}
 
 /**
  * The in-app assistant is for the person in the app. An outside agent (MCP, Agent Auth) driving
@@ -152,7 +157,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 export const aiChatHandler: RouteHandler<typeof aiChat, Env> = async (c) => {
   const { budgetId } = c.req.valid("param");
-  const { db, env, auth } = c.var.deps;
+  const { db, env, auth, web } = c.var.deps;
   const b = await aiBudget(c, budgetId);
   const params = await chatParamsFromRequestBody(c.req.valid("json")).catch((error: unknown) => {
     // Not a valid AG-UI run input (TanStack AI's message); the caller's mistake, not ours.
@@ -223,14 +228,17 @@ export const aiChatHandler: RouteHandler<typeof aiChat, Env> = async (c) => {
     runId: params.runId,
     ...(params.parentRunId ? { parentRunId: params.parentRunId } : {}),
     ...(params.resume ? { resume: params.resume } : {}),
-    systemPrompts: [systemPrompt(b, today)],
-    tools: budgetTools(auth.agentRuntime, principal, {
-      db,
-      storage: c.var.deps.storage,
-      budgetId,
-      threadId: params.threadId,
-      alsoEager: answering,
-    }),
+    systemPrompts: [systemPrompt(b, today, { web: web !== null })],
+    tools: [
+      ...budgetTools(auth.agentRuntime, principal, {
+        db,
+        storage: c.var.deps.storage,
+        budgetId,
+        threadId: params.threadId,
+        alsoEager: answering,
+      }),
+      ...(web ? webTools(web) : []),
+    ],
     lazyToolsConfig: { includeDescription: "first-sentence" },
     middleware: [
       withPersistence(persistence),
