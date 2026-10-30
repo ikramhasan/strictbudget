@@ -191,4 +191,63 @@ describe("AI web search", () => {
     ]);
     expect(lookups.read).toEqual([]);
   });
+
+  it("lets a receipt draft look up the merchant", async () => {
+    const owner = await signUp(withWeb.app);
+    const budget = await createBudget(withWeb.app, owner.cookie);
+    const headers = { cookie: owner.cookie, "content-type": "application/json" };
+    await withWeb.app.request(`/v1/budgets/${budget.id}/ai`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ enabled: true }),
+    });
+    const account = (await (
+      await withWeb.app.request(`/v1/budgets/${budget.id}/accounts`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ name: "Visa", type: "checking", balance: "0", date: "2026-10-01" }),
+      })
+    ).json()) as { id: string };
+    const draft = (offeredTools: string[]) =>
+      model.setResponses([
+        ({ request }) => {
+          offeredTools.push(...(request.tools ?? []).map((tool) => tool.name));
+          return { toolCalls: [{ name: "searchWeb", input: { query: "Tartine Manufactory" } }] };
+        },
+        { text: "A bakery café." },
+        {
+          text: JSON.stringify({
+            found: true,
+            date: "2026-10-29",
+            payeeId: null,
+            newPayeeName: "Tartine Manufactory",
+            direction: "outflow",
+            total: "14.20",
+            currency: "USD",
+            categoryId: null,
+            lines: [],
+            memo: "Lunch",
+            note: null,
+          }),
+        },
+      ]);
+    const tools: string[] = [];
+    draft(tools);
+    const form = new FormData();
+    form.append(
+      "file",
+      new File([new TextEncoder().encode("SQ *TARTINE MANUFACTORY 14.20")], "r.txt"),
+    );
+    form.append("accountId", account.id);
+    form.append("today", "2026-10-30");
+    const res = await withWeb.app.request(`/v1/budgets/${budget.id}/ai/transaction-draft`, {
+      method: "POST",
+      headers: { cookie: owner.cookie },
+      body: form,
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ payeeName: "Tartine Manufactory", amount: "-1420" });
+    expect(tools).toEqual(["searchWeb", "readWebPage"]);
+    expect(lookups.search).toEqual([["Tartine Manufactory", undefined]]);
+  });
 });
