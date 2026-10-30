@@ -47,6 +47,7 @@ services:
       FROM_EMAIL: ${FROM_EMAIL:-}
       AI_API_KEY: ${AI_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-}
+      TINYFISH_API_KEY: ${TINYFISH_API_KEY:-}
     volumes:
       - data:/data
 

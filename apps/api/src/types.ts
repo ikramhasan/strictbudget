@@ -1,6 +1,7 @@
 import type { Database } from "@strictbudget/db";
 import type { AnyTextAdapter } from "@tanstack/ai";
 import type { Env } from "./env";
+import type { WebResearch } from "./lib/ai/web";
 import type { Auth } from "./lib/auth";
 import type { ChangeBus } from "./lib/change-bus";
 import type { EmailSender } from "./lib/email/sender";
@@ -38,6 +39,8 @@ export interface AppDeps {
    * (`AI_API_KEY`, `AI_MODEL`); tests pass TanStack AI's scripted `fakeText()`.
    */
   aiAdapter?: AnyTextAdapter;
+  /** The assistant's web search; null without one (`createWebResearch`). Tests pass a fake. */
+  web: WebResearch | null;
 }
 
 export type AppEnv = {

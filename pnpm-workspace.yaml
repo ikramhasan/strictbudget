@@ -37,6 +37,7 @@ catalog:
   "@tanstack/ai-persistence": ^0.9.0
   "@tanstack/ai-react": ^0.30.4
   "@tanstack/react-query": ^5.104.0
+  "@tiny-fish/sdk": ^0.11.0
   "@better-auth/agent-auth": 0.6.2
   "@better-auth/api-key": ^1.7.10
   "@better-auth/cimd": ^1.7.10

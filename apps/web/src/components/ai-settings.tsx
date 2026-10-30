@@ -10,7 +10,14 @@ import {
 } from "@strictbudget/ui/components/field";
 import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { Switch } from "@strictbudget/ui/components/switch";
-import { Calculator, ChartColumn, CircleAlert, MessageSquareText, SquarePen } from "lucide-react";
+import {
+  Calculator,
+  ChartColumn,
+  CircleAlert,
+  Globe,
+  MessageSquareText,
+  SquarePen,
+} from "lucide-react";
 import { McpSetup } from "@/components/agent-setup";
 import { aiUnavailableMessage, useAiSettings, useUpdateAiSettings } from "@/lib/ai";
 
@@ -37,12 +44,22 @@ const CAPABILITIES = [
   },
 ] as const;
 
+/** Shown when the server lets the assistant search the web (`webSearch` in the AI settings). */
+const WEB_SEARCH = {
+  icon: Globe,
+  title: "Look up payees",
+  description:
+    "When it can't tell what a business is, it searches the web for the name. Never your amounts or accounts.",
+} as const;
+
 /**
  * The budget's AI settings: what the in-app AI does and its two switches (AI features, and the
  * floating chat button), then how to connect an outside agent over MCP. Used in budget setup and
  * budget settings.
  */
 export function AiSettingsFields({ budgetId, canEdit }: { budgetId: string; canEdit: boolean }) {
+  const settings = useAiSettings(budgetId);
+  const capabilities = settings.data?.webSearch ? [...CAPABILITIES, WEB_SEARCH] : CAPABILITIES;
   return (
     <FieldGroup>
       <FieldSet>
@@ -52,7 +69,7 @@ export function AiSettingsFields({ budgetId, canEdit }: { budgetId: string; canE
           budget where they're off.
         </FieldDescription>
         <ul className="grid gap-3 sm:grid-cols-2">
-          {CAPABILITIES.map(({ icon: Icon, title, description }) => (
+          {capabilities.map(({ icon: Icon, title, description }) => (
             <li key={title} className="flex gap-3 rounded-lg border p-3">
               <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               <div className="grid gap-0.5">

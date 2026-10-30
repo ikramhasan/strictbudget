@@ -24,6 +24,11 @@ export const AiSettingsSchema = z
     assistantButton: z
       .boolean()
       .describe("The floating AI chat button shows on this budget (only while `enabled`)"),
+    webSearch: z
+      .boolean()
+      .describe(
+        "The assistant can search the web, such as to find out what a payee is (the server has a TinyFish key)",
+      ),
   })
   .openapi("AiSettings");
 

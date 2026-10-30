@@ -31,6 +31,7 @@ describe("GET /v1/health", () => {
       changes: new ChangeBus(broken.listen),
       fxProviders: [],
       storage: null,
+      web: null,
     }).request("/v1/health");
     spy.mockRestore();
     await broken.close();

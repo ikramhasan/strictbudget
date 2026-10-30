@@ -4554,6 +4554,8 @@ export interface components {
             enabled: boolean;
             /** @description The floating AI chat button shows on this budget (only while `enabled`) */
             assistantButton: boolean;
+            /** @description The assistant can search the web, such as to find out what a payee is (the server has a TinyFish key) */
+            webSearch: boolean;
         };
         UpdateAiSettings: {
             /** @description Turning it off also hides the chat button */

@@ -107,6 +107,7 @@ required.
 | `POSTGRES_PASSWORD` | `strictbudget` | The database password. Set it before the first start; letters and digits only |
 | `RESEND_API_KEY`, `FROM_EMAIL` | (none) | Email through [Resend](https://resend.com) (see below) |
 | `AI_API_KEY`, `AI_MODEL` | (none) | An Anthropic API key turns on the AI assistant. Each budget still opts in under Budget settings → AI |
+| `TINYFISH_API_KEY` | (none) | A [TinyFish](https://tinyfish.ai) key lets the assistant search the web, such as to find out what an unfamiliar payee is. It is told to search for businesses only, never your amounts or accounts |
 | `TRUSTED_PROXIES` or `CLIENT_IP_HEADER` | (none) | Behind a reverse proxy: its CIDRs, or the header it sets to the client's IP, so rate limits see real clients |
 
 After changing `.env`, apply it with the same `docker compose … up -d` command.

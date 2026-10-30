@@ -63,10 +63,11 @@ export function createTestApp({
   externalPlans,
   storage = new MemoryStorage(),
   aiAdapter,
+  web = null,
   envOverrides = {},
   sendsEmail = true,
   ...authOptions
-}: Partial<Pick<AppDeps, "serverDate" | "fxProviders" | "externalPlans" | "aiAdapter">> & {
+}: Partial<Pick<AppDeps, "serverDate" | "fxProviders" | "externalPlans" | "aiAdapter" | "web">> & {
   storage?: ObjectStorage | null;
   /** False: a server that sends no email (self-hosted production without Resend). */
   sendsEmail?: boolean;
@@ -94,6 +95,7 @@ export function createTestApp({
     externalPlans,
     storage,
     aiAdapter,
+    web,
   };
   const app = createApp(deps);
   outboxes.set(app, outbox);
