@@ -132,41 +132,76 @@ export function AssignedCell({
   const keepFocus = (e: MouseEvent) => e.preventDefault();
 
   if (editing) {
+    // An expression longer than the column grows leftward over the name, in full view. The
+    // calculator sits inside the box that grows, so it stays at the input's own left edge.
+    const wide = text.length > 10;
     return (
       <div className="relative h-7">
-        <Input
-          ref={inputRef}
-          aria-label={`Assigned to ${categoryName}`}
-          autoFocus
-          inputMode="decimal"
-          value={text}
-          aria-invalid={invalid !== null || undefined}
-          aria-describedby={invalid ? `${categoryId}-assigned-error` : undefined}
-          title={invalid ?? undefined}
-          onChange={(e) => {
-            setText(e.target.value);
-            setInvalid(null);
-          }}
-          onFocus={(e) => e.currentTarget.select()}
-          onBlur={() => void commit("blur")}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void commit("enter");
-            } else if (e.key === "Escape") {
-              e.preventDefault();
-              done.current = true;
-              setEditing(false);
-            }
-          }}
-          className={cn(
-            "h-7 pl-6 text-right tabular-nums",
-            // An expression longer than the column grows leftward over the name, in full view.
-            text.length > 10 && "absolute right-0 z-10 w-auto shadow-md",
-            className,
-          )}
-          style={text.length > 10 ? { width: `calc(${text.length}ch + 3rem)` } : undefined}
-        />
+        <div
+          className={cn("h-7", wide ? "absolute right-0 z-10 text-base md:text-sm" : "relative")}
+          style={wide ? { width: `calc(${text.length}ch + 3rem)` } : undefined}
+        >
+          <Input
+            ref={inputRef}
+            aria-label={`Assigned to ${categoryName}`}
+            autoFocus
+            inputMode="decimal"
+            value={text}
+            aria-invalid={invalid !== null || undefined}
+            aria-describedby={invalid ? `${categoryId}-assigned-error` : undefined}
+            title={invalid ?? undefined}
+            onChange={(e) => {
+              setText(e.target.value);
+              setInvalid(null);
+            }}
+            onFocus={(e) => e.currentTarget.select()}
+            onBlur={() => void commit("blur")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void commit("enter");
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                done.current = true;
+                setEditing(false);
+              }
+            }}
+            className={cn("h-7 pl-6 text-right tabular-nums", wide && "shadow-md", className)}
+          />
+          <Popover open={calculator} onOpenChange={setCalculator}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label="Open calculator"
+                title="Open calculator"
+                onMouseDown={keepFocus}
+                className="absolute top-1/2 left-1 grid size-5 -translate-y-1/2 place-items-center rounded text-muted-foreground hover:text-foreground"
+              >
+                <Calculator className="size-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              className="grid w-auto grid-cols-2 gap-1 p-1.5"
+              onOpenAutoFocus={(e) => e.preventDefault()}
+              onCloseAutoFocus={(e) => e.preventDefault()}
+            >
+              {OPERATORS.map(({ operator, label, Icon }) => (
+                <button
+                  key={operator}
+                  type="button"
+                  aria-label={label}
+                  onMouseDown={keepFocus}
+                  onClick={() => addOperator(operator)}
+                  className="grid size-7 place-items-center rounded-md border text-primary-text hover:bg-muted"
+                >
+                  <Icon className="size-3.5" />
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+        </div>
         {invalid && (
           <p
             id={`${categoryId}-assigned-error`}
@@ -176,44 +211,6 @@ export function AssignedCell({
             {invalid}
           </p>
         )}
-        <Popover open={calculator} onOpenChange={setCalculator}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              tabIndex={-1}
-              aria-label="Open calculator"
-              title="Open calculator"
-              onMouseDown={keepFocus}
-              className={cn(
-                "absolute top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded text-muted-foreground hover:text-foreground",
-                text.length > 10 ? "z-20" : "left-1",
-              )}
-              // On a widened input, at its own left edge.
-              style={text.length > 10 ? { right: `calc(${text.length}ch + 1.75rem)` } : undefined}
-            >
-              <Calculator className="size-3.5" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="start"
-            className="grid w-auto grid-cols-2 gap-1 p-1.5"
-            onOpenAutoFocus={(e) => e.preventDefault()}
-            onCloseAutoFocus={(e) => e.preventDefault()}
-          >
-            {OPERATORS.map(({ operator, label, Icon }) => (
-              <button
-                key={operator}
-                type="button"
-                aria-label={label}
-                onMouseDown={keepFocus}
-                onClick={() => addOperator(operator)}
-                className="grid size-7 place-items-center rounded-md border text-primary-text hover:bg-muted"
-              >
-                <Icon className="size-3.5" />
-              </button>
-            ))}
-          </PopoverContent>
-        </Popover>
       </div>
     );
   }
