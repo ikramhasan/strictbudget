@@ -19,6 +19,7 @@ import {
   ResizablePanelGroup,
   useDefaultLayout,
 } from "@strictbudget/ui/components/resizable";
+import { ScrollArea } from "@strictbudget/ui/components/scroll-area";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -1084,12 +1085,13 @@ function BudgetPage() {
             minSize={280}
             maxSize={String(INSPECTOR_SHARE.max)}
           >
-            <div
-              ref={inspectorScroll}
-              className="h-full overflow-y-auto overscroll-contain pb-4 scrollbar-thin"
+            <ScrollArea
+              className="h-full"
+              viewportRef={inspectorScroll}
+              viewportClassName="overscroll-contain [&>div]:block!"
             >
-              {inspectorColumn}
-            </div>
+              <div className="pr-3 pb-4">{inspectorColumn}</div>
+            </ScrollArea>
           </ResizablePanel>
         </ResizablePanelGroup>
       ) : (

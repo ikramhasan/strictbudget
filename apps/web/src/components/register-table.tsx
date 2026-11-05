@@ -133,8 +133,9 @@ function ClearedMark({
         className,
       )}
     >
-      {state === "cleared" && <Check className="size-3" strokeWidth={3} />}
-      {state === "reconciled" && <Lock className="size-2.5" strokeWidth={2.75} />}
+      {/* `text-current` keeps a surrounding button's icon colour off the mark's own glyph. */}
+      {state === "cleared" && <Check className="size-3 text-current!" strokeWidth={3} />}
+      {state === "reconciled" && <Lock className="size-2.5 text-current!" strokeWidth={2.75} />}
     </span>
   );
 }

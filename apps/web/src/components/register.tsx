@@ -2966,6 +2966,9 @@ export function Register({
                           style={pin?.style}
                           className={cn(
                             cn("font-medium text-[13px] text-muted-foreground", REGISTER_TRAY),
+                            // A clear 1px at the bottom: the rows' card starts just under the
+                            // header, and its top edge and corners would otherwise sit beneath it.
+                            "border-b border-transparent bg-clip-padding",
                             resizable && "relative",
                             pin && [pin.className, PINNED_BG.head],
                             spec.align === "right" && "text-right",
