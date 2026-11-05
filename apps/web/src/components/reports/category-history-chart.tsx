@@ -68,14 +68,17 @@ export function CategoryHistoryChart({
   history,
   names,
   compact = false,
+  yMax,
   onPick,
   className,
 }: {
   history: CategoryHistory;
   /** Category names by id, for the moves' other sides. */
   names: Map<string, string>;
-  /** The inspector's small version: Assigned and Spent only, no value axis. */
+  /** The inspector's small version: Assigned and Spent only, the value axis' top marked. */
   compact?: boolean;
+  /** The value axis' top (the compact chart keeps it steady as amounts change). */
+  yMax?: number;
   onPick?: (month: BudgetMonth) => void;
   className?: string;
 }) {
@@ -132,14 +135,31 @@ export function CategoryHistoryChart({
             interval={compact ? "preserveStartEnd" : undefined}
             minTickGap={compact ? 8 : 4}
           />
-          <YAxis
-            niceTicks="snap125"
-            hide={compact}
-            tickFormatter={tick}
-            tickLine={false}
-            axisLine={false}
-            width={80}
-          />
+          {compact ? (
+            <YAxis
+              domain={[(min: number) => Math.min(0, min), yMax ?? "auto"]}
+              ticks={yMax === undefined ? undefined : [yMax]}
+              interval={0}
+              allowDataOverflow
+              tickFormatter={tick}
+              tickLine={false}
+              axisLine={false}
+              fontSize={10}
+              tick={{ fill: "var(--muted-foreground)" }}
+              width={44}
+            />
+          ) : (
+            <YAxis
+              niceTicks="snap125"
+              tickFormatter={tick}
+              tickLine={false}
+              axisLine={false}
+              width={80}
+            />
+          )}
+          {compact && yMax !== undefined && (
+            <ReferenceLine y={yMax} stroke="var(--border)" strokeDasharray="3 3" />
+          )}
           {!compact && <YAxis yAxisId="moves" hide domain={[0, 1]} />}
           <ReferenceLine y={0} stroke="var(--border)" />
           <Tooltip

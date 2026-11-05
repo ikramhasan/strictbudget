@@ -43,7 +43,7 @@ beforeEach(() => {
   api.puts = [];
 });
 
-describe("Edit Flags", () => {
+describe("Edit flags", () => {
   it("lists the six flags in order, an unnamed one showing its color's name", async () => {
     renderDialog();
     expect(await screen.findByRole("textbox", { name: "Red" })).toHaveValue("Red");

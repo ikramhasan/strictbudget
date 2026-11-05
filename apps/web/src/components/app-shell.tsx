@@ -212,7 +212,7 @@ export function AppShell({
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                         <SidebarMenuItem>
-                          <SidebarMenuButton asChild tooltip="All Accounts">
+                          <SidebarMenuButton asChild tooltip="All accounts">
                             <Link
                               to="/budgets/$budgetId/accounts"
                               params={{ budgetId }}
@@ -220,7 +220,7 @@ export function AppShell({
                               activeProps={{ "data-active": true }}
                             >
                               <Landmark />
-                              <span>All Accounts</span>
+                              <span>All accounts</span>
                             </Link>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
@@ -313,7 +313,7 @@ export function AppShell({
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => setHelpOpen(true)}>
-                          <Keyboard /> Keyboard Shortcuts
+                          <Keyboard /> Keyboard shortcuts
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {/*

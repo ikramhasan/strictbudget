@@ -1,12 +1,16 @@
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { Link } from "@tanstack/react-router";
+import { type ReactNode, useMemo } from "react";
 import { accountsQueryOptions } from "@/lib/accounts";
 import {
   type ActivityEvent,
   type ActivityLookups,
+  type ActivityTarget,
   actorName,
   describeEvent,
   groupEvents,
+  moveOf,
 } from "@/lib/activity";
 import { $api } from "@/lib/api";
 import { useBudget } from "@/lib/budget-context";
@@ -55,13 +59,53 @@ export function useActivityLookups(): ActivityLookups {
 
 const MAX_RELATED = 6;
 
+/** A subject that opens what it names: the category on the plan, the transaction in its register. */
+function TargetLink({
+  target,
+  className,
+  children,
+}: {
+  target: ActivityTarget | undefined;
+  className?: string;
+  children: ReactNode;
+}) {
+  const { budget } = useBudget();
+  if (!target) return <span className={className}>{children}</span>;
+  const link = cn(
+    "rounded-sm underline decoration-current/30 underline-offset-2 outline-none transition-colors duration-150 hover:text-foreground hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring",
+    className,
+  );
+  return target.kind === "category" ? (
+    <Link
+      to="/budgets/$budgetId"
+      params={{ budgetId: budget.id }}
+      search={{ category: target.categoryId, month: target.month }}
+      className={link}
+    >
+      {children}
+    </Link>
+  ) : (
+    <Link
+      to="/budgets/$budgetId/accounts/$accountId"
+      params={{ budgetId: budget.id, accountId: target.accountId }}
+      search={{ transaction: target.transactionId }}
+      className={link}
+    >
+      {children}
+    </Link>
+  );
+}
+
 export function ActivityList({
   events,
   dateOf,
+  links = true,
 }: {
   events: readonly ActivityEvent[];
   /** Shows each change's date before its time (lists that aren't grouped by day). */
   dateOf?: (at: string) => string;
+  /** Subjects link to what they name (off where that's the page already open). */
+  links?: boolean;
 }) {
   const lookups = useActivityLookups();
   const session = useQuery(sessionQueryOptions);
@@ -73,6 +117,8 @@ export function ActivityList({
     <ol className="divide-y rounded-lg border">
       {groupEvents(events, lookups).map(({ lead: event, rest, restored }) => {
         const line = describeEvent(event, lookups, rest, restored.has(event.id));
+        const move = moveOf([event, ...rest], lookups);
+        const target = links ? line.target : undefined;
         return (
           <li key={event.id} className="flex gap-3 px-4 py-3 text-sm">
             <MemberAvatar
@@ -85,11 +131,31 @@ export function ActivityList({
               currentUserId={session.data?.user.id}
             />
             <div className="grid min-w-0 flex-1 gap-1">
-              <p>
-                <strong>{actorName(event)}</strong> {line.action}
-                {line.subject && <span className="text-muted-foreground"> · {line.subject}</span>}
-              </p>
-              {line.changes.length > 0 && (
+              {move ? (
+                <p>
+                  <strong>{actorName(event)}</strong> moved{" "}
+                  <span className="font-medium tabular-nums">{move.amount}</span> from{" "}
+                  <TargetLink target={links ? move.from.target : undefined}>
+                    {move.from.name}
+                  </TargetLink>{" "}
+                  to{" "}
+                  <TargetLink target={links ? move.to.target : undefined}>
+                    {move.to.name}
+                  </TargetLink>
+                  <span className="text-muted-foreground"> · {move.month}</span>
+                </p>
+              ) : (
+                <p>
+                  <strong>{actorName(event)}</strong> {line.action}
+                  {line.subject && (
+                    <span className="text-muted-foreground">
+                      {" · "}
+                      <TargetLink target={target}>{line.subject}</TargetLink>
+                    </span>
+                  )}
+                </p>
+              )}
+              {!move && line.changes.length > 0 && (
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-muted-foreground text-xs">
                   {line.changes.map((c) => (
                     <div key={c.label} className="contents">
@@ -108,7 +174,7 @@ export function ActivityList({
                   ))}
                 </dl>
               )}
-              {rest.length > 0 && (
+              {!move && rest.length > 0 && (
                 // What else the same save did, one line each.
                 <ul className="grid gap-0.5 border-l-2 pl-2.5 text-muted-foreground text-xs">
                   {rest.slice(0, MAX_RELATED).map((other) => {

@@ -26,6 +26,7 @@ import {
   reportSearchSchema,
   UNCATEGORIZED_COLOR,
 } from "./reports";
+import type { ColorSlots } from "./reports-colors";
 
 /**
  * How Spending Trends draws its months: stacked bars, lines per category (top N + Other), 100%
@@ -71,6 +72,8 @@ export interface SeriesInfo {
   family?: string;
   /** Place in the plan (stack order). */
   order: number;
+  /** Place in the palette (ColorSlots), the same in every report; `order` without. */
+  slot?: number;
   /** The category's group (a group's own id); null for Uncategorized and Other. */
   groupId: string | null;
   groupName: string;
@@ -85,7 +88,7 @@ export interface Catalog {
 
 const UNCATEGORIZED_LABEL = "Uncategorized";
 
-export function catalogOf(list: CategoryList): Catalog {
+export function catalogOf(list: CategoryList, slots?: ColorSlots): Catalog {
   const categories = new Map<string, SeriesInfo>();
   const groups = new Map<string, SeriesInfo>();
   // Uncategorized first, as the category filter lists it.
@@ -105,6 +108,7 @@ export function catalogOf(list: CategoryList): Catalog {
       color: RANKED_COLOR,
       palette: true,
       order: groupIndex,
+      slot: slots?.groups.get(g.id) ?? groupIndex,
       groupId: g.id,
       groupName: g.name,
     });
@@ -116,6 +120,7 @@ export function catalogOf(list: CategoryList): Catalog {
         palette: true,
         family: g.id,
         order: index,
+        slot: slots?.categories.get(c.id) ?? index,
         groupId: g.id,
         groupName: g.name,
       });
@@ -232,9 +237,8 @@ export function withOther(
 }
 
 /**
- * Each series' colour in one chart, none repeated (distinctColors): `keys` in the order the chart
- * draws them (a stack bottom to top), so neighbouring series take neighbouring palette colours;
- * Uncategorized and Other keep their neutrals.
+ * Each series' colour in one chart, none repeated (distinctColors): its place in the plan picks it,
+ * so a category is the same colour in every report; Uncategorized and Other keep their neutrals.
  */
 export function seriesColors(
   keys: readonly string[],
@@ -243,9 +247,22 @@ export function seriesColors(
   return distinctColors(
     keys.map((key) => {
       const i = info(key);
-      return i.palette ? { key } : { key, color: i.color };
+      return i.palette ? { key, slot: i.slot ?? i.order } : { key, color: i.color };
     }),
   );
+}
+
+/**
+ * The range's months from the budget's first transaction (`first`, null when unknown): months
+ * before it aren't months of zero spending, so the average and the charts leave them out. A range
+ * wholly before it keeps its months.
+ */
+export function sinceFirstMonth<T extends { month: BudgetMonth }>(
+  months: readonly T[],
+  first: BudgetMonth | null,
+): T[] {
+  const since = first ? months.filter((m) => m.month >= first) : [...months];
+  return since.length > 0 ? since : [...months];
 }
 
 /** The bar chart's months: only months with transactions. */

@@ -145,9 +145,9 @@ describe("SHORTCUTS", () => {
     const sections = new Set(Object.values(SHORTCUTS).map((s) => s.section));
     expect([...sections]).toEqual([
       "Universal",
-      "Budget Actions",
-      "Account Actions",
-      "Date Picker",
+      "Budget actions",
+      "Account actions",
+      "Date picker",
     ]);
     expect(Object.keys(SHORTCUTS)).toHaveLength(41);
     expect(SHORTCUTS.palette.keys).toBe("mod+k");

@@ -124,7 +124,7 @@ export function AccountsNav({ budget }: { budget: Budget }) {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton onClick={() => setAdding(true)} className="text-muted-foreground">
-                <Plus /> Add Account
+                <Plus /> Add account
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

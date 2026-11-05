@@ -22,7 +22,7 @@ import {
 import { cn } from "@strictbudget/ui/lib/utils";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { PanelRight, Pencil, TriangleAlert, X } from "lucide-react";
+import { Check, PanelRight, Pencil, TriangleAlert, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -837,7 +837,9 @@ function BudgetPage() {
       onClick={() => setFilter("overspent")}
     >
       <TriangleAlert />
-      {overspentNow} overspent
+      {overspentNow}
+      {/* A phone's bar keeps the month's arrows clear: the count and icon only. */}
+      <span className="max-md:sr-only">overspent</span>
     </Button>
   );
   const readyToAssign = listFigures && (
@@ -897,6 +899,27 @@ function BudgetPage() {
       />
     </div>
   );
+  // The first days of a budget: a short checklist until the basics are done or it's dismissed.
+  const gettingStartedKey = `strictbudget:getting-started-dismissed:${budget.id}`;
+  const [gettingStartedDismissed, setGettingStartedDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(gettingStartedKey) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const firstRun = (() => {
+    if (gettingStartedDismissed || noAccounts || readOnly || !listFigures) return null;
+    // Only while the budget is new: its first month with money in it is this one.
+    if (month !== today || addMonths(listFigures.month.firstMonth, 1) < today) return null;
+    const cats = listFigures.month.categories;
+    const steps = {
+      assigned: cats.some((c) => c.assigned !== "0") && listFigures.month.readyToAssign === "0",
+      target: cats.some((c) => c.target !== null),
+      spent: cats.some((c) => c.activity !== "0") || Boolean(listFigures.month.uncategorized),
+    };
+    return steps.assigned && steps.target && steps.spent ? null : steps;
+  })();
   const inspectorColumn = listFigures && (
     <aside className="grid grid-cols-[minmax(0,1fr)] gap-4" aria-label="Inspector">
       {noAccounts && selection.size === 0 ? (
@@ -911,6 +934,19 @@ function BudgetPage() {
         </section>
       ) : (
         <>
+          {firstRun && selection.size === 0 && (
+            <GettingStarted
+              steps={firstRun}
+              onDismiss={() => {
+                setGettingStartedDismissed(true);
+                try {
+                  localStorage.setItem(gettingStartedKey, "1");
+                } catch {
+                  // Without storage it shows again next visit; nothing breaks.
+                }
+              }}
+            />
+          )}
           <Inspector
             figures={listFigures}
             selection={selection}
@@ -922,7 +958,10 @@ function BudgetPage() {
           />
           {selection.size === 0 && month <= today && <SpendingPacePanel month={month} />}
           {/* Uncategorized alone has no Auto-Assign: money can't be assigned to it. */}
-          {!(selection.size === 1 && selection.has(UNCATEGORIZED)) && autoAssignPanel(selection)}
+          {/* A brand-new plan has nothing to auto-assign from yet. */}
+          {!(selection.size === 1 && selection.has(UNCATEGORIZED)) &&
+            !(firstRun && !firstRun.assigned) &&
+            autoAssignPanel(selection)}
           {month === today && (
             <FutureMonthsPanel data={listFigures.month} format={listFigures.format} />
           )}
@@ -988,6 +1027,7 @@ function BudgetPage() {
         actions={
           <>
             {overspentAlert}
+            {/* Ready to Assign stays on the right of the bar (a deliberate choice). */}
             {!phone && readyToAssign}
             {!wide && listFigures && (
               <Button
@@ -1095,6 +1135,80 @@ function BudgetPage() {
         </>
       )}
     </div>
+  );
+}
+
+/** The first-run checklist: the three habits that make the plan work, ticked as they happen. */
+function GettingStarted({
+  steps,
+  onDismiss,
+}: {
+  steps: { assigned: boolean; target: boolean; spent: boolean };
+  onDismiss: () => void;
+}) {
+  const items = [
+    {
+      done: steps.assigned,
+      title: "Give every dollar a job",
+      hint: "Click an Assigned amount and type what the category needs, until Ready to Assign is $0.",
+    },
+    {
+      done: steps.target,
+      title: "Set a target",
+      hint: "Pick a category that repeats, like rent, and say how much it needs each month.",
+    },
+    {
+      done: steps.spent,
+      title: "Record a purchase",
+      hint: "Add a transaction in an account, or import your bank's file.",
+    },
+  ];
+  return (
+    <section
+      aria-label="Getting started"
+      className="grid gap-3 rounded-lg border bg-card p-4 text-sm"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="grid gap-0.5">
+          <h2 className="font-semibold">Getting started</h2>
+          <p className="text-muted-foreground text-xs">
+            {items.filter((i) => i.done).length} of {items.length} done
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Dismiss getting started"
+          onClick={onDismiss}
+        >
+          <X />
+        </Button>
+      </div>
+      <ol className="grid gap-2.5">
+        {items.map((item) => (
+          <li key={item.title} className="flex gap-2.5">
+            <span
+              aria-hidden
+              className={cn(
+                "mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border",
+                item.done ? "border-success bg-success text-white" : "border-muted-foreground/50",
+              )}
+            >
+              {item.done && <Check className="size-3" />}
+            </span>
+            <span className="grid gap-0.5">
+              <span
+                className={cn("font-medium", item.done && "text-muted-foreground line-through")}
+              >
+                {item.title}
+                <span className="sr-only">{item.done ? " (done)" : ""}</span>
+              </span>
+              {!item.done && <span className="text-muted-foreground text-xs">{item.hint}</span>}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }
 

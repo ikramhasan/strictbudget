@@ -36,11 +36,14 @@ export function RegisterViewMenu({
   onChange,
   runningBalance,
   oldestMonth,
+  onResetColumns,
 }: {
   view: RegisterView;
   onChange: (patch: Partial<RegisterView>) => void;
-  /** Offer "Show Running Balance" (account registers; All Accounts has none). */
+  /** Offer "Show running balance" (account registers; All Accounts has none). */
   runningBalance: boolean;
+  /** Set when a column's width was dragged: puts every column back to its fitted width. */
+  onResetColumns?: () => void;
   /** The month of the budget's oldest transaction (YYYY-MM), where All Dates starts. */
   oldestMonth?: string;
 }) {
@@ -138,7 +141,7 @@ export function RegisterViewMenu({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="grid w-[36rem] max-w-[calc(100vw-2rem)] gap-4">
-        <h2 className="font-medium">View Options</h2>
+        <h2 className="font-medium">View options</h2>
         <fieldset className="flex flex-wrap gap-1" aria-label="Date range">
           {DATE_RANGES.map((range) => (
             <Button
@@ -164,13 +167,27 @@ export function RegisterViewMenu({
           {monthPicker("to")}
         </div>
         <div className="grid gap-2 border-t pt-3 text-sm">
-          {checkbox("showReconciled", "Show Reconciled Transactions")}
-          {runningBalance && checkbox("showRunningBalance", "Show Running Balance")}
-          {checkbox("showFlags", "Show Flags")}
-          {checkbox("showAttachments", "Show Attachments")}
-          {checkbox("showEnteredBy", "Show Entered By")}
+          {checkbox("showReconciled", "Show reconciled transactions")}
+          {runningBalance && checkbox("showRunningBalance", "Show running balance")}
+          {checkbox("showFlags", "Show flags")}
+          {checkbox("showAttachments", "Show attachments")}
+          {checkbox("showEnteredBy", "Show entered by")}
         </div>
-        <div className="flex justify-end gap-2">
+        <div className="flex items-center justify-end gap-2">
+          {onResetColumns && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mr-auto text-muted-foreground"
+              onClick={() => {
+                onResetColumns();
+                setOpen(false);
+              }}
+            >
+              Reset column widths
+            </Button>
+          )}
           <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
             Cancel
           </Button>

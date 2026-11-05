@@ -266,30 +266,30 @@ export function LoanPage({
               {!account.closed && (
                 <>
                   <Button variant="outline" size="sm" onClick={() => setOpen({ kind: "update" })}>
-                    Update Balance
+                    Update balance
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button size="sm">Add Activity</Button>
+                      <Button size="sm">Add activity</Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-64">
                       <MenuItem
-                        title="Add Payment"
+                        title="Add payment"
                         hint="For payments to reduce your balance"
                         onSelect={() => setOpen({ kind: "payment" })}
                       />
                       <MenuItem
-                        title="Add Credit"
+                        title="Add credit"
                         hint="For credits or refunds to your account"
                         onSelect={() => setOpen({ kind: "activity", activity: "credit" })}
                       />
                       <MenuItem
-                        title="Add Fee or Charge"
+                        title="Add fee or charge"
                         hint="For late fees, annual fees, or withdrawals"
                         onSelect={() => setOpen({ kind: "activity", activity: "charge" })}
                       />
                       <MenuItem
-                        title="Add Interest"
+                        title="Add interest"
                         hint="For recording known interest accrual"
                         onSelect={() => setOpen({ kind: "interest" })}
                       />
@@ -304,13 +304,13 @@ export function LoanPage({
       {account.note && <p className="max-w-prose text-sm">{account.note}</p>}
 
       <dl className="flex flex-wrap gap-x-8 gap-y-3 rounded-lg border px-4 py-3 tabular-nums">
-        <Figure label="Remaining Balance" value={format(owed)} />
+        <Figure label="Remaining balance" value={format(owed)} />
         <Figure
-          label="Interest Rate"
+          label="Interest rate"
           value={account.interestRate ? `${formatRate(account.interestRate)}%` : "--"}
         />
         <Figure
-          label="Minimum Payment"
+          label="Minimum payment"
           value={account.minimumPayment ? formatText(account.minimumPayment) : "--"}
         />
         {hasEscrow(account.type) && (
@@ -320,7 +320,7 @@ export function LoanPage({
           />
         )}
         <Figure
-          label="Payoff Date"
+          label="Payoff date"
           value={plan?.payoffMonth ? shortMonth(plan.payoffMonth) : "--"}
         />
       </dl>
@@ -363,8 +363,8 @@ export function LoanPage({
         ))}
 
       {paired ? (
-        <section className="rounded-lg border" aria-label="Paired Plan Category">
-          <h2 className="border-b px-4 py-3 font-semibold text-sm">Paired Plan Category</h2>
+        <section className="rounded-lg border" aria-label="Paired plan category">
+          <h2 className="border-b px-4 py-3 font-semibold text-sm">Paired plan category</h2>
           <div className="flex flex-wrap items-end justify-between gap-4 px-4 py-3 text-sm">
             <div className="grid gap-0.5">
               <span className="text-muted-foreground text-xs">Category</span>
@@ -389,11 +389,11 @@ export function LoanPage({
                 className="font-medium text-primary-text hover:underline"
                 onClick={openPairedCategory}
               >
-                {formatText(paired.target.amount)} Needed Each Month
+                {formatText(paired.target.amount)} needed each month
               </button>
             ) : (
               <Button size="sm" variant="secondary" onClick={openPairedCategory}>
-                Create Debt Payment Target
+                Create debt payment target
               </Button>
             )}
           </div>
@@ -413,14 +413,14 @@ export function LoanPage({
               </p>
             </div>
             <Button size="sm" onClick={() => setOpen({ kind: "pair" })} disabled={!categories.data}>
-              Get Started
+              Get started
             </Button>
           </section>
         )
       )}
 
-      <section className="grid gap-3" aria-label="Account Activity">
-        <h2 className="font-semibold text-xl">Account Activity</h2>
+      <section className="grid gap-3" aria-label="Account activity">
+        <h2 className="font-semibold text-xl">Account activity</h2>
         {loan.isPending ? (
           <Skeleton className="h-40" />
         ) : (
@@ -808,7 +808,7 @@ export function MonthCard({
         {hasActivity && (
           <span className="grid justify-items-end text-sm tabular-nums">
             {format(BigInt(month.endBalance))}
-            {first && <span className="text-muted-foreground text-xs">Initial Balance</span>}
+            {first && <span className="text-muted-foreground text-xs">Initial balance</span>}
           </span>
         )}
       </button>
@@ -870,7 +870,7 @@ export function MonthCard({
               onClick={onEditCharge && (() => onEditCharge("interest"))}
             >
               <span className="flex items-center gap-2 pl-6 font-medium">
-                Interest Charges This Month
+                Interest charges this month
                 {onEditCharge && <EditMark />}
               </span>
               <span className="pl-6 text-muted-foreground text-xs">
@@ -884,7 +884,7 @@ export function MonthCard({
               onClick={onEditCharge && (() => onEditCharge("escrow"))}
             >
               <span className="flex items-center gap-2 pl-6 font-medium">
-                Escrow Held
+                Escrow held
                 {onEditCharge && <EditMark />}
               </span>
               <span className="pl-6 text-muted-foreground text-xs">
@@ -911,7 +911,7 @@ export function MonthCard({
                   >
                     {others.length}
                   </Badge>
-                  Other Activity
+                  Other activity
                   {others.length > 1 &&
                     (showOther ? (
                       <ChevronDown className="size-3.5" />

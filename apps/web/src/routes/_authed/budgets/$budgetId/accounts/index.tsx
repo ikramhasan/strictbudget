@@ -46,7 +46,7 @@ function AllAccountsRegister({ search }: { search: RegisterSearch }) {
     <div className="grid gap-6">
       <ReviewBanner count={toReview} onView={() => onSearchChange({ q: REVIEW_SEARCH })} />
       <PageTitle name="All accounts" />
-      <PageHeader title="All Accounts" />
+      <PageHeader title="All accounts" />
       <Register search={search} onSearchChange={onSearchChange} />
     </div>
   );

@@ -34,7 +34,7 @@ function label(option: AutoAssignOption, one: boolean, payment = false) {
     case "underfunded":
       return "Underfunded";
     case "reduceOverfunding":
-      return "Reduce Overfunding";
+      return "Reduce overfunding";
     case "assignedLastMonth":
       return "Assigned last month";
     case "spentLastMonth":
@@ -288,7 +288,7 @@ export function AutoAssignPanel({
   return (
     <section
       aria-label="Auto-Assign"
-      className={cn("grid gap-2", !bare && "rounded-lg border p-4")}
+      className={cn("grid gap-2", !bare && "rounded-lg border bg-card p-4")}
     >
       {!bare && <h2 className="font-semibold text-sm">Auto-Assign</h2>}
       {categories.length === 0 ? (
@@ -296,7 +296,7 @@ export function AutoAssignPanel({
           <p>This view has no categories.</p>
           {onViewAll && (
             <Button variant="link" size="sm" className="h-auto p-0" onClick={onViewAll}>
-              View All Categories
+              View all categories
             </Button>
           )}
         </div>
@@ -450,7 +450,7 @@ export function AutoAssignPanel({
                 setPreview(null);
               }}
             >
-              Apply Changes
+              Apply changes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

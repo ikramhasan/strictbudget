@@ -66,6 +66,7 @@ export function BudgetForm({
 }) {
   const [values, setValues] = useState(defaultValues);
   const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState(false);
   const [pending, setPending] = useState(false);
   const [formattingOpen, setFormattingOpen] = useState(false);
   const set = <K extends keyof BudgetFormValues>(key: K, value: BudgetFormValues[K]) =>
@@ -80,6 +81,11 @@ export function BudgetForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (values.name.trim() === "") {
+      setNameError(true);
+      document.getElementById("budget-name")?.focus();
+      return;
+    }
     setPending(true);
     setError(null);
     const message = await onSubmit({ ...values, name: values.name.trim() });
@@ -139,17 +145,25 @@ export function BudgetForm({
   );
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-5">
-      <Field>
+    // The name checks itself and says so under the field, not in the browser's bubble.
+    <form onSubmit={handleSubmit} noValidate className="grid gap-5">
+      <Field data-invalid={nameError || undefined}>
         <FieldLabel htmlFor="budget-name">Budget name</FieldLabel>
         <Input
           id="budget-name"
           value={values.name}
-          onChange={(e) => set("name", e.target.value)}
+          onChange={(e) => {
+            set("name", e.target.value);
+            if (e.target.value.trim()) setNameError(false);
+          }}
           maxLength={100}
-          required
           autoFocus={!currencyLocked}
+          aria-invalid={nameError || undefined}
+          aria-describedby={nameError ? "budget-name-error" : undefined}
         />
+        {nameError && (
+          <FieldError id="budget-name-error">Give the budget a name, like “Household”.</FieldError>
+        )}
       </Field>
 
       <Field>

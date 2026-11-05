@@ -377,7 +377,7 @@ function PaletteBody({
           },
           {
             id: "go:accounts",
-            label: "All Accounts",
+            label: "All accounts",
             keywords: ["transactions", "register"],
             icon: Landmark,
             run: () => void navigate({ to: "/budgets/$budgetId/accounts", params }),

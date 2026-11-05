@@ -189,7 +189,7 @@ function SetupPage() {
       ) : step === "categories" ? (
         <StepCard
           title="Pick your categories"
-          description="These are the jobs your money can do. A few quick questions fit the starter list to you; then keep what fits, untick the rest and add anything that's missing."
+          description="These are the jobs your money can do. Answer a few quick questions first; then you'll review a starter list fitted to you and add anything that's missing."
         >
           {categories.data ? (
             <CategoryPicker
@@ -206,22 +206,27 @@ function SetupPage() {
         <StepCard
           title="Add your first account"
           description="Start with the account you spend from most, like checking. Enter today's balance: that's the money you'll give jobs to."
-          onBack={() => goTo("categories")}
-          footer={
-            <>
-              <p className="text-muted-foreground text-sm max-sm:basis-full max-sm:text-right">
-                No numbers handy? Add accounts any time from the sidebar.
-              </p>
-              <Button variant="outline" onClick={() => goTo("assign")}>
-                Skip for now
-              </Button>
-            </>
-          }
         >
           <AddAccountForm
             settings={budget}
             withLogo={false}
             categories={categories.data}
+            submitLabel={
+              <>
+                Add account and continue <ArrowRight />
+              </>
+            }
+            onBack={() => goTo("categories")}
+            secondaryAction={
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-muted-foreground"
+                onClick={() => goTo("assign")}
+              >
+                Skip for now
+              </Button>
+            }
             onSubmit={async (values) => {
               const result = await createAccount(values);
               if ("error" in result) return result.error;

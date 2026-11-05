@@ -167,7 +167,7 @@ export function NewAttachmentCell({
         size="icon-xs"
         className="mx-auto flex text-muted-foreground/60 hover:text-foreground"
         aria-label="Add a photo or PDF"
-        title={aiEnabled ? "Add a receipt" : "Add Attachment"}
+        title={aiEnabled ? "Add a receipt" : "Add attachment"}
         onClick={() => input.current?.click()}
       >
         <ImagePlus />

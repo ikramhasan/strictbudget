@@ -52,7 +52,6 @@ import {
   type LineDraft,
   type Payee,
   payeeSuggestionIds,
-  remainingLabel,
   splitMismatch,
   splitRemaining,
   startSplit,
@@ -342,7 +341,7 @@ export function TransactionEditor({
 
   // Saving a split whose lines miss its total asks first.
   const [mismatch, setMismatch] = useState<ReturnType<typeof splitMismatch>>(null);
-  // A split's "left to split" turns red only once saving has found it short.
+  // A split's "Remaining" turns red only once saving has found it short.
   const [triedSave, setTriedSave] = useState(false);
   function save(another = false) {
     // Not while the AI is still filling the row in.
@@ -444,6 +443,8 @@ export function TransactionEditor({
             value={draft.date}
             onChange={(date) => set({ date })}
             format={dateFormat}
+            // In a register's row, as its rows show it.
+            short={layout === "row"}
             // A phone's drawer opens without the keyboard; the date is a tap away.
             autoFocus={
               !columns.includes("account") &&
@@ -540,17 +541,24 @@ export function TransactionEditor({
           <AmountField
             outflow={draft.outflow}
             inflow={draft.inflow}
-            fallback={direction}
+            fallback={linesTotal ? (linesTotal > 0n ? "inflow" : "outflow") : direction}
             settings={settings}
+            computed={linesTotal ? show(linesTotal < 0n ? -linesTotal : linesTotal) : undefined}
             onChange={set}
           />
         );
       case "outflow":
-      case "inflow":
+      case "inflow": {
+        // A split left without its own amount shows its lines' total, on its side.
+        const computed =
+          linesTotal && (column === "outflow" ? linesTotal < 0n : linesTotal > 0n)
+            ? show(linesTotal < 0n ? -linesTotal : linesTotal)
+            : undefined;
         return (
           <Input
             aria-label={column === "outflow" ? "Outflow" : "Inflow"}
-            placeholder={column === "outflow" ? "Outflow" : "Inflow"}
+            placeholder={computed ?? (column === "outflow" ? "Outflow" : "Inflow")}
+            title={computed ? "The lines' total" : undefined}
             inputMode="decimal"
             value={draft[column]}
             onBlur={() => tidyMain(column)}
@@ -562,9 +570,13 @@ export function TransactionEditor({
                   : { inflow: e.target.value, outflow: "" },
               )
             }
-            className="h-8 text-right tabular-nums"
+            className={cn(
+              "h-8 text-right tabular-nums",
+              computed && "placeholder:text-foreground/70",
+            )}
           />
         );
+      }
       case "cleared":
         if (scheduled) return null;
         if (layout === "stacked") {
@@ -718,6 +730,23 @@ export function TransactionEditor({
 
   const split = lines ? splitRemaining(draft, settings) : null;
   const remaining = split && "remaining" in split ? split.remaining : null;
+  /** A split whose own amount is left empty totals its lines: shown as they're typed. */
+  const linesTotal =
+    split && "total" in split && draft.outflow.trim() === "" && draft.inflow.trim() === ""
+      ? split.total
+      : null;
+  const splitStatus =
+    remaining === null || !split || "error" in split
+      ? "Check the amounts"
+      : linesTotal !== null
+        ? linesTotal === 0n
+          ? "Enter an amount on each line"
+          : `Total ${show(linesTotal < 0n ? -linesTotal : linesTotal)}${linesTotal > 0n ? " inflow" : ""}`
+        : remaining === 0n
+          ? "Fully split"
+          : remaining > 0n
+            ? `Remaining ${show(remaining)}`
+            : `${show(-remaining)} over the total`;
   const rateLabel = transferRate(draft, settings, account?.currency, crossTo?.currency);
 
   // The row editor's memo goes in its footer when the register has no Memo column, and each split
@@ -770,17 +799,17 @@ export function TransactionEditor({
               "mr-auto text-sm tabular-nums",
               // Still being typed, what's left is only a count; it's a problem once lines go past
               // the total, or saving found them short.
-              remaining === 0n && split && "total" in split && split.total !== 0n
-                ? "text-success"
-                : (remaining !== null && remaining < 0n) || (triedSave && remaining !== 0n)
-                  ? "text-destructive"
-                  : "text-muted-foreground",
+              linesTotal !== null
+                ? "font-medium text-foreground"
+                : remaining === 0n && split && "total" in split && split.total !== 0n
+                  ? "text-success"
+                  : (remaining !== null && remaining < 0n) || (triedSave && remaining !== 0n)
+                    ? "text-destructive"
+                    : "text-muted-foreground",
             )}
             aria-live="polite"
           >
-            {remaining === null || !split || "error" in split
-              ? "Check the amounts"
-              : remainingLabel(remaining, settings, split.total)}
+            {splitStatus}
           </p>
         </>
       )}
@@ -885,7 +914,7 @@ export function TransactionEditor({
     <AlertDialog open={mismatch !== null} onOpenChange={(open) => !open && setMismatch(null)}>
       <AlertDialogContent className="data-[size=default]:sm:max-w-md">
         <AlertDialogHeader>
-          <AlertDialogTitle>Something Doesn't Add Up</AlertDialogTitle>
+          <AlertDialogTitle>Something doesn't add up</AlertDialogTitle>
           <AlertDialogDescription>
             {mismatch &&
               `The total is ${show(mismatch.total)}, but the splits add up to ${show(
@@ -902,16 +931,16 @@ export function TransactionEditor({
                 setDraft((d) => ({ ...d, lines }));
               }}
             >
-              Auto-Distribute
+              Auto-distribute
             </AlertDialogAction>
           )}
           <AlertDialogAction
             variant="outline"
             onClick={() => setDraft((d) => withSplitTotal(d, settings))}
           >
-            Update Total
+            Update total
           </AlertDialogAction>
-          <AlertDialogCancel>Adjust Manually</AlertDialogCancel>
+          <AlertDialogCancel>Adjust manually</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -1172,6 +1201,7 @@ function AmountField({
   inflow,
   fallback,
   settings,
+  computed,
   inputRef,
   onBlur,
   onChange,
@@ -1183,6 +1213,8 @@ function AmountField({
   fallback: "outflow" | "inflow";
   /** The amount's currency and number format, to tidy what's typed when it's left. */
   settings: MoneySettings;
+  /** Shown while it's empty: a split's lines' total. */
+  computed?: string;
   inputRef?: Ref<HTMLInputElement>;
   onBlur?: () => void;
   onChange: (amounts: { outflow: string; inflow: string }) => void;
@@ -1213,7 +1245,8 @@ function AmountField({
       <InputGroupInput
         ref={inputRef}
         aria-label={label ? `${name}, ${label}` : name}
-        placeholder={name}
+        placeholder={computed ?? name}
+        title={computed ? "The lines' total" : undefined}
         inputMode="decimal"
         value={text}
         onBlur={() => {
@@ -1227,7 +1260,11 @@ function AmountField({
           else if (value.startsWith("-")) put("outflow", value.slice(1));
           else put(side, value);
         }}
-        className={cn("pr-[5px] text-right tabular-nums", side === "inflow" && "text-success")}
+        className={cn(
+          "pr-[5px] text-right tabular-nums",
+          side === "inflow" && "text-success",
+          computed && "placeholder:text-foreground/70",
+        )}
       />
     </InputGroup>
   );

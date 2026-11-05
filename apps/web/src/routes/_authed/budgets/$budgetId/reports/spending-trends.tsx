@@ -56,11 +56,13 @@ import { categoriesQueryOptions } from "@/lib/categories";
 import { todayIso } from "@/lib/dates";
 import {
   COMPARISON_LABELS,
+  monthLabel,
   OTHER_COLOR,
   type ReportRequest,
   reportActivityOptions,
   reportTransactionsOptions,
 } from "@/lib/reports";
+import { useColorSlots } from "@/lib/reports-colors";
 import {
   BAR_SERIES,
   type CalendarDay,
@@ -73,6 +75,7 @@ import {
   seriesColors,
   seriesInfo,
   seriesKeys,
+  sinceFirstMonth,
   summaryExportRows,
   TOP_SERIES,
   TREND_MODE_LABELS,
@@ -119,15 +122,13 @@ function Report() {
     average: true,
     rolling: false,
   });
-  // One month is its own average: no average line.
-  const oneMonth = state.range.from === state.range.to;
-  const overlays = { ...chosenOverlays, average: chosenOverlays.average && !oneMonth };
   const [drill, setDrill] = useState<DrillDown | null>(null);
 
   const categories = useQuery(categoriesQueryOptions(budget.id));
+  const slots = useColorSlots();
   const catalog = useMemo(
-    () => (categories.data ? catalogOf(categories.data) : null),
-    [categories.data],
+    () => (categories.data && slots ? catalogOf(categories.data, slots) : null),
+    [categories.data, slots],
   );
   const filters = { ...state.filters, ...(search.group && { groupIds: search.group }) };
   const request = (range: MonthRange, extra?: Partial<ReportRequest>): ReportRequest => ({
@@ -153,7 +154,8 @@ function Report() {
   const derived = useMemo(() => {
     if (!catalog || !activity.data) return null;
     const leadMonths = trendMonths(cellsOf(activity.data.rows, catalog, level), monthsIn(lead));
-    const months = leadMonths.slice(LEAD_MONTHS);
+    const months = sinceFirstMonth(leadMonths.slice(LEAD_MONTHS), state.earliest);
+    const skipped = leadMonths.length - LEAD_MONTHS - months.length;
     const rollingValues = rollingAverage(
       leadMonths.map((m) => m.total),
       3,
@@ -182,7 +184,7 @@ function Report() {
         compared = {
           kind: "period",
           label,
-          totals: new Map(months.map((m, i) => [m.month, compMonths[i]?.total ?? 0n])),
+          totals: new Map(months.map((m, i) => [m.month, compMonths[i + skipped]?.total ?? 0n])),
         };
       }
     }
@@ -209,13 +211,15 @@ function Report() {
       new Map(barsFolded.keys.map((k) => [k, bars.info(k).color])),
     );
     const top = colored(withOther(months, TOP_SERIES));
-    return { all, bars, top, total, average };
+    const from = skipped > 0 ? months[0]?.month : undefined;
+    return { all, bars, top, total, average, count: months.length, from };
   }, [
     catalog,
     activity.data,
     comparison.data,
     level,
     state.range,
+    state.earliest,
     state.comparison,
     search.compare,
   ]);
@@ -287,6 +291,9 @@ function Report() {
     ];
   };
 
+  // One month is its own average: no average line.
+  const oneMonth = derived ? derived.count <= 1 : state.range.from === state.range.to;
+  const overlays = { ...chosenOverlays, average: chosenOverlays.average && !oneMonth };
   const groupName = search.group && catalog?.groups.get(search.group)?.label;
   const loading = !derived;
   const filtered = Object.keys(state.filters).length > 0;
@@ -426,6 +433,11 @@ function Report() {
             <p className="font-semibold text-3xl tabular-nums">
               {derived ? format(derived.average) : "–"}
             </p>
+            {derived?.from && (
+              <p className="text-muted-foreground text-xs">
+                Since your first transaction, in {monthLabel(derived.from, "long")}
+              </p>
+            )}
           </div>
         )}
         <div>

@@ -61,6 +61,7 @@ import { FLAG_CLASS, type Flag, type FlagColor, flagLabel } from "@/lib/flags";
 import { menuKeyDown } from "@/lib/menu-keys";
 import { capLabel, SHORTCUTS, type ShortcutId, useShortcut } from "@/lib/shortcuts";
 import { type CategoryOption, categoryLabel } from "@/lib/transactions";
+import { CategoryField } from "./register-fields";
 
 export type BulkAction =
   | { type: "cleared"; cleared: "cleared" | "uncleared" }
@@ -86,8 +87,8 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /**
  * Each action is offered only when it applies to the selection. With unapproved rows selected,
- * Flag and the cleared states move into More. Enter Now shows when only scheduled rows are
- * selected, and Make Repeating when one plain transaction is.
+ * Flag and the cleared states move into More. Enter now shows when only scheduled rows are
+ * selected, and Make repeating when one plain transaction is.
  */
 /**
  * The page's content column (the sidebar's inset), measured: its middle on the window and its
@@ -319,7 +320,7 @@ export function SelectionBar({
           <X />
         </Button>
         <span aria-live="polite" className="pr-1 font-medium tabular-nums">
-          {count === null ? "Counting…" : plural(count, "Transaction")}
+          {count === null ? "Counting…" : plural(count, "transaction")}
         </span>
       </span>
       {total !== null && (
@@ -341,7 +342,7 @@ export function SelectionBar({
             disabled={pending}
             onClick={() => onAction({ type: "enterNow" })}
           >
-            <CalendarClock /> Enter Now
+            <CalendarClock /> Enter now
           </Button>
         )}
         {reviewing && (
@@ -367,29 +368,38 @@ export function SelectionBar({
           </>
         )}
         {s && (s.categorizable > 0 || scheduledCount > 0) && (
-          // Inflow → Ready to Assign first, then the visible groups in plan order, without payment
-          // or hidden categories.
-          <DropdownMenu open={categorizeOpen} onOpenChange={setCategorizeOpen}>
-            <DropdownMenuTrigger asChild>
+          // The register's own category picker: type to narrow, the groups and what each has
+          // available, Enter to file the selection.
+          <Popover open={categorizeOpen} onOpenChange={setCategorizeOpen}>
+            <PopoverTrigger asChild>
               <Button type="button" variant="ghost" size="sm" disabled={pending}>
                 <Tag /> Categorize
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56" onCloseAutoFocus={keepDialogFocus}>
-              {groupOptions(categories).map((group, i) => (
-                <DropdownMenuSub key={`${i}-${group.name}`}>
-                  <DropdownMenuSubTrigger>{group.name}</DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="max-h-80 overflow-y-auto">
-                    {group.categories.map((c) => (
-                      <DropdownMenuItem key={c.id} onSelect={() => categorize(c.id)}>
-                        {c.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              side="top"
+              className="w-80 p-2"
+              onCloseAutoFocus={keepDialogFocus}
+            >
+              <p className="px-1 pb-1.5 font-medium text-muted-foreground text-xs">
+                Categorize {count === null ? "selected" : plural(count, "transaction")}
+              </p>
+              <CategoryField
+                label="Category for the selected transactions"
+                placeholder="Find a category…"
+                value={null}
+                onChange={(id) => {
+                  if (!id) return;
+                  setCategorizeOpen(false);
+                  categorize(id);
+                }}
+                categories={categories}
+                autoFocus
+                inline
+              />
+            </PopoverContent>
+          </Popover>
         )}
         {/* With unapproved rows selected Flag is in More; Shift+F still opens this menu, anchored to More. */}
         <Popover open={flagOpen} onOpenChange={setFlagOpen}>
@@ -525,7 +535,7 @@ export function SelectionBar({
             </DropdownMenuItem>
             {onMakeRepeating && (
               <DropdownMenuItem onSelect={onMakeRepeating}>
-                <Repeat /> Make Repeating
+                <Repeat /> Make repeating
                 <ShortcutKeys id="makeRepeating" />
               </DropdownMenuItem>
             )}
@@ -539,13 +549,13 @@ export function SelectionBar({
             </DropdownMenuItem>
             {onExport && s && s.count > 0 && (
               <DropdownMenuItem onSelect={onExport}>
-                <FileDown /> Export {plural(s.count, "Transaction")}
+                <FileDown /> Export {plural(s.count, "transaction")}
               </DropdownMenuItem>
             )}
             {moveTargets.length > 0 && (
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
-                  <ArrowRightLeft /> Move to Account
+                  <ArrowRightLeft /> Move to account
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
                   {moveTargets.map((a) => (
@@ -580,8 +590,8 @@ export function SelectionBar({
           <AlertDialogHeader>
             <AlertDialogTitle>
               {splits === 1
-                ? "Un-split and Categorize Split Transaction?"
-                : "Un-split and Categorize Split Transactions?"}
+                ? "Un-split and categorize split transaction?"
+                : "Un-split and categorize split transactions?"}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="grid gap-2">
@@ -701,7 +711,7 @@ function MemoDialog({
           }}
         >
           <DialogHeader>
-            <DialogTitle>Edit Memo ({plural(count, "Transaction")})</DialogTitle>
+            <DialogTitle>Edit memo ({plural(count, "transaction")})</DialogTitle>
           </DialogHeader>
           <div className="grid gap-2">
             <Label htmlFor={id}>Memo</Label>
@@ -719,7 +729,7 @@ function MemoDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={!memo}>
-              Update {plural(count, "Transaction")}
+              Update {plural(count, "transaction")}
             </Button>
           </DialogFooter>
         </form>

@@ -15,9 +15,9 @@ import { type MoneySettings, parseMoneyInput } from "@/lib/money-input";
 // which dayjs's relativeTime plugin matches.
 dayjs.extend(relativeTime);
 
-/** The account header's "Reconciled 9 days ago", or "Not Yet Reconciled". */
+/** The account header's "Reconciled 9 days ago", or "Not yet reconciled". */
 export function reconciledLabel(lastReconciledAt: string | null, now = new Date()) {
-  if (!lastReconciledAt) return "Not Yet Reconciled";
+  if (!lastReconciledAt) return "Not yet reconciled";
   return `Reconciled ${dayjs(lastReconciledAt).from(now)}`;
 }
 
@@ -179,7 +179,7 @@ export function ReconcilePopover({
                   onCheckedChange={(checked) => setSkip(checked === true)}
                 />
                 <Label htmlFor={skipId} className="font-normal">
-                  Don't Show Again
+                  Don't show again
                 </Label>
               </div>
               <Button
@@ -237,7 +237,7 @@ export function ReconcileBanner({
           Cancel
         </Button>
         <Button size="sm" disabled={pending} onClick={onFinish}>
-          {same ? "Finish Reconciliation" : "Create Adjustment & Finish"}
+          {same ? "Finish reconciliation" : "Create adjustment & finish"}
         </Button>
       </div>
     </section>

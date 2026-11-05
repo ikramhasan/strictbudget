@@ -63,6 +63,7 @@ import {
 } from "react";
 import { dateForKey, dateToIso, isoToDate, parseDateInput, todayIso } from "@/lib/dates";
 import { useShortcutsEnabled } from "@/lib/preferences";
+import { shortDate } from "@/lib/register-dates";
 import {
   type CategoryOption,
   categoryLabel,
@@ -111,6 +112,7 @@ export function DateField({
   repeat,
   onMakeRepeating,
   defaultOpen = false,
+  short = false,
 }: {
   value: string;
   onChange: (iso: string) => void;
@@ -118,12 +120,15 @@ export function DateField({
   format: DateFormat;
   autoFocus?: boolean;
   repeat?: { value: ScheduleFrequency; onChange: (frequency: ScheduleFrequency) => void };
-  /** A plain transaction's date picker offers "Make Repeating" instead. */
+  /** A plain transaction's date picker offers "Make repeating" instead. */
   onMakeRepeating?: () => void;
-  /** Start with the calendar open (Make Repeating's new row). */
+  /** Start with the calendar open (Make repeating's new row). */
   defaultOpen?: boolean;
+  /** This year's dates without the year, as a register's rows show them (typed back the same). */
+  short?: boolean;
 }) {
-  const display = (iso: string) => formatDate(iso, format);
+  const display = (iso: string) =>
+    short ? shortDate(iso, format, todayIso()) : formatDate(iso, format);
   const [text, setText] = useState(() => display(value));
   const [open, setOpen] = useState(defaultOpen);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -192,7 +197,7 @@ export function DateField({
                     onMakeRepeating();
                   }}
                 >
-                  Make Repeating
+                  Make repeating
                 </Button>
               </div>
             )}
@@ -300,6 +305,7 @@ export function PayeeField({
   own,
   transferAccountId = null,
   autoFocus,
+  openOnFocus = true,
   importDetails,
 }: {
   /** Accessible name (split lines say which line). */
@@ -314,7 +320,12 @@ export function PayeeField({
   /** The account the field's transfer goes to, to tell two accounts with one name apart. */
   transferAccountId?: string | null;
   autoFocus?: boolean;
-  /** An imported transaction's Bank Import Details, behind the Selected payee. */
+  /**
+   * Show the list as soon as the field gets focus. Off, it opens on typing, Alt+Down or Enter in an
+   * empty field (a register cell, opened to read or fix the name).
+   */
+  openOnFocus?: boolean;
+  /** An imported transaction's bank import details, behind the Selected payee. */
   importDetails?: ImportDetails;
 }) {
   const trimmed = value.trim();
@@ -326,7 +337,7 @@ export function PayeeField({
   );
   // The whole list shows as soon as the field is focused, with the current payee selected so
   // typing replaces it; the list narrows once something is typed.
-  const [open, setOpen] = useState(Boolean(autoFocus));
+  const [open, setOpen] = useState(Boolean(autoFocus) && openOnFocus);
   const [typed, setTyped] = useState(false);
   /** What was typed, without the completion: what the list is narrowed and ranked by. */
   const [query, setQuery] = useState("");
@@ -364,17 +375,17 @@ export function PayeeField({
     const chosen =
       (transferAccountId && toAccounts.find((p) => p.accountId === transferAccountId)) ||
       [...known, ...toAccounts].find((p) => matches(p, trimmed));
-    // Untyped, the list is "Selected", then "Payments and Transfers", then "Saved Payees"; once
+    // Untyped, the list is "Selected", then "Payments and transfers", then "Saved payees"; once
     // something is typed, saved payees come first, ranked by what was typed (`payeeRank`; the list
     // still keeps every name that contains it).
     const saved = {
-      value: "Saved Payees",
+      value: "Saved payees",
       items:
         typed && typedText
           ? [...known].sort((a, b) => payeeRank(a.label, typedText) - payeeRank(b.label, typedText))
           : known,
     };
-    const moves = { value: "Payments and Transfers", items: toAccounts };
+    const moves = { value: "Payments and transfers", items: toAccounts };
     const selected = chosen && !typed ? [{ value: "Selected", items: [asSelected(chosen)] }] : [];
     return {
       groups: [...selected, ...(typed ? [saved, moves] : [moves, saved])].filter(
@@ -470,7 +481,7 @@ export function PayeeField({
           // Coming back to the field shows the whole list again, Selected first.
           setTyped(false);
           setQuery("");
-          setOpen(true);
+          if (openOnFocus) setOpen(true);
           e.currentTarget.select();
         }}
         onKeyDown={(e) => {
@@ -479,6 +490,13 @@ export function PayeeField({
           if (e.key === "Enter" && !open && value.trim() === "") {
             e.preventDefault();
             e.stopPropagation();
+            setOpen(true);
+            return;
+          }
+          // Alt+Down shows the whole list, Selected first.
+          if (e.key === "ArrowDown" && e.altKey && !open) {
+            e.preventDefault();
+            setTyped(false);
             setOpen(true);
             return;
           }
@@ -508,7 +526,7 @@ export function PayeeField({
                 }}
               >
                 <Plus className="size-4 shrink-0" />
-                <span className="truncate">Create “{create}” Payee</span>
+                <span className="truncate">Create “{create}” payee</span>
               </button>
             )}
             <AutocompleteList>
@@ -532,7 +550,7 @@ export function PayeeField({
                         {importDetails && item.id.startsWith(SELECTED) && (
                           <button
                             type="button"
-                            aria-label="Bank Import Details"
+                            aria-label="Bank import details"
                             aria-expanded={detailsOpen}
                             className="ml-auto rounded-full text-muted-foreground hover:text-foreground"
                             // Not the item: keep the field's focus and its payee.
@@ -569,7 +587,7 @@ export function PayeeField({
                   managePayees();
                 }}
               >
-                Manage Payees
+                Manage payees
               </button>
             )}
           </div>
@@ -598,15 +616,15 @@ function BankImportDetails({ details, onClose }: { details: ImportDetails; onClo
   const card = "grid gap-1 rounded-md border bg-background p-2.5";
   return (
     <section
-      aria-label="Bank Import Details"
+      aria-label="Bank import details"
       className="grid content-start gap-2 border-t bg-muted/40 p-2.5 text-sm sm:w-72 sm:border-t-0 sm:border-l"
       onMouseDown={(e) => e.preventDefault()}
     >
       <div className="flex items-center justify-between">
-        <p className="font-medium">Bank Import Details</p>
+        <p className="font-medium">Bank import details</p>
         <button
           type="button"
-          aria-label="Close Bank Import Details"
+          aria-label="Close bank import details"
           className="text-muted-foreground hover:text-foreground"
           onClick={onClose}
         >
@@ -640,13 +658,13 @@ function BankImportDetails({ details, onClose }: { details: ImportDetails; onClo
             className="justify-self-start text-left text-primary-text text-xs hover:underline"
             onClick={details.onDontRename}
           >
-            Don't Rename as {details.renamedTo}
+            Don't rename as {details.renamedTo}
           </button>
         )}
       </div>
       {details.orderLink && (
         <>
-          <p className="font-medium text-xs">Additional Information</p>
+          <p className="font-medium text-xs">Additional information</p>
           <div className={card}>
             <a
               href={details.orderLink.url}
@@ -729,6 +747,7 @@ export function CategoryField({
   suggestedIds,
   chevron = false,
   openOnFocus = true,
+  inline = false,
 }: {
   label?: string;
   value: string | null;
@@ -749,6 +768,8 @@ export function CategoryField({
   chevron?: boolean;
   /** Open the list as soon as the field gets focus (a register cell); otherwise on typing. */
   openOnFocus?: boolean;
+  /** The list always shown under the field, in place (a popover of its own, e.g. bulk Categorize). */
+  inline?: boolean;
 }) {
   const balances = useContext(CategoryBalancesContext);
   const describeOption = describe ?? balances ?? undefined;
@@ -773,11 +794,90 @@ export function CategoryField({
     [selected, shortcuts],
   );
   const [open, setOpen] = useState(Boolean(autoFocus) && openOnFocus);
+  const list = (
+    <>
+      {(onSplit || onPaymentTransfer) && (
+        <div className="flex gap-1 border-b p-1">
+          {onPaymentTransfer && (
+            <button
+              type="button"
+              className={CATEGORY_ACTION}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setOpen(false);
+                onPaymentTransfer();
+              }}
+            >
+              <ArrowLeftRight className="size-3.5" /> Payment/Transfer
+            </button>
+          )}
+          {onSplit && (
+            <button
+              type="button"
+              className={CATEGORY_ACTION}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setOpen(false);
+                onSplit();
+              }}
+            >
+              <Split className="size-3.5" /> Split
+            </button>
+          )}
+        </div>
+      )}
+      <ComboboxEmpty>No matching category</ComboboxEmpty>
+      <ComboboxList className={inline ? "max-h-72" : undefined}>
+        {(group: CategoryGroupItems) => (
+          <ComboboxGroup key={group.value} items={group.items}>
+            {group.value && <ComboboxLabel>{group.value}</ComboboxLabel>}
+            <ComboboxCollection>
+              {(option: CategoryOption) => (
+                <ComboboxItem key={option.id} value={option}>
+                  {option.id === SPLIT.id ? (
+                    <>
+                      <Split className="size-4 text-muted-foreground" /> Split
+                    </>
+                  ) : option.id === PAYMENT_TRANSFER.id ? (
+                    <>
+                      <ArrowLeftRight className="size-4 text-muted-foreground" /> Payment/Transfer
+                    </>
+                  ) : option.id.startsWith(SHORTCUT) ? (
+                    // The group in parentheses: "Rent (Bills)".
+                    <span className="flex w-full items-center justify-between gap-3">
+                      <span className="flex min-w-0 items-center gap-1">
+                        <CategoryLabel name={option.name} />
+                        {/* A space of its own keeps "Rent (Bills)" whole in the option's name. */}{" "}
+                        <span className="shrink-0 text-muted-foreground">({option.group})</span>
+                      </span>
+                      {describeOption && (
+                        <span className="shrink-0 tabular-nums">
+                          {describeOption({ ...option, id: option.id.replace(SHORTCUT, "") })}
+                        </span>
+                      )}
+                    </span>
+                  ) : describeOption ? (
+                    <span className="flex w-full items-center justify-between gap-3">
+                      <CategoryLabel name={option.name} />
+                      <span className="shrink-0 tabular-nums">{describeOption(option)}</span>
+                    </span>
+                  ) : (
+                    <CategoryLabel name={option.name} />
+                  )}
+                </ComboboxItem>
+              )}
+            </ComboboxCollection>
+          </ComboboxGroup>
+        )}
+      </ComboboxList>
+    </>
+  );
 
   return (
     <Combobox<CategoryOption>
-      open={open}
-      onOpenChange={setOpen}
+      inline={inline}
+      open={inline || open}
+      onOpenChange={inline ? undefined : setOpen}
       items={groups}
       value={shown}
       onInputValueChange={setQuery}
@@ -802,7 +902,7 @@ export function CategoryField({
         showTrigger={chevron}
         showClear={selected !== null}
         autoFocus={autoFocus}
-        onFocus={() => openOnFocus && setOpen(true)}
+        onFocus={() => openOnFocus && !inline && setOpen(true)}
         onKeyDown={(e) => {
           // Enter on an empty field with its list closed opens the list (with a category in it,
           // Enter goes on to save the row or submit the form).
@@ -820,82 +920,13 @@ export function CategoryField({
         }}
         className="h-8 w-full"
       />
-      <ComboboxContent className="max-h-[min(20rem,var(--available-height))] min-w-72">
-        {(onSplit || onPaymentTransfer) && (
-          <div className="flex gap-1 border-b p-1">
-            {onPaymentTransfer && (
-              <button
-                type="button"
-                className={CATEGORY_ACTION}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setOpen(false);
-                  onPaymentTransfer();
-                }}
-              >
-                <ArrowLeftRight className="size-3.5" /> Payment/Transfer
-              </button>
-            )}
-            {onSplit && (
-              <button
-                type="button"
-                className={CATEGORY_ACTION}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setOpen(false);
-                  onSplit();
-                }}
-              >
-                <Split className="size-3.5" /> Split
-              </button>
-            )}
-          </div>
-        )}
-        <ComboboxEmpty>No matching category</ComboboxEmpty>
-        <ComboboxList>
-          {(group: CategoryGroupItems) => (
-            <ComboboxGroup key={group.value} items={group.items}>
-              {group.value && <ComboboxLabel>{group.value}</ComboboxLabel>}
-              <ComboboxCollection>
-                {(option: CategoryOption) => (
-                  <ComboboxItem key={option.id} value={option}>
-                    {option.id === SPLIT.id ? (
-                      <>
-                        <Split className="size-4 text-muted-foreground" /> Split
-                      </>
-                    ) : option.id === PAYMENT_TRANSFER.id ? (
-                      <>
-                        <ArrowLeftRight className="size-4 text-muted-foreground" /> Payment/Transfer
-                      </>
-                    ) : option.id.startsWith(SHORTCUT) ? (
-                      // The group in parentheses: "Rent (Bills)".
-                      <span className="flex w-full items-center justify-between gap-3">
-                        <span className="flex min-w-0 items-center gap-1">
-                          <CategoryLabel name={option.name} />
-                          {/* A space of its own keeps "Rent (Bills)" whole in the option's name. */}{" "}
-                          <span className="shrink-0 text-muted-foreground">({option.group})</span>
-                        </span>
-                        {describeOption && (
-                          <span className="shrink-0 tabular-nums">
-                            {describeOption({ ...option, id: option.id.replace(SHORTCUT, "") })}
-                          </span>
-                        )}
-                      </span>
-                    ) : describeOption ? (
-                      <span className="flex w-full items-center justify-between gap-3">
-                        <CategoryLabel name={option.name} />
-                        <span className="shrink-0 tabular-nums">{describeOption(option)}</span>
-                      </span>
-                    ) : (
-                      <CategoryLabel name={option.name} />
-                    )}
-                  </ComboboxItem>
-                )}
-              </ComboboxCollection>
-            </ComboboxGroup>
-          )}
-        </ComboboxList>
-      </ComboboxContent>
+      {inline ? (
+        <div className="-mx-2 mt-2 -mb-1 border-t px-1">{list}</div>
+      ) : (
+        <ComboboxContent className="max-h-[min(20rem,var(--available-height))] min-w-72">
+          {list}
+        </ComboboxContent>
+      )}
     </Combobox>
   );
 }

@@ -14,7 +14,7 @@ const show = (amount: bigint) => `$${(Number(amount) / 100).toFixed(2)}`;
 describe("reconciledLabel", () => {
   const now = new Date("2026-10-11T00:00:00Z");
   it("words the last reconciliation", () => {
-    expect(reconciledLabel(null, now)).toBe("Not Yet Reconciled");
+    expect(reconciledLabel(null, now)).toBe("Not yet reconciled");
     expect(reconciledLabel("2026-10-10T23:59:50Z", now)).toBe("Reconciled a few seconds ago");
     expect(reconciledLabel("2026-10-10T23:56:00Z", now)).toBe("Reconciled 4 minutes ago");
     // "9 days ago" for 8 days and 13 hours.
@@ -40,12 +40,12 @@ describe("ReconcileBanner", () => {
     expect(screen.getByRole("region", { name: "Reconciling" })).toHaveTextContent(
       "This account's cleared balance in strictbudget is $11.00 higher than your actual account.",
     );
-    expect(screen.getByRole("button", { name: "Create Adjustment & Finish" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Create adjustment & finish" })).toBeVisible();
     rerender(<ReconcileBanner difference={300n} {...props} />);
     expect(screen.getByRole("region")).toHaveTextContent("$3.00 lower than");
     rerender(<ReconcileBanner difference={0n} {...props} />);
     expect(screen.getByRole("region")).toHaveTextContent("is the same as your actual account.");
-    expect(screen.getByRole("button", { name: "Finish Reconciliation" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Finish reconciliation" })).toBeVisible();
   });
 });
 
@@ -76,7 +76,7 @@ describe("ReconcilePopover", () => {
     await user.click(screen.getByRole("button", { name: "No" }));
     await user.type(screen.getByLabelText("Current balance at your bank"), "57{Enter}");
     expect(screen.getByText("Difference")).toBeVisible();
-    await user.click(screen.getByRole("checkbox", { name: "Don't Show Again" }));
+    await user.click(screen.getByRole("checkbox", { name: "Don't show again" }));
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(onStart).toHaveBeenCalledWith(-5700n);
     expect(localStorage.getItem("strictbudget:skipDifferenceExplanation")).toBe("true");

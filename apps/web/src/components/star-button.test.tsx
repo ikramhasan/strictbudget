@@ -75,13 +75,13 @@ describe("StarButton", () => {
     renderStar(account("t", "asset", null), []);
     renderStar(account("l", "mortgage", null), []);
     renderStar({ ...account("c", "checking", 0), closed: true }, []);
-    expect(screen.queryByRole("button", { name: "Toggle Starred" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Toggle starred" })).not.toBeInTheDocument();
   });
 
   it("stars an account", async () => {
     const chk = account("chk", "checking", null);
     renderStar(chk, [chk]);
-    const star = screen.getByRole("button", { name: "Toggle Starred" });
+    const star = screen.getByRole("button", { name: "Toggle starred" });
     expect(star).toHaveAttribute("aria-pressed", "false");
     await userEvent.click(star);
     await waitFor(() => expect(api.calls).toContain('PATCH /accounts/chk {"starred":true}'));
@@ -92,7 +92,7 @@ describe("StarButton", () => {
     const b = account("b", "credit_card", 1);
     const c = account("c", "savings", 2);
     renderStar(b, [a, b, c]);
-    const star = screen.getByRole("button", { name: "Toggle Starred" });
+    const star = screen.getByRole("button", { name: "Toggle starred" });
     expect(star).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(star);
     await waitFor(() => expect(api.calls).toContain('PATCH /accounts/b {"starred":false}'));

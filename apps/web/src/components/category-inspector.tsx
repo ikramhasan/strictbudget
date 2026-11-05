@@ -71,7 +71,7 @@ function Panel({ children, label }: { children: ReactNode; label: string }) {
   return (
     <section
       aria-label={label}
-      className="grid grid-cols-[minmax(0,1fr)] gap-3 rounded-lg border p-4"
+      className="grid grid-cols-[minmax(0,1fr)] gap-3 rounded-lg border bg-card p-4"
     >
       {children}
     </section>

@@ -49,7 +49,7 @@ export function FreshStartDialog({
       <DialogContent className="sm:max-w-md">
         <form onSubmit={(e) => void submit(e)} className="grid gap-4">
           <DialogHeader>
-            <DialogTitle>Make a Fresh Start</DialogTitle>
+            <DialogTitle>Make a fresh start</DialogTitle>
             <DialogDescription>
               Starting fresh lets you start budgeting from today without setting up a brand new
               budget. A copy of this budget will be archived in case you're not happy with the

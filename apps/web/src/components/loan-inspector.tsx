@@ -60,7 +60,7 @@ export function PairedLoanSection({
   const overspent = amount < 0n;
   const cover = (
     <Button variant="destructive" size="sm" className="w-full">
-      Cover Payment
+      Cover payment
     </Button>
   );
   return (
@@ -75,7 +75,7 @@ export function PairedLoanSection({
       )}
       <div>
         <p className="font-semibold text-lg tabular-nums">{format(amount)}</p>
-        <p className="text-muted-foreground text-xs">Available for Payment</p>
+        <p className="text-muted-foreground text-xs">Available for payment</p>
       </div>
       {overspent && move ? (
         <AvailableButton
@@ -88,7 +88,7 @@ export function PairedLoanSection({
         />
       ) : (
         <Button size="sm" className="w-full" disabled={loan.closed} onClick={() => setPaying(true)}>
-          Record Payment
+          Record payment
         </Button>
       )}
       {plan && !paidOff && !loan.closed && (
@@ -98,7 +98,7 @@ export function PairedLoanSection({
           className="w-full"
           onClick={() => setSimulating(true)}
         >
-          Open Payoff Simulator
+          Open payoff simulator
         </Button>
       )}
       <p className="text-muted-foreground text-xs">

@@ -158,7 +158,7 @@ export function LoanBanners({
           icon={<Gamepad2 className="size-8" />}
           title="Make a plan to crush your debts with the loan payoff simulator"
           text="Find out how to save money and achieve your goals faster."
-          action="Try It Now"
+          action="Try it now"
           onAction={onSimulate}
           onDismiss={hidePromo}
         />
@@ -169,7 +169,7 @@ export function LoanBanners({
           icon={<PartyPopper className="size-8" />}
           title="Another debt bites the dust."
           text="This calls for confetti. We're loading the cannon."
-          action="Let's Celebrate"
+          action="Let's celebrate"
           onAction={() => void confetti({ particleCount: 160, spread: 80, origin: { y: 0.4 } })}
           onDismiss={hideCheer}
         />
@@ -280,21 +280,21 @@ export function LoanProgressCard({
   const warning = message?.tone === "warning";
   const Toggle = open ? ChevronDown : ChevronRight;
   return (
-    <section className="overflow-hidden rounded-lg border" aria-label="Your Loan's Progress">
+    <section className="overflow-hidden rounded-lg border" aria-label="Your loan's progress">
       <button
         type="button"
         className="flex w-full items-center justify-between border-b px-4 py-3 text-left font-semibold text-sm"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
-        Your Loan's Progress
+        Your loan's progress
         <Toggle className="size-4" aria-hidden />
       </button>
       {open && (
         <div className="grid gap-4 p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-muted-foreground text-sm">Balance Remaining</p>
+              <p className="text-muted-foreground text-sm">Balance remaining</p>
               <p className="text-2xl tabular-nums">
                 <span className="font-semibold">{whole(progress.owed, plan.exponent)}</span>{" "}
                 <span className="text-lg">
@@ -305,12 +305,12 @@ export function LoanProgressCard({
             <div className="flex flex-wrap gap-1">
               {onShare && (
                 <Button variant="ghost" size="sm" onClick={onShare}>
-                  <Image /> Share Your Progress
+                  <Image /> Share your progress
                 </Button>
               )}
               {!progress.paidOff && onSimulate && (
                 <Button variant="ghost" size="sm" onClick={onSimulate}>
-                  <LineChart /> Open Payoff Simulator
+                  <LineChart /> Open payoff simulator
                 </Button>
               )}
             </div>
@@ -384,13 +384,13 @@ function PastBalancePopover({
       </div>
       {original !== undefined && (
         <p className="flex justify-between gap-4">
-          <span>Original Payment Schedule</span>
+          <span>Original payment schedule</span>
           <span className="tabular-nums">{format(original)}</span>
         </p>
       )}
       {past !== undefined && (
         <p className="flex justify-between gap-4">
-          <span>Past Balance</span>
+          <span>Past balance</span>
           <span className="tabular-nums">{format(past)}</span>
         </p>
       )}
@@ -399,7 +399,7 @@ function PastBalancePopover({
         className="text-left text-primary-text hover:underline"
         onClick={onBase}
       >
-        Base the Original Payment Schedule on this Past Balance
+        Base the original payment schedule on this past balance
       </button>
     </div>
   );

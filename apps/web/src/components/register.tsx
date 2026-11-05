@@ -69,7 +69,15 @@ import {
   Split,
   Trash2,
 } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { toast } from "sonner";
 import { type Account, accountsQueryOptions } from "@/lib/accounts";
@@ -93,6 +101,7 @@ import {
   type ReconciledWarning,
   rowDeleteScope,
 } from "@/lib/reconciled-warnings";
+import { dayHeading, shortDate } from "@/lib/register-dates";
 import { type RegisterSearch, registerQuery, searchText } from "@/lib/register-filters";
 import { useRemainingHeight } from "@/lib/register-height";
 import {
@@ -272,6 +281,11 @@ const SELECTED_CARD =
   "data-[state=selected]:bg-[color-mix(in_oklch,var(--primary)_8%,var(--background))] dark:data-[state=selected]:bg-[color-mix(in_oklch,var(--primary)_16%,var(--background))]";
 
 /** A row whose save hasn't come back reads quieter: a new one at once, an edit after a moment. */
+/**
+ * An editable cell: a text cursor once its row is the only one selected, when a click edits it;
+ * before that a click selects the row.
+ */
+const SOLE_ROW_EDITS = "group-data-[sole]/row:cursor-text";
 const PENDING_ROW =
   "data-pending:text-muted-foreground data-[pending=cell]:*:delay-300 data-[pending=row]:*:delay-300";
 
@@ -555,7 +569,7 @@ export function Register({
   }
 
   const allAccounts = accountId === undefined;
-  const { widths, setWidth } = useColumnWidths(accountId ?? "all");
+  const { widths, setWidth, resetWidths } = useColumnWidths(accountId ?? "all");
   // Narrower than lg (a phone, a tablet upright) the register is cards, edited in a drawer: the
   // table's columns don't fit and the amounts would scroll out of sight.
   const phone = useViewportWidth() < 1024;
@@ -630,7 +644,12 @@ export function Register({
    * foreign amount names its currency in All Accounts.
    */
   const cellTexts = useMemo(() => {
-    const texts: Record<MoneyColumn | "payee" | "category", CellText[]> = {
+    const texts: Record<MoneyColumn | "payee" | "category" | "date", CellText[]> = {
+      // A repeating schedule's date has its icon beside it.
+      date: scheduledRows.map((row) => ({
+        text: shortDate(row.dateNext, budget.dateFormat, today),
+        extra: row.frequency !== "never" ? 18 : 0,
+      })),
       outflow: [],
       inflow: [],
       amount: [],
@@ -639,6 +658,7 @@ export function Register({
       category: [],
     };
     for (const t of loaded) {
+      texts.date.push(shortDate(t.date, budget.dateFormat, today));
       // A transfer's payee has its Go to button before it; a split or income its icon.
       texts.payee.push(
         t.transferAccountId
@@ -669,7 +689,7 @@ export function Register({
       );
     }
     return texts;
-  }, [loaded, accountId, budget, formatAmount, accountById, categories.data]);
+  }, [loaded, scheduledRows, today, accountId, budget, formatAmount, accountById, categories.data]);
   // Measured in the table's own font once it's on screen.
   const font = useMemo(() => {
     const table = viewport?.querySelector("table");
@@ -955,6 +975,57 @@ export function Register({
     setSelection(NOTHING);
     setScheduledSelection(NO_ROWS);
     setSelecting(false);
+  }
+
+  /** Selects one row (a transaction or, with `scheduled`, a scheduled one) and nothing else. */
+  function selectOnly(id: string, scheduled = false) {
+    if (scheduled) {
+      anchor.current = null;
+      head.current = null;
+      scheduledAnchor.current = id;
+      setSelection(NOTHING);
+      setScheduledSelection(new Set([id]));
+      return;
+    }
+    anchor.current = id;
+    head.current = id;
+    setScheduledSelection(NO_ROWS);
+    setSelection({ mode: "some", ids: new Set([id]) });
+  }
+
+  /**
+   * When a row editor (the new transaction's, a split's) last closed. The rows under it move up as
+   * it goes, so a click just after lands on another row than the one aimed at: it only selects.
+   */
+  const editorClosedAt = useRef(0);
+  const rowEditorOpen = adding || editingSplit !== null;
+  const rowEditorWasOpen = useRef(rowEditorOpen);
+  useEffect(() => {
+    if (rowEditorWasOpen.current && !rowEditorOpen) editorClosedAt.current = performance.now();
+    rowEditorWasOpen.current = rowEditorOpen;
+  }, [rowEditorOpen]);
+
+  /**
+   * A click on a transaction's cell. The first selects the row (Shift adds the range from the last
+   * one picked, Cmd/Ctrl ticks or unticks it alone); one on the row that's the only one selected
+   * (the second of a double-click too) edits the cell, through `edit`. The row's own controls (its
+   * checkbox, flag, cleared and menu buttons, and what they open), and a drag that selected text,
+   * aren't clicks on the row.
+   */
+  function clickRow(e: MouseEvent<HTMLElement>, id: string, edit?: (target: Element) => void) {
+    const target = e.target;
+    if (readOnly || isPendingId(id) || !(target instanceof Element)) return;
+    if (!e.currentTarget.contains(target)) return;
+    if (target.closest("button, a, input, textarea, select, label, [role=checkbox]")) return;
+    // Shift extends the text selection too, and a double-click selects a word: neither is a drag
+    // to copy text, so they go.
+    if (e.shiftKey || e.detail > 1) window.getSelection()?.removeAllRanges();
+    else if (window.getSelection()?.toString()) return;
+    if (e.shiftKey) return toggleRow(id, true, true);
+    if (e.metaKey || e.ctrlKey) return toggleRow(id, !isSelected(selection, id), false);
+    const settled = performance.now() - editorClosedAt.current > 400;
+    if (edit && settled && single?.id === id) return edit(target);
+    selectOnly(id);
   }
   /**
    * Match: one imported transaction that isn't matched yet and
@@ -1540,6 +1611,8 @@ export function Register({
     if (id === "category") return categoryText(t) || undefined;
     if (id === "memo") return t.memo || undefined;
     if (id === "account") return t.accountName;
+    // The full date behind this year's short one.
+    if (id === "date") return formatDate(t.date);
     return undefined;
   }
 
@@ -2172,6 +2245,24 @@ export function Register({
     },
     [single, idle, phone],
   );
+  // Space ticks or unticks the row the arrow keys are on, adding to or taking from the selection.
+  useHotkeys(
+    "space",
+    () => {
+      const id = head.current;
+      if (id && loadedIds.includes(id)) toggleRow(id, !isSelected(selection, id), false);
+    },
+    {
+      enabled: shortcutsOn && idle && !readOnly && !phone,
+      preventDefault: true,
+      ignoreEventWhen: (e) =>
+        e.target instanceof Element &&
+        e.target.closest(
+          "button, a, [role=checkbox], [role=dialog], [role=menu], [data-radix-popper-content-wrapper]",
+        ) !== null,
+    },
+    [selection, idle, phone, loadedIds],
+  );
   const singleCategory =
     single && editableColumns(single).includes("category") && single.subtransactions.length === 0;
   useShortcut("search", () => {
@@ -2343,7 +2434,7 @@ export function Register({
           </span>
         );
       case "date":
-        return formatDate(t.date);
+        return shortDate(t.date, budget.dateFormat, today);
       case "payee":
         return withMemo(
           t.memo,
@@ -2501,7 +2592,7 @@ export function Register({
                 <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="min-w-48">
               {readOnly ? (
                 <DropdownMenuItem onSelect={() => setHistoryFor(t.id)}>
                   <History /> History
@@ -2525,7 +2616,7 @@ export function Register({
                   )}
                   {!t.transferFromSplit && (
                     <DropdownMenuItem onSelect={() => makeRepeating(t)}>
-                      <Repeat /> Make Repeating
+                      <Repeat /> Make repeating
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onSelect={() => setHistoryFor(t.id)}>
@@ -2588,7 +2679,8 @@ export function Register({
       <div ref={rootRef} className="grid gap-3">
         {/* Nothing to add to, view or search until there's an account. */}
         <div className={cn("flex flex-wrap items-center gap-2", noAccounts && "hidden")}>
-          {!readOnly && (
+          {/* A phone's is a floating button, in reach wherever the list is scrolled to. */}
+          {!readOnly && !phone && (
             <Button size="sm" onClick={() => startAdding()} disabled={!canAdd || adding}>
               <Plus /> Add transaction
             </Button>
@@ -2600,7 +2692,7 @@ export function Register({
               onClick={() => startAdding(recordPayment(), false)}
               disabled={adding}
             >
-              <CreditCard /> Record Payment
+              <CreditCard /> Record payment
             </Button>
           )}
           {!readOnly && canAdd && <FileImportButton accountId={accountId} />}
@@ -2627,6 +2719,7 @@ export function Register({
               onChange={setView}
               runningBalance={!allAccounts}
               oldestMonth={oldestMonth}
+              onResetColumns={!phone && Object.keys(widths).length > 0 ? resetWidths : undefined}
             />
             <RegisterSearchBox
               value={search.q ?? ""}
@@ -2635,7 +2728,14 @@ export function Register({
                 saveSearch(budget.id, accountId ?? "all", q);
                 onSearchChange({ q });
               }}
-              placeholder={allAccounts ? "Search All Accounts" : `Search ${account?.name ?? ""}`}
+              // A phone's box is narrow: a name would be cut off.
+              placeholder={
+                phone
+                  ? "Search"
+                  : allAccounts
+                    ? "Search all accounts"
+                    : `Search ${account?.name ?? ""}`
+              }
               sources={searchSources}
             />
           </div>
@@ -2761,6 +2861,11 @@ export function Register({
         ) : phone ? (
           <PhoneTransactions
             allAccounts={allAccounts}
+            today={today}
+            byDay={dateOrder}
+            newestFirst={view.sort[0]?.dir !== "asc"}
+            balances={!allAccounts && view.showRunningBalance}
+            payee={(t) => rowPayee(t.accountId, t.transferAccountId, BigInt(t.amount), t.payeeName)}
             rows={loaded}
             pending={pendingRows}
             selecting={
@@ -2966,6 +3071,12 @@ export function Register({
                   rows={scheduledRows}
                   selected={scheduledSelection}
                   onSelect={toggleScheduled}
+                  sole={
+                    isEmpty(selection) && scheduledSelection.size === 1
+                      ? ([...scheduledSelection][0] ?? null)
+                      : null
+                  }
+                  onSelectOnly={(id) => selectOnly(id, true)}
                   columns={columnIds}
                   accountCompact={layout.accountCompact}
                   collapsed={view.scheduledCollapsed}
@@ -3026,6 +3137,8 @@ export function Register({
                         key={row.key}
                         data-index={item.index}
                         ref={virtualizer.measureElement}
+                        data-state={isSelected(selection, t.id) ? "selected" : undefined}
+                        data-sole={single?.id === t.id || undefined}
                         aria-label={`Split line of ${t.payeeName ?? "transaction"}`}
                         className={cn("text-muted-foreground text-xs", future && "italic")}
                       >
@@ -3047,16 +3160,20 @@ export function Register({
                                 "truncate py-1.5",
                                 pin && [pin.className, PINNED_BG.row],
                                 spec.align === "right" && "text-right tabular-nums",
-                                isEditable(id) && !readOnly && "cursor-text",
+                                isEditable(id) && !readOnly && SOLE_ROW_EDITS,
                               )}
-                              onClick={
-                                isEditable(id) && !readOnly && !isPendingId(t.id)
-                                  ? (e) =>
-                                      openSplit(t, false, false, {
-                                        column: clickedColumn(id, e.target),
-                                        line: t.subtransactions.indexOf(row.line),
-                                      })
-                                  : undefined
+                              onClick={(e) =>
+                                clickRow(
+                                  e,
+                                  t.id,
+                                  isEditable(id)
+                                    ? (target) =>
+                                        openSplit(t, false, false, {
+                                          column: clickedColumn(id, target),
+                                          line: t.subtransactions.indexOf(row.line),
+                                        })
+                                    : undefined,
+                                )
                               }
                             >
                               {lineDisplay(t, row.line, id)}
@@ -3076,6 +3193,7 @@ export function Register({
                       data-transaction-id={t.id}
                       data-highlighted={highlight?.id === t.id ? highlight.kind : undefined}
                       data-state={isSelected(selection, t.id) ? "selected" : undefined}
+                      data-sole={single?.id === t.id || undefined}
                       data-pending={pendingRows.get(t.id)}
                       aria-busy={pendingRows.has(t.id) || undefined}
                       className={cn(
@@ -3147,29 +3265,40 @@ export function Register({
                               spec.align === "center" && "text-center",
                               ICON_CELL[id],
                               (id === "category" || id === "memo") && "text-muted-foreground",
-                              canEdit && "cursor-text",
+                              canEdit && SOLE_ROW_EDITS,
                             )}
-                            onClick={
-                              canEdit || (id === "payee" && editable.includes("memo"))
-                                ? (e) => {
-                                    // A split opens whole, in the field that was clicked.
-                                    if (t.subtransactions.length > 0) {
-                                      return openSplit(t, false, false, {
-                                        column: clickedColumn(id, e.target),
+                            onClick={(e) => {
+                              // The checkbox's cell ticks the row, the box or around it.
+                              if (id === "select") {
+                                if (unsaved || readOnly) return;
+                                const box =
+                                  e.target instanceof Element &&
+                                  e.target.closest("[role=checkbox]");
+                                if (!box) toggleRow(t.id, !isSelected(selection, t.id), e.shiftKey);
+                                return;
+                              }
+                              clickRow(
+                                e,
+                                t.id,
+                                canEdit || (id === "payee" && editable.includes("memo"))
+                                  ? (target) => {
+                                      // A split opens whole, in the field that was clicked.
+                                      if (t.subtransactions.length > 0) {
+                                        return openSplit(t, false, false, {
+                                          column: clickedColumn(id, target),
+                                        });
+                                      }
+                                      // The memo shown after the payee edits the memo.
+                                      const memo =
+                                        id === "payee" && target.closest("[data-memo]") !== null;
+                                      setEditing({
+                                        id: t.id,
+                                        column: memo || !canEdit ? "memo" : (cell as CellColumn),
                                       });
                                     }
-                                    // The memo shown after the payee edits the memo.
-                                    const memo =
-                                      id === "payee" &&
-                                      e.target instanceof Element &&
-                                      e.target.closest("[data-memo]") !== null;
-                                    setEditing({
-                                      id: t.id,
-                                      column: memo || !canEdit ? "memo" : (cell as CellColumn),
-                                    });
-                                  }
-                                : undefined
-                            }
+                                  : undefined,
+                              );
+                            }}
                           >
                             {unsaved ? unsavedDisplay(t, id) : display(t, id)}
                           </RegisterCell>
@@ -3183,6 +3312,24 @@ export function Register({
             </Table>
           </ScrollArea>
         )}
+        {phone &&
+          !readOnly &&
+          !empty &&
+          canAdd &&
+          !selecting &&
+          isEmpty(selection) &&
+          scheduledSelection.size === 0 && (
+            // Above the bottom tabs, where the selection bar goes while rows are ticked.
+            <Button
+              size="icon"
+              className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 size-14 rounded-full shadow-lg duration-200 animate-in fade-in-0 zoom-in-90 md:bottom-6 [&_svg:not([class*='size-'])]:size-6"
+              aria-label="Add transaction"
+              disabled={adding}
+              onClick={() => startAdding()}
+            >
+              <Plus />
+            </Button>
+          )}
         {phone && defaultAccountId && (
           // A phone adds and edits in a full-height drawer.
           <Drawer
@@ -3370,7 +3517,8 @@ function ColumnResizer({
       aria-valuenow={Math.round(width)}
       aria-valuemin={MIN_COLUMN_PX}
       tabIndex={0}
-      className="absolute inset-y-1 right-0 w-2 cursor-col-resize touch-none outline-none after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-border/0 hover:after:bg-border focus-visible:after:bg-ring"
+      // Shown on the header's hover, so the columns read as resizable; stronger under the pointer.
+      className="absolute inset-y-1.5 right-0 w-2 cursor-col-resize touch-none outline-none after:absolute after:inset-y-0 after:right-0 after:w-px after:rounded-full after:bg-transparent after:transition-colors group-hover/row:after:bg-border hover:after:w-0.5 hover:after:bg-foreground/40 focus-visible:after:w-0.5 focus-visible:after:bg-ring"
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => {
         e.preventDefault();
@@ -3478,9 +3626,23 @@ function PhoneTransactions({
   loadingMore,
   onLoadMore,
   allAccounts,
+  today,
+  byDay,
+  newestFirst,
+  balances,
+  payee,
 }: {
   /** All Accounts: each card names its account. */
   allAccounts: boolean;
+  today: string;
+  /** Sorted by date: the cards come under a heading for each day, without a date of their own. */
+  byDay: boolean;
+  /** The days run newest first. */
+  newestFirst: boolean;
+  /** Each day's heading ends with the account's balance at the end of it. */
+  balances: boolean;
+  /** The row's payee as the wide register words it ("Payment: Visa Card" for a transfer). */
+  payee: (t: Transaction) => string | null;
   rows: readonly Transaction[];
   /** Cards whose save hasn't come back. */
   pending: ReadonlyMap<string, PendingKind>;
@@ -3520,8 +3682,23 @@ function PhoneTransactions({
   const pressScheduled = useLongPress(
     onStartSelecting ? (id) => onStartSelecting({ kind: "scheduled", id }) : undefined,
   );
+  // One list a day when sorted by date (one list for everything otherwise).
+  const days: { date: string | null; rows: Transaction[] }[] = [];
+  for (const t of rows) {
+    const last = days.at(-1);
+    if (byDay && last?.date === t.date) last.rows.push(t);
+    else if (!byDay && last) last.rows.push(t);
+    else days.push({ date: byDay ? t.date : null, rows: [t] });
+  }
+  /** The balance once the day's last transaction is in (the running balance is in date order). */
+  const endOfDay = (dayRows: readonly Transaction[]) => {
+    const saved = dayRows.filter((t) => pending.get(t.id) !== "new");
+    const last = newestFirst ? saved[0] : saved.at(-1);
+    return last ? show(BigInt(last.runningBalance), last.currency) : null;
+  };
   return (
-    <div className="grid gap-4">
+    // Room at the end for the floating Add button.
+    <div className="grid gap-4 pb-16">
       {scheduled.length > 0 && (
         <section aria-label="Upcoming" className="overflow-hidden rounded-lg border bg-muted/30">
           <h2 className="border-b px-3 py-2 font-medium text-muted-foreground text-xs">Upcoming</h2>
@@ -3594,127 +3771,160 @@ function PhoneTransactions({
           </ul>
         </section>
       )}
-      <ul aria-label="Transactions" className="overflow-hidden rounded-lg border">
-        {rows.length === 0 && (
-          <li className="px-3 py-6 text-center text-muted-foreground text-sm">No transactions</li>
-        )}
-        {rows.map((t) => {
-          const amount = BigInt(t.amount);
-          const flag = flags.find((f) => f.color === t.flag);
-          const future = t.date > todayIso();
-          const state = pending.get(t.id);
-          const unsaved = state === "new";
-          const { consumeLongPress, ...press } = (!unsaved && pressTransaction(t.id)) || {
-            consumeLongPress: () => false,
-          };
-          return (
-            <li
-              key={t.id}
-              data-transaction-id={t.id}
-              data-state={isSelected(t.id) ? "selected" : undefined}
-              data-highlighted={highlightId === t.id || undefined}
-              data-pending={state}
-              aria-busy={state ? true : undefined}
-              className={cn(
-                card,
-                "data-highlighted:animate-[row-highlight_0.9s_ease-out]",
-                SELECTED_CARD,
-                "transition-colors data-pending:text-muted-foreground data-[pending=cell]:delay-300 data-[pending=row]:delay-300",
-              )}
-              {...press}
-            >
-              {selecting && (
-                <Checkbox
-                  className={checkbox}
-                  aria-label={`Select ${t.payeeName ?? "transaction"} on ${formatDate(t.date)}`}
-                  checked={isSelected(t.id)}
-                  disabled={unsaved}
-                  onCheckedChange={() => onSelect(t)}
-                />
-              )}
-              <button
-                type="button"
-                disabled={unsaved}
-                className={cn(
-                  lines,
-                  "min-h-11 content-center text-left outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring",
-                  future && "text-muted-foreground italic",
+      {rows.length === 0 && (
+        <p className="rounded-lg border px-3 py-6 text-center text-muted-foreground text-sm">
+          No transactions
+        </p>
+      )}
+      {days.map((day) => {
+        const heading = day.date ? dayHeading(day.date, today) : null;
+        const balance = day.date && balances ? endOfDay(day.rows) : null;
+        return (
+          <section
+            key={day.date ?? "all"}
+            aria-label={heading ?? "Transactions"}
+            className="grid gap-1.5"
+          >
+            {heading && (
+              <h2 className="flex items-baseline justify-between gap-3 px-1 text-xs">
+                <span className="font-medium text-foreground">{heading}</span>
+                {balance && (
+                  <span
+                    className="text-muted-foreground tabular-nums"
+                    title="Balance at the end of the day"
+                  >
+                    <span className="sr-only">Balance at the end of the day: </span>
+                    {balance}
+                  </span>
                 )}
-                onClick={() => {
-                  if (consumeLongPress()) return;
-                  if (selecting) onSelect(t);
-                  else onOpen(t);
-                }}
-              >
-                <span
-                  className={cn(
-                    "flex min-w-0 items-center gap-1 font-medium",
-                    !t.approved && "font-semibold",
-                  )}
-                >
-                  {flag && (
-                    <Bookmark
-                      className={cn("size-3.5 shrink-0 fill-current", FLAG_CLASS[flag.color])}
-                      aria-label={`Flag: ${flagLabel(flag)}`}
-                    />
-                  )}
-                  <span className="truncate">{t.payeeName ?? "No payee"}</span>
-                  {t.attachment && (
-                    <Paperclip
-                      className="size-3.5 shrink-0 text-muted-foreground"
-                      aria-label="Has an attachment"
-                    />
-                  )}
-                </span>
-                <span
-                  className={cn(
-                    "text-right font-medium tabular-nums",
-                    amount > 0n && "text-success",
-                  )}
-                >
-                  {signed(amount, t.currency)}
-                </span>
-                <span className={meta}>
-                  {[formatDate(t.date), allAccounts && t.accountName, category(t), t.memo]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-                {!t.approved && (
-                  <span className="col-span-2 text-primary-text text-xs">Needs approval</span>
-                )}
-              </button>
-              {unsaved || state === "row" ? (
-                <span className="flex size-11 shrink-0 items-center justify-center">
-                  <PendingMark delayed={!unsaved} />
-                </span>
-              ) : onToggleCleared && t.cleared !== "reconciled" ? (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="group/cleared size-11 shrink-0"
-                  aria-label={t.cleared === "cleared" ? "Cleared" : "Uncleared"}
-                  aria-pressed={t.cleared === "cleared"}
-                  onClick={() => onToggleCleared(t)}
-                >
-                  <ClearedMark state={t.cleared} />
-                </Button>
-              ) : (
-                <span
-                  className="flex size-11 shrink-0 items-center justify-center"
-                  role="img"
-                  aria-label={
-                    { cleared: "Cleared", uncleared: "Uncleared", reconciled: "Reconciled" }[
-                      t.cleared
-                    ]
-                  }
-                >
-                  <ClearedMark state={t.cleared} />
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+              </h2>
+            )}
+            <ul className="overflow-hidden rounded-lg border bg-card">
+              {day.rows.map((t) => {
+                const amount = BigInt(t.amount);
+                const flag = flags.find((f) => f.color === t.flag);
+                const future = t.date > todayIso();
+                const state = pending.get(t.id);
+                const unsaved = state === "new";
+                const { consumeLongPress, ...press } = (!unsaved && pressTransaction(t.id)) || {
+                  consumeLongPress: () => false,
+                };
+                return (
+                  <li
+                    key={t.id}
+                    data-transaction-id={t.id}
+                    data-state={isSelected(t.id) ? "selected" : undefined}
+                    data-highlighted={highlightId === t.id || undefined}
+                    data-pending={state}
+                    aria-busy={state ? true : undefined}
+                    className={cn(
+                      card,
+                      "data-highlighted:animate-[row-highlight_0.9s_ease-out]",
+                      SELECTED_CARD,
+                      "transition-colors data-pending:text-muted-foreground data-[pending=cell]:delay-300 data-[pending=row]:delay-300",
+                    )}
+                    {...press}
+                  >
+                    {selecting && (
+                      <Checkbox
+                        className={checkbox}
+                        aria-label={`Select ${t.payeeName ?? "transaction"} on ${formatDate(t.date)}`}
+                        checked={isSelected(t.id)}
+                        disabled={unsaved}
+                        onCheckedChange={() => onSelect(t)}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      disabled={unsaved}
+                      className={cn(
+                        lines,
+                        "min-h-11 content-center text-left outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring",
+                        future && "text-muted-foreground italic",
+                      )}
+                      onClick={() => {
+                        if (consumeLongPress()) return;
+                        if (selecting) onSelect(t);
+                        else onOpen(t);
+                      }}
+                    >
+                      <span
+                        className={cn(
+                          "flex min-w-0 items-center gap-1 font-medium",
+                          !t.approved && "font-semibold",
+                        )}
+                      >
+                        {flag && (
+                          <Bookmark
+                            className={cn("size-3.5 shrink-0 fill-current", FLAG_CLASS[flag.color])}
+                            aria-label={`Flag: ${flagLabel(flag)}`}
+                          />
+                        )}
+                        <span className="truncate">{payee(t) ?? "No payee"}</span>
+                        {t.attachment && (
+                          <Paperclip
+                            className="size-3.5 shrink-0 text-muted-foreground"
+                            aria-label="Has an attachment"
+                          />
+                        )}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-right font-medium tabular-nums",
+                          amount > 0n && "text-success",
+                        )}
+                      >
+                        {signed(amount, t.currency)}
+                      </span>
+                      <span className={meta}>
+                        {[
+                          !byDay && formatDate(t.date),
+                          allAccounts && t.accountName,
+                          category(t),
+                          t.memo,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                      {!t.approved && (
+                        <span className="col-span-2 text-primary-text text-xs">Needs approval</span>
+                      )}
+                    </button>
+                    {unsaved || state === "row" ? (
+                      <span className="flex size-11 shrink-0 items-center justify-center">
+                        <PendingMark delayed={!unsaved} />
+                      </span>
+                    ) : onToggleCleared && t.cleared !== "reconciled" ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="group/cleared size-11 shrink-0"
+                        aria-label={t.cleared === "cleared" ? "Cleared" : "Uncleared"}
+                        aria-pressed={t.cleared === "cleared"}
+                        onClick={() => onToggleCleared(t)}
+                      >
+                        <ClearedMark state={t.cleared} />
+                      </Button>
+                    ) : (
+                      <span
+                        className="flex size-11 shrink-0 items-center justify-center"
+                        role="img"
+                        aria-label={
+                          { cleared: "Cleared", uncleared: "Uncleared", reconciled: "Reconciled" }[
+                            t.cleared
+                          ]
+                        }
+                      >
+                        <ClearedMark state={t.cleared} />
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })}
       {hasMore && (
         <Button variant="outline" className="min-h-11" disabled={loadingMore} onClick={onLoadMore}>
           {loadingMore ? "Loading…" : "Show more"}

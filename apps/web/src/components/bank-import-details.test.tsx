@@ -30,15 +30,15 @@ describe("Bank Import Details", () => {
         }}
       />,
     );
-    await userEvent.click(await screen.findByRole("button", { name: "Bank Import Details" }));
-    const panel = await screen.findByRole("region", { name: "Bank Import Details" });
+    await userEvent.click(await screen.findByRole("button", { name: "Bank import details" }));
+    const panel = await screen.findByRole("region", { name: "Bank import details" });
     expect(panel).toHaveTextContent("As it appears on your statement");
     expect(panel).toHaveTextContent("AMAZON MKTPL*X1");
     expect(screen.getByRole("link", { name: /Amazon.com Order History/ })).toHaveAttribute(
       "href",
       "https://www.amazon.com/x",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Don't Rename as Corner Cafe" }));
+    await userEvent.click(screen.getByRole("button", { name: "Don't rename as Corner Cafe" }));
     expect(onDontRename).toHaveBeenCalled();
   });
 
@@ -53,6 +53,6 @@ describe("Bank Import Details", () => {
       />,
     );
     expect(await screen.findByText("Selected")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Bank Import Details" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Bank import details" })).not.toBeInTheDocument();
   });
 });

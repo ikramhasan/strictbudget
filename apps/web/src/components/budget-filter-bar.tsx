@@ -53,7 +53,7 @@ export function BudgetFilterBar({
     overspent: overspent > 0 ? `${overspent} Overspent` : "Overspent",
     underfunded: "Underfunded",
     overfunded: "Overfunded",
-    available: "Money Available",
+    available: "Money available",
     snoozed: "Snoozed",
   };
   const names = new Map(custom.map((v) => [v.id, v.name]));

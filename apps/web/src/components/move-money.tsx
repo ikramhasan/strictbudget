@@ -609,7 +609,7 @@ export function FixThisButton({
     >
       <PopoverTrigger asChild>
         <Button size="sm" variant="destructive">
-          Fix This
+          Fix this
         </Button>
       </PopoverTrigger>
       <PopoverContent arrow onInteractOutside={keepForPicker} align="end" className="w-80">

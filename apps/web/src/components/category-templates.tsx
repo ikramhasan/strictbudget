@@ -71,7 +71,7 @@ export function TemplateGallery({
                   setPreviewId(null);
                 }}
               >
-                Get Template
+                Get template
               </Button>
             </DialogFooter>
           </>
@@ -239,7 +239,7 @@ function ImportTemplateForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Import Category Template</DialogTitle>
+        <DialogTitle>Import category template</DialogTitle>
         <DialogDescription>
           Would you like to add these categories into your budget{" "}
           <strong className="font-semibold text-foreground">{budgetName}</strong>?
@@ -292,10 +292,10 @@ function ImportTemplateForm({
           Cancel
         </Button>
         <Button variant="outline" onClick={onChooseAnother} disabled={pending}>
-          Choose Another Budget
+          Choose another budget
         </Button>
         <Button onClick={() => void submit()} disabled={pending}>
-          {pending ? "Importing…" : "Import Categories"}
+          {pending ? "Importing…" : "Import categories"}
         </Button>
       </DialogFooter>
     </>

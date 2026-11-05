@@ -35,7 +35,7 @@ export function KeyboardShortcutsDialog({
         }}
       >
         <DialogHeader className="border-b p-4">
-          <DialogTitle>Keyboard Shortcuts</DialogTitle>
+          <DialogTitle>Keyboard shortcuts</DialogTitle>
           <DialogDescription className="sr-only">
             The keys for the plan, accounts, transactions and dates.
           </DialogDescription>

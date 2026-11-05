@@ -532,7 +532,15 @@ function ProgressRing({ percent, green }: { percent: number; green: boolean }) {
         role="img"
         aria-label={`${percent}% of the target funded`}
       >
-        <circle cx="32" cy="32" r={r} fill="none" strokeWidth="6" className="stroke-muted" />
+        {/* The track stands 3:1 against the panel, so an empty ring still reads as a ring. */}
+        <circle
+          cx="32"
+          cy="32"
+          r={r}
+          fill="none"
+          strokeWidth="6"
+          className="stroke-[color-mix(in_oklch,var(--muted-foreground),var(--card)_30%)]"
+        />
         <circle
           cx="32"
           cy="32"

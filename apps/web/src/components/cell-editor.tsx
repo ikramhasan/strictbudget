@@ -129,6 +129,7 @@ export function CellEditor({
             onChange={update}
             onPick={(date) => finish("stay", date)}
             format={dateFormat}
+            short
             autoFocus
             onMakeRepeating={
               onMakeRepeating
@@ -152,6 +153,8 @@ export function CellEditor({
             own={own && { type: own.type, direction: directionOf(BigInt(transaction.amount)) }}
             transferAccountId={transferAccountId}
             autoFocus
+            // The list waits for typing (or Alt+Down): the cell is often opened to read or fix it.
+            openOnFocus={false}
             importDetails={importDetails(transaction, () => {
               done.current = true;
               onDontRename?.();

@@ -42,7 +42,7 @@ function renderDialog(onSubmit = vi.fn().mockResolvedValue({ loanId: "loan-1" })
   return { onSubmit, onDone, onOpenChange };
 }
 
-describe("Update to a Loan Account", () => {
+describe("Update to a loan account", () => {
   it("is offered from Edit Account with Learn More", async () => {
     const onLearnMore = vi.fn();
     render(<UpdateToLoanSection onLearnMore={onLearnMore} />);
@@ -51,20 +51,20 @@ describe("Update to a Loan Account", () => {
         "Plan your payments and track your progress when you migrate to a loan account.",
       ),
     ).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Learn More" }));
+    await userEvent.click(screen.getByRole("button", { name: "Learn more" }));
     expect(onLearnMore).toHaveBeenCalled();
   });
 
   it("closes on Maybe Later", async () => {
     const { onOpenChange, onSubmit } = renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Maybe Later" }));
+    await userEvent.click(screen.getByRole("button", { name: "Maybe later" }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it("walks through type, details, a required pairing and the confirmation", async () => {
     const { onSubmit, onDone } = renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Get Started" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get started" }));
     await userEvent.click(screen.getByRole("button", { name: "Mortgage" }));
 
     // Prefilled from the tracking account: its name and what it owes.
@@ -114,7 +114,7 @@ describe("Update to a Loan Account", () => {
 
   it("shows the server's refusal on the confirmation step", async () => {
     renderDialog(vi.fn().mockResolvedValue({ error: "This account was already updated" }));
-    await userEvent.click(screen.getByRole("button", { name: "Get Started" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get started" }));
     await userEvent.click(screen.getByRole("button", { name: "Auto Loan" }));
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     await userEvent.selectOptions(screen.getByLabelText("Select a category"), "c1");
@@ -125,7 +125,7 @@ describe("Update to a Loan Account", () => {
   });
 });
 
-describe("Original Tracking Account History", () => {
+describe("Original tracking account history", () => {
   it("lists each month's ending balance when opened, and links to the account", async () => {
     const onGoToAccount = vi.fn();
     render(
@@ -139,13 +139,13 @@ describe("Original Tracking Account History", () => {
       />,
     );
     expect(screen.queryByText("September 2026")).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Closed Account" }));
+    await userEvent.click(screen.getByRole("button", { name: "Closed account" }));
     expect(screen.getByText("September 2026")).toBeTruthy();
     expect(screen.getByText("-$4800.00")).toBeTruthy();
     expect(screen.getAllByText("Ending balance migrated from the original account")).toHaveLength(
       2,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Go To Tracking Account" }));
+    await userEvent.click(screen.getByRole("button", { name: "Go to tracking account" }));
     expect(onGoToAccount).toHaveBeenCalled();
   });
 });

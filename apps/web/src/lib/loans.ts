@@ -139,7 +139,7 @@ export function otherKind(line: LoanLineData): OtherLineKind {
 }
 
 export const OTHER_LABELS: Record<OtherLineKind, string> = {
-  initial: "Initial Balance",
+  initial: "Initial balance",
   adjustment: "Balance adjustment",
   credit: "Credit",
   charge: "Charge",

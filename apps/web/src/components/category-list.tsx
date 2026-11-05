@@ -809,6 +809,8 @@ function GroupSection({
             aria-label={`${collapsed ? "Expand" : "Collapse"} ${spoken(group.name)}`}
             aria-expanded={!collapsed}
             onClick={onToggle}
+            // An open group isn't an open menu: no resting tint.
+            className="aria-expanded:bg-transparent aria-expanded:hover:bg-accent"
           >
             <ChevronRight
               className={cn(
@@ -1184,7 +1186,13 @@ function CategoryRow({
               />
             )}
           </span>
-          <span className={FIGURE}>
+          {/* Opening the pill's move or cover makes its row the current one, inspector and all. */}
+          <span
+            className={FIGURE}
+            onClickCapture={() => {
+              if (selection && !onlySelected) selection.selectOnly(category.id);
+            }}
+          >
             {move ? (
               <AvailableButton
                 categoryId={category.id}

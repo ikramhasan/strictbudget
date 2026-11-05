@@ -276,7 +276,7 @@ describe("TransactionEditor", () => {
     const { onSave } = renderEditor();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Payee"), "Bakery");
-    expect(screen.getByRole("button", { name: "Create “Bakery” Payee" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create “Bakery” payee" })).toBeInTheDocument();
     // Said once, by the button.
     expect(screen.getAllByText(/Bakery/)).toHaveLength(1);
     await user.keyboard("{Enter}");
@@ -292,8 +292,8 @@ describe("TransactionEditor", () => {
     await user.click(screen.getByLabelText("Payee"));
     const groups = within(screen.getByRole("listbox")).getAllByRole("group");
     expect(groups[0]).toHaveTextContent(/^SelectedMarket$/);
-    expect(groups[1]).toHaveTextContent(/^Payments and Transfers/);
-    expect(groups[2]).toHaveTextContent(/^Saved PayeesMarket$/);
+    expect(groups[1]).toHaveTextContent(/^Payments and transfers/);
+    expect(groups[2]).toHaveTextContent(/^Saved payeesMarket$/);
   });
 
   it("creates the typed payee from the button even when a payee matches", async () => {
@@ -304,7 +304,7 @@ describe("TransactionEditor", () => {
     // Typed on, the name completes; Backspace takes the completion off.
     expect(screen.getByLabelText("Payee")).toHaveValue("Market");
     await user.keyboard("{Backspace}");
-    await user.click(screen.getByRole("button", { name: "Create “Mar” Payee" }));
+    await user.click(screen.getByRole("button", { name: "Create “Mar” payee" }));
     expect(screen.getByLabelText("Payee")).toHaveValue("Mar");
     expect(screen.getByLabelText("Category")).toHaveValue("");
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -454,7 +454,7 @@ describe("TransactionEditor", () => {
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Outflow"), "5");
     await user.click(screen.getByLabelText("Payee"));
-    expect(screen.getByText("Payments and Transfers")).toBeInTheDocument();
+    expect(screen.getByText("Payments and transfers")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Transfer to savings" })).toBeInTheDocument();
     await user.click(screen.getByRole("option", { name: "Transfer to savings" }));
     expect(screen.getByLabelText("Payee")).toHaveValue("Transfer to savings");
@@ -465,12 +465,12 @@ describe("TransactionEditor", () => {
     const user = userEvent.setup();
     const headings = () =>
       screen
-        .getAllByText(/^(Saved Payees|Payments and Transfers)$/)
+        .getAllByText(/^(Saved payees|Payments and transfers)$/)
         .map((element) => element.textContent);
     await user.click(screen.getByLabelText("Payee"));
-    expect(headings()).toEqual(["Payments and Transfers", "Saved Payees"]);
+    expect(headings()).toEqual(["Payments and transfers", "Saved payees"]);
     await user.type(screen.getByLabelText("Payee"), "a");
-    expect(headings()).toEqual(["Saved Payees", "Payments and Transfers"]);
+    expect(headings()).toEqual(["Saved payees", "Payments and transfers"]);
   });
 
   it("offers Payment/Transfer in the category list, back to the payee list", async () => {
@@ -485,6 +485,18 @@ describe("TransactionEditor", () => {
     expect(screen.getByLabelText("Payee")).toHaveValue("Market");
     expect(screen.getByLabelText("Category")).toHaveValue("Groceries");
     expect(screen.getByRole("option", { name: "To/From savings" })).toBeInTheDocument();
+  });
+
+  it("totals a split's lines live while its own amount is empty", async () => {
+    renderEditor();
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText("Category"));
+    await user.click(screen.getByRole("option", { name: "Split" }));
+    await user.type(screen.getByLabelText("Outflow, line 1"), "30");
+    await user.type(screen.getByLabelText("Outflow, line 2"), "12.5");
+    expect(screen.getByText("Total $42.50")).toBeInTheDocument();
+    expect(screen.getByLabelText("Outflow")).toHaveValue("");
+    expect(screen.getByLabelText("Outflow")).toHaveAttribute("placeholder", "$42.50");
   });
 
   it("splits across categories, with a remaining counter", async () => {
@@ -507,7 +519,7 @@ describe("TransactionEditor", () => {
     // The last empty line takes the rest once the other's amount changes.
     await user.keyboard("80");
     // What's left is only a count while the lines are being typed, not an error.
-    expect(screen.getByText("$40.00 left to split")).not.toHaveClass("text-destructive");
+    expect(screen.getByText("Remaining $40.00")).not.toHaveClass("text-destructive");
     await user.tab();
     expect(screen.getByLabelText("Outflow, line 1")).toHaveValue("80.00");
     expect(screen.getByLabelText("Outflow, line 2")).toHaveValue("40.00");
@@ -596,7 +608,7 @@ describe("TransactionEditor", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).not.toHaveBeenCalled();
     const prompt = await screen.findByRole("alertdialog");
-    expect(prompt).toHaveTextContent("Something Doesn't Add Up");
+    expect(prompt).toHaveTextContent("Something doesn't add up");
     expect(prompt).toHaveTextContent(
       "The total is -$10.00, but the splits add up to -$7.00. How would you like to handle " +
         "the unassigned -$3.00?",
@@ -607,7 +619,7 @@ describe("TransactionEditor", () => {
 
     // Auto-Distribute: 3 and 4 share the $3; the row stays open.
     await user.click(screen.getByRole("button", { name: "Save" }));
-    await user.click(await screen.findByRole("button", { name: "Auto-Distribute" }));
+    await user.click(await screen.findByRole("button", { name: "Auto-distribute" }));
     expect(screen.getByLabelText("Outflow, line 1")).toHaveValue("4.29");
     expect(screen.getByLabelText("Outflow, line 2")).toHaveValue("5.71");
     expect(onSave).not.toHaveBeenCalled();
@@ -626,12 +638,12 @@ describe("TransactionEditor", () => {
     await user.clear(screen.getByLabelText("Outflow, line 2"));
     await user.type(screen.getByLabelText("Outflow, line 2"), "4");
     await user.click(screen.getByRole("button", { name: "Save" }));
-    await user.click(await screen.findByRole("button", { name: "Adjust Manually" }));
+    await user.click(await screen.findByRole("button", { name: "Adjust manually" }));
     expect(screen.getByLabelText("Outflow")).toHaveValue("10.00");
     // Saving found the lines short, so what's left now reads as a problem.
-    expect(screen.getByText("$3.00 left to split")).toHaveClass("text-destructive");
+    expect(screen.getByText("Remaining $3.00")).toHaveClass("text-destructive");
     await user.click(screen.getByRole("button", { name: "Save" }));
-    await user.click(await screen.findByRole("button", { name: "Update Total" }));
+    await user.click(await screen.findByRole("button", { name: "Update total" }));
     expect(screen.getByLabelText("Outflow")).toHaveValue("7.00");
     expect(onSave).not.toHaveBeenCalled();
   });

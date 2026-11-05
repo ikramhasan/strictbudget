@@ -1,3 +1,4 @@
+import { formatDate } from "@strictbudget/engine";
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -18,12 +19,65 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { Budget } from "@/lib/budgets";
+import { $api } from "@/lib/api";
+import { type Budget, lastUsedLabel } from "@/lib/budgets";
 import { exportPlan } from "@/lib/exports";
 import { BrandMark } from "./brand";
 import { DisplayOptionsDialog } from "./display-options-dialog";
 import { EditFlagsDialog } from "./edit-flags-dialog";
 import { SidebarDropdownContent } from "./sidebar-dropdown-content";
+
+/**
+ * How many people share `budgetId` (the signed-in user included), once loaded; asked only when
+ * `enabled`, so a closed switcher costs nothing.
+ */
+export function useMemberCount(budgetId: string, enabled = true): number | undefined {
+  const members = $api.useQuery(
+    "get",
+    "/v1/budgets/{budgetId}/members",
+    { params: { path: { budgetId } } },
+    { enabled, staleTime: 60_000 },
+  );
+  return members.data?.members.length;
+}
+
+/** "2 members", for a budget shared with others; nothing for one only you use. */
+export function membersLabel(count: number | undefined) {
+  return count !== undefined && count > 1 ? `${count} members` : null;
+}
+
+/** When the budget was last opened, or else made: what tells two same-named budgets apart. */
+export function budgetWhenLabel(b: Budget) {
+  return b.lastUsedAt
+    ? lastUsedLabel(b.lastUsedAt)
+    : `Created ${formatDate(b.createdAt.slice(0, 10), b.dateFormat)}`;
+}
+
+function BudgetOption({
+  budget: b,
+  current,
+  open,
+}: {
+  budget: Budget;
+  current: boolean;
+  open: boolean;
+}) {
+  const members = membersLabel(useMemberCount(b.id, open));
+  return (
+    <DropdownMenuItem asChild>
+      {/* No preload: opening a budget records it as last-used. */}
+      <Link to="/budgets/$budgetId" params={{ budgetId: b.id }} preload={false}>
+        <span className="grid min-w-0 flex-1 gap-0.5">
+          <span className="truncate">{b.name}</span>{" "}
+          <span className="truncate text-muted-foreground text-xs">
+            {[budgetWhenLabel(b), members].filter(Boolean).join(" · ")}
+          </span>
+        </span>
+        {current && <CheckIcon className="ml-auto" />}
+      </Link>
+    </DropdownMenuItem>
+  );
+}
 
 export function BudgetSwitcher({
   budgets,
@@ -35,9 +89,10 @@ export function BudgetSwitcher({
   const current = budgets.find((b) => b.id === currentBudgetId);
   const [editingFlags, setEditingFlags] = useState(false);
   const [displayOptions, setDisplayOptions] = useState(false);
+  const [open, setOpen] = useState(false);
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
           <SidebarMenuButton size="lg">
             <BrandMark className="size-8!" />
@@ -55,13 +110,7 @@ export function BudgetSwitcher({
         <SidebarDropdownContent align="start">
           <DropdownMenuLabel className="text-muted-foreground text-xs">Budgets</DropdownMenuLabel>
           {budgets.map((b) => (
-            <DropdownMenuItem key={b.id} asChild>
-              {/* No preload: opening a budget records it as last-used. */}
-              <Link to="/budgets/$budgetId" params={{ budgetId: b.id }} preload={false}>
-                <span className="truncate">{b.name}</span>
-                {b.id === currentBudgetId && <CheckIcon className="ml-auto" />}
-              </Link>
-            </DropdownMenuItem>
+            <BudgetOption key={b.id} budget={b} current={b.id === currentBudgetId} open={open} />
           ))}
           {budgets.length > 0 && <DropdownMenuSeparator />}
           <DropdownMenuItem asChild>
@@ -81,17 +130,17 @@ export function BudgetSwitcher({
                 Current budget
               </DropdownMenuLabel>
               <DropdownMenuItem onSelect={() => setEditingFlags(true)}>
-                <Bookmark /> Edit Flags
+                <Bookmark /> Edit flags
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setDisplayOptions(true)}>
-                <Palette /> Display Options
+                <Palette /> Display options
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => {
                   exportPlan(current).catch(() => toast.error("Couldn't export the budget."));
                 }}
               >
-                <FileDown /> Export Budget
+                <FileDown /> Export budget
               </DropdownMenuItem>
             </>
           )}

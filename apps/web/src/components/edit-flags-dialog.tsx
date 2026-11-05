@@ -31,7 +31,7 @@ export function EditFlagsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Edit Flags</DialogTitle>
+          <DialogTitle>Edit flags</DialogTitle>
           <DialogDescription className="sr-only">
             Name the six flag colors for everyone on this budget.
           </DialogDescription>

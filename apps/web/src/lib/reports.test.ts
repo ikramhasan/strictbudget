@@ -57,23 +57,47 @@ describe("report search", () => {
 });
 
 describe("distinctColors", () => {
-  it("hands out the palette in the order the chart draws its series", () => {
-    const colors = distinctColors([{ key: "rent" }, { key: "dining" }, { key: "phone" }]);
-    expect([...colors.values()]).toEqual(["var(--report-1)", "var(--report-2)", "var(--report-3)"]);
+  it("gives each series the colour of its place in the plan", () => {
+    const colors = distinctColors([
+      { key: "rent", slot: 2 },
+      { key: "dining", slot: 0 },
+      { key: "phone", slot: 4 },
+    ]);
+    expect([...colors.values()]).toEqual(["var(--report-3)", "var(--report-1)", "var(--report-5)"]);
+    // The same series keeps its colour whatever else the chart shows.
+    expect(distinctColors([{ key: "phone", slot: 4 }]).get("phone")).toBe("var(--report-5)");
+  });
+
+  it("on a clash, the series earlier in the plan keeps the colour, the other takes the next free", () => {
+    const colors = distinctColors([
+      { key: "x", slot: 8 },
+      { key: "y", slot: 0 },
+      { key: "z", slot: 1 },
+    ]);
+    expect(colors.get("y")).toBe("var(--report-1)");
+    expect(colors.get("z")).toBe("var(--report-2)");
+    expect(colors.get("x")).toBe("var(--report-3)");
+  });
+
+  it("colours series with no place in the plan by their key, whatever the order", () => {
+    const one = distinctColors([{ key: "p1" }, { key: "p2" }, { key: "p3" }]);
+    const two = distinctColors([{ key: "p3" }, { key: "p1" }, { key: "p2" }]);
+    expect(new Set(one.values()).size).toBe(3);
+    for (const [key, color] of one) expect(two.get(key)).toBe(color);
   });
 
   it("keeps own colours without spending a palette colour on them", () => {
     const colors = distinctColors([
-      { key: "a" },
+      { key: "a", slot: 0 },
       { key: "uncat", color: UNCATEGORIZED_COLOR },
-      { key: "b" },
+      { key: "b", slot: 1 },
     ]);
     expect(colors.get("uncat")).toBe(UNCATEGORIZED_COLOR);
     expect(colors.get("b")).toBe("var(--report-2)");
   });
 
   it("never repeats a colour, folding series past the palette or `max` into Other", () => {
-    const series = Array.from({ length: REPORT_COLORS + 2 }, (_, i) => ({ key: `c${i}` }));
+    const series = Array.from({ length: REPORT_COLORS + 2 }, (_, i) => ({ key: `c${i}`, slot: i }));
     const colors = distinctColors(series);
     const named = series.slice(0, REPORT_COLORS).map((s) => colors.get(s.key));
     expect(new Set(named).size).toBe(REPORT_COLORS);

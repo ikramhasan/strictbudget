@@ -155,15 +155,15 @@ describe("target wording", () => {
       rest: "Fully spent",
     });
     expect(row(monthly, need("5000", "5000", "0"), "2000", "3000")).toEqual({
-      strong: "Funded",
-      rest: ". Spent $20.00 of $50.00",
+      strong: "",
+      rest: "Spent $20.00 of $50.00",
     });
     const once = target({ cadence: "custom", amount: "10000", dueDate: "2026-09-15" });
     const past = (funded: string) => need("10000", funded, "0", "2026-09-15", true);
     // $30.00 assigned, $10.00 spent; then with $40.00 and with nothing in it.
     expect(row(once, past("3000"), "1000", "2000")).toEqual({
-      strong: "Funded",
-      rest: ". Spent $10.00 of $30.00",
+      strong: "",
+      rest: "Spent $10.00 of $30.00",
     });
     expect(row(once, past("4000"), "0", "4000")).toEqual({ strong: "Funded", rest: "" });
     expect(row(once, past("0"), "0", "0")).toBeNull();

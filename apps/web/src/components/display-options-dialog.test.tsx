@@ -26,7 +26,7 @@ describe("DisplayOptionsDialog", () => {
   it("applies Differentiate Without Color and progress bars only on Apply", async () => {
     const { user, onOpenChange } = setup();
     expect(pill("negative").className).not.toContain("border-black");
-    await user.click(screen.getByRole("radio", { name: "Differentiate Without Color" }));
+    await user.click(screen.getByRole("radio", { name: "Differentiate without color" }));
     await user.click(screen.getByRole("radio", { name: "Off" }));
     expect(pill("negative").className).not.toContain("border-black");
     await user.click(screen.getByRole("button", { name: "Apply" }));
@@ -42,7 +42,7 @@ describe("DisplayOptionsDialog", () => {
   it("changes nothing on Cancel", async () => {
     const { user } = setup();
     await user.click(screen.getByRole("radio", { name: "Dark" }));
-    await user.click(screen.getByRole("radio", { name: "Differentiate Without Color" }));
+    await user.click(screen.getByRole("radio", { name: "Differentiate without color" }));
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(pill("negative").className).not.toContain("border-black");
     expect(localStorage.getItem("theme")).not.toBe("dark");

@@ -6,6 +6,7 @@ import {
   actorName,
   describeEvent,
   groupEvents,
+  moveOf,
   restoredEvents,
 } from "./activity";
 
@@ -182,12 +183,48 @@ describe("Activity lines", () => {
       action: "changed an assigned amount",
       subject: "Groceries (Oct 2026)",
       changes: [{ label: "Amount", before: "$10.00", after: "$25.00" }],
+      target: { kind: "category", categoryId: "groc", month: "2026-10" },
     });
     const joined = describeEvent(
       event({ entity: "budget_member", op: "insert", after: { user_id: "pat", role: "editor" } }),
       lookups,
     );
     expect(joined).toEqual({ action: "added a member", subject: "Pat", changes: [] });
+  });
+
+  it("names a split line by its category", () => {
+    const line = describeEvent(
+      event({
+        entity: "sub_transaction",
+        op: "insert",
+        after: { category_id: "groc", amount: "-7000", currency: "USD" },
+      }),
+      lookups,
+    );
+    expect(line.subject).toBe("Groceries · -$70.00");
+  });
+
+  it("links a subject that still exists, and not one that's gone", () => {
+    expect(describeEvent(event({ op: "update", before: txn, after: txn }), lookups).target).toEqual(
+      { kind: "transaction", accountId: "chk", transactionId: "t" },
+    );
+    expect(describeEvent(event({ op: "delete", before: txn }), lookups).target).toBeUndefined();
+    const renamed = event({
+      entity: "category",
+      rowId: "rent",
+      before: { name: "Rent" },
+      after: { name: "Housing" },
+    });
+    expect(describeEvent(renamed, lookups).target).toEqual({
+      kind: "category",
+      categoryId: "rent",
+    });
+    const gone = event({
+      entity: "category_target",
+      op: "insert",
+      after: { category_id: "gone", amount: "100" },
+    });
+    expect(describeEvent(gone, lookups).target).toBeUndefined();
   });
 
   it("names who made a change, or why nobody did", () => {
@@ -291,6 +328,7 @@ describe("groupEvents", () => {
       action: "restored a transaction",
       subject: "Shop · -$1,234.56",
       changes: [],
+      target: { kind: "transaction", accountId: "chk", transactionId: "b" },
     });
     expect(describeEvent(events[3] as ActivityEvent, lookups).action).toBe("deleted a transaction");
   });
@@ -340,5 +378,71 @@ describe("groupEvents", () => {
       ["e2", []],
       ["e1", []],
     ]);
+  });
+});
+
+describe("moveOf", () => {
+  const assigned = (category: string, before: string | null, after: string, month = "2026-11-01") =>
+    event({
+      id: category,
+      entity: "category_assignment",
+      rowId: `a-${category}`,
+      op: before === null ? "insert" : "update",
+      before:
+        before === null ? null : { category_id: category, month, amount: before, currency: "USD" },
+      after: { category_id: category, month, amount: after, currency: "USD" },
+    });
+
+  it("reads two opposite Assigned changes in one month as a move", () => {
+    const events = [assigned("rent", "20599", "22474"), assigned("groc", "27000", "25125")];
+    const [group] = groupEvents(events, lookups);
+    if (!group) throw new Error("missing");
+    expect(moveOf([group.lead, ...group.rest], lookups)).toEqual({
+      amount: "$18.75",
+      from: {
+        categoryId: "groc",
+        name: "Groceries",
+        target: { kind: "category", categoryId: "groc", month: "2026-11" },
+      },
+      to: {
+        categoryId: "rent",
+        name: "Rent",
+        target: { kind: "category", categoryId: "rent", month: "2026-11" },
+      },
+      month: "Nov 2026",
+    });
+  });
+
+  it("counts a new assignment as starting from zero", () => {
+    const move = moveOf([assigned("rent", null, "500"), assigned("groc", "800", "300")], lookups);
+    expect(move?.amount).toBe("$5.00");
+    expect(move?.from.name).toBe("Groceries");
+  });
+
+  it("leaves anything else as it was", () => {
+    // Amounts that don't cancel out, two months, three changes, or something besides Assigned.
+    expect(moveOf([assigned("rent", "0", "500"), assigned("groc", "800", "400")], lookups)).toBe(
+      null,
+    );
+    expect(
+      moveOf([assigned("rent", "0", "500"), assigned("groc", "800", "300", "2026-10-01")], lookups),
+    ).toBe(null);
+    expect(
+      moveOf(
+        [assigned("rent", "0", "500"), assigned("groc", "800", "300"), assigned("gone", "0", "0")],
+        lookups,
+      ),
+    ).toBe(null);
+    expect(
+      moveOf(
+        [assigned("rent", "0", "500"), event({ op: "update", before: txn, after: txn })],
+        lookups,
+      ),
+    ).toBe(null);
+  });
+
+  it("names a deleted category without linking it", () => {
+    const move = moveOf([assigned("rent", "0", "500"), assigned("gone", "800", "300")], lookups);
+    expect(move?.from).toEqual({ categoryId: "gone", name: "a deleted category" });
   });
 });

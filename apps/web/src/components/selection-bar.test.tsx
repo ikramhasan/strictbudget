@@ -1,6 +1,6 @@
 import type { components } from "@strictbudget/api-client";
 import { Checkbox } from "@strictbudget/ui/components/checkbox";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { groupOptions, SelectionBar } from "./selection-bar";
@@ -53,13 +53,15 @@ function bar(s: Summary, props: Partial<Parameters<typeof SelectionBar>[0]> = {}
   };
 }
 
-async function categorizeAs(group: string, category: string) {
+/** Opens Categorize from the keyboard, types the category's name and takes it with Enter. */
+async function categorizeAs(category: string) {
   screen.getByRole("button", { name: "Categorize" }).focus();
   await userEvent.keyboard("{Enter}");
-  const trigger = await screen.findByRole("menuitem", { name: group });
-  trigger.focus();
-  await userEvent.keyboard("{ArrowRight}");
-  await userEvent.click(await screen.findByRole("menuitem", { name: category }));
+  const field = await screen.findByRole("combobox", {
+    name: "Category for the selected transactions",
+  });
+  await waitFor(() => expect(field).toHaveFocus());
+  await userEvent.keyboard(`${category}{Enter}`);
 }
 
 describe("SelectionBar", () => {
@@ -68,11 +70,11 @@ describe("SelectionBar", () => {
     expect(screen.getByTitle("Inflows minus outflows")).toHaveTextContent("+$99.70 net");
   });
 
-  it("offers Export # Transactions in More", async () => {
+  it("offers Export # transactions in More", async () => {
     const onExport = vi.fn();
     bar(summary({ count: 2 }), { onExport });
     await userEvent.click(screen.getByRole("button", { name: "More" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Export 2 Transactions" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Export 2 transactions" }));
     expect(onExport).toHaveBeenCalledOnce();
   });
 
@@ -123,26 +125,33 @@ describe("SelectionBar", () => {
     );
   });
 
-  it("categorizes from a menu of groups with their categories as submenus", async () => {
+  it("categorizes from a searchable list of the groups' categories", async () => {
     const { onAction } = bar(summary({}));
     screen.getByRole("button", { name: "Categorize" }).focus();
     await userEvent.keyboard("{Enter}");
-    const menu = await screen.findByRole("menu", { name: "Categorize" });
+    const list = await screen.findByRole("listbox");
     expect(
-      within(menu)
-        .getAllByRole("menuitem")
-        .map((m) => m.textContent),
+      within(list)
+        .getAllByRole("group")
+        .map((g) => g.firstChild?.textContent),
     ).toEqual(["Inflow", "Bills", "Needs"]);
+    expect(
+      within(list)
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).toEqual(["Ready to Assign", "Rent", "Power", "Groceries"]);
     await userEvent.keyboard("{Escape}");
-    await categorizeAs("Bills", "Power");
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    await categorizeAs("pow");
     expect(onAction).toHaveBeenCalledWith({ type: "categorize", categoryId: "power" });
+    expect(screen.queryByRole("listbox")).toBeNull();
   });
 
   it("asks before un-splitting a selected split", async () => {
     const { onAction } = bar(summary({ splits: 1 }));
-    await categorizeAs("Inflow", "Ready to Assign");
+    await categorizeAs("Ready");
     const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent("Un-split and Categorize Split Transaction?");
+    expect(dialog).toHaveTextContent("Un-split and categorize split transaction?");
     expect(dialog).toHaveTextContent(
       'If you categorize the split transaction as "Inflow: Ready to Assign" we will un-split it.',
     );
@@ -160,7 +169,7 @@ describe("un-split warning", () => {
     scheduledSplits?: { splits: number; splitsWithTransfers: number },
   ) {
     bar(s, { scheduledCount: scheduledSplits?.splits ?? 0, scheduledSplits });
-    await categorizeAs("Bills", "Rent");
+    await categorizeAs("Rent");
     return screen.findByRole("alertdialog");
   }
 
@@ -169,13 +178,13 @@ describe("un-split warning", () => {
       splits: 1,
       splitsWithTransfers: 0,
     });
-    expect(dialog).toHaveTextContent("Un-split and Categorize Split Transaction?");
+    expect(dialog).toHaveTextContent("Un-split and categorize split transaction?");
     expect(dialog).toHaveTextContent("You have a split transaction selected.");
   });
 
   it("counts scheduled splits with the transactions", async () => {
     const dialog = await warning(summary({ splits: 1 }), { splits: 1, splitsWithTransfers: 0 });
-    expect(dialog).toHaveTextContent("Un-split and Categorize Split Transactions?");
+    expect(dialog).toHaveTextContent("Un-split and categorize split transactions?");
     expect(dialog).toHaveTextContent("You have 2 split transactions selected.");
     expect(dialog).toHaveTextContent(
       'If you categorize these split transactions as "Rent" we will un-split them.',
@@ -198,7 +207,7 @@ describe("un-split warning", () => {
       scheduledCount: 1,
       scheduledSplits: { splits: 1, splitsWithTransfers: 1 },
     });
-    await categorizeAs("Bills", "Rent");
+    await categorizeAs("Rent");
     expect(onAction).toHaveBeenCalledWith({ type: "categorize", categoryId: "rent" });
     expect(screen.queryByRole("alertdialog")).toBeNull();
   });
@@ -260,7 +269,7 @@ describe("SelectionBar keys", () => {
   it("opens the Categorize menu with K, or hands K to the register for one row", async () => {
     bar(summary({}));
     await userEvent.keyboard("k");
-    expect(await screen.findByRole("menuitem", { name: "Bills" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "Rent" })).toBeInTheDocument();
   });
 
   it("hands K to the register when one transaction is selected", async () => {
@@ -268,7 +277,7 @@ describe("SelectionBar keys", () => {
     bar(summary({ count: 1 }), { onCategorizeKey });
     await userEvent.keyboard("k");
     expect(onCategorizeKey).toHaveBeenCalledOnce();
-    expect(screen.queryByRole("menuitem", { name: "Bills" })).toBeNull();
+    expect(screen.queryByRole("option", { name: "Rent" })).toBeNull();
   });
 
   it("opens Flag with Shift+F and takes a digit: 1–6 a colour, 0 none", async () => {

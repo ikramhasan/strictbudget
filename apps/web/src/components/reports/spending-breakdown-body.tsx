@@ -13,6 +13,7 @@ import {
   reportActivityOptions,
   reportTransactionsOptions,
 } from "@/lib/reports";
+import { useColorSlots } from "@/lib/reports-colors";
 import {
   BREAKDOWN_LABELS,
   type BreakdownBy,
@@ -56,6 +57,7 @@ export function SpendingBreakdownBody({
   const groupBy = [byCategory ? "category" : by] as const;
 
   const categories = useQuery(categoriesQueryOptions(budget.id));
+  const slots = useColorSlots();
   const accounts = useQuery(accountsQueryOptions(budget.id));
   const flags = useQuery(flagsQueryOptions(budget.id));
   const activity = useQuery(
@@ -104,10 +106,16 @@ export function SpendingBreakdownBody({
     payees: activity.data?.payees ?? [],
     accounts: accounts.data?.accounts ?? [],
     flags: flags.data?.flags ?? [],
+    slots,
   };
   const rows = activity.data ? breakdownRows(activity.data.rows, by, names, group) : [];
   const breakdown = breakdownOf(rows);
-  const stats = breakdownStats(breakdown, state.range);
+  // Months before the budget's first transaction aren't months of zero spending.
+  const since =
+    state.earliest && state.earliest > state.range.from && state.earliest <= state.range.to
+      ? { ...state.range, from: state.earliest }
+      : state.range;
+  const stats = breakdownStats(breakdown, since);
   const previous =
     state.comparison && compared.data
       ? comparedSpending(
@@ -155,7 +163,7 @@ export function SpendingBreakdownBody({
       search: { transaction: t.transactionId },
     });
 
-  const loading = activity.isPending || categories.isPending;
+  const loading = activity.isPending || categories.isPending || !slots;
   const filtered = Object.keys(state.filters).length > 0;
   const noSpending = (
     <ReportEmpty title="No spending to break down">

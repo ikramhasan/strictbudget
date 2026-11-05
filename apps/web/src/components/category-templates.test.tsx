@@ -48,12 +48,12 @@ function renderImport() {
 describe("ImportTemplateDialog", () => {
   it("asks about the budget with every category ticked", async () => {
     const { onImport } = renderImport();
-    expect(screen.getByRole("heading", { name: "Import Category Template" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Import category template" })).toBeVisible();
     expect(screen.getByText("Household")).toBeVisible();
     expect(
       screen.getAllByRole("checkbox").every((b) => b.getAttribute("aria-checked") === "true"),
     ).toBe(true);
-    await userEvent.click(screen.getByRole("button", { name: "Import Categories" }));
+    await userEvent.click(screen.getByRole("button", { name: "Import categories" }));
     expect(onImport).toHaveBeenCalledWith(["0.0", "0.1", "1.0", "1.1"]);
   });
 
@@ -65,7 +65,7 @@ describe("ImportTemplateDialog", () => {
     await userEvent.click(box("Unexpected"));
     expect(box("🌀 Buffer")).not.toBeChecked();
     expect(box("📋 About This Template")).not.toBeChecked();
-    await userEvent.click(screen.getByRole("button", { name: "Import Categories" }));
+    await userEvent.click(screen.getByRole("button", { name: "Import categories" }));
     expect(onImport).toHaveBeenLastCalledWith(["0.1"]);
     // A partly ticked group ticks all of its categories.
     await userEvent.click(box("Before You Move"));
@@ -76,7 +76,7 @@ describe("ImportTemplateDialog", () => {
     const { onImport, box } = renderImport();
     await userEvent.click(box("Before You Move"));
     await userEvent.click(box("Unexpected"));
-    const button = screen.getByRole("button", { name: "Import Categories" });
+    const button = screen.getByRole("button", { name: "Import categories" });
     expect(button).toBeEnabled();
     await userEvent.click(button);
     expect(onImport).toHaveBeenCalledWith([]);
@@ -84,7 +84,7 @@ describe("ImportTemplateDialog", () => {
 
   it("offers Cancel and Choose Another Budget", async () => {
     const { onCancel, onChooseAnother } = renderImport();
-    await userEvent.click(screen.getByRole("button", { name: "Choose Another Budget" }));
+    await userEvent.click(screen.getByRole("button", { name: "Choose another budget" }));
     expect(onChooseAnother).toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCancel).toHaveBeenCalled();
@@ -110,7 +110,7 @@ describe("TemplateGallery", () => {
     const about = screen.getByText("📋 About This Template").closest("li");
     expect(about?.textContent).toBe("📋 About This Template");
     expect(screen.getByText("$2450.00")).toBeVisible();
-    await userEvent.click(screen.getByRole("button", { name: "Get Template" }));
+    await userEvent.click(screen.getByRole("button", { name: "Get template" }));
     expect(onPick).toHaveBeenCalledWith(moving);
   });
 });

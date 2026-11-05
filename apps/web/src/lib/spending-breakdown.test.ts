@@ -20,6 +20,7 @@ import {
   summaryExportRows,
   transactionsExportRows,
 } from "./spending-breakdown";
+import { catalogOf, seriesColors, seriesInfo } from "./spending-trends";
 
 const category = (id: string, groupId: string, name: string) =>
   ({ id, groupId, name, hidden: false }) as CategoryList["groups"][number]["categories"][number];
@@ -91,14 +92,19 @@ describe("spending breakdown rows", () => {
     );
     const b = breakdownOf(rows);
     const colors = b.spending.map((r) => r.color);
-    expect(colors.slice(0, 8)).toEqual([1, 2, 3, 4, 5, 6, 7, 8].map((n) => `var(--report-${n})`));
+    expect(new Set(colors.slice(0, 8)).size).toBe(8);
+    // Each takes its place in the plan's colour: C2 the third, C9 the second (C1 isn't named).
+    const color = (key: string) => b.spending.find((r) => r.key === key)?.color;
+    expect(color("c2")).toBe("var(--report-3)");
+    expect(color("c9")).toBe("var(--report-2)");
+    expect(color("c8")).toBe("var(--report-1)");
     expect(b.spending.find((r) => r.key === "unc")?.color).toBe(UNCATEGORIZED_COLOR);
     // Past the palette, the smallest rows share Other's colour (the donut's "Other" slice).
     expect(colors.filter((c) => c === OTHER_COLOR)).toHaveLength(2);
     expect(b.spending.at(-2)?.color).toBe(OTHER_COLOR);
   });
 
-  it("hands colours out in the order the donut draws them: a group's categories together", () => {
+  it("colours each category and group by its place in the plan, whatever it spent", () => {
     const sums = [sum("o13", -5000), sum("r4", -4000), sum("t8d", -3000), sum("t2", -2000)];
     const byCategory = breakdownOf(breakdownRows(sums, "category", names));
     expect(Object.fromEntries(byCategory.spending.map((r) => [r.key, r.color]))).toEqual({
@@ -108,6 +114,18 @@ describe("spending breakdown rows", () => {
       t2: "var(--report-4)",
     });
     expect(drawOrder(byCategory.spending).map((r) => r.key)).toEqual(["o13", "t8d", "r4", "t2"]);
+    // Spending ranked the other way round, each keeps its colour.
+    const flipped = [sum("o13", -2000), sum("r4", -3000), sum("t8d", -4000), sum("t2", -5000)];
+    const again = breakdownOf(breakdownRows(flipped, "category", names));
+    expect(Object.fromEntries(again.spending.map((r) => [r.key, r.color]))).toEqual(
+      Object.fromEntries(byCategory.spending.map((r) => [r.key, r.color])),
+    );
+    // Spending Trends gives each the same colour.
+    const catalog = catalogOf(categories);
+    const trends = seriesColors(["t2", "r4", "o13", "t8d"], (k) =>
+      seriesInfo(catalog, "category", k),
+    );
+    for (const r of byCategory.spending) expect(trends.get(r.key)).toBe(r.color);
     const byGroup = breakdownOf(breakdownRows(sums, "group", names));
     expect(Object.fromEntries(byGroup.spending.map((r) => [r.key, r.color]))).toEqual({
       "g-test": "var(--report-1)",
@@ -115,7 +133,7 @@ describe("spending breakdown rows", () => {
     });
   });
 
-  it("colours payees biggest first", () => {
+  it("colours payees by who they are, not by rank", () => {
     const payees = [
       { id: "p1", name: "P1" },
       { id: "p2", name: "P2" },
@@ -128,10 +146,17 @@ describe("spending breakdown rows", () => {
       "payee",
       { ...names, payees },
     );
-    expect(breakdownOf(rows).spending.map((r) => [r.key, r.color])).toEqual([
-      ["p2", "var(--report-1)"],
-      ["p1", "var(--report-2)"],
-    ]);
+    const colors = new Map(breakdownOf(rows).spending.map((r) => [r.key, r.color]));
+    expect(colors.get("p1")).not.toBe(colors.get("p2"));
+    const swapped = breakdownRows(
+      [
+        { ...sum("x", -900), categoryId: null, payeeId: "p1" },
+        { ...sum("x", -100), categoryId: null, payeeId: "p2" },
+      ],
+      "payee",
+      { ...names, payees },
+    );
+    expect(new Map(breakdownOf(swapped).spending.map((r) => [r.key, r.color]))).toEqual(colors);
   });
 
   it("lists categories most spent first and positive ones smallest first", () => {

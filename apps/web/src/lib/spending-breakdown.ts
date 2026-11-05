@@ -26,6 +26,7 @@ import {
   reportSearchSchema,
   UNCATEGORIZED_COLOR,
 } from "./reports";
+import type { ColorSlots } from "./reports-colors";
 
 /**
  * What Spending Breakdown's rows are: categories or groups, or the payee, account and flag
@@ -63,6 +64,8 @@ export interface BreakdownRow {
   family?: string;
   /** A colour of its own (Uncategorized's grey, a flag's colour). */
   ownColor?: string;
+  /** A category's or group's place in the plan, which picks its colour (distinctColors). */
+  slot?: number;
   /** For a category: its group, which the treemap nests it in. */
   groupKey?: string;
   groupName?: string;
@@ -77,6 +80,8 @@ export interface BreakdownNames {
   payees: readonly { id: string; name: string }[];
   accounts: readonly { id: string; name: string }[];
   flags: readonly Flag[];
+  /** Each category's and group's colour across reports; plan order without. */
+  slots?: ColorSlots;
 }
 
 /** The plan's categories in order, Uncategorized first, each with its group and plan index. */
@@ -150,7 +155,14 @@ export function breakdownRows(
         key,
         name: groups ? (c?.groupName ?? "") : (c?.name ?? ""),
         color: UNCATEGORIZED_COLOR,
-        ...(c?.groupIndex ? !groups && { family: groupKey } : { ownColor: UNCATEGORIZED_COLOR }),
+        ...(c?.groupIndex
+          ? {
+              slot: groups
+                ? (names.slots?.groups.get(groupKey) ?? c.groupIndex - 1)
+                : (names.slots?.categories.get(id) ?? c.index - 1),
+              ...(!groups && { family: groupKey }),
+            }
+          : { ownColor: UNCATEGORIZED_COLOR }),
         ...(c && { groupKey: c.groupKey, groupName: c.groupName }),
         net: 0n,
         count: 0,
@@ -216,9 +228,9 @@ export function drawOrder<T extends { key: string; family?: string }>(rows: read
 
 /**
  * The rows split into spending and positive inflows, each row coloured: the biggest spenders (up
- * to BREAKDOWN_NAMED) take the palette's colours in the order the chart draws them (distinctColors),
- * so neighbouring slices always differ; Uncategorized and flags keep their own, and the rest get
- * OTHER_COLOR, which the donut folds into "Other".
+ * to BREAKDOWN_NAMED) take their own palette colours (distinctColors), the same in every report;
+ * Uncategorized and flags keep their own, and the rest get OTHER_COLOR, which the donut folds into
+ * "Other".
  */
 export function breakdownOf(rows: readonly BreakdownRow[]): Breakdown {
   const split = splitSpending(rows.map((r) => ({ key: r, net: r.net })));
@@ -238,6 +250,7 @@ export function breakdownOf(rows: readonly BreakdownRow[]): Breakdown {
   const colors = distinctColors(
     drawOrder(drawn).map((r) => ({
       key: r.key,
+      slot: r.slot,
       color: r.ownColor ?? (named.has(r.key) ? undefined : OTHER_COLOR),
     })),
   );

@@ -141,7 +141,7 @@ export function ReadyToAssignBanner({
 }) {
   const sign = amount === "0" ? 0 : amount.startsWith("-") ? -1 : 1;
   const noAccounts = useNoBudgetAccounts();
-  if (sign === 0 && noAccounts) return <AddAccountPrompt compact={compact} />;
+  if (sign === 0 && noAccounts) return <AddAccountPrompt compact={compact} format={format} />;
   const negativeLabel = overdraft
     ? "Overdraft? We can help with that!"
     : "You assigned more than you have";
@@ -150,7 +150,7 @@ export function ReadyToAssignBanner({
       <span
         className={cn(
           "tabular-nums",
-          compact ? "font-semibold text-lg leading-tight tracking-tight" : "text-display",
+          compact ? "font-semibold text-[1.5rem] leading-none tracking-tight" : "text-display",
         )}
       >
         {format(amount)}
@@ -166,7 +166,7 @@ export function ReadyToAssignBanner({
       className={cn(
         "flex items-center justify-between rounded-lg transition-colors duration-200 ease-out-quint",
         compact
-          ? "h-11 shrink-0 flex-nowrap gap-3 py-0 pr-1.5 pl-3"
+          ? "h-12 shrink-0 flex-nowrap gap-4 py-0 pr-2 pl-4"
           : "min-w-56 flex-wrap gap-3 px-4 py-2 max-md:w-full",
         sign > 0 && "bg-green-200 text-green-950 dark:bg-green-900/60 dark:text-green-50",
         sign === 0 &&
@@ -218,7 +218,13 @@ function useNoBudgetAccounts() {
 }
 
 /** In place of "All Money Assigned" while there's no account for money to come from. */
-function AddAccountPrompt({ compact = false }: { compact?: boolean }) {
+function AddAccountPrompt({
+  compact = false,
+  format,
+}: {
+  compact?: boolean;
+  format: (minorUnits: string) => string;
+}) {
   const context = useOptionalBudget();
   const [adding, setAdding] = useState(false);
   // Mounted on first use, so the banner needs no router until then.
@@ -233,7 +239,7 @@ function AddAccountPrompt({ compact = false }: { compact?: boolean }) {
         // In the top bar: one compact line at its content's width (no container query there: a
         // size container takes no width from its content and would collapse).
         compact
-          ? "flex h-11 w-max shrink-0 items-center py-0 pr-1.5 pl-3"
+          ? "flex h-12 w-max shrink-0 items-center gap-4 py-0 pr-2 pl-4"
           : "@container w-[21rem] min-w-56 max-w-full shrink px-4 py-2 max-md:w-full",
       )}
     >
@@ -244,9 +250,14 @@ function AddAccountPrompt({ compact = false }: { compact?: boolean }) {
         )}
       >
         <span className={cn("grid", compact ? "whitespace-nowrap" : "@[18rem]:whitespace-nowrap")}>
-          <span className={cn("font-semibold", compact ? "text-sm leading-tight" : "text-base")}>
-            No money yet
-          </span>
+          {compact ? (
+            // The number keeps its place in the bar, with what to do about it.
+            <span className="font-semibold text-[1.5rem] tabular-nums leading-none tracking-tight">
+              {format("0")}
+            </span>
+          ) : (
+            <span className="font-semibold text-base">No money yet</span>
+          )}
           <span className={cn("text-muted-foreground", compact ? "text-xs" : "text-sm")}>
             Add an account to start
           </span>

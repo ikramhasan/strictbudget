@@ -101,7 +101,7 @@ describe("AutoAssignPanel", () => {
     await user.click(screen.getByRole("button", { name: "Assigned last month A3000" }));
     expect(close).not.toHaveBeenCalled();
     await user.click(
-      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Apply Changes" }),
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Apply changes" }),
     );
     expect(close).toHaveBeenCalled();
     expect(await screen.findByText("Assigned A2000 to 1 category")).toBeInTheDocument();
@@ -125,7 +125,7 @@ describe("AutoAssignPanel", () => {
     );
     await user.click(screen.getByRole("button", { name: "Assigned last month A3000" }));
     await user.click(
-      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Apply Changes" }),
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Apply changes" }),
     );
     expect(screen.queryByText(/Assigned A2000/)).not.toBeInTheDocument();
   });
@@ -149,7 +149,7 @@ describe("AutoAssignPanel", () => {
     expect(within(dialog).getByText("Rent")).toBeInTheDocument();
     expect(within(dialog).getAllByText("+A2000")).toHaveLength(2);
     expect(onApply).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Apply Changes" }));
+    await user.click(within(dialog).getByRole("button", { name: "Apply changes" }));
     expect(onApply).toHaveBeenCalledWith("assignedLastMonth");
   });
 
@@ -174,7 +174,7 @@ describe("AutoAssignPanel", () => {
     expect(within(dialog).getByRole("alert")).toHaveTextContent(
       "This assigns A1500 more than you have.",
     );
-    expect(within(dialog).getByRole("button", { name: "Apply Changes" })).toHaveAttribute(
+    expect(within(dialog).getByRole("button", { name: "Apply changes" })).toHaveAttribute(
       "data-variant",
       "destructive",
     );
@@ -190,7 +190,7 @@ describe("AutoAssignPanel", () => {
     );
     dialog = screen.getByRole("alertdialog");
     expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Apply Changes" })).toHaveAttribute(
+    expect(within(dialog).getByRole("button", { name: "Apply changes" })).toHaveAttribute(
       "data-variant",
       "default",
     );
@@ -249,7 +249,7 @@ describe("AutoAssignPanel", () => {
     );
     expect(screen.getByText("This view has no categories.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Average spent/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "View All Categories" }));
+    await user.click(screen.getByRole("button", { name: "View all categories" }));
     expect(onViewAll).toHaveBeenCalled();
   });
 
@@ -316,7 +316,7 @@ describe("AutoAssignPanel", () => {
       expect(within(dialog).getByText("+A1500")).toBeInTheDocument();
       expect(within(dialog).getByText(/may need more attention/)).toBeInTheDocument();
       expect(within(dialog).getByText("Visa")).toBeInTheDocument();
-      await user.click(within(dialog).getByRole("button", { name: "Apply Changes" }));
+      await user.click(within(dialog).getByRole("button", { name: "Apply changes" }));
       expect(onApply).toHaveBeenCalledWith("underfunded");
     });
 
@@ -332,7 +332,7 @@ describe("AutoAssignPanel", () => {
           onApply={vi.fn()}
         />,
       );
-      expect(screen.queryByRole("button", { name: /Reduce Overfunding/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Reduce overfunding/ })).not.toBeInTheDocument();
       // A single category with nothing short has no Underfunded either.
       expect(screen.queryByRole("button", { name: /Underfunded/ })).not.toBeInTheDocument();
       rerender(
@@ -345,7 +345,7 @@ describe("AutoAssignPanel", () => {
           onApply={vi.fn()}
         />,
       );
-      expect(screen.getByRole("button", { name: "Reduce Overfunding A300" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Reduce overfunding A300" })).toBeInTheDocument();
     });
 
     it("says on the row when Underfunded can fund only part, or nothing", () => {

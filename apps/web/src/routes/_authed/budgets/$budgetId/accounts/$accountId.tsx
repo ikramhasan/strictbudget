@@ -288,7 +288,7 @@ function AccountPage() {
         <AlertDialog open onOpenChange={(o) => !o && setConfirm(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Re-open Account</AlertDialogTitle>
+              <AlertDialogTitle>Re-open account</AlertDialogTitle>
               <AlertDialogDescription>
                 The history in this closed account was migrated to your {loanName} loan account.
                 Re-opening this account will erase the information that was migrated.
@@ -307,7 +307,7 @@ function AccountPage() {
                   await reopenNow();
                 }}
               >
-                Erase &amp; Re-open
+                Erase &amp; re-open
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -319,7 +319,7 @@ function AccountPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirm === "close" ? "Close Account" : `Delete “${account.name}”?`}
+              {confirm === "close" ? "Close account" : `Delete “${account.name}”?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirm === "delete"
@@ -349,7 +349,7 @@ function AccountPage() {
                 await closeNow();
               }}
             >
-              {confirm === "delete" ? "Delete account" : "Adjust Balance & Close"}
+              {confirm === "delete" ? "Delete account" : "Adjust balance & close"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -397,8 +397,8 @@ function AccountPage() {
           }
         />
         {isLoan && !account.closed && (
-          <section className="grid gap-2 border-t pt-4" aria-label="Paired Plan Category">
-            <h3 className="font-medium text-sm">Paired Plan Category</h3>
+          <section className="grid gap-2 border-t pt-4" aria-label="Paired plan category">
+            <h3 className="font-medium text-sm">Paired plan category</h3>
             <p className="text-muted-foreground text-sm">
               Pairing a category helps you create realistic payoff plans, and keep track of your
               progress.
@@ -420,7 +420,7 @@ function AccountPage() {
                   )
                 }
               >
-                Unpair Category
+                Unpair category
               </Button>
             ) : (
               <Button
@@ -462,7 +462,7 @@ function AccountPage() {
           )}
           {!account.closed && account.hasHistory && (
             <Button variant="outline" size="sm" onClick={handleClose}>
-              Close Account
+              Close account
             </Button>
           )}
           {(account.closed || !account.hasHistory) && (
@@ -477,7 +477,7 @@ function AccountPage() {
                     disabled={account.hasHistory}
                     onClick={() => setConfirm("delete")}
                   >
-                    {account.closed ? "Delete" : "Delete Account"}
+                    {account.closed ? "Delete" : "Delete account"}
                   </Button>
                 </span>
               </TooltipTrigger>
@@ -799,10 +799,10 @@ function Balance({
       )}
       style={operator ? ({ "--operator": `"${operator}"` } as React.CSSProperties) : undefined}
     >
-      {/* "Cleared Balance" and so on, shortened to the first word on a phone. */}
+      {/* "Cleared balance" and so on, shortened to the first word on a phone. */}
       <dt className="text-muted-foreground text-xs">
         {label}
-        <span className="max-sm:hidden"> Balance</span>
+        <span className="max-sm:hidden"> balance</span>
       </dt>
       <dd
         className={cn(

@@ -23,12 +23,19 @@ export interface ActivityChange {
   after: string | null;
 }
 
+/** Where an entry's subject is in the app: a category on the plan, or a transaction in its register. */
+export type ActivityTarget =
+  | { kind: "category"; categoryId: string /** "2026-11" */; month?: string }
+  | { kind: "transaction"; accountId: string; transactionId: string };
+
 export interface ActivityLine {
   /** "added a transaction", "changed the category", "deleted a payee rule"… */
   action: string;
   /** What it was about: "Groceries · $30.00", "Rent (Nov 2026)"… */
   subject: string | null;
   changes: ActivityChange[];
+  /** Set when the subject still exists and can be opened. */
+  target?: ActivityTarget;
 }
 
 const NOUNS: Record<string, string> = {
@@ -222,11 +229,16 @@ function subjectOf(entity: string, row: Values, l: ActivityLookups): string | nu
   const amount = row.amount ? show("amount", row.amount, row, l) : null;
   switch (entity) {
     case "transaction":
-    case "scheduled_transaction":
-    case "sub_transaction":
-    case "scheduled_sub_transaction": {
+    case "scheduled_transaction": {
       const payee = row.payee_id ? show("payee_id", row.payee_id, row, l) : null;
       return [payee, amount].filter(Boolean).join(" · ") || null;
+    }
+    case "sub_transaction":
+    case "scheduled_sub_transaction": {
+      // A split line is told apart by its category; its payee is usually the transaction's.
+      const payee = row.payee_id ? show("payee_id", row.payee_id, row, l) : null;
+      const category = row.category_id ? show("category_id", row.category_id, row, l) : null;
+      return [payee, category, amount].filter(Boolean).join(" · ") || null;
     }
     case "category_assignment":
     case "category_target": {
@@ -320,6 +332,27 @@ export function restoredEvents(events: readonly ActivityEvent[]): ReadonlySet<st
   return restored;
 }
 
+/** Where `event`'s subject is, while it exists: deleted rows, and rows whose names are gone, have none. */
+function targetOf(event: ActivityEvent, l: ActivityLookups): ActivityTarget | undefined {
+  const row = event.after;
+  if (event.op === "delete" || !row) return undefined;
+  if (event.entity === "transaction") {
+    const accountId = row.account_id;
+    return accountId && l.account(accountId)
+      ? { kind: "transaction", accountId, transactionId: event.rowId }
+      : undefined;
+  }
+  const categoryId =
+    event.entity === "category"
+      ? event.rowId
+      : event.entity === "category_assignment" || event.entity === "category_target"
+        ? row.category_id
+        : null;
+  if (!categoryId || !l.category(categoryId)) return undefined;
+  const month = event.entity === "category_assignment" ? row.month?.slice(0, 7) : undefined;
+  return { kind: "category", categoryId, ...(month ? { month } : {}) };
+}
+
 /**
  * `related`: the other changes saved with it (groupEvents), so a transaction whose category was
  * cleared as it was split reads "Split" rather than a blank. `restored`: an insert that brought a
@@ -334,6 +367,7 @@ export function describeEvent(
   const noun = NOUNS[event.entity] ?? humanize(event.entity).toLowerCase();
   const row = event.after ?? event.before ?? {};
   const subject = subjectOf(event.entity, row, l);
+  const target = targetOf(event, l);
   const split =
     event.entity === "transaction" &&
     related.some((e) => e.entity === "sub_transaction" && e.op === "insert");
@@ -354,12 +388,70 @@ export function describeEvent(
       action: "changed an assigned amount",
       subject,
       changes: changes.filter((c) => c.label === "Amount"),
+      ...(target ? { target } : {}),
     };
   }
   const article = /^[aeiou]/.test(noun) ? "an" : "a";
-  if (restored) return { action: `restored ${article} ${noun}`, subject, changes: [] };
+  const linked = target ? { target } : {};
+  if (restored) return { action: `restored ${article} ${noun}`, subject, changes: [], ...linked };
   const verb = event.op === "insert" ? "added" : event.op === "delete" ? "deleted" : "changed";
-  return { action: `${verb} ${article} ${noun}`, subject, changes };
+  return { action: `${verb} ${article} ${noun}`, subject, changes, ...linked };
+}
+
+export interface ActivityMoveSide {
+  categoryId: string;
+  name: string;
+  /** Left out once the category is deleted. */
+  target?: ActivityTarget;
+}
+
+/** Money moved between two categories: "moved $18.75 from Vacation to Entertainment". */
+export interface ActivityMove {
+  amount: string;
+  from: ActivityMoveSide;
+  to: ActivityMoveSide;
+  /** "Nov 2026" */
+  month: string;
+}
+
+/**
+ * A move (or a cover) as one entry: a save that only changed two categories' Assigned in the same
+ * month, one down by exactly what the other went up.
+ */
+export function moveOf(group: readonly ActivityEvent[], l: ActivityLookups): ActivityMove | null {
+  if (group.length !== 2) return null;
+  const sides = group.map((e) => {
+    if (e.entity !== "category_assignment") return null;
+    const row = e.after ?? e.before;
+    const amount = (r: Values | null) =>
+      r?.amount && /^-?\d+$/.test(r.amount) ? BigInt(r.amount) : 0n;
+    if (!row?.category_id || !row.month) return null;
+    return {
+      event: e,
+      categoryId: row.category_id,
+      month: row.month.slice(0, 7),
+      currency: (row.currency as CurrencyCode | null) ?? l.currency,
+      delta: amount(e.after) - amount(e.before),
+    };
+  });
+  const [a, b] = sides;
+  if (!a || !b || a.month !== b.month || a.categoryId === b.categoryId) return null;
+  if (a.currency !== b.currency || a.delta === 0n || a.delta + b.delta !== 0n) return null;
+  const [from, to] = a.delta < 0n ? [a, b] : [b, a];
+  const side = (s: typeof a): ActivityMoveSide => {
+    const name = l.category(s.categoryId);
+    return {
+      categoryId: s.categoryId,
+      name: name ?? "a deleted category",
+      ...(name ? { target: { kind: "category", categoryId: s.categoryId, month: s.month } } : {}),
+    };
+  };
+  return {
+    amount: l.formatAmount(money(to.delta, to.currency)),
+    from: side(from),
+    to: side(to),
+    month: monthOfDate(to.month),
+  };
 }
 
 const LEADS = ["transaction", "scheduled_transaction"];

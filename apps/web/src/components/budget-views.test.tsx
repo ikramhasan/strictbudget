@@ -66,7 +66,7 @@ describe("ViewEditorDialog", () => {
         onSave={onSave}
       />,
     );
-    expect(screen.getByRole("heading", { name: "New Custom View" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "New custom view" })).toBeInTheDocument();
     expect(
       screen.getByText("Choose a set of categories to include in this custom view."),
     ).toBeInTheDocument();
@@ -98,7 +98,7 @@ describe("ViewEditorDialog", () => {
         onSave={onSave}
       />,
     );
-    expect(screen.getByRole("heading", { name: "Edit Custom View" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Edit custom view" })).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Rent" })).toBeChecked();
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith({ name: "Bills", categoryIds: ["rent"] });
@@ -128,7 +128,7 @@ describe("ManageViewsDialog", () => {
       within(list)
         .getAllByRole("listitem")
         .map((li) => li.textContent),
-    ).toEqual(["Snoozed", "Bills", "Underfunded", "Overfunded", "Money Available"]);
+    ).toEqual(["Snoozed", "Bills", "Underfunded", "Overfunded", "Money available"]);
     expect(screen.queryByRole("button", { name: "Delete Snoozed" })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Edit Bills" }));
     expect(onEdit).toHaveBeenCalledWith({ id: "v1", name: "Bills", categoryIds: [] });
@@ -157,7 +157,7 @@ describe("ManageViewsDialog", () => {
         onDeleted={() => {}}
       />,
     );
-    expect(screen.getByRole("button", { name: "New View" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "New view" })).toBeDisabled();
     expect(
       screen.getByText("You have reached the maximum number of custom views available."),
     ).toBeInTheDocument();
@@ -225,15 +225,15 @@ describe("BudgetFilterBar overflow", () => {
     await userEvent.click(screen.getByRole("button", { name: "More" }));
     const items = await screen.findAllByRole("menuitem");
     expect(items.map((i) => i.textContent?.trim())).toEqual([
-      "Money Available",
+      "Money available",
       "Snoozed",
       "V1",
       "V2",
       "V3",
       "V4",
       "V5",
-      "Manage Views",
-      "New View",
+      "Manage views",
+      "New view",
     ]);
     await userEvent.click(screen.getByRole("menuitem", { name: "V4" }));
     expect(onChange).toHaveBeenCalledWith("v4");

@@ -152,9 +152,9 @@ export function chartNumber(minorUnits: string | bigint, currency: CurrencyCode)
 
 /**
  * The report palette (packages/ui's theme.css): eight categorical colours, `--report-1` to
- * `--report-8`, in an order validated for neighbours: each pair next to each other differs in hue
- * and lightness, for every kind of colour vision. A chart hands them out in the order its marks
- * sit (distinctColors), so neighbouring marks always take neighbouring colours.
+ * `--report-8`, validated so every pair differs for normal colour vision and each neighbouring
+ * pair for every kind of colour vision too. A series keeps one colour across every report: its
+ * place in the plan picks it (distinctColors), so neighbouring categories take neighbouring colours.
  */
 export const REPORT_COLORS = 8;
 /** One of the palette's colours, for charts whose series mean one thing each (debts, savings…). */
@@ -178,13 +178,23 @@ export interface ColorRequest {
   key: string;
   /** A colour of its own (Uncategorized's neutral, a flag's colour), never handed to another series. */
   color?: string;
+  /** The series' place in the plan, which picks its palette colour; without one, its key does. */
+  slot?: number;
+}
+
+/** A key's stable place in the palette, for series with no place in the plan (payees, accounts). */
+function keySlot(key: string): number {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (Math.imul(hash, 31) + key.charCodeAt(i)) | 0;
+  return hash >>> 0;
 }
 
 /**
- * One chart's colours, none repeated. `series` come in the order the chart draws them (a donut's
- * slices, a stack's segments), so neighbours take neighbouring palette colours. A series with a
- * colour of its own keeps it; past `max` named series (at most the palette's eight) the rest get
- * OTHER_COLOR and the chart folds them into "Other".
+ * One chart's colours, none repeated. Each series takes its own palette colour (its slot), so a
+ * category is the same colour in every report; when two want the same colour, the one earlier in
+ * the plan keeps it and the other takes the next free one. A series with a colour of its own keeps
+ * it; past `max` named series (at most the palette's eight, counted in `series` order) the rest
+ * get OTHER_COLOR and the chart folds them into "Other".
  */
 export function distinctColors(
   series: readonly ColorRequest[],
@@ -192,12 +202,31 @@ export function distinctColors(
 ): Map<string, string> {
   const out = new Map<string, string>();
   const limit = Math.min(max, REPORT_COLORS);
-  let named = 0;
+  const named: { key: string; slot: number }[] = [];
   for (const s of series) {
     if (s.color) out.set(s.key, s.color);
-    else out.set(s.key, named < limit ? reportColor(named++) : OTHER_COLOR);
+    else if (named.length < limit) named.push({ key: s.key, slot: s.slot ?? keySlot(s.key) });
+    else out.set(s.key, OTHER_COLOR);
   }
-  return out;
+  // Everyone whose colour is free takes it first, so one clash moves only the later series.
+  const byPlan = [...named].sort((a, b) => a.slot - b.slot || (a.key < b.key ? -1 : 1));
+  const taken = new Set<number>();
+  const moved: typeof named = [];
+  for (const s of byPlan) {
+    const want = s.slot % REPORT_COLORS;
+    if (taken.has(want)) moved.push(s);
+    else {
+      taken.add(want);
+      out.set(s.key, reportColor(want));
+    }
+  }
+  for (const { key, slot } of moved) {
+    let i = slot % REPORT_COLORS;
+    while (taken.has(i)) i = (i + 1) % REPORT_COLORS;
+    taken.add(i);
+    out.set(key, reportColor(i));
+  }
+  return new Map(series.map((s) => [s.key, out.get(s.key) ?? OTHER_COLOR]));
 }
 
 /**

@@ -266,8 +266,8 @@ export function PayoffSimulator({
         <Summary
           tone="neutral"
           title="Paying the minimum every month"
-          left={[format(sim.interest), "Interest Remaining"]}
-          right={[formatDuration(sim.months), "Time Remaining"]}
+          left={[format(sim.interest), "Interest remaining"]}
+          right={[formatDuration(sim.months), "Time remaining"]}
         />
       );
     } else if (diff >= 0n) {
@@ -279,8 +279,8 @@ export function PayoffSimulator({
               ? `Paying +${format(diff)} extra every month`
               : `Paying +${format(extra)} extra this month`
           }
-          left={[format(minimum.interest - sim.interest), "Interest Savings"]}
-          right={[formatDuration(Math.max(0, minimum.months - sim.months)), "Time Savings"]}
+          left={[format(minimum.interest - sim.interest), "Interest savings"]}
+          right={[formatDuration(Math.max(0, minimum.months - sim.months)), "Time savings"]}
         />
       );
     } else {
@@ -289,8 +289,8 @@ export function PayoffSimulator({
           <Summary
             tone="less"
             title={`Paying -${format(-diff)} less than minimum every month`}
-            left={[format(sim.interest - minimum.interest), "Additional Interest"]}
-            right={[formatDuration(Math.max(0, sim.months - minimum.months)), "Additional Time"]}
+            left={[format(sim.interest - minimum.interest), "Additional interest"]}
+            right={[formatDuration(Math.max(0, sim.months - minimum.months)), "Additional time"]}
           />
           <p className="flex items-start gap-2 text-sm">
             <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden />
@@ -332,7 +332,7 @@ export function PayoffSimulator({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[95vh] overflow-y-auto sm:max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Loan Payoff Simulator</DialogTitle>
+          <DialogTitle>Loan payoff simulator</DialogTitle>
         </DialogHeader>
         <div className="grid gap-6 md:grid-cols-[14rem_minmax(0,1fr)]">
           <div className="grid content-start gap-5">
@@ -340,11 +340,11 @@ export function PayoffSimulator({
               <p className="font-semibold tabular-nums">
                 {minShown !== null ? format(minShown) : "--"}
               </p>
-              <p className="text-muted-foreground text-xs">Required Minimum Payment</p>
+              <p className="text-muted-foreground text-xs">Required minimum payment</p>
             </div>
             <div className="grid gap-1.5">
               <label htmlFor="sim-payment" className="font-semibold text-sm">
-                Monthly Payment
+                Monthly payment
               </label>
               <Input
                 id="sim-payment"
@@ -362,9 +362,9 @@ export function PayoffSimulator({
               {paymentHint && <div className="text-muted-foreground text-xs">{paymentHint}</div>}
             </div>
             <div className="grid gap-1.5">
-              <span className="font-semibold text-sm">Payoff Date</span>
+              <span className="font-semibold text-sm">Payoff date</span>
               <PayoffMonthPicker
-                label="Payoff Date"
+                label="Payoff date"
                 value={payoffMonth}
                 min={current}
                 onChange={pickMonth}
@@ -412,7 +412,7 @@ export function PayoffSimulator({
             {summary}
             <dl className="grid gap-2 text-sm tabular-nums">
               <div className="flex justify-between border-b pb-2 font-semibold">
-                <dt>Remaining to Pay</dt>
+                <dt>Remaining to pay</dt>
                 <dd>{sim ? format(progress.owed + sim.interest) : "--"}</dd>
               </div>
               <div className="flex justify-between">

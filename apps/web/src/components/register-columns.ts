@@ -164,29 +164,46 @@ const REM_PX = 16;
  * the remainder (Category without it), so the row always fills the register.
  */
 const FLEX: Partial<Record<ColumnId, { min: number; comfortable: number; share: number }>> = {
-  payee: { min: 96, comfortable: 132, share: 0.36 },
-  category: { min: 104, comfortable: 140, share: 0.36 },
-  memo: { min: 72, comfortable: 100, share: 0.28 },
+  payee: { min: 96, comfortable: 132, share: 0.3 },
+  category: { min: 104, comfortable: 140, share: 0.38 },
+  memo: { min: 72, comfortable: 100, share: 0.32 },
 };
 
 /**
- * Wide enough for the row editor's date field (the date and its calendar button, see
- * DATE_EDITOR_FIT), so the column is the same width whether or not a row is being edited. Dashes
- * are wider than slashes and dots.
+ * Past comfortable, the room Category and then Memo get before Payee reads its longest names
+ * whole: a category ("Credit Card Payments: Visa Card") and a note are what a row is checked for.
+ * Category asks only for what its longest entry needs.
+ */
+const ROOMY: readonly (readonly ["category" | "memo", number])[] = [
+  ["category", 200],
+  ["memo", 160],
+];
+
+/**
+ * Without the rows' dates measured: wide enough for the row editor's date field (a full date and
+ * its calendar button). Dashes are wider than slashes and dots.
  */
 function dateWidth(format: string) {
   return (format.includes("-") ? 7.25 : 7) * REM_PX;
 }
+
+/**
+ * What the row editor's date field adds to its text (the cell's and the field's padding and its
+ * calendar button, see DATE_EDITOR_FIT), so the column is the same width whether or not a row is
+ * being edited.
+ */
+const DATE_EDITOR_PX = 36;
 
 /** The columns that hold money, sized to their widest figure. */
 export type MoneyColumn = "outflow" | "inflow" | "amount" | "balance";
 export const MONEY_COLUMNS: readonly MoneyColumn[] = ["outflow", "inflow", "amount", "balance"];
 
 /**
- * What the rows need (px, the content alone): each money column's widest figure, and the widest
- * payee and category (with a transfer's icon), which the spare room goes to first.
+ * What the rows need (px, the content alone): each money column's widest figure, the widest date
+ * as shown (this year's without the year), and the widest payee and category (with a transfer's
+ * icon), which the spare room goes to first.
  */
-export type ContentWidths = Partial<Record<MoneyColumn | "payee" | "category", number>>;
+export type ContentWidths = Partial<Record<MoneyColumn | "payee" | "category" | "date", number>>;
 
 /** Past this a payee or category truncates rather than take more room (a long imported name). */
 const READ_WHOLE_PX = 280;
@@ -222,7 +239,13 @@ const ACCOUNT_COMPACT_PX = 84;
 const isMoney = (id: ColumnId): id is MoneyColumn => MONEY_COLUMNS.includes(id as MoneyColumn);
 
 function fixedWidth(id: ColumnId, { dragged, dateFormat, accountCompact, content }: Sizing) {
-  if (id === "date") return Math.max(dragged.date ?? 0, dateWidth(dateFormat));
+  if (id === "date") {
+    const fits = content?.date;
+    return Math.max(
+      dragged.date ?? 0,
+      fits === undefined ? dateWidth(dateFormat) : Math.ceil(fits + DATE_EDITOR_PX),
+    );
+  }
   const fits = isMoney(id) ? content?.[id] : undefined;
   if (dragged[id] === undefined && isMoney(id) && fits !== undefined) {
     return Math.max(MONEY_MIN_PX[id], Math.ceil(fits + MONEY_PADDING_PX));
@@ -322,26 +345,29 @@ export function layoutColumns(
     if (!isFlex(id, dragged)) widths[id] = fixedWidth(id, sizing);
   }
   // Each flexible column starts at its floor (all of them, where there's room for that). What's
-  // left goes first to Payee, then Category, until they read their entries whole (Memo giving up
-  // its comfortable room for them, down to its least), then to each by its share.
+  // left goes to Category and Memo (ROOMY), then to Category and Payee until they read their
+  // entries whole, then to each by its share.
   const floor = (id: ColumnId) => FLEX[id]?.[fit] ?? 0;
   for (const id of flexible) widths[id] = floor(id);
-  let left = free - flexible.reduce((sum, id) => sum + floor(id), 0);
-  const memo = FLEX.memo;
-  const lent = flexible.includes("memo") && memo ? Math.max(0, floor("memo") - memo.min) : 0;
-  let pool = Math.max(left, 0) + lent;
-  for (const id of ["payee", "category"] as const) {
-    const whole = flexible.includes(id) ? content?.[id] : undefined;
-    if (whole === undefined) continue;
-    const need = Math.max(0, Math.min(READ_WHOLE_PX, Math.ceil(whole + 16)) - (widths[id] ?? 0));
-    const given = Math.min(pool, need);
+  let left = Math.max(free - flexible.reduce((sum, id) => sum + floor(id), 0), 0);
+  const grow = (id: ColumnId, to: number) => {
+    if (!flexible.includes(id)) return;
+    const given = Math.min(left, Math.max(0, to - (widths[id] ?? 0)));
     widths[id] = (widths[id] ?? 0) + given;
-    pool -= given;
+    left -= given;
+  };
+  const readWhole = (id: "payee" | "category") => {
+    const whole = content?.[id];
+    return whole === undefined ? undefined : Math.min(READ_WHOLE_PX, Math.ceil(whole + 16));
+  };
+  for (const [id, roomy] of ROOMY) {
+    const whole = id === "category" ? readWhole(id) : undefined;
+    grow(id, whole === undefined ? roomy : Math.min(roomy, whole));
   }
-  // What Memo lent and wasn't needed goes back to it.
-  const kept = Math.min(pool, lent);
-  if (widths.memo !== undefined) widths.memo -= lent - kept;
-  left = pool - kept;
+  for (const id of ["category", "payee"] as const) {
+    const whole = readWhole(id);
+    if (whole !== undefined) grow(id, whole);
+  }
   if (left > 0) {
     const shares = flexible.reduce((sum, id) => sum + (FLEX[id]?.share ?? 0), 0);
     for (const id of flexible) {
@@ -382,7 +408,15 @@ export function useColumnWidths(register: string) {
       }),
     [key],
   );
-  return { widths, setWidth };
+  const resetWidths = useCallback(() => {
+    setWidths({});
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Nothing was stored.
+    }
+  }, [key]);
+  return { widths, setWidth, resetWidths };
 }
 
 function readWidths(key: string): ColumnWidths {

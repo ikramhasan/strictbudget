@@ -114,7 +114,7 @@ export function BudgetMembers() {
 
             {owner && data.invitations.length > 0 && (
               <div className="grid gap-2">
-                <p className="font-medium text-sm">Pending Invitations</p>
+                <p className="font-medium text-sm">Pending invitations</p>
                 <ul className="grid gap-2">
                   {data.invitations.map((i) => (
                     <li key={i.id} className="flex flex-wrap items-center gap-3">
@@ -146,7 +146,7 @@ export function BudgetMembers() {
                             await refresh();
                           }}
                         >
-                          Resend Invite
+                          Resend invite
                         </Button>
                       )}
                       <Button
@@ -166,7 +166,7 @@ export function BudgetMembers() {
                           await refresh();
                         }}
                       >
-                        Get Link
+                        Get link
                       </Button>
                       <Button
                         size="sm"
@@ -183,7 +183,7 @@ export function BudgetMembers() {
                           await refresh();
                         }}
                       >
-                        Cancel Invite
+                        Cancel invite
                       </Button>
                     </li>
                   ))}
@@ -199,7 +199,7 @@ export function BudgetMembers() {
                     : "This budget is shared with as many people as it can be."}
                 </p>
                 <Button onClick={() => setInviting(true)} disabled={remaining <= 0}>
-                  Invite Member
+                  Invite member
                 </Button>
               </div>
             )}
@@ -317,7 +317,7 @@ function ShareLinkDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Share the Invitation Link</DialogTitle>
+          <DialogTitle>Share the invitation link</DialogTitle>
           <DialogDescription>
             Send this link to {invitation.name}. To join, they sign in or create an account with{" "}
             <span className="break-all font-medium text-foreground">{invitation.email}</span>. It
@@ -361,7 +361,7 @@ function InviteDialog({
   const { email: sendsEmail } = useInstance();
   const invite = $api.useMutation("post", "/v1/budgets/{budgetId}/invitations");
   const [error, setError] = useState<string | null>(null);
-  // Set by "Get Link"; Enter and "Send Invite" email the invitation.
+  // Set by "Get link"; Enter and "Send invite" email the invitation.
   const linkAsked = useRef(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -391,7 +391,7 @@ function InviteDialog({
       <DialogContent>
         <form onSubmit={handleSubmit} className="grid gap-4">
           <DialogHeader>
-            <DialogTitle>Invite Member</DialogTitle>
+            <DialogTitle>Invite member</DialogTitle>
             <DialogDescription>
               {sendsEmail
                 ? `They'll get an email with a link to join “${budget.name}”, or you can get the link and send it yourself. It works for 14 days.`
@@ -431,11 +431,11 @@ function InviteDialog({
                   linkAsked.current = false;
                 }}
               >
-                Get Link
+                Get link
               </Button>
             )}
             <Button type="submit" disabled={invite.isPending}>
-              {sendsEmail ? "Send Invite" : "Get Link"}
+              {sendsEmail ? "Send invite" : "Get link"}
             </Button>
           </DialogFooter>
         </form>
@@ -498,17 +498,17 @@ function MemberActions({
     remove: {
       title: `Remove ${member.name}?`,
       body: `${member.name} (${member.email}) will no longer be able to see or edit “${budget.name}”.`,
-      action: "Remove Member",
+      action: "Remove member",
     },
     transfer: {
       title: `Make ${member.name} the owner?`,
       body: `${member.name} will own “${budget.name}”: only they will be able to invite or remove people, delete it or make a fresh start. You'll keep access as a member.`,
-      action: "Transfer Ownership",
+      action: "Transfer ownership",
     },
     leave: {
       title: `Leave “${budget.name}”?`,
       body: "You'll no longer be able to see or edit this budget. The owner can invite you again.",
-      action: "Leave Budget",
+      action: "Leave budget",
     },
   };
 
@@ -528,7 +528,7 @@ function MemberActions({
           <DropdownMenuContent align="end" className="min-w-40">
             <DropdownMenuItem onSelect={() => setConfirm("transfer")}>Make owner</DropdownMenuItem>
             <DropdownMenuItem variant="destructive" onSelect={() => setConfirm("remove")}>
-              Remove Member
+              Remove member
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

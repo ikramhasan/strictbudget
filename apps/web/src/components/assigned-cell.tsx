@@ -80,9 +80,13 @@ export function AssignedCell({
     setEditing(true);
   }
 
+  // A cell already open (the user may be typing in it) is never reset by a second request, e.g.
+  // when a refetch re-renders the row mid-entry.
+  const editingNow = useRef(false);
+  editingNow.current = editing;
   useEffect(() => {
     if (!startEditing) return;
-    start();
+    if (!editingNow.current) start();
     onStartedEditing?.();
   }, [startEditing]);
 
@@ -221,6 +225,8 @@ export function AssignedCell({
       onClick={start}
       className={cn(
         "h-7 w-full truncate rounded-md px-2 text-right text-sm tabular-nums outline-none hover:ring-1 hover:ring-input focus-visible:ring-2 focus-visible:ring-ring",
+        // Taking money back out of a category is unusual enough to stand out.
+        amount.startsWith("-") && "text-destructive",
         className,
       )}
     >

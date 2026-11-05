@@ -98,7 +98,7 @@ describe("API keys", () => {
     await user.click(within(dialog).getByRole("radio", { name: /Only the budgets I choose/ }));
     await user.click(await within(dialog).findByRole("checkbox", { name: "Side Business" }));
     await user.selectOptions(within(dialog).getByRole("combobox", { name: "Expiration" }), "30");
-    await user.click(within(dialog).getByRole("button", { name: "Create Key" }));
+    await user.click(within(dialog).getByRole("button", { name: "Create key" }));
 
     expect(await screen.findByRole("heading", { name: "Copy Your API Key" })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "API key" })).toHaveValue(
@@ -121,7 +121,7 @@ describe("API keys", () => {
     const dialog = await screen.findByRole("dialog");
     await user.type(within(dialog).getByRole("textbox", { name: "Name" }), "x");
     await user.click(within(dialog).getByRole("radio", { name: /Only the budgets I choose/ }));
-    await user.click(within(dialog).getByRole("button", { name: "Create Key" }));
+    await user.click(within(dialog).getByRole("button", { name: "Create key" }));
     expect(await within(dialog).findByText("Choose at least one budget.")).toBeInTheDocument();
     expect(api.created).toEqual([]);
   });
@@ -130,7 +130,7 @@ describe("API keys", () => {
     const user = userEvent.setup();
     renderCard();
     await user.click(await screen.findByRole("button", { name: "Revoke" }));
-    await user.click(await screen.findByRole("button", { name: "Revoke Key" }));
+    await user.click(await screen.findByRole("button", { name: "Revoke key" }));
     await waitFor(() => expect(api.deleted).toEqual(["k1"]));
     expect(await screen.findByText("You don't have any API keys.")).toBeInTheDocument();
   });

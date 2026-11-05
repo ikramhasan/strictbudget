@@ -1,6 +1,7 @@
 import { cn } from "@strictbudget/ui/lib/utils";
 import { ArrowDown, ArrowUp, Landmark } from "lucide-react";
 import type { ReactNode } from "react";
+import { AvailablePill } from "./move-money";
 
 /**
  * Setup's explanation of the method: four moves, each with a small picture of the budget doing
@@ -56,9 +57,7 @@ export function ZeroBasedPrimer({ example }: { example: (units: number) => strin
         <div className="grid w-full max-w-56 gap-1.5 rounded-md bg-background px-2.5 py-2 text-xs ring-1 ring-border">
           <div className="flex items-center justify-between gap-2">
             <span className="font-medium">Groceries</span>
-            <span className="rounded-full bg-green-200 px-1.5 font-semibold text-green-950 tabular-nums dark:bg-green-900/60 dark:text-green-50">
-              {example(380)}
-            </span>
+            <Pill units={380} example={example} />
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">
             <div className="h-full w-[76%] rounded-full bg-green-600 dark:bg-green-500" />
@@ -76,9 +75,7 @@ export function ZeroBasedPrimer({ example }: { example: (units: number) => strin
         <div className="grid w-full max-w-56 gap-1.5 text-xs">
           <div className="flex items-center justify-between gap-2 rounded-md bg-background px-2.5 py-1.5 ring-1 ring-border">
             <span className="font-medium">Dining out</span>
-            <span className="rounded-full bg-red-200 px-1.5 font-semibold text-red-950 tabular-nums dark:bg-red-900/60 dark:text-red-50">
-              −{example(40)}
-            </span>
+            <Pill units={-40} example={example} />
           </div>
           <div className="flex items-center justify-center gap-1 text-muted-foreground">
             <ArrowUp className="size-3.5" aria-hidden />
@@ -145,5 +142,16 @@ function Legend({ swatch, label, amount }: { swatch: string; label: string; amou
       </span>
       <span className="tabular-nums">{amount}</span>
     </li>
+  );
+}
+
+/** The plan's own Available pill, so the pictures look like the budget they explain. */
+function Pill({ units, example }: { units: number; example: (units: number) => string }) {
+  return (
+    <AvailablePill
+      amount={units > 0 ? "1" : units < 0 ? "-1" : "0"}
+      format={() => example(units)}
+      className="text-xs tabular-nums"
+    />
   );
 }

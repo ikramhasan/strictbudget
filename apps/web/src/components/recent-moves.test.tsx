@@ -74,7 +74,7 @@ function renderList(
   return { onOpenCategory };
 }
 
-describe("Recent Moves", () => {
+describe("Recent moves", () => {
   it("names who made each move and opens a category in its month", async () => {
     const { onOpenCategory } = renderList([
       move({ kind: "moved", fromCategoryId: "c", toCategoryId: "a", amount: "500" }),
@@ -153,7 +153,7 @@ describe("Recent Moves", () => {
     expect(screen.getByRole("img", { name: "Pat (removed)" })).toHaveTextContent("P");
     // Their own colour (avatar-three), not the grey inactive one.
     expect(screen.getByRole("img", { name: "Pat (removed)" })).toHaveClass("bg-[#41D298]");
-    expect(screen.getByRole("img", { name: "Inactive Member" })).toHaveTextContent("");
+    expect(screen.getByRole("img", { name: "Inactive member" })).toHaveTextContent("");
   });
 
   it("colours each member: the owner avatar-one, the next to join avatar-two", () => {

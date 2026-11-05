@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, Plus, Users, Wallet } from "lucide-react";
 import { z } from "zod";
+import { membersLabel, useMemberCount } from "@/components/budget-switcher";
 import { currencyName } from "@/components/currency-picker";
 import { ImportBudgetMenu } from "@/components/import-budget";
 import { PageHeader } from "@/components/page-header";
@@ -130,43 +131,7 @@ function BudgetGrid({
     // As many cards per row as fit, at least 18rem each.
     <div className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] gap-3">
       {budgets.map((b) => (
-        <Link
-          key={b.id}
-          to="/budgets/$budgetId"
-          params={{ budgetId: b.id }}
-          search={{ template }}
-          preload={false}
-          className="group rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <Card className="h-full gap-4 transition-colors duration-150 group-hover:bg-muted/40">
-            <div className="flex items-center gap-3 px-(--card-spacing)">
-              <span
-                aria-hidden
-                className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 font-semibold text-base text-primary-text"
-              >
-                {initial(b.name)}
-              </span>
-              <div className="grid min-w-0 flex-1 gap-0.5">
-                <CardTitle className="truncate font-semibold">{b.name}</CardTitle>
-                <CardDescription className="truncate">
-                  {currencyName(b.currency)} · {b.currency}
-                </CardDescription>
-              </div>
-              <ChevronRight
-                className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5"
-                aria-hidden
-              />
-            </div>
-            <div className="flex items-center justify-between gap-3 border-t px-(--card-spacing) pt-3 text-muted-foreground text-xs">
-              <span>{b.role === "owner" ? "Owner" : "Shared with you"}</span>
-              <span className="truncate">
-                {b.lastUsedAt
-                  ? lastUsedLabel(b.lastUsedAt)
-                  : `Created ${formatDate(b.createdAt.slice(0, 10), b.dateFormat)}`}
-              </span>
-            </div>
-          </Card>
-        </Link>
+        <BudgetCard key={b.id} budget={b} template={template} />
       ))}
       {newBudget && (
         <Link
@@ -178,6 +143,52 @@ function BudgetGrid({
         </Link>
       )}
     </div>
+  );
+}
+
+function BudgetCard({ budget: b, template }: { budget: Budget; template?: string }) {
+  const members = membersLabel(useMemberCount(b.id));
+  return (
+    <Link
+      to="/budgets/$budgetId"
+      params={{ budgetId: b.id }}
+      search={{ template }}
+      preload={false}
+      className="group rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Card className="h-full gap-4 transition-colors duration-150 group-hover:bg-muted/40">
+        <div className="flex items-center gap-3 px-(--card-spacing)">
+          <span
+            aria-hidden
+            className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 font-semibold text-base text-primary-text"
+          >
+            {initial(b.name)}
+          </span>
+          <div className="grid min-w-0 flex-1 gap-0.5">
+            <CardTitle className="truncate font-semibold">{b.name}</CardTitle>
+            <CardDescription className="truncate">
+              {currencyName(b.currency)} · Created{" "}
+              {formatDate(b.createdAt.slice(0, 10), b.dateFormat)}
+            </CardDescription>
+          </div>
+          <ChevronRight
+            className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5"
+            aria-hidden
+          />
+        </div>
+        <div className="flex items-center justify-between gap-3 border-t px-(--card-spacing) pt-3 text-muted-foreground text-xs">
+          <span className="flex min-w-0 items-center gap-1.5 truncate">
+            {members && <Users className="size-3.5 shrink-0" aria-hidden />}
+            {[b.role === "owner" ? "Owner" : "Shared with you", members]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+          <span className="shrink-0">
+            {b.lastUsedAt ? lastUsedLabel(b.lastUsedAt) : "Not opened yet"}
+          </span>
+        </div>
+      </Card>
+    </Link>
   );
 }
 

@@ -442,7 +442,8 @@ export function categoryRowNote(
     // reads "Fully spent".
     if (need.pastDue && money === 0n) return null;
     if (spent > 0n && left === 0n) return { strong: "", rest: "Fully spent" };
-    return { strong: note.text, rest: spent > 0n ? `. ${spentOf}` : "" };
+    // Once spending starts, what was spent says more than "Funded" (the bar already shows it).
+    return spent > 0n ? { strong: "", rest: spentOf } : { strong: note.text, rest: "" };
   }
   if (spent === 0n) return null;
   return left === 0n ? { strong: "", rest: "Fully spent" } : { strong: "", rest: spentOf };

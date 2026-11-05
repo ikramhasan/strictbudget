@@ -106,3 +106,30 @@ describe("withCurrent", () => {
     expect(withCurrent("75", "120.00", 12000n)).toBe("75");
   });
 });
+
+describe("AssignedCell opened from outside", () => {
+  it("keeps what's being typed when asked to open again (a refetch mid-entry)", async () => {
+    const actions: AssignActions = {
+      parse: (text) => (/^\d+$/.test(text) ? BigInt(text) * 100n : "Enter an amount"),
+      toInput: (a) => String(Number(a) / 100),
+      assign: vi.fn().mockResolvedValue(undefined),
+    };
+    const cell = (amount: string) => (
+      <AssignedCell
+        categoryId="c1"
+        categoryName="Rent"
+        amount={amount}
+        format={(a) => `$${Number(a) / 100}`}
+        actions={actions}
+        startEditing
+      />
+    );
+    const { rerender } = render(cell("1000"));
+    const input = screen.getByRole("textbox", { name: "Assigned to Rent" });
+    await userEvent.clear(input);
+    await userEvent.type(input, "50");
+    rerender(cell("1000"));
+    rerender(cell("2000"));
+    expect(screen.getByRole("textbox", { name: "Assigned to Rent" })).toHaveValue("50");
+  });
+});

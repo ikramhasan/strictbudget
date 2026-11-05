@@ -13,6 +13,7 @@ import {
   seriesColors,
   seriesInfo,
   seriesKeys,
+  sinceFirstMonth,
   summaryExportRows,
   transactionExportRows,
   trendsSearchSchema,
@@ -117,7 +118,7 @@ describe("trend series", () => {
     expect(keys).toHaveLength(5);
   });
 
-  it("hands out the palette in the order a chart draws its series, neutrals kept", () => {
+  it("colours each series by its place in the plan, neutrals kept", () => {
     const byCategory = trendMonths(cellsOf(rows, catalog, "category"), months);
     const info = (key: string) => seriesInfo(catalog, "category", key);
     const { keys } = withOther(byCategory, 2);
@@ -127,13 +128,14 @@ describe("trend series", () => {
       "var(--report-1)",
       "var(--report-other)",
     ]);
-    // In stack order instead, the colours follow the stack.
+    // Each keeps its colour in any chart, whatever else it shows.
     const stacked = seriesColors(["rent", "phone", "food"], info);
     expect([...stacked.values()]).toEqual([
       "var(--report-1)",
       "var(--report-2)",
       "var(--report-3)",
     ]);
+    expect(seriesColors(["food"], info).get("food")).toBe("var(--report-3)");
   });
 
   it("charts only months with transactions", () => {
@@ -272,5 +274,19 @@ describe("calendar heatmap", () => {
     expect(days.map(level)).toEqual([1, 1, 1, 2, 2, 3, 3, 4]);
     expect(level(day(0n))).toBe(0);
     expect(level(day(-5n))).toBe(0);
+  });
+});
+
+describe("sinceFirstMonth", () => {
+  const months = (["2026-09", "2026-10", "2026-11"] as const).map((month) => ({ month }));
+
+  it("leaves out the range's months before the budget's first transaction", () => {
+    expect(sinceFirstMonth(months, "2026-10").map((m) => m.month)).toEqual(["2026-10", "2026-11"]);
+  });
+
+  it("keeps every month when the first is before the range, unknown, or after it", () => {
+    expect(sinceFirstMonth(months, "2026-01")).toHaveLength(3);
+    expect(sinceFirstMonth(months, null)).toHaveLength(3);
+    expect(sinceFirstMonth(months, "2027-01")).toHaveLength(3);
   });
 });

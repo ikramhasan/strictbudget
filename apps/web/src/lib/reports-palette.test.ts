@@ -4,9 +4,11 @@ import { describe, expect, it } from "vitest";
 import { REPORT_COLORS } from "./reports";
 
 /**
- * The report palette in theme.css, checked as charts use it: every pair of neighbouring colours
- * (and each colour against the first, a donut's wrap-around) apart for normal, protan and deutan
- * vision, and every colour at least 3:1 against the page and the card in both themes.
+ * The report palette in theme.css, checked as charts use it. A category keeps its colour in every
+ * chart, so any two colours can meet: every pair is apart for normal vision and never collapses
+ * for protan and deutan vision (the legend names each series too); neighbouring slots (the plan's
+ * neighbouring categories, and each against the first) are apart for every kind of colour vision.
+ * Every colour stands at least 3:1 against the page and the card in both themes.
  */
 const css = readFileSync(join(__dirname, "../../../../packages/ui/src/styles/theme.css"), "utf8");
 const block = (selector: string) => {
@@ -98,6 +100,21 @@ describe.each(Object.entries(themes))("the %s report palette", (_, theme) => {
     ...colors.slice(1).map((_, i) => [i, i + 1] as [number, number]),
     ...colors.slice(2).map((_, i) => [0, i + 2] as [number, number]),
   ];
+
+  it("keeps every pair of colours apart", () => {
+    for (const [i, a] of colors.entries()) {
+      for (const [j, b] of colors.entries()) {
+        if (j <= i) continue;
+        expect(deltaE(a, b), `${i + 1}/${j + 1}`).toBeGreaterThanOrEqual(15);
+        for (const matrix of Object.values(CVD)) {
+          expect(
+            deltaE(simulate(a, matrix), simulate(b, matrix)),
+            `${i + 1}/${j + 1}`,
+          ).toBeGreaterThanOrEqual(5);
+        }
+      }
+    }
+  });
 
   it("keeps neighbouring colours apart for every kind of colour vision", () => {
     for (const [i, j] of neighbours) {

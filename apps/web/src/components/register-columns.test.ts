@@ -132,17 +132,28 @@ describe("layoutColumns", () => {
     expect(big.widths.outflow).toBe(130);
   });
 
-  it("lends Memo's comfortable room to a transfer payee short of reading whole", () => {
-    const tight = layoutColumns(account, {
+  it("gives Category and Memo room to read before Payee, and this year's dates no year", () => {
+    // A 1272px window with the sidebar open; a card payment's long category.
+    const layout = layoutColumns(account, {
       dragged: {},
-      available: 910,
+      available: 998,
       dateFormat: "MM/DD/YYYY",
-      content: { outflow: 66, inflow: 66, balance: 70, payee: 150, category: 120 },
+      content: { date: 36, outflow: 66, inflow: 66, balance: 70, payee: 150, category: 210 },
     });
-    expect(tight.columns).toContain("memo");
-    expect(tight.widths.payee).toBe(166);
-    // Memo keeps at least its least width (it takes what's left).
-    expect(910 - sum(tight.widths)).toBeGreaterThanOrEqual(72);
+    expect(layout.columns).toEqual(account);
+    // "11/05" with room for its editor's calendar button.
+    expect(layout.widths.date).toBe(72);
+    expect(layout.widths.category).toBeGreaterThanOrEqual(200);
+    expect(998 - sum(layout.widths)).toBeGreaterThanOrEqual(160);
+    expect(layout.widths.payee).toBeGreaterThanOrEqual(132);
+    // A last year's date widens the column to fit it whole.
+    const older = layoutColumns(account, {
+      dragged: {},
+      available: 998,
+      dateFormat: "MM/DD/YYYY",
+      content: { date: 70 },
+    });
+    expect(older.widths.date).toBe(106);
   });
 
   it("estimates text widths without a canvas, figures in tabular digits", () => {

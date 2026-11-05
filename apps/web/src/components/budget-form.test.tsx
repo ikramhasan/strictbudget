@@ -74,6 +74,16 @@ describe("BudgetForm", () => {
     });
   });
 
+  it("asks for a name under the field instead of submitting a blank one", async () => {
+    const onSubmit = renderForm();
+    await userEvent.type(screen.getByLabelText("Budget name"), "   ");
+    await userEvent.click(screen.getByRole("button", { name: "Create budget" }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    const name = screen.getByLabelText("Budget name");
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    expect(name).toHaveAccessibleDescription(/give the budget a name/i);
+  });
+
   it("shows the error returned by onSubmit", async () => {
     renderForm({ onSubmit: async () => "Something went wrong" });
     await userEvent.type(screen.getByLabelText("Budget name"), "Household");

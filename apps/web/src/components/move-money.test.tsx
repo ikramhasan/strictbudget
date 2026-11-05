@@ -124,7 +124,7 @@ describe("FixThisButton", () => {
   it("un-assigns the shortfall from a category", async () => {
     const actions = makeActions();
     render(<FixThisButton readyToAssign="-1200" format={format} actions={actions} />);
-    await userEvent.click(screen.getByRole("button", { name: "Fix This" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fix this" }));
     await userEvent.click(screen.getByRole("combobox", { name: "Un-assign money from" }));
     expect(screen.queryByRole("option", { name: /Ready to Assign/ })).not.toBeInTheDocument();
     await userEvent.click(await screen.findByRole("option", { name: /Rent/ }));
@@ -157,7 +157,7 @@ describe("FixThisButton", () => {
         }}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Fix This" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fix this" }));
     const month = await screen.findByLabelText("Month");
     expect(month).toHaveValue("2026-11");
     expect(within(month).getByText("Dec 2026")).toBeDisabled();

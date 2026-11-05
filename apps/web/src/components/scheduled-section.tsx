@@ -19,7 +19,7 @@ import {
   Split,
   Trash2,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type MouseEvent, type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import type { Account } from "@/lib/accounts";
 import { $api, apiClient } from "@/lib/api";
@@ -27,6 +27,7 @@ import { useBudget } from "@/lib/budget-context";
 import { apiErrorMessage } from "@/lib/budgets";
 import type { Flag, FlagColor } from "@/lib/flags";
 import { inCurrency } from "@/lib/money-input";
+import { shortDate } from "@/lib/register-dates";
 import {
   draftFromScheduled,
   type ScheduledTransaction,
@@ -68,6 +69,8 @@ export function ScheduledSection({
   onChanged,
   selected,
   onSelect,
+  sole,
+  onSelectOnly,
   accountCompact = false,
 }: {
   rows: readonly ScheduledTransaction[];
@@ -83,6 +86,10 @@ export function ScheduledSection({
   onChanged: () => Promise<void>;
   selected: ReadonlySet<string>;
   onSelect: (id: string, on: boolean, shift: boolean) => void;
+  /** The scheduled row that's the only thing selected, which a click edits. */
+  sole: string | null;
+  /** Selects the row and nothing else (a click on a row that isn't `sole`). */
+  onSelectOnly: (id: string) => void;
   /** The account column shows each account's name without its logo. */
   accountCompact?: boolean;
 }) {
@@ -278,6 +285,24 @@ export function ScheduledSection({
     setEditing({ id: row.id, draft: draftFromScheduled(row, inCurrency(budget, row.currency)) });
   }
 
+  /**
+   * A click on a row's cell, as on a transaction's: the first selects the row, one on the row
+   * that's the only one selected opens it. Its own controls aren't clicks on the row.
+   */
+  function clickRow(e: MouseEvent<HTMLElement>, row: ScheduledTransaction, edits: boolean) {
+    const target = e.target;
+    if (viewer || !(target instanceof Element) || !e.currentTarget.contains(target)) return;
+    if (target.closest("button, a, input, label, [role=checkbox]")) return;
+    // Shift extends the text selection too, and a double-click selects a word: neither is a drag
+    // to copy text, so they go.
+    if (e.shiftKey || e.detail > 1) window.getSelection()?.removeAllRanges();
+    else if (window.getSelection()?.toString()) return;
+    if (e.shiftKey) return onSelect(row.id, true, true);
+    if (e.metaKey || e.ctrlKey) return onSelect(row.id, !selected.has(row.id), false);
+    if (edits && sole === row.id) return open(row);
+    onSelectOnly(row.id);
+  }
+
   // Memo has no column of its own in a narrow register: each row's follows its payee.
   const memoInPayee = !columns.includes("memo");
   function withMemo(memo: string, payee: ReactNode): ReactNode {
@@ -339,8 +364,11 @@ export function ScheduledSection({
       case "date": {
         const repeats = row.frequency !== "never" && row.kind !== "splitTransfer";
         return (
-          <span className="flex items-center justify-between gap-1">
-            {formatDate(row.dateNext, budget.dateFormat)}
+          <span
+            className="flex items-center justify-between gap-1"
+            title={formatDate(row.dateNext, budget.dateFormat)}
+          >
+            {shortDate(row.dateNext, budget.dateFormat, today)}
             {repeats && (
               <Repeat
                 className="size-3.5 shrink-0 text-muted-foreground"
@@ -436,7 +464,7 @@ export function ScheduledSection({
             className="ml-8 inline-flex items-center gap-1.5 font-medium text-sm"
           >
             <CalendarDays className="size-4 text-muted-foreground" />
-            Scheduled Transactions
+            Scheduled transactions
             <span className="font-normal text-muted-foreground tabular-nums">{rows.length}</span>
             {collapsed ? (
               <ChevronRight className="size-4" aria-hidden />
@@ -481,6 +509,7 @@ export function ScheduledSection({
                 budget.dateFormat,
               )}`}
               data-selected={selected.has(row.id) || undefined}
+              data-sole={sole === row.id || undefined}
               className={cn("h-9 pointer-coarse:h-11", SCHEDULED_ROW)}
             >
               {columns.map((id) => {
@@ -510,9 +539,9 @@ export function ScheduledSection({
                       spec.align === "center" && "text-center",
                       ICON_CELL[id],
                       (id === "category" || id === "memo") && "text-muted-foreground",
-                      editable && "cursor-text",
+                      editable && "group-data-[sole]/row:cursor-text",
                     )}
-                    onClick={editable ? () => open(row) : undefined}
+                    onClick={(e) => clickRow(e, row, editable)}
                   >
                     {display(row, id)}
                   </RegisterCell>
@@ -552,6 +581,7 @@ export function ScheduledSection({
                 <RegisterRow
                   key={`${row.id}:${line.id}`}
                   aria-label={`Split line of ${row.payeeName ?? "scheduled transaction"}`}
+                  data-sole={sole === row.id || undefined}
                   className="bg-muted/40 text-muted-foreground text-xs"
                 >
                   {columns.map((id) => (
@@ -565,9 +595,9 @@ export function ScheduledSection({
                           PINNED_BG.scheduled,
                         ],
                         COLUMN_SPECS[id].align === "right" && "text-right tabular-nums",
-                        isEditable(id) && "cursor-text",
+                        isEditable(id) && "group-data-[sole]/row:cursor-text",
                       )}
-                      onClick={isEditable(id) && !viewer ? () => open(row) : undefined}
+                      onClick={(e) => clickRow(e, row, isEditable(id))}
                     >
                       {cells[id] ?? null}
                     </RegisterCell>

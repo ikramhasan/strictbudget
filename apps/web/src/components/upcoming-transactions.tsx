@@ -57,7 +57,7 @@ export function UpcomingTransactions({
         <dd className="tabular-nums">{format(upcoming.amount)}</dd>
       </div>
       <div className="flex items-baseline justify-between gap-2">
-        <dt>Available After Upcoming</dt>
+        <dt>Available after upcoming</dt>
         <dd className="tabular-nums">{format(after.toString())}</dd>
       </div>
     </dl>

@@ -17,7 +17,6 @@ import {
   ComposedChart,
   Line,
   LineChart,
-  ReferenceArea,
   ReferenceLine,
   Tooltip,
   XAxis,
@@ -218,7 +217,7 @@ const monthTick = (m: string) => monthLabel(m, "axis");
 const pickedMonth = (mark: unknown) =>
   (mark as { payload?: { month?: string } } | undefined)?.payload?.month as BudgetMonth | undefined;
 
-/** Positive-inflow series stack below zero; months above the average are shaded. */
+/** Positive-inflow series stack below zero. */
 export function TrendBarsChart({
   data,
   charted,
@@ -251,7 +250,6 @@ export function TrendBarsChart({
     if (g !== undefined) row.ghost = chartNumber(g, currency);
     return row;
   });
-  const above = charted.filter((m) => m.total > data.average && m.total > 0n);
   const config = Object.fromEntries(
     data.keys.map((k) => [k, { label: data.info(k).label, color: data.info(k).color }]),
   ) satisfies ChartConfig;
@@ -279,16 +277,6 @@ export function TrendBarsChart({
             return m ? <MonthTooltip month={m} data={data} /> : null;
           }}
         />
-        {above.map((m) => (
-          <ReferenceArea
-            key={m.month}
-            x1={m.month}
-            x2={m.month}
-            fill="var(--foreground)"
-            fillOpacity={0.06}
-            className="pointer-events-none"
-          />
-        ))}
         {ghost && (
           <Bar
             dataKey="ghost"
@@ -702,19 +690,12 @@ export function TrendBarsKey({
   overlays: TrendOverlays;
 }) {
   const { format } = useFormat();
-  const hasAbove = data.months.some((m) => m.total > data.average && m.total > 0n);
   return (
     <ul className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground text-xs">
       <li className="flex items-center gap-1.5">
         <span aria-hidden className="size-2.5 rounded-full border-[1.5px] border-foreground" />
         Total spending
       </li>
-      {hasAbove && (
-        <li className="flex items-center gap-1.5">
-          <span aria-hidden className="h-3 w-2.5 rounded-[2px] bg-foreground/10" />
-          Above the average
-        </li>
-      )}
       {overlays.average && (
         <li className="flex items-center gap-1.5">
           <span aria-hidden className="w-4 border-foreground/60 border-t border-dashed" />
