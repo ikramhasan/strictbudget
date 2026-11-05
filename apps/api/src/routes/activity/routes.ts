@@ -21,6 +21,10 @@ const ActivityEventSchema = z
       .string()
       .nullable()
       .describe("Why a change without an actor happened: 'scheduled' for an entered occurrence"),
+    requestId: z
+      .string()
+      .nullable()
+      .describe("Changes saved by one request share it; null for one made outside a request"),
     entity: z.string().describe("The table changed, e.g. 'transaction', 'category_assignment'"),
     rowId: z.string(),
     op: z.enum(AUDIT_OPS),

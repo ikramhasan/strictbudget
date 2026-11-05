@@ -4,6 +4,7 @@ import {
   type ActivityEvent,
   type ActivityLookups,
   actorName,
+  changesOf,
   describeEvent,
   groupEvents,
   moveOf,
@@ -31,6 +32,7 @@ const event = (over: Partial<ActivityEvent>): ActivityEvent => ({
   at: "2026-10-16T12:00:00.000Z",
   actor: { userId: "pat", name: "Pat", avatarColor: 2, removed: false, picture: null, agent: null },
   source: null,
+  requestId: null,
   entity: "transaction",
   rowId: "t",
   op: "update",
@@ -261,6 +263,22 @@ describe("Activity lines", () => {
   });
 });
 
+describe("changesOf dates", () => {
+  it("reads dates and timestamps as dates, and leaves text that starts with one alone", () => {
+    const changes = changesOf(
+      event({
+        before: { ...txn, memo: "2026-11-05 lunch", date: "2026-11-04" },
+        after: { ...txn, memo: "2026-11-05 dinner", date: "2026-11-05" },
+      }),
+      lookups,
+    );
+    expect(changes.map((c) => [c.label, c.before, c.after])).toEqual([
+      ["Memo", "2026-11-05 lunch", "2026-11-05 dinner"],
+      ["Date", "2026-11-04", "2026-11-05"],
+    ]);
+  });
+});
+
 describe("groupEvents", () => {
   it("folds one save into its transaction and drops bookkeeping-only changes", () => {
     const at = "2026-10-16T12:00:00.000Z";
@@ -411,6 +429,20 @@ describe("moveOf", () => {
       },
       month: "Nov 2026",
     });
+  });
+
+  it("keeps two quick saves apart: two assignments aren't a move", () => {
+    const events = [
+      { ...assigned("rent", "500", "1500"), requestId: "r2" },
+      { ...assigned("groc", "2000", "1000"), requestId: "r1" },
+    ];
+    const groups = groupEvents(events, lookups);
+    expect(groups.map((g) => [g.lead.id, g.rest.map((e) => e.id)])).toEqual([
+      ["rent", []],
+      ["groc", []],
+    ]);
+    const cover = events.map((e) => ({ ...e, requestId: "r3" }));
+    expect(groupEvents(cover, lookups)).toHaveLength(1);
   });
 
   it("counts a new assignment as starting from zero", () => {

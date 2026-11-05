@@ -120,22 +120,33 @@ export function UndoProvider({ children }: { children: ReactNode }) {
     return version;
   }, []);
 
+  /**
+   * The toast offering the way back, and the command it acts on. Undo and redo update it in place;
+   * a newer command closes it, so its button never reaches a command it doesn't name.
+   */
+  const shown = useRef<{ id: string; command: UndoCommand } | null>(null);
+  const toastCount = useRef(0);
+
   const record = useCallback(
     (command: UndoCommand) => {
       past.current = [...past.current, command];
       future.current = [];
+      if (shown.current) {
+        toast.dismiss(shown.current.id);
+        shown.current = null;
+      }
       sync();
     },
     [sync],
   );
 
-  // The toast's button runs the latest undo or redo, whatever the history is by then.
+  // The toast's button runs the latest undo or redo, once it's checked to be the one it names.
   const latest = useRef<{ undo: () => Promise<void>; redo: () => Promise<void> } | null>(null);
   /**
-   * A toast's Undo or Redo button: it runs once, and the toast stays up to say what it did
-   * ("Undone · …", with the way back) rather than closing under the pointer.
+   * A toast's Undo or Redo button for `command`: it runs once, and the toast stays up to say what
+   * it did ("Undone · …", with the way back) rather than closing under the pointer.
    */
-  const toastAction = useCallback((label: "Undo" | "Redo") => {
+  const toastAction = useCallback((id: string, label: "Undo" | "Redo", command: UndoCommand) => {
     let used = false;
     return {
       label,
@@ -143,38 +154,60 @@ export function UndoProvider({ children }: { children: ReactNode }) {
         event.preventDefault();
         if (used) return;
         used = true;
+        if ((label === "Undo" ? past : future).current.at(-1) !== command) {
+          toast.dismiss(id);
+          return;
+        }
         const run = label === "Undo" ? latest.current?.undo() : latest.current?.redo();
         void run?.catch((error: unknown) => {
-          toast.dismiss("undo");
+          toast.dismiss(id);
           reportError(error);
         });
       },
     };
   }, []);
+  /** Shows (or updates) the toast for `command`, with its Undo or Redo. */
+  const show = useCallback(
+    (message: string, command: UndoCommand, label: "Undo" | "Redo", long: boolean) => {
+      toastCount.current += 1;
+      const id = shown.current?.id ?? `undo-${toastCount.current}`;
+      shown.current = { id, command };
+      const forget = () => {
+        if (shown.current?.id === id) shown.current = null;
+      };
+      toast(message, {
+        id,
+        ...(long ? { duration: DESTRUCTIVE_TOAST_MS } : {}),
+        action: toastAction(id, label, command),
+        onDismiss: forget,
+        onAutoClose: forget,
+      });
+    },
+    [toastAction],
+  );
   /** Says what just happened, with the way back. */
   const announceStep = useCallback(
     (done: "Undone" | "Redone", command: UndoCommand) => {
       const label = command.label;
       // Redoing a delete removes it again; undoing a delete brings it back.
       const removed = Boolean(command.destructive) && done === "Redone";
-      toast(`${done} · ${label.charAt(0).toUpperCase()}${label.slice(1)}`, {
-        id: "undo",
-        ...(removed ? { duration: DESTRUCTIVE_TOAST_MS } : {}),
-        action: toastAction(done === "Undone" ? "Redo" : "Undo"),
-      });
+      show(
+        `${done} · ${label.charAt(0).toUpperCase()}${label.slice(1)}`,
+        command,
+        done === "Undone" ? "Redo" : "Undo",
+        removed,
+      );
     },
-    [toastAction],
+    [show],
   );
 
   const announce = useCallback(
     (message: string, options?: { destructive?: boolean }) => {
-      toast(message, {
-        id: "undo",
-        ...(options?.destructive ? { duration: DESTRUCTIVE_TOAST_MS } : {}),
-        action: toastAction("Undo"),
-      });
+      const command = past.current.at(-1);
+      if (!command) return void toast(message);
+      show(message, command, "Undo", Boolean(options?.destructive));
     },
-    [toastAction],
+    [show],
   );
 
   /** Runs one step after any still running, on the command at the top of its stack by then. */

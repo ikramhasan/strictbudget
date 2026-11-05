@@ -67,6 +67,9 @@ export function categorySpending(
   });
 }
 
+/** The complete months the runway averages spending over. */
+export const RUNWAY_MONTHS = 6;
+
 /**
  * The average monthly spending over the `count` months before `month`, from the first of them with
  * spending (a budget younger than that isn't averaged with empty months).
@@ -74,7 +77,7 @@ export function categorySpending(
 export function averageSpent(
   spent: ReadonlyMap<BudgetMonth, bigint>,
   month: BudgetMonth,
-  count = 6,
+  count = RUNWAY_MONTHS,
 ) {
   const months = monthsIn({ from: addMonths(month, -count), to: addMonths(month, -1) });
   const first = months.findIndex((m) => (spent.get(m) ?? 0n) !== 0n);
@@ -113,7 +116,14 @@ export function useReportsHomeData(budgetId: string) {
   const month = currentMonth();
   const range = homeRange(month);
   const worth = useQuery(netWorthOptions({ budgetId, range }));
-  const spending = useQuery(reportActivityOptions({ budgetId, range, groupBy: ["month"] }));
+  // From six months earlier: each month on the runway sparkline averages the six before it.
+  const spending = useQuery(
+    reportActivityOptions({
+      budgetId,
+      range: { from: addMonths(range.from, -RUNWAY_MONTHS), to: month },
+      groupBy: ["month"],
+    }),
+  );
   const income = useQuery(
     reportActivityOptions({ budgetId, range, kind: "income", groupBy: ["month"] }),
   );

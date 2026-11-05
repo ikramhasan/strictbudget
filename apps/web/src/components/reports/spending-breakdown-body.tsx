@@ -122,6 +122,7 @@ export function SpendingBreakdownBody({
           breakdownRows(compared.data.rows, by, { ...names, payees: compared.data.payees }, group),
           state.comparison,
           state.range,
+          state.earliest,
         )
       : undefined;
   const incomeTotal = income.data

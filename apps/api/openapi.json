@@ -9771,6 +9771,13 @@
             ],
             "description": "Why a change without an actor happened: 'scheduled' for an entered occurrence"
           },
+          "requestId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Changes saved by one request share it; null for one made outside a request"
+          },
           "entity": {
             "type": "string",
             "description": "The table changed, e.g. 'transaction', 'category_assignment'"
@@ -9818,6 +9825,7 @@
           "at",
           "actor",
           "source",
+          "requestId",
           "entity",
           "rowId",
           "op",

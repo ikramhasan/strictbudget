@@ -274,8 +274,9 @@ export interface PayeeChoice {
  */
 function payeeRank(label: string, text: string) {
   const lower = label.toLowerCase();
-  if (lower.startsWith(text)) return 0;
-  return lower.split(/[\s\-/&.]+/).some((w) => w.startsWith(text)) ? 1 : 2;
+  if (lower === text) return 0;
+  if (lower.startsWith(text)) return 1;
+  return lower.split(/[\s\-/&.]+/).some((w) => w.startsWith(text)) ? 2 : 3;
 }
 
 /** Whether a field's change event added text (typing, pasting) rather than removing it. */
@@ -400,6 +401,8 @@ export function PayeeField({
   function completionOf(text: string) {
     const lower = text.toLowerCase();
     if (!lower.trim()) return null;
+    // A payee's whole name is that payee, not a longer one that starts with it.
+    if (payees.some((p) => p.name.toLowerCase() === lower)) return null;
     const found = payees.find(
       (p) => !p.hidden && p.name.length > text.length && p.name.toLowerCase().startsWith(lower),
     );

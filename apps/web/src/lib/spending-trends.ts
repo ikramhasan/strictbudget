@@ -211,8 +211,8 @@ export function seriesKeys(
 
 /**
  * The months with the top `n` spenders kept and everything else summed into "Other", so a plan
- * with dozens of categories still reads. A lone series left over keeps its name: an "Other" of one
- * hides it for nothing.
+ * with dozens of categories still reads. A lone series left over keeps its name (an "Other" of one
+ * hides it for nothing) while the palette still has a colour for it.
  */
 export function withOther(
   months: readonly TrendMonth<string>[],
@@ -221,7 +221,7 @@ export function withOther(
   const top = topSpenders(months, n);
   const rest = new Set<string>();
   for (const m of months) for (const key of m.nets.keys()) if (!top.includes(key)) rest.add(key);
-  if (rest.size === 1) top.push(...rest);
+  if (rest.size === 1 && top.length < REPORT_COLORS) top.push(...rest);
   const keep = new Set(top);
   let other = false;
   const folded = months.map((m) => {
@@ -280,6 +280,7 @@ export function summaryExportRows({
   rows,
   catalog,
   range,
+  first,
   average,
   currency,
   numberFormat,
@@ -287,11 +288,17 @@ export function summaryExportRows({
   rows: readonly ReportSum[];
   catalog: Catalog;
   range: MonthRange;
+  /** The budget's first month with transactions: the Average counts months from it (`sinceFirstMonth`). */
+  first: BudgetMonth | null;
   average: (total: bigint, months: number) => bigint;
   currency: CurrencyCode;
   numberFormat: BudgetFormatSettings["numberFormat"];
 }): DelimitedCell[][] {
   const months = monthsIn(range);
+  const counted = sinceFirstMonth(
+    months.map((month) => ({ month })),
+    first,
+  ).length;
   const nets = new Map<string, Map<string, bigint>>();
   for (const r of rows) {
     if (!r.month) continue;
@@ -316,7 +323,7 @@ export function summaryExportRows({
         info.groupName,
         info.label,
         ...values.map(amount),
-        amount(average(total, months.length)),
+        amount(average(total, counted)),
         amount(total),
       ];
     }),

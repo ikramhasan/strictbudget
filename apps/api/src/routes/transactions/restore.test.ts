@@ -52,7 +52,7 @@ type Txn = {
 };
 type Category = { id: string; name: string };
 type Group = { kind: string | null; categories: Category[] };
-type ErrorBody = { error: { code: string } };
+type ErrorBody = { error: { code: string; details?: unknown } };
 
 const TODAY = "2026-10-01";
 
@@ -381,7 +381,9 @@ describe("restoring a deleted transaction (undo)", () => {
     // Back already: the id is taken.
     const again = await ctx.post({ ...ctx.restoreBody(plain), id: plain.id });
     expect(again.status).toBe(409);
-    expect((await json<ErrorBody>(again)).error.code).toBe("ID_UNAVAILABLE");
+    const refused = await json<ErrorBody>(again);
+    expect(refused.error.code).toBe("ID_UNAVAILABLE");
+    expect(refused.error.details).toEqual({ live: [plain.id] });
   });
 
   it("only takes an id deleted from this budget, and only as a restore", async () => {

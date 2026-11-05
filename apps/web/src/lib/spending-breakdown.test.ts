@@ -263,6 +263,14 @@ describe("spending breakdown stats", () => {
     );
     expect(average.get("a")).toBe(10000n);
     expect(rowChange({ ...now, key: "b" }, average).before).toBe(0n);
+    // With the first transaction in September, July and August aren't months of zero spending.
+    const sinceFirst = comparedSpending(
+      before,
+      { from: "2026-07", to: "2026-09", average: true },
+      range,
+      "2026-09",
+    );
+    expect(sinceFirst.get("a")).toBe(30000n);
   });
 });
 
@@ -286,6 +294,15 @@ describe("spending breakdown export", () => {
       ["Test", "O13", { raw: "-130.00" }, { raw: "-20.00" }, { raw: "-75.00" }, { raw: "-150.00" }],
       ["Wants", "T2", { raw: "0.00" }, { raw: "2.00" }, { raw: "1.00" }, { raw: "2.00" }],
     ]);
+    const sinceFirst = summaryExportRows(
+      [sum("o13", -2000, 1, "2026-10")],
+      categories,
+      { from: "2026-09", to: "2026-10" },
+      "comma_dot",
+      "USD",
+      "2026-10",
+    );
+    expect(sinceFirst[1]?.at(-2)).toEqual({ raw: "-20.00" });
   });
 
   it("writes the transactions in the export columns", () => {

@@ -57,11 +57,17 @@ export function createBodyFromTransaction(transaction: Transaction): CreateTrans
 }
 
 /**
- * The API refused to bring a transaction back with its ids (its change log doesn't show it
- * deleted); it can still come back as a new record.
+ * The API refused to bring a transaction back with its ids: it's back already (`liveIds`), or its
+ * change log doesn't show it deleted, when it can still come back as a new record.
  */
 export function isIdUnavailable(error: unknown): boolean {
   return (error as { error?: { code?: unknown } } | null)?.error?.code === "ID_UNAVAILABLE";
+}
+
+/** The ids an `ID_UNAVAILABLE` refusal names as back already. */
+export function liveIds(error: unknown): string[] {
+  const live = (error as { error?: { details?: { live?: unknown } } } | null)?.error?.details?.live;
+  return Array.isArray(live) ? live.filter((id): id is string => typeof id === "string") : [];
 }
 
 /** `createBodyFromTransaction`'s body without its ids: the transaction comes back as a new one. */

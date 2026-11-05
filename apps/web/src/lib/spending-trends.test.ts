@@ -1,7 +1,7 @@
-import { averageOf, toDelimited, trendMonths } from "@strictbudget/engine";
+import { averageOf, type BudgetMonth, toDelimited, trendMonths } from "@strictbudget/engine";
 import { describe, expect, it } from "vitest";
 import type { CategoryList } from "./categories";
-import type { ReportSum, ReportTransaction } from "./reports";
+import { REPORT_COLORS, type ReportSum, type ReportTransaction } from "./reports";
 import {
   calendarLevels,
   calendarWeeks,
@@ -118,6 +118,20 @@ describe("trend series", () => {
     expect(keys).toHaveLength(5);
   });
 
+  it("folds a lone leftover into Other once every palette colour is taken", () => {
+    const many = Array.from({ length: REPORT_COLORS + 1 }, (_, i) => `c${i}`);
+    const month = {
+      month: "2026-10" as BudgetMonth,
+      total: 0n,
+      spending: 0n,
+      netInflows: 0n,
+      nets: new Map(many.map((key, i) => [key, BigInt(-100 - i)])),
+    };
+    const { keys } = withOther([month], REPORT_COLORS);
+    expect(keys).toHaveLength(REPORT_COLORS + 1);
+    expect(keys.at(-1)).toBe(OTHER_KEY);
+  });
+
   it("colours each series by its place in the plan, neutrals kept", () => {
     const byCategory = trendMonths(cellsOf(rows, catalog, "category"), months);
     const info = (key: string) => seriesInfo(catalog, "category", key);
@@ -155,6 +169,7 @@ describe("spending trends export", () => {
         rows,
         catalog,
         range: { from: "2026-08", to: "2026-10" },
+        first: null,
         average: averageOf,
         currency: "USD",
         numberFormat: "comma_dot",
@@ -169,6 +184,20 @@ describe("spending trends export", () => {
       '"Needs","Groceries",-3.00,0.00,-200.00,-67.67,-203.00',
       '"Needs","Gas",0.00,0.00,-10.00,-3.33,-10.00',
     ]);
+  });
+
+  it("averages from the budget's first month, as the screen does", () => {
+    const [, , rent] = summaryExportRows({
+      rows,
+      catalog,
+      range: { from: "2026-08", to: "2026-10" },
+      first: "2026-09",
+      average: averageOf,
+      currency: "USD",
+      numberFormat: "comma_dot",
+    });
+    // Rent spent -1,005.00 over Sep and Oct: the average is over those two months, not three.
+    expect(rent?.at(-2)).toEqual({ raw: "-502.50" });
   });
 
   it("writes amounts with the symbol and no grouping", () => {

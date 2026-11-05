@@ -209,7 +209,7 @@ function show(
   if (column === "group_id") return l.group(value) ?? "a deleted group";
   if (column === "payee_id") return l.payee(value) ?? "a deleted payee";
   if (isMonthColumn(column) && /^\d{4}-\d{2}/.test(value)) return monthOfDate(value);
-  if (/^\d{4}-\d{2}-\d{2}([T ]|$)/.test(value)) return l.formatDate(value.slice(0, 10));
+  if (/^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}|$)/.test(value)) return l.formatDate(value.slice(0, 10));
   const phrases = BOOLEANS[column];
   if (phrases && (value === "true" || value === "false"))
     return value === "true" ? phrases[0] : phrases[1];
@@ -466,12 +466,10 @@ function savedWith(
   event: ActivityEvent,
   restored: ReadonlySet<string>,
 ) {
-  // `later` updates the row `earlier` added, as a save does while it writes it.
-  const fillIn = (earlier: ActivityEvent, later: ActivityEvent) =>
-    earlier.op === "insert" &&
-    !restored.has(earlier.id) &&
-    later.op === "update" &&
-    earlier.id < later.id;
+  // One updates the row the other added, as a save does while it writes it. The two share a
+  // timestamp, and ids made in the same millisecond aren't in order, so either may come first.
+  const fillIn = (a: ActivityEvent, b: ActivityEvent) =>
+    a.op === "insert" && !restored.has(a.id) && b.op === "update";
   const sameRow = (a: ActivityEvent, b: ActivityEvent) =>
     a.entity === b.entity && a.rowId === b.rowId && !fillIn(a, b) && !fillIn(b, a);
   return group.every(
@@ -489,7 +487,8 @@ function savedWith(
 
 /**
  * Changes saved together (one transaction with its split lines and new payee, one Auto-Assign)
- * as one entry: the same person or job within a couple of seconds, in list order. The lead is the
+ * as one entry: one request's changes, or for changes made outside a request (`requestId` null),
+ * the same job within a couple of seconds, in list order. The lead is the
  * transaction when there is one; changes with nothing to show (bookkeeping only) are left out, as
  * are a restored transaction's split lines, which come back with it. `restored` says which events
  * brought a deleted row back (`restoredEvents`).
@@ -506,13 +505,13 @@ export function groupEvents(
   for (const event of shown) {
     const group = groups.at(-1);
     const first = group?.[0];
-    if (
-      group &&
+    const together =
       first &&
-      actorKey(first) === actorKey(event) &&
-      Math.abs(Date.parse(first.at) - Date.parse(event.at)) <= 2000 &&
-      savedWith(group, event, restored)
-    ) {
+      (first.requestId || event.requestId
+        ? first.requestId === event.requestId
+        : actorKey(first) === actorKey(event) &&
+          Math.abs(Date.parse(first.at) - Date.parse(event.at)) <= 2000);
+    if (group && together && savedWith(group, event, restored)) {
       group.push(event);
     } else {
       groups.push([event]);

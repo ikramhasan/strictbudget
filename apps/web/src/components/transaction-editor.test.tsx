@@ -53,7 +53,9 @@ function renderEditor(
     columns = registerColumns(false),
     initial,
     focusCell,
+    morePayees = [],
   }: {
+    morePayees?: string[];
     another?: boolean;
     columns?: ReturnType<typeof registerColumns>;
     initial?: Draft;
@@ -78,6 +80,17 @@ function renderEditor(
             account("visa", "credit_card"),
           ]}
           payees={[
+            ...morePayees.map((name, i) => ({
+              id: `more-${i}`,
+              name,
+              hidden: false,
+              useCount: 1,
+              categorization: "auto" as const,
+              defaultCategoryId: null,
+              autoCategoryId: null,
+              prefillCategoryId: null,
+              recentCategoryIds: [],
+            })),
             {
               id: "p1",
               name: "Market",
@@ -322,6 +335,17 @@ describe("TransactionEditor", () => {
     await user.keyboard("r");
     expect(payee).toHaveValue("Market");
     expect([payee.selectionStart, payee.selectionEnd]).toEqual([3, 6]);
+    await user.keyboard("{Tab}");
+    expect(payee).toHaveValue("Market");
+  });
+
+  it("stops at a payee whose whole name is typed, though a longer one starts with it", async () => {
+    // The longer name comes first, so "m" completes to it.
+    renderEditor("checking", { morePayees: ["Market Hall"] });
+    const user = userEvent.setup();
+    const payee = screen.getByLabelText("Payee") as HTMLInputElement;
+    await user.type(payee, "market");
+    expect(payee).toHaveValue("market");
     await user.keyboard("{Tab}");
     expect(payee).toHaveValue("Market");
   });

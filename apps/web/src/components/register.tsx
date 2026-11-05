@@ -158,6 +158,7 @@ import {
   type CreateTransactionBody,
   createBodyFromTransaction,
   isIdUnavailable,
+  liveIds,
   updateBodyFromTransaction,
   withoutIds,
 } from "@/lib/transaction-history";
@@ -1413,8 +1414,9 @@ export function Register({
 
   /**
    * Brings a deleted transaction back (an undo): as the same record, so it keeps its place in its
-   * day and later commands still find it, going on from the version it was deleted at. Should the
-   * API not know it as deleted, it comes back as a new one.
+   * day and later commands still find it, going on from the version it was deleted at. One that's
+   * back already (another tab or a partner restored it) is left as it is; should the API not know
+   * it as deleted, it comes back as a new one.
    */
   async function restoreTransaction(t: Transaction, extra: Partial<CreateTransactionBody> = {}) {
     const run = (body: CreateTransactionBody) =>
@@ -1433,6 +1435,7 @@ export function Register({
       return restored;
     } catch (error) {
       if (!isIdUnavailable(error)) throw error;
+      if (liveIds(error).length > 0) return { ...t, feeTransactionId: null };
       return run(withoutIds(body));
     }
   }
@@ -1446,14 +1449,20 @@ export function Register({
     let current = before;
     /** The version this command last left each row at; undo and redo follow the tab's steps. */
     let left = after;
+    /** Rows an undo that stopped partway brought back; trying it again skips them. */
+    let back = new Map<string, Transaction>();
     // Reject deletes the unapproved rows, so it's undone like a delete.
     const deletes = action.type === "delete" || action.type === "reject";
     return {
       undo: async () => {
         if (deletes) {
-          const restored: Transaction[] = [];
-          for (const transaction of before) restored.push(await restoreTransaction(transaction));
-          current = restored;
+          for (const transaction of before) {
+            if (!back.has(transaction.id)) {
+              back.set(transaction.id, await restoreTransaction(transaction));
+            }
+          }
+          current = before.map((transaction) => back.get(transaction.id) ?? transaction);
+          back = new Map();
         } else {
           const undone: Record<string, number> = {};
           for (const transaction of before) {

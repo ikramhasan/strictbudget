@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createBodyFromTransaction,
   isIdUnavailable,
+  liveIds,
   updateBodyFromTransaction,
   withoutIds,
 } from "./transaction-history";
@@ -236,5 +237,11 @@ describe("transaction history bodies", () => {
     expect(isIdUnavailable({ error: { code: "ID_UNAVAILABLE", message: "" } })).toBe(true);
     expect(isIdUnavailable({ error: { code: "NOT_FOUND", message: "" } })).toBe(false);
     expect(isIdUnavailable(null)).toBe(false);
+  });
+
+  it("reads the ids a refusal names as back already", () => {
+    const refusal = { error: { code: "ID_UNAVAILABLE", message: "", details: { live: ["t1"] } } };
+    expect(liveIds(refusal)).toEqual(["t1"]);
+    expect(liveIds({ error: { code: "ID_UNAVAILABLE", message: "" } })).toEqual([]);
   });
 });

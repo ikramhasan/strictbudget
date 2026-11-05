@@ -311,17 +311,29 @@ export function shares(row: BreakdownRow, breakdown: Breakdown, income: bigint |
 }
 
 /**
+ * How many of `range`'s months an average counts: those from the budget's first month with
+ * transactions (`first`), or all of them for a range wholly before it.
+ */
+function countedMonths(range: MonthRange, first: BudgetMonth | null): number {
+  const months = monthsIn(range);
+  const since = first ? months.filter((m) => m >= first) : months;
+  return since.length > 0 ? since.length : months.length;
+}
+
+/**
  * What each row spent in the comparison period, keyed like the rows: the period's spending, or for
- * an average comparison, the average month times the range's months.
+ * an average comparison, the average month times the range's months. Both count months from the
+ * budget's first with transactions (`first`), as the range's own figures do.
  */
 export function comparedSpending(
   rows: readonly BreakdownRow[],
   comparison: ComparisonRange,
   range: MonthRange,
+  first: BudgetMonth | null = null,
 ): Map<string, bigint> {
   const out = new Map<string, bigint>();
-  const months = monthsIn(comparison).length;
-  const length = BigInt(monthsIn(range).length);
+  const months = countedMonths(comparison, first);
+  const length = BigInt(countedMonths(range, first));
   for (const r of rows) {
     out.set(r.key, comparison.average ? -averageOf(r.net, months) * length : -r.net);
   }
@@ -345,8 +357,10 @@ export function summaryExportRows(
   range: MonthRange,
   numberFormat: NumberFormat,
   currency: Parameters<typeof currencyExponent>[0],
+  first: BudgetMonth | null = null,
 ): DelimitedCell[][] {
   const months = monthsIn(range);
+  const counted = countedMonths(range, first);
   const exponent = currencyExponent(currency);
   const amount = (a: bigint) => ({ raw: plainAmount(a, exponent, numberFormat) });
   const byCategory = new Map<string, Map<BudgetMonth, bigint>>();
@@ -369,7 +383,7 @@ export function summaryExportRows(
       c.groupKey === UNCATEGORIZED_GROUP ? "" : c.groupName,
       c.name,
       ...values.map(amount),
-      amount(averageOf(total, months.length)),
+      amount(averageOf(total, counted)),
       amount(total),
     ]);
   }

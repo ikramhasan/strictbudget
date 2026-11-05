@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { Toaster, toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CommandRegistryProvider, useScreenCommands } from "@/lib/commands";
-import { UndoProvider } from "@/lib/undo";
+import { UndoProvider, useUndo } from "@/lib/undo";
 import { NO_AUTO_ASSIGN } from "@/test/fixtures";
 import { AutoAssignClose, AutoAssignPanel, autoAssignSummary } from "./auto-assign";
 
@@ -82,19 +82,28 @@ describe("AutoAssignPanel", () => {
   it("closes the pop-up it sits in and says what changed, with Undo", async () => {
     const user = userEvent.setup();
     const close = vi.fn();
+    // Applying records the change, as the plan does, so the toast can offer to undo it.
+    function Panel() {
+      const history = useUndo();
+      return (
+        <AutoAssignPanel
+          bare
+          categories={categories}
+          names={names}
+          selection={false}
+          readyToAssign={0n}
+          format={format}
+          onApply={async () =>
+            history.record({ label: "auto-assign", undo: vi.fn(), redo: vi.fn() })
+          }
+        />
+      );
+    }
     render(
       <UndoProvider>
         <Toaster />
         <AutoAssignClose value={close}>
-          <AutoAssignPanel
-            bare
-            categories={categories}
-            names={names}
-            selection={false}
-            readyToAssign={0n}
-            format={format}
-            onApply={vi.fn().mockResolvedValue(undefined)}
-          />
+          <Panel />
         </AutoAssignClose>
       </UndoProvider>,
     );

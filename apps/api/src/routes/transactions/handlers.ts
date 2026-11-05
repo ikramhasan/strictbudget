@@ -285,11 +285,13 @@ async function restorableIds(tx: Db, budgetId: string, body: CreateBody) {
   if (!body.restore) {
     throw new AppError(400, "BAD_REQUEST", "Ids are only given when restoring (`restore`)");
   }
-  const unavailable = () =>
+  // `details.live` names the ids that are back already (restored since, by this or another tab).
+  const unavailable = (live: string[] = []) =>
     new AppError(
       409,
       "ID_UNAVAILABLE",
       "That transaction can't come back as it was: it isn't a deleted transaction of this budget",
+      { live },
     );
   if (new Set(ids).size !== ids.length) throw unavailable();
   const deletes = await tx
@@ -312,7 +314,9 @@ async function restorableIds(tx: Db, budgetId: string, body: CreateBody) {
     .select({ id: transaction.id })
     .from(transaction)
     .where(inArray(transaction.id, ids));
-  if (versions.size !== ids.length || existing.length > 0) throw unavailable();
+  if (versions.size !== ids.length || existing.length > 0) {
+    throw unavailable(existing.map((row) => row.id));
+  }
   return versions;
 }
 

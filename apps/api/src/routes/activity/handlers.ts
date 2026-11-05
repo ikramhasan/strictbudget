@@ -38,6 +38,7 @@ async function events(
       actorName: user.name,
       actorPicture: pictureUrlSql(user.id),
       source: auditEvent.source,
+      requestId: auditEvent.requestId,
       entity: auditEvent.tableName,
       rowId: auditEvent.rowId,
       op: auditEvent.op,
@@ -73,6 +74,7 @@ async function events(
           }
         : null,
       source: r.source,
+      requestId: r.requestId || null,
       entity: r.entity,
       rowId: r.rowId,
       op: r.op,

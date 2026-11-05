@@ -1,4 +1,10 @@
-import { addMonths, type BudgetMonth, formatAmount, money } from "@strictbudget/engine";
+import {
+  accountFamily,
+  addMonths,
+  type BudgetMonth,
+  formatAmount,
+  money,
+} from "@strictbudget/engine";
 import {
   Command,
   CommandEmpty,
@@ -184,6 +190,11 @@ const THEMES: readonly { value: Theme; label: string; icon: LucideIcon }[] = [
   { value: "dark", label: "Dark theme", icon: Moon },
   { value: "system", label: "System theme", icon: Monitor },
 ];
+
+/** An open account whose page is a register (a loan's page is the loan instead). */
+function hasRegister(account: { closed: boolean; type: Parameters<typeof accountFamily>[0] }) {
+  return !account.closed && accountFamily(account.type) !== "loan";
+}
 
 /** How far back and ahead a typed month name reaches until the budget's own range is known. */
 const MONTHS_BACK = 12;
@@ -536,12 +547,12 @@ function PaletteBody({
         })),
       });
 
-      const openAccounts = list.filter((account) => !account.closed);
+      const registers = list.filter(hasRegister);
       if (editor) {
         all.push({
           heading: "Actions",
           items: [
-            ...(screenAdds || openAccounts.length === 0
+            ...(screenAdds || registers.length === 0
               ? []
               : [
                   {
@@ -715,22 +726,20 @@ function PaletteBody({
         {
           heading: "Accounts",
           loose: true,
-          items: (accounts.data?.accounts ?? [])
-            .filter((account) => !account.closed)
-            .map((account) => ({
-              id: `add:${account.id}`,
-              label: account.name,
-              keywords: [account.note].filter(Boolean),
-              icon: Landmark,
-              hint: inBudget(account.balances.working, account.currency),
-              afterClose: true,
-              // The register, then its add row once it offers one.
-              run: () =>
-                void navigate({
-                  to: "/budgets/$budgetId/accounts/$accountId",
-                  params: { budgetId, accountId: account.id },
-                }).then(() => registry?.runWhenOffered(addLabel)),
-            })),
+          items: (accounts.data?.accounts ?? []).filter(hasRegister).map((account) => ({
+            id: `add:${account.id}`,
+            label: account.name,
+            keywords: [account.note].filter(Boolean),
+            icon: Landmark,
+            hint: inBudget(account.balances.working, account.currency),
+            afterClose: true,
+            // The register, then its add row once it offers one.
+            run: () =>
+              void navigate({
+                to: "/budgets/$budgetId/accounts/$accountId",
+                params: { budgetId, accountId: account.id },
+              }).then(() => registry?.runWhenOffered(addLabel)),
+          })),
         },
       ];
     }

@@ -179,7 +179,11 @@ function Report() {
         monthsIn(state.comparison),
       );
       if (state.comparison.average) {
-        compared = { kind: "average", label, average: averageMonthlySpending(compMonths) };
+        compared = {
+          kind: "average",
+          label,
+          average: averageMonthlySpending(sinceFirstMonth(compMonths, state.earliest)),
+        };
       } else {
         compared = {
           kind: "period",
@@ -268,6 +272,7 @@ function Report() {
             rows: activity.data.rows.filter((r) => r.month && r.month >= state.range.from),
             catalog,
             range: state.range,
+            first: state.earliest,
             average: averageOf,
             currency,
             numberFormat: budget.numberFormat,

@@ -69,6 +69,7 @@ function Report() {
             state.range,
             budget.numberFormat,
             budget.currency,
+            state.earliest,
           ),
           delimiter,
         ),

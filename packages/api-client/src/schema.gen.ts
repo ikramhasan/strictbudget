@@ -5225,6 +5225,8 @@ export interface components {
             actor: components["schemas"]["MemberRef"] & unknown;
             /** @description Why a change without an actor happened: 'scheduled' for an entered occurrence */
             source: string | null;
+            /** @description Changes saved by one request share it; null for one made outside a request */
+            requestId: string | null;
             /** @description The table changed, e.g. 'transaction', 'category_assignment' */
             entity: string;
             rowId: string;
