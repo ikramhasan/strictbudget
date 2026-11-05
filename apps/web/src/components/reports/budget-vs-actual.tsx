@@ -20,6 +20,7 @@ import {
   type VarianceRow,
 } from "@/lib/budget-vs-actual";
 import { monthLabel } from "@/lib/reports";
+import { CategoryLabel } from "../category-label";
 
 /** Under, on and over plan: blue, teal and orange from the report palette (both themes). */
 export const STATUS_COLOR: Record<PlanStatus, string> = {
@@ -118,7 +119,7 @@ export function BulletChart({
                   className="grid w-full grid-cols-1 items-center gap-x-3 gap-y-1 rounded-md px-1 py-1 text-left text-sm hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring sm:grid-cols-[minmax(8rem,14rem)_1fr_minmax(9rem,auto)]"
                 >
                   <span className="flex min-w-0 items-center gap-1.5">
-                    <span className="truncate">{r.name}</span>
+                    <CategoryLabel name={r.name} />
                     {r.hidden && <HiddenBadge />}
                   </span>
                   <span className="relative h-5 rounded-sm" aria-hidden>
@@ -221,10 +222,10 @@ export function VarianceTable({
                     />
                     <button
                       type="button"
-                      className="truncate text-left hover:underline"
+                      className="min-w-0 text-left hover:underline"
                       onClick={() => onCategory(r)}
                     >
-                      {r.name}
+                      <CategoryLabel name={r.name} />
                     </button>
                     {r.hidden && <HiddenBadge />}
                   </span>
@@ -347,7 +348,7 @@ export function Heatmap({
                   scope="row"
                   className="sticky left-0 z-10 max-w-36 truncate bg-card pr-2 text-left font-normal"
                 >
-                  {r.name}
+                  <CategoryLabel name={r.name} />
                 </th>
                 {r.cells.map((c) => (
                   <td key={c.month} className="p-0">
@@ -392,7 +393,9 @@ export function HeatmapTable({ report }: { report: BudgetVsActual }) {
       <TableBody>
         {rows.map((r) => (
           <TableRow key={r.categoryId}>
-            <TableCell>{r.name}</TableCell>
+            <TableCell>
+              <CategoryLabel name={r.name} />
+            </TableCell>
             {r.cells.map((c) => (
               <TableCell
                 key={c.month}

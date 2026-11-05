@@ -3,7 +3,7 @@ import { Button } from "@strictbudget/ui/components/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { monthLabel } from "@/lib/months";
 
 const MONTH_NAMES = [
@@ -27,7 +27,10 @@ export function MonthNav({
   first,
   last,
   onChange,
+  note,
 }: {
+  /** Under the month's name (its note). */
+  note?: ReactNode;
   month: BudgetMonth;
   current: BudgetMonth;
   first: BudgetMonth;
@@ -59,12 +62,18 @@ export function MonthNav({
           if (o) setYear(Number(month.slice(0, 4)));
         }}
       >
-        <PopoverTrigger asChild>
-          <Button variant="ghost" className="px-2 text-title tabular-nums">
-            {monthLabel(month)}
-            <ChevronDown />
-          </Button>
-        </PopoverTrigger>
+        <div className="grid justify-items-start leading-none">
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              className="h-auto px-2 py-0.5 font-semibold text-lg tabular-nums tracking-tight"
+            >
+              {monthLabel(month)}
+              <ChevronDown />
+            </Button>
+          </PopoverTrigger>
+          {note && <div className="px-2">{note}</div>}
+        </div>
         <PopoverContent align="start" className="w-64">
           <div className="flex items-center justify-between">
             <Button

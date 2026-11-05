@@ -18,6 +18,7 @@ import { cn } from "@strictbudget/ui/lib/utils";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { CategoryLabel } from "@/components/category-label";
 import { ChartCard } from "@/components/reports/chart-card";
 import { MonthStepper } from "@/components/reports/range-picker";
 import { toolbarSelectClass } from "@/components/reports/report-filter-bar";
@@ -304,7 +305,7 @@ function CategoryPace({
               <TableRow key={c.categoryId} className={cn(!c.included && "text-muted-foreground")}>
                 <TableCell>
                   <span className="grid">
-                    <span>{c.name}</span>
+                    <CategoryLabel name={c.name} />
                     <span className="text-muted-foreground text-xs">
                       {c.groupName}
                       {c.reason && ` · ${REASON_LABELS[c.reason]}`}

@@ -1,5 +1,12 @@
 @import "@strictbudget/ui/globals.css";
 
+/* The page is paper (--page); white is kept for what's raised on it (theme.css). */
+@layer base {
+  body {
+    background-color: var(--page);
+  }
+}
+
 /* A register row jumped to (a transfer's other side): holds the highlight, then fades it out. */
 @keyframes row-highlight {
   0%,

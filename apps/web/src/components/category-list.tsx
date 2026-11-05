@@ -57,6 +57,7 @@ import { useShortcut } from "@/lib/shortcuts";
 import { categoryRowNote } from "@/lib/targets";
 import { type AssignActions, AssignedCell } from "./assigned-cell";
 import { ActivityButton, type ActivityTarget, type CardSummary } from "./category-activity";
+import { CategoryLabel } from "./category-label";
 import { CategoryMovesButton, type CategoryMovesContext } from "./category-moves";
 import { AvailableButton, AvailablePill, type MoveActions } from "./move-money";
 import { NamePopover, splitEmoji } from "./name-popover";
@@ -145,7 +146,7 @@ const NO_GROUPS: ReadonlySet<string> = new Set();
 // On a phone a row is its name and Available, a thumb's height; Assigned and Activity are in the
 // category's drawer.
 const ROW =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-1 px-2 py-1.5 max-md:min-h-12 md:grid-cols-[minmax(9rem,1fr)_6rem_6.5rem] @min-[44rem]/list:md:grid-cols-[minmax(12rem,1fr)_6rem_6rem_6.5rem]";
+  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-1 px-2 py-1.5 max-md:min-h-12 md:grid-cols-[minmax(9rem,1fr)_6rem_6.5rem] @min-[32rem]/list:md:grid-cols-[minmax(9rem,1fr)_6rem_6rem_6.5rem]";
 /** The plan's keys also work from a category's open Assigned input. */
 const inAssigned = (target: Element) => target.closest("[data-assigned-cell]") !== null;
 /** Cells left off a phone's narrow rows. */
@@ -154,7 +155,7 @@ const WIDE_ONLY = "max-md:hidden";
  * Activity gives way first when the table itself is narrow (a smaller window beside the
  * inspector): names keep their room, and the inspector still shows each category's activity.
  */
-const ACTIVITY_COL = "max-md:hidden @max-[44rem]/list:hidden";
+const ACTIVITY_COL = "max-md:hidden @max-[32rem]/list:hidden";
 const NAME_CELL = "flex min-w-0 items-center gap-1";
 const FIGURE = "min-w-0 truncate text-right tabular-nums";
 /**
@@ -833,7 +834,7 @@ function GroupSection({
               <NamePopover
                 title="Category group name"
                 withEmoji
-                initial={{ name: group.name, note: "" }}
+                initial={{ name: group.name }}
                 onSubmit={({ name }) => actions.updateGroup(group.id, { name })}
                 actions={(close) => (
                   <>
@@ -903,6 +904,13 @@ function GroupSection({
           <TotalCells
             totals={totals}
             format={format}
+            overspent={
+              figures?.month.categories.some(
+                (c) =>
+                  c.available.startsWith("-") &&
+                  group.categories.some((g) => g.id === c.categoryId),
+              ) ?? false
+            }
             activity={
               figures && (
                 <Activity
@@ -1044,14 +1052,13 @@ function CategoryRow({
             <NamePopover
               title="Category name"
               withEmoji
-              withNote
               nameLockedReason={
                 isPayment
                   ? "Named after its credit account. Rename the account instead."
                   : undefined
               }
-              initial={{ name: category.name, note: category.note }}
-              onSubmit={({ name, note }) => actions.updateCategory(category.id, { name, note })}
+              initial={{ name: category.name }}
+              onSubmit={({ name }) => actions.updateCategory(category.id, { name })}
               actions={(close) => (
                 <>
                   <Button
@@ -1093,7 +1100,7 @@ function CategoryRow({
                     selectAndEdit();
                   }}
                 >
-                  <CategoryName name={category.name} />
+                  <CategoryLabel name={category.name} />
                 </Button>
               }
             />
@@ -1224,23 +1231,6 @@ function RowNote({ note }: { note: { strong: string; rest: string } | null }) {
 /** A name as a screen reader should say it: without its leading emoji. */
 const spoken = (name: string) => splitEmoji(name).text;
 
-/**
- * A category's name with its leading emoji (if any) on a soft backdrop, so a dark emoji stays
- * visible on a dark row.
- */
-function CategoryName({ name }: { name: string }) {
-  const { emoji, text } = splitEmoji(name);
-  if (!emoji) return <span className="truncate">{name}</span>;
-  return (
-    <span className="flex min-w-0 items-center gap-1.5">
-      <span aria-hidden className="shrink-0 rounded-sm px-0.5 leading-none dark:bg-foreground/12">
-        {emoji}
-      </span>
-      <span className="truncate">{text}</span>
-    </span>
-  );
-}
-
 /** The note on an overspent category: by how much, e.g. "Overspent by $15.00". */
 function OverspentNote({
   totals,
@@ -1266,9 +1256,12 @@ function TotalCells({
   totals,
   format,
   activity,
+  overspent = false,
 }: {
   totals: MonthTotals;
   format: CategoryFigures["format"];
+  /** A category inside is overspent: a red dot flags the group even when it's folded. */
+  overspent?: boolean;
   /** Activity as a drill-down button instead of a plain number. */
   activity?: ReactNode;
 }) {
@@ -1281,6 +1274,13 @@ function TotalCells({
         {activity ?? <span className={FIGURE_PAD}>{format(totals.activity)}</span>}
       </span>
       <span className={cn(FIGURE, FIGURE_PAD, "font-medium text-sm")}>
+        {overspent && (
+          <span
+            role="img"
+            aria-label="Has an overspent category"
+            className="mr-1.5 inline-block size-1.5 rounded-full bg-destructive align-middle"
+          />
+        )}
         {format(totals.available)}
       </span>
     </>

@@ -229,11 +229,12 @@ function AddAccountPrompt({ compact = false }: { compact?: boolean }) {
     <output
       aria-live="polite"
       className={cn(
-        "@container rounded-lg border border-input border-dashed bg-muted/40",
-        // In the top bar: one compact line, like the amount it stands in for.
+        "rounded-lg border border-input border-dashed bg-muted/40",
+        // In the top bar: one compact line at its content's width (no container query there: a
+        // size container takes no width from its content and would collapse).
         compact
-          ? "flex h-11 shrink-0 items-center py-0 pr-1.5 pl-3"
-          : "w-[21rem] min-w-56 max-w-full shrink px-4 py-2 max-md:w-full",
+          ? "flex h-11 w-max shrink-0 items-center py-0 pr-1.5 pl-3"
+          : "@container w-[21rem] min-w-56 max-w-full shrink px-4 py-2 max-md:w-full",
       )}
     >
       <span

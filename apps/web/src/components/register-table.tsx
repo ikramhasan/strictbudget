@@ -1,3 +1,4 @@
+import { Spinner } from "@strictbudget/ui/components/spinner";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { Check, Lock } from "lucide-react";
 import type * as React from "react";
@@ -8,6 +9,9 @@ import { AccountLogo } from "./accounts-nav";
 // height, and its rows show hover, an open menu and selection on every cell, pinned ones included
 // (PINNED_BG only adds their opaque resting colour). States are a step deeper than the shared
 // Table's so rows read apart on a dense page.
+
+/** The tray's colour, on the scroll area and its sticky header cells (which must be opaque). */
+const REGISTER_TRAY = "bg-muted dark:bg-[color-mix(in_oklch,var(--background),black_20%)]";
 
 /** A raised card behind the rows, drawn by `before:` so the header can sit on the tray above it. */
 function RegisterBody({ className, ...props }: React.ComponentProps<"tbody">) {
@@ -136,6 +140,24 @@ function ClearedMark({
 }
 
 /**
+ * A row whose save hasn't come back yet, in its cleared column. A new row shows it at once; an edit
+ * only once it's taking a moment, so a quick save doesn't flicker.
+ */
+function PendingMark({ delayed = false, className }: { delayed?: boolean; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex size-[18px] items-center justify-center align-middle text-muted-foreground",
+        delayed && "animate-in fade-in-0 fill-mode-backwards delay-300 duration-200",
+        className,
+      )}
+    >
+      <Spinner className="size-3.5" aria-label="Saving" />
+    </span>
+  );
+}
+
+/**
  * An account's logo in the register's account column, or an empty slot of its size, so every
  * name starts in the same place (the sidebar's way, without the initials' tiles).
  */
@@ -153,6 +175,8 @@ export {
   DATE_EDITOR_FIT,
   EDITOR_CELL,
   ICON_CELL,
+  PendingMark,
+  REGISTER_TRAY,
   REVEAL_ON_ROW,
   RegisterBody,
   RegisterCell,

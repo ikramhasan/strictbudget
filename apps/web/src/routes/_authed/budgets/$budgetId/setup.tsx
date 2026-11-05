@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { AddAccountForm } from "@/components/account-forms";
 import { BudgetForm, type BudgetFormValues } from "@/components/budget-form";
+import { CategoryLabel } from "@/components/category-label";
 import { CategoryPicker, type CategoryPicks } from "@/components/category-picker";
 import { OnboardingSteps } from "@/components/onboarding-steps";
 import { PageHeader } from "@/components/page-header";
@@ -406,9 +407,9 @@ function AssignStep({ onBack, onAddAccount }: { onBack: () => void; onAddAccount
             {jobs.slice(0, JOBS_SHOWN).map((job) => (
               <li
                 key={job.id}
-                className="inline-flex h-8 items-center rounded-full border bg-background px-3 text-sm"
+                className="inline-flex h-8 max-w-full items-center rounded-full border bg-background px-3 text-sm"
               >
-                {job.name}
+                <CategoryLabel name={job.name} />
               </li>
             ))}
             {jobs.length > JOBS_SHOWN && (

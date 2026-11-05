@@ -35,7 +35,6 @@ import {
 } from "@strictbudget/ui/components/empty";
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { ScrollArea } from "@strictbudget/ui/components/scroll-area";
-import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { Table, TableHeader } from "@strictbudget/ui/components/table";
 import { cn } from "@strictbudget/ui/lib/utils";
 import {
@@ -96,6 +95,19 @@ import {
 } from "@/lib/reconciled-warnings";
 import { type RegisterSearch, registerQuery, searchText } from "@/lib/register-filters";
 import { useRemainingHeight } from "@/lib/register-height";
+import {
+  balanceChange,
+  isPendingId,
+  type PendingCreate,
+  type PendingEdit,
+  type PendingKind,
+  patchedTransaction,
+  pendingId,
+  pendingTransaction,
+  type RowContext,
+  withBalanceChange,
+  withPending,
+} from "@/lib/register-optimistic";
 import {
   DEFAULT_SORT,
   enteredOrder,
@@ -164,6 +176,7 @@ import {
 import { type UndoCommand, useUndo } from "@/lib/undo";
 import { useViewportWidth } from "@/lib/use-viewport-width";
 import { AddAccountDialog } from "./add-account-dialog";
+import { CategoryLabel } from "./category-label";
 import { CellEditor, type CellExit } from "./cell-editor";
 import { ChangeHistoryDialog } from "./change-history-dialog";
 import { FileImportButton } from "./file-import";
@@ -187,12 +200,15 @@ import {
 } from "./register-columns";
 import { CategoryBalancesContext } from "./register-fields";
 import { RegisterSearchBox } from "./register-search-box";
+import { RegisterSkeleton } from "./register-skeleton";
 import {
   AccountMark,
   ClearedMark,
   DATE_EDITOR_FIT,
   EDITOR_CELL,
   ICON_CELL,
+  PendingMark,
+  REGISTER_TRAY,
   REVEAL_ON_ROW,
   RegisterBody,
   RegisterCell,
@@ -204,12 +220,9 @@ import { NeedsCategoryPill, ReviewCell } from "./review-cell";
 import { ScheduledSection } from "./scheduled-section";
 import { type BulkAction, SelectionBar } from "./selection-bar";
 import { AttachmentCell, AttachmentField } from "./transaction-attachment";
-import { TransactionEditor } from "./transaction-editor";
+import { type EditorFocus, TransactionEditor } from "./transaction-editor";
 import { UndoRedoButtons } from "./undo-redo-buttons";
 import { signedAmount } from "./unrealized-gain";
-
-/** The tray's colour, on the scroll area and its sticky header cells (which must be opaque). */
-const REGISTER_TRAY = "bg-muted dark:bg-[color-mix(in_oklch,var(--background),black_20%)]";
 
 /** Columns a header click sorts by (Outflow and Inflow apart, the flag too). */
 const SORTABLE: Partial<Record<ColumnId, SortColumn>> = {
@@ -229,6 +242,8 @@ const SORTABLE: Partial<Record<ColumnId, SortColumn>> = {
 const features = tableFeatures({});
 const column = createColumnHelper<typeof features, Transaction>();
 const EMPTY: Transaction[] = [];
+const EMPTY_ACCOUNTS: Account[] = [];
+const NO_SAVED: ReadonlyMap<string, Transaction> = new Map();
 const NO_ROWS: ReadonlySet<string> = new Set();
 /** The transactions' part of the bar when only scheduled rows are selected. */
 const NO_SUMMARY = {
@@ -252,6 +267,14 @@ const rowHeight = () =>
  * A cell edited in place inside a 36px row: its field a step shorter than the editors' usual
  * 32px, so the row keeps its height. A finger's taller rows keep the usual height.
  */
+/** A phone's ticked card. */
+const SELECTED_CARD =
+  "data-[state=selected]:bg-[color-mix(in_oklch,var(--primary)_8%,var(--background))] dark:data-[state=selected]:bg-[color-mix(in_oklch,var(--primary)_16%,var(--background))]";
+
+/** A row whose save hasn't come back reads quieter: a new one at once, an edit after a moment. */
+const PENDING_ROW =
+  "data-pending:text-muted-foreground data-[pending=cell]:*:delay-300 data-[pending=row]:*:delay-300";
+
 const IN_ROW_EDITOR =
   "pointer-fine:[&_[data-slot=input-group]]:h-7! pointer-fine:[&_[data-slot=input]]:h-7! pointer-fine:[&_[data-slot=native-select]]:h-7!";
 
@@ -273,6 +296,8 @@ interface EditingSplit {
   fromKey?: boolean;
   /** Just split from its category or the Actions menu: starts in the first line's amount. */
   splitting?: boolean;
+  /** Opened by a click on one of its cells: starts in that field. */
+  focus?: EditorFocus;
 }
 
 /**
@@ -284,6 +309,8 @@ interface EditingSplit {
  */
 /** A saved transaction's version, and its transfer's other side's, by id. */
 type PayeeRuleSnapshot = components["schemas"]["PayeeRuleSnapshot"];
+type UpdateTransactionBody = components["schemas"]["UpdateTransaction"];
+type AccountList = components["schemas"]["AccountList"];
 
 /**
  * The side a folded Amount edits: the transaction's own (an FX revaluation, which has no native
@@ -396,21 +423,54 @@ export function Register({
     observer.current = new ResizeObserver(() => setScheduledHeight(node.offsetHeight));
     observer.current.observe(node);
   }, []);
-  // A day's transactions newest entry first, so a new one shows at the top of its day.
-  const loaded = useMemo(
-    () => enteredOrder(transactions.data?.pages.flatMap((p) => p.transactions) ?? EMPTY, view.sort),
-    [transactions.data, view.sort],
+  const accounts = useQuery(accountsQueryOptions(budget.id));
+  const categories = useQuery(categoriesQueryOptions(budget.id));
+  const accountList = accounts.data?.accounts ?? EMPTY_ACCOUNTS;
+  const accountById = useMemo(() => new Map(accountList.map((a) => [a.id, a])), [accountList]);
+  /** How a row not saved yet names its account and category, as a saved one would. */
+  const rowContext = useMemo((): RowContext => {
+    const names = new Map(
+      (categories.data?.groups ?? []).flatMap((g) => g.categories.map((c) => [c.id, c.name])),
+    );
+    return {
+      account: (id) => accountById.get(id),
+      categoryName: (id) => names.get(id) ?? null,
+      usesCategory: (id, to) =>
+        usesCategory(
+          accountById.get(id)?.type ?? "checking",
+          to ? accountById.get(to)?.type : null,
+        ),
+      budgetCurrency: budget.currency,
+    };
+  }, [accountById, categories.data, budget.currency]);
+  // Saves show at once: new rows and edits wait here, over the loaded rows, until they're in.
+  const [pendingCreates, setPendingCreates] = useState<readonly PendingCreate[]>([]);
+  const [pendingEdits, setPendingEdits] = useState<readonly PendingEdit[]>([]);
+  /** Rows a save returned, shown until the refreshed list catches up with them. */
+  const [savedRows, setSavedRows] = useState<ReadonlyMap<string, Transaction>>(NO_SAVED);
+  const merged = useMemo(
+    () =>
+      withPending(
+        transactions.data?.pages.flatMap((p) => p.transactions) ?? EMPTY,
+        { creates: pendingCreates, edits: pendingEdits, known: savedRows },
+        rowContext,
+        view.sort,
+        accountId,
+      ),
+    [transactions.data, pendingCreates, pendingEdits, savedRows, rowContext, view.sort, accountId],
   );
+  /** Rows whose save hasn't come back: new ones (a local id) and edited ones. */
+  const pendingRows = merged.pending;
+  // A day's transactions newest entry first, so a new one shows at the top of its day.
+  const loaded = useMemo(() => enteredOrder(merged.rows, view.sort), [merged.rows, view.sort]);
   const someHidden = transactions.data?.pages[0]?.someHidden ?? false;
   // The info column hides when no row in view needs approval or a category.
   const needsReview = useMemo(() => loaded.some((t) => !t.approved || t.needsCategory), [loaded]);
   // Rows read in the running balance's order only when the date comes first.
   const dateOrder = view.sort[0]?.column === "date";
-  const accounts = useQuery(accountsQueryOptions(budget.id));
   // The budget starts the month before its oldest transaction (or before this month).
   const monthData = useQuery(monthQueryOptions(budget.id, currentMonth()));
   const oldestMonth = monthData.data ? addMonths(monthData.data.firstMonth, 1) : undefined;
-  const categories = useQuery(categoriesQueryOptions(budget.id));
   const payees = useQuery(payeesQueryOptions(budget.id));
   const flagList = useQuery(flagsQueryOptions(budget.id));
   const renameFlagMutation = $api.useMutation("put", "/v1/budgets/{budgetId}/flags/{color}");
@@ -437,7 +497,6 @@ export function Register({
   // A new transaction can take an attachment as it's entered; with AI on, a receipt fills it in.
   const aiEnabled = useAiSettings(budget.id).data?.enabled ?? false;
   const newAttachment = useMemo(() => ({ budgetId: budget.id, aiEnabled }), [budget.id, aiEnabled]);
-  const [attaching, setAttaching] = useState(false);
   // What the new-transaction row starts with: empty, or Make Repeating's copy.
   const [addingDraft, setAddingDraft] = useState<Draft | null>(null);
   // Make Repeating opens the date picker on its row; Record Payment doesn't.
@@ -456,6 +515,11 @@ export function Register({
   const [editingSplit, setEditingSplit] = useState<EditingSplit | null>(null);
   const [splitError, setSplitError] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection>(NOTHING);
+  /**
+   * A phone's cards show their checkboxes only while selecting: started by a long press on one or
+   * the toolbar's Select, ended by Done or by clearing the selection.
+   */
+  const [selecting, setSelecting] = useState(false);
   /** A change waiting on the reconciled-transaction warning. */
   const [warning, setWarning] = useState<{
     warning: ReconciledWarning;
@@ -521,8 +585,6 @@ export function Register({
   const [registerWidth, setRegisterWidth] = useState<number | null>(null);
   /** The rows' scroll area, once it's on screen. */
   const [viewport, setViewport] = useState<HTMLDivElement | null>(null);
-  const accountList = accounts.data?.accounts ?? [];
-  const accountById = useMemo(() => new Map(accountList.map((a) => [a.id, a])), [accountList]);
   /** An amount in `currency` (a row's, or its account's): the budget's by default. */
   const show = (amount: bigint, currency?: string) =>
     formatAmount(money(amount, inCurrency(budget, currency).currency));
@@ -810,13 +872,15 @@ export function Register({
    * saved with "Save and add another", whose new row stays put) and flashed. One the register
    * doesn't show (searched out, another account, further back) gets a toast instead.
    */
-  const [reveal, setReveal] = useState<{ id: string; scroll: boolean } | null>(null);
+  const [reveal, setReveal] = useState<{ id: string; scroll: boolean; quiet?: boolean } | null>(
+    null,
+  );
   useEffect(() => {
     if (!reveal) return;
     setReveal(null);
     const index = flat.findIndex((r) => r.key === reveal.id);
     if (index === -1) {
-      toast.success("Transaction saved");
+      if (!reveal.quiet) toast.success("Transaction saved");
       return;
     }
     if (reveal.scroll) {
@@ -828,7 +892,8 @@ export function Register({
         virtualizer.scrollToIndex(index, { align: "auto" });
       }
     }
-    setHighlight({ id: reveal.id, kind: "saved" });
+    // A row still saving isn't flashed: it's marked as pending instead.
+    if (!reveal.quiet) setHighlight({ id: reveal.id, kind: "saved" });
   }, [reveal, flat, virtualizer, phone]);
   const loadedIds = useMemo(() => loaded.map((t) => t.id), [loaded]);
   // The selection's filter is the register's, without the sort, and with the list's today so a
@@ -889,6 +954,7 @@ export function Register({
   function clearSelection() {
     setSelection(NOTHING);
     setScheduledSelection(NO_ROWS);
+    setSelecting(false);
   }
   /**
    * Match: one imported transaction that isn't matched yet and
@@ -1097,6 +1163,8 @@ export function Register({
         ["flag", "cleared", "approve", "categorize", "memo"].includes(action.type);
       setSelection(keep ? sel : nextSelection);
       setScheduledSelection(keep ? sched : nextScheduled);
+      // A phone leaves selecting once nothing is left ticked.
+      if (!keep && isEmpty(nextSelection) && nextScheduled.size === 0) setSelecting(false);
       // With Undo; a delete's stays up longer, as there's no confirmation before it.
       const message = bulkDoneMessage(action, count);
       if (commands.length > 0) history.announce(message, { destructive: bulkRemoves(action) });
@@ -1199,8 +1267,77 @@ export function Register({
   const paddingBottom =
     lastEnd === undefined ? 0 : virtualizer.getTotalSize() + scheduledHeight - lastEnd;
 
+  /** The balances moved by saves still on their way, put back over a refresh that lands first. */
+  const pendingBalances = useRef(new Map<string, ReturnType<typeof balanceChange>>());
+  const accountsKey = accountsQueryOptions(budget.id).queryKey;
+  function moveBalances(change: ReturnType<typeof balanceChange>) {
+    queryClient.setQueryData<AccountList>(
+      accountsKey,
+      (list) => list && withBalanceChange(list, change),
+    );
+  }
+
   async function refresh() {
+    const before = queryClient.getQueryState(accountsKey)?.dataUpdatedAt;
     await refreshTransactions(queryClient, budget.id);
+    if (pendingBalances.current.size === 0) return;
+    if (queryClient.getQueryState(accountsKey)?.dataUpdatedAt === before) return;
+    for (const change of pendingBalances.current.values()) moveBalances(change);
+  }
+
+  const editKey = useRef(0);
+  /**
+   * Saves an edit to `t`, shown at once along with the balances it moves (`kind`: "row" from the
+   * editor, which marks the row as saving, or "cell"). A failed save puts the row back and says so;
+   * `retry` offers to edit it again. Resolves with the saved row, or null.
+   */
+  async function saveEdit(
+    t: Transaction,
+    body: UpdateTransactionBody,
+    {
+      label,
+      failure,
+      kind = "cell",
+      retry,
+    }: { label: string; failure: string; kind?: "row" | "cell"; retry?: () => void },
+  ): Promise<Transaction | null> {
+    editKey.current += 1;
+    const key = editKey.current;
+    const balanceKey = `edit:${key}`;
+    const change = balanceChange(t, patchedTransaction(t, body, rowContext), today);
+    pendingBalances.current.set(balanceKey, change);
+    moveBalances(change);
+    setPendingEdits((list) => [...list, { key, id: t.id, body, kind }]);
+    try {
+      const after = await update.mutateAsync({
+        params: {
+          path: { budgetId: budget.id, transactionId: t.id },
+          query: { today: todayIso() },
+        },
+        body,
+      });
+      pendingBalances.current.delete(balanceKey);
+      setSavedRows((rows) => new Map(rows).set(after.id, after));
+      setPendingEdits((list) => list.filter((e) => e.key !== key));
+      recordUpdate(label, t, after);
+      await refresh();
+      setSavedRows((rows) => {
+        if (rows.get(after.id) !== after) return rows;
+        const next = new Map(rows);
+        next.delete(after.id);
+        return next;
+      });
+      return after;
+    } catch (e) {
+      pendingBalances.current.delete(balanceKey);
+      setPendingEdits((list) => list.filter((edit) => edit.key !== key));
+      toast.error(
+        apiErrorMessage(e, failure),
+        retry ? { action: { label: "Edit", onClick: retry } } : undefined,
+      );
+      await refresh();
+      return null;
+    }
   }
 
   /**
@@ -1429,7 +1566,7 @@ export function Register({
    */
   function categoryName(row: { categoryId: string | null; categoryName: string | null }) {
     if (!row.categoryId || row.categoryId !== categories.data?.readyToAssignCategoryId) {
-      return row.categoryName;
+      return row.categoryName && <CategoryLabel name={row.categoryName} />;
     }
     return (
       <span className="inline-flex min-w-0 items-center gap-1">
@@ -1475,8 +1612,11 @@ export function Register({
     return cell;
   }
 
-  /** Splits open as a whole, as do transactions being split from the category cell. */
-  function openSplit(t: Transaction, split = false, fromKey = false) {
+  /**
+   * Splits open as a whole, as do transactions being split from the category cell; `focus` is the
+   * field to start in (the cell that was clicked).
+   */
+  function openSplit(t: Transaction, split = false, fromKey = false, focus?: EditorFocus) {
     const draft = draftFrom(t, inCurrency(budget, t.currency));
     setEditing(null);
     setAdding(false);
@@ -1486,7 +1626,14 @@ export function Register({
       draft: split ? startSplit(draft) : draft,
       fromKey,
       splitting: split && !fromKey,
+      focus,
     });
+  }
+
+  /** The editor field a click on a row's cell means: the memo shown after the payee is the memo's. */
+  function clickedColumn(id: ColumnId, target: EventTarget): ColumnId {
+    if (id === "payee" && target instanceof Element && target.closest("[data-memo]")) return "memo";
+    return id;
   }
 
   async function saveSplit(t: Transaction, draft: Draft, confirmed = false) {
@@ -1502,23 +1649,21 @@ export function Register({
       setWarning({ warning: found, proceed: () => void saveSplit(t, draft, true) });
       return;
     }
-    try {
-      if (Object.keys(result.body).length > 0) {
-        const after = await update.mutateAsync({
-          params: {
-            path: { budgetId: budget.id, transactionId: t.id },
-            query: { today: todayIso() },
-          },
-          body: result.body,
-        });
-        recordUpdate("edit transaction", t, after);
-        await refresh();
-        setReveal({ id: t.id, scroll: true });
-      }
-      setEditingSplit(null);
-    } catch (e) {
-      setSplitError(apiErrorMessage(e, "Couldn't save the split."));
-    }
+    // The row shows the edit at once; the editor closes without waiting for the save.
+    setEditingSplit(null);
+    if (Object.keys(result.body).length === 0) return;
+    const after = await saveEdit(t, result.body, {
+      label: "edit transaction",
+      failure: "Couldn't save the transaction.",
+      kind: "row",
+      retry: () => {
+        setEditing(null);
+        setAdding(false);
+        setSplitError(null);
+        setEditingSplit({ id: t.id, draft });
+      },
+    });
+    if (after) setReveal({ id: t.id, scroll: true });
   }
 
   /** Accounts the payee cell offers transfers to: other open ones, plus the current target. */
@@ -1581,11 +1726,24 @@ export function Register({
     const result = createBody(draft, settingsOf(draft.accountId), otherSettingsOf(draft));
     if (!result.ok) return setNewError(result.error);
     const fee = result.body.fee;
+    // The row goes in at once, marked as saving, and the editor moves on without waiting.
+    const id = pendingId();
+    const row = pendingTransaction(id, result.body, rowContext);
+    const change = balanceChange(null, row, today);
+    pendingBalances.current.set(id, change);
+    moveBalances(change);
+    setPendingCreates((list) => [...list, { row }]);
+    afterNewSaved(draft, another);
+    if (!another) setReveal({ id, scroll: true, quiet: true });
     try {
       const created = await create.mutateAsync({
         params: { path: { budgetId: budget.id }, query: { today: todayIso() } },
         body: result.body,
       });
+      pendingBalances.current.delete(id);
+      setPendingCreates((list) =>
+        list.map((p) => (p.row.id === id ? { ...p, savedId: created.id } : p)),
+      );
       let current = created;
       history.record({
         label: "add transaction",
@@ -1610,19 +1768,22 @@ export function Register({
           await refresh();
         },
       });
-      // Uploaded before the row closes, so its spinner shows while it goes.
-      if (file) await attachToNew(created.id, file);
-      afterNewSaved(draft, another);
       await refresh();
       setReveal({ id: created.id, scroll: !another });
+      if (file) void attachToNew(created.id, file);
     } catch (e) {
-      setNewError(apiErrorMessage(e, "Couldn't save the transaction."));
+      pendingBalances.current.delete(id);
+      toast.error(apiErrorMessage(e, "Couldn't save the transaction."), {
+        action: { label: "Edit", onClick: () => startAdding(draft, false) },
+      });
+      await refresh();
+    } finally {
+      setPendingCreates((list) => list.filter((p) => p.row.id !== id));
     }
   }
 
   /** A new transaction's attachment, uploaded once the transaction exists. */
   async function attachToNew(transactionId: string, file: File) {
-    setAttaching(true);
     try {
       const { error } = await apiClient.POST(
         "/v1/budgets/{budgetId}/transactions/{transactionId}/attachment",
@@ -1639,10 +1800,9 @@ export function Register({
       if (error) {
         toast.error(apiErrorMessage(error, "Saved, but the attachment couldn't be added."));
       }
+      await refresh();
     } catch {
       toast.error("Saved, but the attachment couldn't be added. Add it from the register.");
-    } finally {
-      setAttaching(false);
     }
   }
 
@@ -1653,6 +1813,8 @@ export function Register({
   async function saveNewScheduled(draft: Draft, another = false) {
     const result = scheduleCreateBody(draft, settingsOf(draft.accountId), today);
     if (!result.ok) return setNewError(result.error);
+    // The editor moves on at once; a failed save offers the draft back.
+    afterNewSaved(draft, another);
     try {
       const body = result.body;
       let written = await createScheduled.mutateAsync({
@@ -1689,7 +1851,6 @@ export function Register({
           await refresh();
         },
       });
-      afterNewSaved(draft, another);
       await refresh();
       // A past date with a repeat enters that one now; the rest wait in Scheduled Transactions.
       if (written.enteredTransactionId) {
@@ -1698,7 +1859,9 @@ export function Register({
         toast.success("Added to Scheduled Transactions");
       }
     } catch (e) {
-      setNewError(apiErrorMessage(e, "Couldn't save the transaction."));
+      toast.error(apiErrorMessage(e, "Couldn't save the transaction."), {
+        action: { label: "Edit", onClick: () => startAdding(draft, false) },
+      });
     }
   }
 
@@ -1801,21 +1964,12 @@ export function Register({
     if (exit !== "stay" && !next) focusPast(t.id, cell, exit);
     if (Object.keys(result.body).length === 0) return;
     const save = async () => {
-      try {
-        const after = await update.mutateAsync({
-          params: {
-            path: { budgetId: budget.id, transactionId: t.id },
-            query: { today: todayIso() },
-          },
-          body: result.body,
-        });
-        recordUpdate("edit transaction", t, after);
-        await refresh();
-        // A new date moves the row: follow it.
-        if (result.body.date) setReveal({ id: t.id, scroll: true });
-      } catch (e) {
-        toast.error(apiErrorMessage(e, "Couldn't save the change."));
-      }
+      const after = await saveEdit(t, result.body, {
+        label: "edit transaction",
+        failure: "Couldn't save the change.",
+      });
+      // A new date moves the row: follow it.
+      if (after && result.body.date) setReveal({ id: t.id, scroll: true });
     };
     const found = editWarning(t, result.body, accountName);
     if (!found) return save();
@@ -1833,19 +1987,14 @@ export function Register({
   }
 
   async function setFlag(t: Transaction, flag: FlagColor | null) {
-    try {
-      const after = await update.mutateAsync({
-        params: {
-          path: { budgetId: budget.id, transactionId: t.id },
-          query: { today: todayIso() },
-        },
-        body: { flag },
-      });
-      recordUpdate(after.flag ? "flag transaction" : "remove flag", t, after);
-      await refresh();
-    } catch (e) {
-      toast.error(apiErrorMessage(e, "Couldn't change the flag."));
-    }
+    await saveEdit(
+      t,
+      { flag },
+      {
+        label: flag ? "flag transaction" : "remove flag",
+        failure: "Couldn't change the flag.",
+      },
+    );
   }
 
   /** Flag names are the budget's, so everyone on it sees the new ones. */
@@ -1866,36 +2015,27 @@ export function Register({
   }
 
   async function toggleCleared(t: Transaction) {
-    try {
-      const after = await update.mutateAsync({
-        params: {
-          path: { budgetId: budget.id, transactionId: t.id },
-          query: { today: todayIso() },
-        },
-        body: { cleared: t.cleared === "uncleared" ? "cleared" : "uncleared" },
-      });
-      recordUpdate(`mark transaction ${after.cleared}`, t, after);
-      await refresh();
-    } catch (e) {
-      toast.error(apiErrorMessage(e, "Couldn't update the transaction."));
-    }
+    const cleared = t.cleared === "uncleared" ? "cleared" : "uncleared";
+    await saveEdit(
+      t,
+      { cleared },
+      {
+        label: `mark transaction ${cleared}`,
+        failure: "Couldn't update the transaction.",
+      },
+    );
   }
 
   /** Approve on one row; undone as an edit (a transfer's other side follows). */
   async function approveRow(t: Transaction) {
-    try {
-      const after = await update.mutateAsync({
-        params: {
-          path: { budgetId: budget.id, transactionId: t.id },
-          query: { today: todayIso() },
-        },
-        body: { approved: true },
-      });
-      recordUpdate("approve transaction", t, after);
-      await refresh();
-    } catch (e) {
-      toast.error(apiErrorMessage(e, "Couldn't approve the transaction."));
-    }
+    await saveEdit(
+      t,
+      { approved: true },
+      {
+        label: "approve transaction",
+        failure: "Couldn't approve the transaction.",
+      },
+    );
   }
 
   function handleDelete(t: Transaction) {
@@ -2051,7 +2191,7 @@ export function Register({
     : undefined;
   // The accounts too: without them a budget that has none would first read as one without
   // transactions.
-  if (transactions.isPending || accounts.isPending) return <Skeleton className="h-64" />;
+  if (transactions.isPending || accounts.isPending) return <RegisterSkeleton phone={phone} />;
   if (transactions.isError) {
     return (
       <p role="alert" className="text-destructive text-sm">
@@ -2083,6 +2223,38 @@ export function Register({
     );
   }
 
+  /** A row not saved yet has no id to act on: its controls wait, its cleared column says why. */
+  function unsavedDisplay(t: Transaction, id: ColumnId): ReactNode {
+    switch (id) {
+      case "select":
+        return <Checkbox aria-label="Saving transaction" checked={false} disabled />;
+      case "review":
+      case "attachment":
+      case "actions":
+        return null;
+      case "flag": {
+        const current = flags.find((f) => f.color === t.flag);
+        return current ? (
+          <Bookmark
+            className={cn("mx-auto size-4 fill-current", FLAG_CLASS[current.color])}
+            aria-label={`Flag: ${flagLabel(current)}`}
+          />
+        ) : null;
+      }
+      case "payee":
+        return withMemo(
+          t.memo,
+          <span className="truncate">
+            {rowPayee(t.accountId, t.transferAccountId, BigInt(t.amount), t.payeeName)}
+          </span>,
+        );
+      case "cleared":
+        return <PendingMark />;
+      default:
+        return display(t, id);
+    }
+  }
+
   function display(t: Transaction, id: ColumnId) {
     const amount = BigInt(t.amount);
     switch (id) {
@@ -2102,7 +2274,7 @@ export function Register({
           <ReviewCell
             approved={t.approved}
             needsCategory={t.needsCategory}
-            pending={update.isPending || remove.isPending}
+            pending={pendingRows.has(t.id) || remove.isPending}
             onApprove={() => void approveRow(t)}
             onReject={() => void deleteRow(t, true)}
             onCategorize={
@@ -2286,6 +2458,18 @@ export function Register({
           />
         ) : null;
       case "cleared":
+        // Saved from the editor and taking a moment: the mark gives way to a spinner.
+        if (pendingRows.get(t.id) === "row") {
+          return (
+            <span className="relative inline-flex align-middle">
+              <ClearedMark
+                state={t.cleared}
+                className="fill-mode-forwards animate-out fade-out-0 delay-300 duration-200"
+              />
+              <PendingMark delayed className="absolute inset-0" />
+            </span>
+          );
+        }
         if (readOnly || t.cleared === "reconciled") {
           const label = { cleared: "Cleared", uncleared: "Uncleared", reconciled: "Reconciled" }[
             t.cleared
@@ -2426,6 +2610,17 @@ export function Register({
             </p>
           )}
           <div className="ml-auto flex items-center gap-1 max-md:w-full">
+            {phone && !readOnly && !empty && (
+              <Button
+                type="button"
+                variant={selecting ? "secondary" : "ghost"}
+                size="sm"
+                aria-pressed={selecting}
+                onClick={() => (selecting ? clearSelection() : setSelecting(true))}
+              >
+                {selecting ? "Done" : "Select"}
+              </Button>
+            )}
             {!readOnly && <UndoRedoButtons />}
             <RegisterViewMenu
               view={view}
@@ -2567,13 +2762,26 @@ export function Register({
           <PhoneTransactions
             allAccounts={allAccounts}
             rows={loaded}
+            pending={pendingRows}
+            selecting={
+              !readOnly && (selecting || !isEmpty(selection) || scheduledSelection.size > 0)
+            }
+            onStartSelecting={
+              readOnly
+                ? undefined
+                : (pick) => {
+                    setSelecting(true);
+                    if (pick.kind === "scheduled") toggleScheduled(pick.id, true, false);
+                    else toggleRow(pick.id, true, false);
+                  }
+            }
             scheduled={scheduledRows}
             scheduledSelected={scheduledSelection}
             onSelectScheduled={(id) => toggleScheduled(id, !scheduledSelection.has(id), false)}
             isSelected={(id) => isSelected(selection, id)}
             onSelect={(t) => toggleRow(t.id, !isSelected(selection, t.id), false)}
             onOpen={(t) => {
-              if (!readOnly && !t.transferFromSplit) openSplit(t);
+              if (!readOnly && !t.transferFromSplit && !isPendingId(t.id)) openSplit(t);
             }}
             onToggleCleared={readOnly ? undefined : (t) => void toggleCleared(t)}
             show={(amount, currency) => show(amount, currency ?? undefined)}
@@ -2746,7 +2954,7 @@ export function Register({
                     settings={budget}
                     flags={flags}
                     onRenameFlags={renameFlags}
-                    pending={create.isPending || createScheduled.isPending || attaching}
+                    pending={false}
                     error={newError}
                     onSave={(draft, file) => void saveNew(draft, false, file)}
                     onSaveAndAddAnother={(draft, file) => void saveNew(draft, true, file)}
@@ -2787,6 +2995,7 @@ export function Register({
                         initial={editingSplit.draft}
                         focusMemo={editingSplit.fromKey}
                         focusSplit={editingSplit.splitting}
+                        focusCell={editingSplit.focus}
                         label="Edit transaction"
                         columns={columnIds}
                         attachment={
@@ -2804,7 +3013,7 @@ export function Register({
                         settings={budget}
                         flags={flags}
                         onRenameFlags={renameFlags}
-                        pending={update.isPending}
+                        pending={false}
                         error={splitError}
                         onSave={(draft) => void saveSplit(t, draft)}
                         onCancel={() => setEditingSplit(null)}
@@ -2840,7 +3049,15 @@ export function Register({
                                 spec.align === "right" && "text-right tabular-nums",
                                 isEditable(id) && !readOnly && "cursor-text",
                               )}
-                              onClick={isEditable(id) && !readOnly ? () => openSplit(t) : undefined}
+                              onClick={
+                                isEditable(id) && !readOnly && !isPendingId(t.id)
+                                  ? (e) =>
+                                      openSplit(t, false, false, {
+                                        column: clickedColumn(id, e.target),
+                                        line: t.subtransactions.indexOf(row.line),
+                                      })
+                                  : undefined
+                              }
                             >
                               {lineDisplay(t, row.line, id)}
                             </RegisterCell>
@@ -2849,7 +3066,8 @@ export function Register({
                       </RegisterRow>
                     );
                   }
-                  const editable = editableColumns(t);
+                  const unsaved = isPendingId(t.id);
+                  const editable = unsaved ? [] : editableColumns(t);
                   return (
                     <RegisterRow
                       key={t.id}
@@ -2858,6 +3076,8 @@ export function Register({
                       data-transaction-id={t.id}
                       data-highlighted={highlight?.id === t.id ? highlight.kind : undefined}
                       data-state={isSelected(selection, t.id) ? "selected" : undefined}
+                      data-pending={pendingRows.get(t.id)}
+                      aria-busy={pendingRows.has(t.id) || undefined}
                       className={cn(
                         // One height for every row, so an icon or an open editor doesn't grow it;
                         // taller for a finger.
@@ -2865,6 +3085,8 @@ export function Register({
                         // A quick hover; a row jumped to glows, then fades out, and one just saved
                         // flashes.
                         "duration-100 data-[highlighted=jump]:animate-[row-highlight_2.5s_ease-out] data-[highlighted=saved]:animate-[row-highlight_0.9s_ease-out]",
+                        // Saving: a new row reads quieter at once, an edit only if it takes a moment.
+                        PENDING_ROW,
                         future && "text-muted-foreground italic",
                         !t.approved && "font-semibold",
                       )}
@@ -2930,7 +3152,12 @@ export function Register({
                             onClick={
                               canEdit || (id === "payee" && editable.includes("memo"))
                                 ? (e) => {
-                                    if (t.subtransactions.length > 0) return openSplit(t);
+                                    // A split opens whole, in the field that was clicked.
+                                    if (t.subtransactions.length > 0) {
+                                      return openSplit(t, false, false, {
+                                        column: clickedColumn(id, e.target),
+                                      });
+                                    }
                                     // The memo shown after the payee edits the memo.
                                     const memo =
                                       id === "payee" &&
@@ -2944,7 +3171,7 @@ export function Register({
                                 : undefined
                             }
                           >
-                            {display(t, id)}
+                            {unsaved ? unsavedDisplay(t, id) : display(t, id)}
                           </RegisterCell>
                         );
                       })}
@@ -2992,7 +3219,7 @@ export function Register({
                     settings={budget}
                     flags={flags}
                     onRenameFlags={renameFlags}
-                    pending={create.isPending || createScheduled.isPending || attaching}
+                    pending={false}
                     error={newError}
                     onSave={(draft, file) => void saveNew(draft, false, file)}
                     onCancel={() => setAdding(false)}
@@ -3017,7 +3244,7 @@ export function Register({
                       settings={budget}
                       flags={flags}
                       onRenameFlags={renameFlags}
-                      pending={update.isPending}
+                      pending={false}
                       error={splitError}
                       onSave={(draft) => void saveSplit(editingTransaction, draft)}
                       onCancel={() => setEditingSplit(null)}
@@ -3168,15 +3395,73 @@ function ColumnResizer({
   );
 }
 
+/** How long a press on a card takes to start selecting. */
+const LONG_PRESS_MS = 450;
+
+/**
+ * A long press on a card: starts selecting (and ticks the card), and swallows the click that ends
+ * it. Hand-rolled: a timer and a few pointer events, not worth a dependency. A drag (a scroll)
+ * cancels it.
+ */
+function useLongPress(onLongPress: ((id: string) => void) | undefined) {
+  const press = useRef<{ timer: number; x: number; y: number } | null>(null);
+  const fired = useRef(false);
+  const cancel = () => {
+    if (press.current) window.clearTimeout(press.current.timer);
+    press.current = null;
+  };
+  return (id: string) =>
+    onLongPress
+      ? {
+          onPointerDown: (e: React.PointerEvent) => {
+            if (e.button !== 0) return;
+            fired.current = false;
+            cancel();
+            press.current = {
+              x: e.clientX,
+              y: e.clientY,
+              timer: window.setTimeout(() => {
+                press.current = null;
+                fired.current = true;
+                navigator.vibrate?.(10);
+                onLongPress(id);
+              }, LONG_PRESS_MS),
+            };
+          },
+          onPointerMove: (e: React.PointerEvent) => {
+            const start = press.current;
+            if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 8) cancel();
+          },
+          onPointerUp: cancel,
+          onPointerCancel: cancel,
+          onPointerLeave: cancel,
+          // The press shouldn't also open the browser's menu for the card.
+          onContextMenu: (e: React.MouseEvent) => {
+            if (fired.current || press.current) e.preventDefault();
+          },
+          /** True once: the click that ends a long press isn't a tap. */
+          consumeLongPress: () => {
+            const was = fired.current;
+            fired.current = false;
+            return was;
+          },
+        }
+      : null;
+}
+
 /**
  * A phone's register: each transaction a card, a thumb's height or more, with its payee and
  * amount on top and its date, category and memo under them. The amounts sit in a column of their
  * own, so they end at one edge whatever the payee's length or the row's status. A tap opens it in
- * the drawer; the checkbox selects it for the selection bar. Upcoming scheduled transactions come
- * first, as on the wide register.
+ * the drawer. Checkboxes show only while selecting (a long press on a card, or the toolbar's
+ * Select), when a tap ticks the card instead. Upcoming scheduled transactions come first, as on
+ * the wide register.
  */
 function PhoneTransactions({
   rows,
+  pending,
+  selecting,
+  onStartSelecting,
   scheduled,
   scheduledSelected,
   onSelectScheduled,
@@ -3197,6 +3482,12 @@ function PhoneTransactions({
   /** All Accounts: each card names its account. */
   allAccounts: boolean;
   rows: readonly Transaction[];
+  /** Cards whose save hasn't come back. */
+  pending: ReadonlyMap<string, PendingKind>;
+  /** Checkboxes show, and a tap ticks a card. */
+  selecting: boolean;
+  /** A long press: start selecting with that card ticked. */
+  onStartSelecting?: (pick: { kind: "transaction" | "scheduled"; id: string }) => void;
   scheduled: readonly ScheduledTransaction[];
   scheduledSelected: ReadonlySet<string>;
   onSelectScheduled: (id: string) => void;
@@ -3215,12 +3506,20 @@ function PhoneTransactions({
   loadingMore: boolean;
   onLoadMore: () => void;
 }) {
-  const card = "flex items-center gap-3 border-b py-2 pr-1 pl-3 last:border-b-0";
+  const card =
+    "flex items-center gap-3 border-b py-2 pr-1 pl-3 last:border-b-0 select-none [-webkit-touch-callout:none]";
   /** Payee and amount on one line, the summary under them; the amount in its own right column. */
   const lines = "grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5";
   const meta = "col-span-2 truncate text-muted-foreground text-xs";
+  const checkbox = "size-5 animate-in fade-in-0 zoom-in-75 duration-150 motion-reduce:animate-none";
   const signed = (amount: bigint, currency: string | null) =>
     signedAmount(amount, (m) => show(m, currency));
+  const pressTransaction = useLongPress(
+    onStartSelecting ? (id) => onStartSelecting({ kind: "transaction", id }) : undefined,
+  );
+  const pressScheduled = useLongPress(
+    onStartSelecting ? (id) => onStartSelecting({ kind: "scheduled", id }) : undefined,
+  );
   return (
     <div className="grid gap-4">
       {scheduled.length > 0 && (
@@ -3229,37 +3528,64 @@ function PhoneTransactions({
           <ul>
             {scheduled.map((row) => {
               const amount = BigInt(row.amount);
+              const { consumeLongPress, ...press } = pressScheduled(row.id) ?? {
+                consumeLongPress: () => false,
+              };
+              const summary = (
+                <>
+                  <span className="truncate font-medium">{row.payeeName ?? "No payee"}</span>
+                  <span
+                    className={cn(
+                      "text-right font-medium tabular-nums",
+                      amount > 0n && "text-success",
+                    )}
+                  >
+                    {signed(amount, row.currency)}
+                  </span>
+                  <span className={meta}>
+                    {[
+                      formatDate(row.dateNext),
+                      allAccounts && row.accountName,
+                      row.subtransactions.length > 0
+                        ? `Split (${row.subtransactions.length})`
+                        : row.categoryName,
+                      row.memo,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </>
+              );
               return (
-                <li key={row.id} className={card}>
-                  <Checkbox
-                    className="size-5"
-                    aria-label={`Select ${row.payeeName ?? "scheduled transaction"} on ${formatDate(row.dateNext)}`}
-                    checked={scheduledSelected.has(row.id)}
-                    onCheckedChange={() => onSelectScheduled(row.id)}
-                  />
-                  <div className={cn(lines, "min-h-11 content-center")}>
-                    <span className="truncate font-medium">{row.payeeName ?? "No payee"}</span>
-                    <span
-                      className={cn(
-                        "text-right font-medium tabular-nums",
-                        amount > 0n && "text-success",
-                      )}
+                <li
+                  key={row.id}
+                  data-state={scheduledSelected.has(row.id) ? "selected" : undefined}
+                  className={cn(card, SELECTED_CARD)}
+                  {...press}
+                >
+                  {selecting && (
+                    <Checkbox
+                      className={checkbox}
+                      aria-label={`Select ${row.payeeName ?? "scheduled transaction"} on ${formatDate(row.dateNext)}`}
+                      checked={scheduledSelected.has(row.id)}
+                      onCheckedChange={() => onSelectScheduled(row.id)}
+                    />
+                  )}
+                  {selecting ? (
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      aria-hidden
+                      className={cn(lines, "min-h-11 content-center text-left outline-none")}
+                      onClick={() => {
+                        if (!consumeLongPress()) onSelectScheduled(row.id);
+                      }}
                     >
-                      {signed(amount, row.currency)}
-                    </span>
-                    <span className={meta}>
-                      {[
-                        formatDate(row.dateNext),
-                        allAccounts && row.accountName,
-                        row.subtransactions.length > 0
-                          ? `Split (${row.subtransactions.length})`
-                          : row.categoryName,
-                        row.memo,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  </div>
+                      {summary}
+                    </button>
+                  ) : (
+                    <div className={cn(lines, "min-h-11 content-center")}>{summary}</div>
+                  )}
                   {/* The cleared column's place: scheduled rows have no cleared state yet. */}
                   <span className="size-11 shrink-0" aria-hidden />
                 </li>
@@ -3276,32 +3602,49 @@ function PhoneTransactions({
           const amount = BigInt(t.amount);
           const flag = flags.find((f) => f.color === t.flag);
           const future = t.date > todayIso();
+          const state = pending.get(t.id);
+          const unsaved = state === "new";
+          const { consumeLongPress, ...press } = (!unsaved && pressTransaction(t.id)) || {
+            consumeLongPress: () => false,
+          };
           return (
             <li
               key={t.id}
               data-transaction-id={t.id}
               data-state={isSelected(t.id) ? "selected" : undefined}
               data-highlighted={highlightId === t.id || undefined}
+              data-pending={state}
+              aria-busy={state ? true : undefined}
               className={cn(
                 card,
                 "data-highlighted:animate-[row-highlight_0.9s_ease-out]",
-                "data-[state=selected]:bg-[color-mix(in_oklch,var(--primary)_8%,var(--background))] dark:data-[state=selected]:bg-[color-mix(in_oklch,var(--primary)_16%,var(--background))]",
+                SELECTED_CARD,
+                "transition-colors data-pending:text-muted-foreground data-[pending=cell]:delay-300 data-[pending=row]:delay-300",
               )}
+              {...press}
             >
-              <Checkbox
-                className="size-5"
-                aria-label={`Select ${t.payeeName ?? "transaction"} on ${formatDate(t.date)}`}
-                checked={isSelected(t.id)}
-                onCheckedChange={() => onSelect(t)}
-              />
+              {selecting && (
+                <Checkbox
+                  className={checkbox}
+                  aria-label={`Select ${t.payeeName ?? "transaction"} on ${formatDate(t.date)}`}
+                  checked={isSelected(t.id)}
+                  disabled={unsaved}
+                  onCheckedChange={() => onSelect(t)}
+                />
+              )}
               <button
                 type="button"
+                disabled={unsaved}
                 className={cn(
                   lines,
                   "min-h-11 content-center text-left outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring",
                   future && "text-muted-foreground italic",
                 )}
-                onClick={() => onOpen(t)}
+                onClick={() => {
+                  if (consumeLongPress()) return;
+                  if (selecting) onSelect(t);
+                  else onOpen(t);
+                }}
               >
                 <span
                   className={cn(
@@ -3340,7 +3683,11 @@ function PhoneTransactions({
                   <span className="col-span-2 text-primary-text text-xs">Needs approval</span>
                 )}
               </button>
-              {onToggleCleared && t.cleared !== "reconciled" ? (
+              {unsaved || state === "row" ? (
+                <span className="flex size-11 shrink-0 items-center justify-center">
+                  <PendingMark delayed={!unsaved} />
+                </span>
+              ) : onToggleCleared && t.cleared !== "reconciled" ? (
                 <Button
                   variant="ghost"
                   size="icon"

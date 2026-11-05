@@ -17,6 +17,7 @@ import {
   useState,
 } from "react";
 import type { TargetMark } from "@/lib/budget-view";
+import { moveTarget, useOpenRequest } from "@/lib/commands";
 import { useDifferentiateWithoutColor } from "@/lib/display-options";
 import { type MoneyOption, minAmount, monthLabel } from "@/lib/months";
 import { useOptionalQueryClient } from "@/lib/query-client";
@@ -227,6 +228,11 @@ export function AvailableButton({
   const [month, setMonth] = useState(months?.initial);
   const later = months && month && month !== months.initial;
   const sources = later ? months.optionsFor(month) : actions.options;
+  // The command palette's Move money opens the row's popover.
+  useOpenRequest(trigger ? undefined : moveTarget(categoryId), () => {
+    setMonth(months?.initial);
+    setOpen(true);
+  });
   return (
     <Popover
       open={open}
@@ -370,7 +376,7 @@ function MoveForm({
         <CategoryField
           chevron
           label={`${label} to`}
-          placeholder=""
+          placeholder="Pick a category"
           value={to}
           onChange={setTo}
           categories={actions.options.filter((o) => o.id !== categoryId)}

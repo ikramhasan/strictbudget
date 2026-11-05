@@ -1,7 +1,8 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Toaster, toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { CommandRegistryProvider, useScreenCommands } from "@/lib/commands";
 import { UndoProvider } from "@/lib/undo";
 import { NO_AUTO_ASSIGN } from "@/test/fixtures";
 import { AutoAssignClose, AutoAssignPanel, autoAssignSummary } from "./auto-assign";
@@ -346,5 +347,78 @@ describe("AutoAssignPanel", () => {
       );
       expect(screen.getByRole("button", { name: "Reduce Overfunding A300" })).toBeInTheDocument();
     });
+
+    it("says on the row when Underfunded can fund only part, or nothing", () => {
+      const { rerender } = render(
+        <AutoAssignPanel
+          categories={plan}
+          names={named}
+          selection={false}
+          readyToAssign={2000n}
+          format={format}
+          onApply={vi.fn()}
+        />,
+      );
+      const underfunded = () => screen.getByRole("button", { name: "Underfunded A6600" });
+      expect(underfunded()).toBeEnabled();
+      expect(underfunded()).toHaveAccessibleDescription("Only A2000 to assign");
+      rerender(
+        <AutoAssignPanel
+          categories={plan}
+          names={named}
+          selection={false}
+          readyToAssign={0n}
+          format={format}
+          onApply={vi.fn()}
+        />,
+      );
+      expect(underfunded()).toBeDisabled();
+      expect(underfunded()).toHaveAccessibleDescription("Nothing ready to assign");
+    });
+
+    it("offers Underfunded to the command palette, through its preview", async () => {
+      let commands: ReturnType<typeof useScreenCommands> = [];
+      function Palette() {
+        commands = useScreenCommands();
+        return null;
+      }
+      render(
+        <CommandRegistryProvider>
+          <Palette />
+          <AutoAssignPanel
+            categories={plan}
+            names={named}
+            selection={false}
+            readyToAssign={2000n}
+            format={format}
+            onApply={vi.fn()}
+          />
+        </CommandRegistryProvider>,
+      );
+      const command = commands.find((c) => c.label === "Assign to underfunded");
+      expect(command?.keywords).toContain("auto-assign");
+      act(() => command?.run());
+      expect(await screen.findByRole("alertdialog")).toHaveTextContent(
+        "Auto-Assign Preview: Underfunded",
+      );
+    });
+  });
+
+  it("disables what would change nothing, and warns on a row that assigns more than you have", () => {
+    render(
+      <AutoAssignPanel
+        categories={categories}
+        names={names}
+        selection={false}
+        readyToAssign={500n}
+        format={format}
+        onApply={vi.fn()}
+      />,
+    );
+    // Rent's assigned amount already meets its target.
+    expect(screen.getByRole("button", { name: "Underfunded A0" })).toBeDisabled();
+    const lastMonth = screen.getByRole("button", { name: "Assigned last month A3000" });
+    expect(lastMonth).toBeEnabled();
+    expect(lastMonth).toHaveAccessibleDescription("A1500 more than you have");
   });
 });

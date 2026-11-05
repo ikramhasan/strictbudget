@@ -45,6 +45,7 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-page: var(--page);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -155,9 +156,11 @@
    * Whatever responds to the pointer (hover, the rail) is tinted cobalt. Dark mode inverts it:
    * paper-white text on ink surfaces.
    */
-  /* Three surfaces: the page off-white, cards and popovers white on it, so a card reads as raised
-     without a shadow. */
-  --background: oklch(0.984 0.003 95);
+  /* Three surfaces, each at least 0.04 apart in lightness: the cobalt rail (0.91), the warm paper
+     page (0.955, --page) and white on it for whatever is raised (cards, popovers, panels and the
+     controls drawn on --background), so a card reads as raised without a shadow. */
+  --page: oklch(0.955 0.005 90);
+  --background: #ffffff;
   --foreground: oklch(0.24 0.04 266);
   --card: #ffffff;
   --card-foreground: oklch(0.24 0.04 266);
@@ -167,12 +170,13 @@
   --primary-foreground: #ffffff;
   --secondary: oklch(0.963 0.004 95);
   --secondary-foreground: oklch(0.24 0.04 266);
-  --muted: oklch(0.963 0.004 95);
+  /* A step under the page, so a well (a toggle track, the register's tray) still sinks on it. */
+  --muted: oklch(0.945 0.005 90);
   --muted-foreground: oklch(0.5 0.03 266);
-  --accent: oklch(0.955 0.013 266);
+  --accent: oklch(0.935 0.016 266);
   --accent-foreground: oklch(0.24 0.04 266);
   --destructive: oklch(0.555 0.2 23);
-  --border: oklch(0.917 0.005 95);
+  --border: oklch(0.912 0.006 90);
   --input: oklch(0.862 0.007 95);
   --ring: #3e6ae1;
   /* Report palette: eight categorical colours in a fixed order, validated (both themes, against
@@ -204,25 +208,26 @@
   --chart-5: var(--report-5);
   --radius: 0.625rem;
   /* strictbudget: the rail is washed in cobalt, the logo's tile at its head. The open page's item
-     takes the page's own surface (--sidebar-active), as if pulled out of the rail onto it. */
-  --sidebar: oklch(0.952 0.017 266);
+     is lifted to white (--sidebar-active), a raised tab on the rail. */
+  --sidebar: oklch(0.91 0.024 266);
   --sidebar-foreground: oklch(0.24 0.04 266);
   --sidebar-primary: #3e6ae1;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: oklch(0.918 0.03 266);
+  --sidebar-accent: oklch(0.88 0.034 266);
   --sidebar-accent-foreground: oklch(0.24 0.04 266);
   --sidebar-active: #ffffff;
-  --sidebar-border: oklch(0.9 0.026 266);
+  --sidebar-border: oklch(0.87 0.03 266);
   --sidebar-ring: #3e6ae1;
-  --sidebar-muted: oklch(0.925 0.025 266);
+  --sidebar-muted: oklch(0.885 0.03 266);
   --sidebar-muted-foreground: oklch(0.46 0.05 266);
-  --sidebar-input: oklch(0.86 0.034 266);
-  --sidebar-primary-text: oklch(0.49 0.19 265.4);
-  --sidebar-destructive: oklch(0.52 0.2 23);
+  --sidebar-input: oklch(0.82 0.04 266);
+  --sidebar-primary-text: oklch(0.47 0.19 265.4);
+  --sidebar-destructive: oklch(0.5 0.2 23);
   --success: oklch(0.505 0.115 156);
-  /* strictbudget: primary as text. Dark mode lifts it toward white (as the library's own link and
-     tick colours do): the dark --primary is 3.5:1 on --background, under WCAG AA's 4.5:1. */
-  --primary-text: var(--primary);
+  /* strictbudget: primary as text, a shade deeper than --primary so it keeps 4.5:1 on the page and
+     on muted wells. Dark mode lifts it toward white (as the library's own link and tick colours
+     do): the dark --primary is 3.5:1 on --background, under WCAG AA's 4.5:1. */
+  --primary-text: oklch(0.52 0.18 265.4);
   /* Behind a dialog, sheet or the command palette: a plain dim, no blur. */
   --scrim: oklch(0.2 0.03 265 / 0.42);
 }
@@ -231,6 +236,7 @@
   /* Depth comes from lightness here: the rail (0.15), the page (0.192), cards (0.233), then menus,
      dialogs and drawers (0.272), each step lighter the nearer it sits. The surfaces are ink, the
      text paper. */
+  --page: oklch(0.192 0.02 266);
   --background: oklch(0.192 0.02 266);
   --foreground: oklch(0.948 0.006 95);
   --card: oklch(0.233 0.022 266);

@@ -2,7 +2,6 @@ import { Button } from "@strictbudget/ui/components/button";
 import { Field, FieldDescription, FieldLabel } from "@strictbudget/ui/components/field";
 import { Input } from "@strictbudget/ui/components/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
-import { Textarea } from "@strictbudget/ui/components/textarea";
 import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
 import { useOptionalBudget } from "@/lib/budget-context";
 import { EmojiButton } from "./emoji-button";
@@ -24,18 +23,16 @@ export function splitEmoji(name: string): { emoji: string; text: string } {
 
 export interface NameValues {
   name: string;
-  note: string;
 }
 
 /**
- * Inline editor: a popover with a name field (and optionally a note), OK/Cancel, and
- * any extra actions (Hide, Delete) the caller passes in.
+ * Inline editor: a popover with a name field, OK/Cancel, and any extra actions (Hide, Delete)
+ * the caller passes in. A category's note is edited in the inspector, not here.
  */
 export function NamePopover({
   trigger,
   title,
-  initial = { name: "", note: "" },
-  withNote = false,
+  initial = { name: "" },
   withEmoji = false,
   submitLabel = "OK",
   nameLockedReason,
@@ -45,7 +42,6 @@ export function NamePopover({
   trigger: ReactNode;
   title: string;
   initial?: NameValues;
-  withNote?: boolean;
   /**
    * An emoji box in front of the name: a leading emoji in `initial.name` moves into it, and a
    * picked one is put back at the start of the name. Not shown while the name is locked.
@@ -71,7 +67,7 @@ export function NamePopover({
   function handleOpenChange(next: boolean) {
     if (next) {
       const split = emojiBox ? splitEmoji(initial.name) : { emoji: "", text: initial.name };
-      setValues({ ...initial, name: split.text });
+      setValues({ name: split.text });
       setEmoji(split.emoji);
     }
     setOpen(next);
@@ -84,7 +80,7 @@ export function NamePopover({
     const name = emoji ? `${emoji} ${trimmed}` : trimmed;
     setPending(true);
     try {
-      await onSubmit({ name, note: values.note });
+      await onSubmit({ name });
       setOpen(false);
     } finally {
       setPending(false);
@@ -112,7 +108,7 @@ export function NamePopover({
                 ref={nameRef}
                 id={`${id}-name`}
                 value={values.name}
-                onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))}
+                onChange={(e) => setValues({ name: e.target.value })}
                 // The emoji and its space count toward the 100 the API allows.
                 maxLength={emoji ? 100 - emoji.length - 1 : 100}
                 autoFocus={!nameLockedReason}
@@ -122,17 +118,6 @@ export function NamePopover({
             </div>
             {nameLockedReason && <FieldDescription>{nameLockedReason}</FieldDescription>}
           </Field>
-          {withNote && (
-            <Field>
-              <FieldLabel htmlFor={`${id}-note`}>Note</FieldLabel>
-              <Textarea
-                id={`${id}-note`}
-                value={values.note}
-                onChange={(e) => setValues((v) => ({ ...v, note: e.target.value }))}
-                rows={3}
-              />
-            </Field>
-          )}
           <div className="flex flex-wrap items-center gap-2">
             {actions?.(() => setOpen(false))}
             <div className="ml-auto flex gap-2">

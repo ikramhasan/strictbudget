@@ -11,6 +11,7 @@ import { cn } from "@strictbudget/ui/lib/utils";
 import { useBudget } from "@/lib/budget-context";
 import { chartNumber } from "@/lib/reports";
 import { type Breakdown, type BreakdownRow, rowChange, shares } from "@/lib/spending-breakdown";
+import { CategoryLabel } from "../category-label";
 
 /** A change as "+$15.00 (+50%)", or "−$5.00 (−10%)"; "new" when nothing was spent before. */
 function useChangeLabel() {
@@ -75,7 +76,7 @@ export function SpendingBreakdownList({
                     className="size-2.5 shrink-0 rounded-[3px]"
                     style={{ background: row.color }}
                   />
-                  <span className="min-w-0 flex-1 truncate font-medium">{row.name}</span>
+                  <CategoryLabel name={row.name} className="flex-1 font-medium" />
                   <span className="font-medium tabular-nums">{format(-row.net)}</span>
                 </span>
                 <span className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -129,7 +130,7 @@ export function SpendingBreakdownList({
                   onClick={() => onSelect(row)}
                   className="flex w-full items-baseline gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                 >
-                  <span className="min-w-0 flex-1 truncate">{row.name}</span>
+                  <CategoryLabel name={row.name} className="flex-1" />
                   <span className="tabular-nums">+{format(row.net)}</span>
                 </button>
               </li>
@@ -166,7 +167,7 @@ export function SpendingBreakdownTable({
       <TableRow key={row.key}>
         <TableCell>
           <button type="button" className="text-left hover:underline" onClick={() => onSelect(row)}>
-            {row.name}
+            <CategoryLabel name={row.name} />
           </button>
         </TableCell>
         <TableCell className="text-right tabular-nums">

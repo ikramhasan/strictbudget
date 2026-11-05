@@ -65,7 +65,7 @@ describe("CategoryPicker", () => {
   it("unticks and adds categories, then reports the changes", async () => {
     const onContinue = vi.fn();
     render(<CategoryPicker data={data} pending={false} onContinue={onContinue} />);
-    await userEvent.click(screen.getByRole("button", { name: /Skip to categories/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Continue/ }));
     await userEvent.click(screen.getByLabelText("Water"));
     await userEvent.type(screen.getByLabelText("New category in Goals"), "Emergency fund");
     await userEvent.click(screen.getByRole("button", { name: "Add to Goals" }));

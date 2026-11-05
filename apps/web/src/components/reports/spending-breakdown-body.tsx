@@ -25,6 +25,7 @@ import {
   UNCATEGORIZED_GROUP,
 } from "@/lib/spending-breakdown";
 import type { useReportState } from "@/lib/use-report";
+import { CategoryLabel } from "../category-label";
 import { ChartCard, type ChartKind, ReportEmpty } from "./chart-card";
 import type { DrillDown } from "./drill-down-sheet";
 import { type BreakdownChartKind, SpendingBreakdownChart } from "./spending-breakdown-chart";
@@ -201,7 +202,7 @@ export function SpendingBreakdownBody({
         <Stat label={`Most frequent ${rowNoun.one.toLowerCase()}`}>
           {stats.mostFrequent ? (
             <>
-              <span className="block truncate">{stats.mostFrequent.name}</span>
+              <CategoryLabel name={stats.mostFrequent.name} className="flex" />
               <span className="block font-normal text-muted-foreground text-xs">
                 {stats.mostFrequent.count}{" "}
                 {stats.mostFrequent.count === 1 ? "transaction" : "transactions"}

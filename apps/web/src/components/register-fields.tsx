@@ -56,6 +56,7 @@ import {
   type ReactNode,
   useContext,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -70,6 +71,7 @@ import {
   transferChoiceLabel,
   transferLabel,
 } from "@/lib/transactions";
+import { CategoryLabel } from "./category-label";
 import { useManagePayees } from "./manage-payees";
 
 /**
@@ -262,11 +264,31 @@ export interface PayeeChoice {
 }
 
 /**
+ * How well a payee name answers typed text: names that start with it, then ones with a word that
+ * does, then the rest that contain it ("sh" puts Shell before FreshMart).
+ */
+function payeeRank(label: string, text: string) {
+  const lower = label.toLowerCase();
+  if (lower.startsWith(text)) return 0;
+  return lower.split(/[\s\-/&.]+/).some((w) => w.startsWith(text)) ? 1 : 2;
+}
+
+/** Whether a field's change event added text (typing, pasting) rather than removing it. */
+function addedText(event: unknown, before: string, after: string) {
+  const native = (event as { nativeEvent?: unknown } | undefined)?.nativeEvent ?? event;
+  const type = (native as { inputType?: unknown } | undefined)?.inputType;
+  return typeof type === "string" ? type.startsWith("insert") : after.length > before.length;
+}
+
+/**
  * Payee name with suggestions, plus "Payments and Transfers" for each account money can move to,
  * worded by `own` and the amount's direction (`transferChoiceLabel`); "Transfer : <account>"
  * without `own`. A new name is created on save; "Create … Payee" is listed at the top so that's
  * clear, while the first existing match stays highlighted. That entry is a button above the list
  * rather than an item, so autocomplete never lands on it.
+ *
+ * Typing completes the name in the field (inline autocomplete): "Fan" reads "Fancy Bistro" with
+ * "cy Bistro" selected, so typing on replaces it, Backspace removes it, and Tab or Enter keeps it.
  */
 export function PayeeField({
   label = "Payee",
@@ -306,6 +328,21 @@ export function PayeeField({
   // typing replaces it; the list narrows once something is typed.
   const [open, setOpen] = useState(Boolean(autoFocus));
   const [typed, setTyped] = useState(false);
+  /** What was typed, without the completion: what the list is narrowed and ranked by. */
+  const [query, setQuery] = useState("");
+  const typedText = query.trim().toLowerCase();
+  const inputRef = useRef<HTMLInputElement>(null);
+  /** The completion to select once the field shows it: from the end of the typed text. */
+  const completing = useRef<{ text: string; from: number } | null>(null);
+  /** The last completion and the text typed for it, which Backspace gives back as typed. */
+  const completed = useRef<{ typed: string; text: string } | null>(null);
+  useLayoutEffect(() => {
+    const pending = completing.current;
+    const input = inputRef.current;
+    if (!pending || !input || input.value !== pending.text) return;
+    completing.current = null;
+    input.setSelectionRange(pending.from, pending.text.length, "backward");
+  });
   const { groups, create } = useMemo(() => {
     const known: PayeeItem[] = payees
       .filter((p) => !p.hidden)
@@ -328,18 +365,14 @@ export function PayeeField({
       (transferAccountId && toAccounts.find((p) => p.accountId === transferAccountId)) ||
       [...known, ...toAccounts].find((p) => matches(p, trimmed));
     // Untyped, the list is "Selected", then "Payments and Transfers", then "Saved Payees"; once
-    // something is typed, saved payees come first.
-    // Typed text ranks names that start with it, then ones with a word that does, so "sh" puts
-    // Shell before FreshMart (the list still keeps every name that contains it).
-    const rank = (label: string) => {
-      const lower = label.toLowerCase();
-      const text = trimmed.toLowerCase();
-      if (lower.startsWith(text)) return 0;
-      return lower.split(/[\s\-/&.]+/).some((w) => w.startsWith(text)) ? 1 : 2;
-    };
+    // something is typed, saved payees come first, ranked by what was typed (`payeeRank`; the list
+    // still keeps every name that contains it).
     const saved = {
       value: "Saved Payees",
-      items: typed && trimmed ? [...known].sort((a, b) => rank(a.label) - rank(b.label)) : known,
+      items:
+        typed && typedText
+          ? [...known].sort((a, b) => payeeRank(a.label, typedText) - payeeRank(b.label, typedText))
+          : known,
     };
     const moves = { value: "Payments and Transfers", items: toAccounts };
     const selected = chosen && !typed ? [{ value: "Selected", items: [asSelected(chosen)] }] : [];
@@ -350,7 +383,17 @@ export function PayeeField({
       // A name no payee has yet: offer to create it at the top of the list.
       create: trimmed && !chosen && !hiddenMatch ? trimmed : null,
     };
-  }, [payees, transfers, own, trimmed, hiddenMatch, typed, transferAccountId]);
+  }, [payees, transfers, own, trimmed, typedText, hiddenMatch, typed, transferAccountId]);
+
+  /** The saved payee typed text completes to: the first that starts with it, as the list ranks. */
+  function completionOf(text: string) {
+    const lower = text.toLowerCase();
+    if (!lower.trim()) return null;
+    const found = payees.find(
+      (p) => !p.hidden && p.name.length > text.length && p.name.toLowerCase().startsWith(lower),
+    );
+    return found ? found.name : null;
+  }
 
   // Item presses report only the text; the highlighted item tells transfers to two accounts
   // with the same name apart.
@@ -374,13 +417,39 @@ export function PayeeField({
         if (next) setTyped(false);
       }}
       items={groups}
-      filter={typed ? undefined : null}
+      // Narrowed by what was typed, not the completion after it.
+      filter={
+        typed
+          ? (item: PayeeItem) => !typedText || item.label.toLowerCase().includes(typedText)
+          : null
+      }
       value={value}
       onItemHighlighted={(item: PayeeItem | undefined) => {
         highlighted.current = item;
       }}
       onValueChange={(text, details) => {
-        if (details.reason === "input-change") setTyped(true);
+        if (details.reason === "input-change") {
+          setTyped(true);
+          // Typing at the end completes the name (in its own case); deleting never does, so
+          // Backspace undoes it, back to the letters as they were typed.
+          const added = addedText(details.event, value, text);
+          const last = completed.current;
+          completed.current = null;
+          const typedBefore =
+            last && value === last.text && text.toLowerCase().startsWith(last.typed.toLowerCase())
+              ? last.typed
+              : null;
+          if (typedBefore !== null) text = typedBefore + text.slice(typedBefore.length);
+          setQuery(text);
+          const atEnd = (inputRef.current?.selectionStart ?? text.length) === text.length;
+          const completion = atEnd && added ? completionOf(text) : null;
+          if (completion) {
+            completing.current = { text: completion, from: text.length };
+            completed.current = { typed: text, text: completion };
+            onChange({ name: completion, transferAccountId: null });
+            return;
+          }
+        }
         const pressed = details.reason === "item-press";
         const choice = choose(text, pressed ? highlighted.current : undefined);
         onChange(pressed ? choice : { ...choice, payee: undefined });
@@ -391,22 +460,33 @@ export function PayeeField({
       autoHighlight={typed}
     >
       <AutocompleteInput
+        ref={inputRef}
         aria-label={label}
+        aria-autocomplete="both"
         placeholder="Payee"
         showTrigger={false}
         autoFocus={autoFocus}
         onFocus={(e) => {
           // Coming back to the field shows the whole list again, Selected first.
           setTyped(false);
+          setQuery("");
           setOpen(true);
           e.currentTarget.select();
         }}
         onKeyDown={(e) => {
+          // Enter on an empty field with its list closed opens the list (with a payee in it,
+          // Enter goes on to save the row).
+          if (e.key === "Enter" && !open && value.trim() === "") {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(true);
+            return;
+          }
           // Tab takes the highlighted suggestion (and its category) before moving on, so a
           // partly typed name never becomes a new payee by accident.
           if (e.key !== "Tab" || e.shiftKey || !open || !typed) return;
           const item = highlighted.current;
-          if (!item || item.label === value) return;
+          if (!item) return;
           onChange(choose(item.label, item));
         }}
         className="h-8 w-full"
@@ -724,6 +804,14 @@ export function CategoryField({
         autoFocus={autoFocus}
         onFocus={() => openOnFocus && setOpen(true)}
         onKeyDown={(e) => {
+          // Enter on an empty field with its list closed opens the list (with a category in it,
+          // Enter goes on to save the row or submit the form).
+          if (e.key === "Enter" && !open && !selected) {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(true);
+            return;
+          }
           // Tab files the row under the highlighted match, as Enter would, then moves on.
           if (e.key !== "Tab" || e.shiftKey || !open || !typing) return;
           const option = highlighted.current;
@@ -782,9 +870,10 @@ export function CategoryField({
                     ) : option.id.startsWith(SHORTCUT) ? (
                       // The group in parentheses: "Rent (Bills)".
                       <span className="flex w-full items-center justify-between gap-3">
-                        <span className="truncate">
-                          {option.name}{" "}
-                          <span className="text-muted-foreground">({option.group})</span>
+                        <span className="flex min-w-0 items-center gap-1">
+                          <CategoryLabel name={option.name} />
+                          {/* A space of its own keeps "Rent (Bills)" whole in the option's name. */}{" "}
+                          <span className="shrink-0 text-muted-foreground">({option.group})</span>
                         </span>
                         {describeOption && (
                           <span className="shrink-0 tabular-nums">
@@ -794,11 +883,11 @@ export function CategoryField({
                       </span>
                     ) : describeOption ? (
                       <span className="flex w-full items-center justify-between gap-3">
-                        <span className="truncate">{option.name}</span>
+                        <CategoryLabel name={option.name} />
                         <span className="shrink-0 tabular-nums">{describeOption(option)}</span>
                       </span>
                     ) : (
-                      option.name
+                      <CategoryLabel name={option.name} />
                     )}
                   </ComboboxItem>
                 )}

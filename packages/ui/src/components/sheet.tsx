@@ -1,4 +1,9 @@
 import { Button } from "@strictbudget/ui/components/button";
+import {
+  keepFocusOnClose,
+  RELEASE_ON_CLOSE,
+  releaseOnClose,
+} from "@strictbudget/ui/components/dialog";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { XIcon } from "lucide-react";
 import { Dialog as SheetPrimitive } from "radix-ui";
@@ -30,6 +35,7 @@ function SheetOverlay({
       // strictbudget: a plain theme-aware scrim (--scrim in theme.css); no backdrop blur.
       className={cn(
         "fixed inset-0 z-50 bg-scrim duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
+        RELEASE_ON_CLOSE,
         className,
       )}
       {...props}
@@ -42,6 +48,8 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  onAnimationStart,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left";
@@ -68,8 +76,17 @@ function SheetContent({
           "data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:border-r data-[side=left]:data-[state=open]:slide-in-from-left-10 data-[side=left]:data-[state=closed]:slide-out-to-left-10 data-[side=left]:sm:max-w-sm",
           "data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:border-l data-[side=right]:data-[state=open]:slide-in-from-right-10 data-[side=right]:data-[state=closed]:slide-out-to-right-10 data-[side=right]:sm:max-w-sm",
           "motion-reduce:[--tw-enter-translate-x:0]! motion-reduce:[--tw-enter-translate-y:0]! motion-reduce:[--tw-exit-translate-x:0]! motion-reduce:[--tw-exit-translate-y:0]!",
+          RELEASE_ON_CLOSE,
           className,
         )}
+        onAnimationStart={(event) => {
+          releaseOnClose(event);
+          onAnimationStart?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          keepFocusOnClose(event);
+          onCloseAutoFocus?.(event);
+        }}
         {...props}
       >
         {children}

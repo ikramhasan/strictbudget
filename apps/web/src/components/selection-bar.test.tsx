@@ -76,16 +76,16 @@ describe("SelectionBar", () => {
     expect(onExport).toHaveBeenCalledOnce();
   });
 
-  it("offers Approve and Reject with unapproved rows, Flag and Clear moving into More", async () => {
+  it("offers Approve and Reject with unapproved rows, Flag and Mark cleared moving into More", async () => {
     const { onAction } = bar(summary({ unapproved: 1, uncleared: 2 }));
     expect(screen.queryByRole("button", { name: /Flag/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Clear$/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Mark cleared" })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Approve" }));
     expect(onAction).toHaveBeenLastCalledWith({ type: "approve" });
     await userEvent.click(screen.getByRole("button", { name: "Reject" }));
     expect(onAction).toHaveBeenLastCalledWith({ type: "reject" });
     await userEvent.click(screen.getByRole("button", { name: "More" }));
-    expect(await screen.findByRole("menuitem", { name: "Mark as Cleared" })).toBeVisible();
+    expect(await screen.findByRole("menuitem", { name: "Mark cleared" })).toBeVisible();
     expect(screen.getByRole("menuitem", { name: "Flag" })).toBeVisible();
   });
 
@@ -95,12 +95,32 @@ describe("SelectionBar", () => {
     expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
   });
 
-  it("offers Clear only when every selected row is uncleared", () => {
-    const { unmount } = bar(summary({ uncleared: 2 }));
-    expect(screen.getByRole("button", { name: /Clear$/ })).toBeVisible();
-    unmount();
-    bar(summary({ cleared: 2 }));
-    expect(screen.queryByRole("button", { name: /^Clear$/ })).toBeNull();
+  it("offers Mark cleared when every selected row is uncleared, Mark uncleared when all are cleared", async () => {
+    const first = bar(summary({ uncleared: 2 }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark cleared" }));
+    expect(first.onAction).toHaveBeenLastCalledWith({ type: "cleared", cleared: "cleared" });
+    first.unmount();
+    const second = bar(summary({ cleared: 2 }));
+    expect(screen.queryByRole("button", { name: "Mark cleared" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Mark uncleared" }));
+    expect(second.onAction).toHaveBeenLastCalledWith({ type: "cleared", cleared: "uncleared" });
+    second.unmount();
+    // A mix has both in More.
+    bar(summary({ cleared: 1, uncleared: 1 }));
+    expect(screen.queryByRole("button", { name: /^Mark/ })).toBeNull();
+  });
+
+  it("shows More's shortcuts as key caps", async () => {
+    bar(summary({}));
+    await userEvent.click(screen.getByRole("button", { name: "More" }));
+    const duplicate = await screen.findByRole("menuitem", { name: "Duplicate" });
+    expect(duplicate.querySelector("kbd")).toHaveTextContent("⇧D");
+    expect(
+      screen.getByRole("menuitem", { name: "Unmatch" }).querySelector("kbd"),
+    ).toHaveTextContent("⇧U");
+    expect(screen.getByRole("menuitem", { name: "Match" }).querySelector("kbd")).toHaveTextContent(
+      "M",
+    );
   });
 
   it("categorizes from a menu of groups with their categories as submenus", async () => {

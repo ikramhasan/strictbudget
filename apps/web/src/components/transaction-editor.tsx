@@ -96,6 +96,39 @@ function tidyAmount(text: string, settings: MoneySettings) {
   return typeof amount === "string" ? text : toMoneyInput(amount, settings);
 }
 
+/** The field an editor opens in: a column of the transaction's row, or of one of its split lines. */
+export interface EditorFocus {
+  column: ColumnId;
+  /** The split line's index; left out for the transaction's own row. */
+  line?: number;
+}
+
+/**
+ * The control to focus for `focus` in a row editor's rows (under `body`): the clicked cell's field.
+ * A split's own category isn't a field, so its first line's is; a memo without a column is the
+ * footer's.
+ */
+function focusTarget(body: ParentNode, { column, line }: EditorFocus) {
+  const row =
+    line !== undefined && line >= 0 ? `[data-editor-line="${line}"]` : "[data-editor-main]";
+  const candidates = [
+    `${row} [data-editor-column="${column}"]`,
+    `[data-editor-line="0"] [data-editor-column="${column}"]`,
+    column === "memo" ? "[data-editor-footer-memo]" : null,
+  ];
+  for (const selector of candidates) {
+    const field = selector
+      ? body
+          .querySelector(selector)
+          ?.querySelector<HTMLElement>(
+            "input:not([type=hidden]), select, textarea, button:not([tabindex='-1'])",
+          )
+      : null;
+    if (field) return field;
+  }
+  return null;
+}
+
 export function TransactionEditor({
   initial,
   columns,
@@ -114,6 +147,7 @@ export function TransactionEditor({
   focusMemo = false,
   focusSplit = false,
   focusAmount = false,
+  focusCell,
   recentPayees = [],
   layout = "row",
   pending,
@@ -152,6 +186,8 @@ export function TransactionEditor({
   focusSplit?: boolean;
   /** Start in the amount, raising a phone's number keyboard (a new transaction in the drawer). */
   focusAmount?: boolean;
+  /** Start in this field (the row's cell that was clicked to open it). */
+  focusCell?: EditorFocus;
   /** Payees to offer as one tap each under the stacked editor's payee field. */
   recentPayees?: readonly string[];
   layout?: "row" | "stacked";
@@ -219,6 +255,20 @@ export function TransactionEditor({
     return () => cancelAnimationFrame(frame);
   }, [splitFocus]);
   const direction = typedDirection(draft) === "in" ? "inflow" : "outflow";
+  const mainRow = useRef<HTMLTableRowElement>(null);
+  // Once, as the editor opens.
+  useEffect(() => {
+    if (!focusCell || layout !== "row") return;
+    const frame = requestAnimationFrame(() => {
+      const body = mainRow.current?.parentElement;
+      const field = body ? focusTarget(body, focusCell) : null;
+      if (!field) return;
+      field.focus();
+      // An amount is selected, so typing replaces it.
+      if (field instanceof HTMLInputElement && field.inputMode === "decimal") field.select();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
   // Remounts the payee field focused, after the card's "Payment to <card>" is picked.
   const [payeeFocus, setPayeeFocus] = useState(0);
   // A card's category list has "Payment to <card>" under "Credit Cards". Picking it clears the payee and category and moves to the payee list, to pick the account
@@ -376,7 +426,7 @@ export function TransactionEditor({
             aria-label="Account"
             // First field of the row (the date is, without an account column). The stacked editor
             // starts in the amount, or nowhere: focusing a select would open no keyboard.
-            autoFocus={!focusMemo && !focusSplit && layout === "row"}
+            autoFocus={!focusMemo && !focusSplit && !focusCell && layout === "row"}
             value={draft.accountId}
             onChange={(e) => chooseAccount(e.target.value)}
             className="h-8 w-full"
@@ -396,7 +446,11 @@ export function TransactionEditor({
             format={dateFormat}
             // A phone's drawer opens without the keyboard; the date is a tap away.
             autoFocus={
-              !columns.includes("account") && !focusMemo && !focusSplit && layout !== "stacked"
+              !columns.includes("account") &&
+              !focusMemo &&
+              !focusSplit &&
+              !focusCell &&
+              layout !== "stacked"
             }
             defaultOpen={openDatePicker}
             repeat={
@@ -677,6 +731,7 @@ export function TransactionEditor({
       {memoInFooter && (
         // Lined up with the split lines' memos, which start after the select column.
         <div
+          data-editor-footer-memo
           className="mr-auto w-72 max-w-full"
           style={{
             marginLeft: `calc(0rem${columns
@@ -985,7 +1040,9 @@ export function TransactionEditor({
   return (
     <>
       <RegisterRow
+        ref={mainRow}
         still
+        data-editor-main
         aria-label={label}
         className="not-last:*:border-b-0 bg-muted/50"
         onKeyDown={handleKeyDown}
@@ -993,6 +1050,7 @@ export function TransactionEditor({
         {columns.map((column) => (
           <RegisterCell
             key={column}
+            data-editor-column={column}
             style={pinned(columns, column)?.style}
             className={cn(
               EDITOR_CELL,
@@ -1010,6 +1068,7 @@ export function TransactionEditor({
         <RegisterRow
           still
           key={line.key}
+          data-editor-line={index}
           aria-label={`Split line ${index + 1}`}
           className="not-last:*:border-b-0 bg-muted/50"
           onKeyDown={handleKeyDown}
@@ -1020,6 +1079,7 @@ export function TransactionEditor({
               column === memoLead[0] && (
                 <RegisterCell
                   key={column}
+                  data-editor-column="memo"
                   colSpan={memoLead.length}
                   className={cn(EDITOR_CELL, "py-1")}
                 >
@@ -1029,6 +1089,7 @@ export function TransactionEditor({
             ) : (
               <RegisterCell
                 key={column}
+                data-editor-column={column}
                 style={pinned(columns, column)?.style}
                 className={cn(
                   EDITOR_CELL,

@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { Account } from "@/lib/accounts";
 import type { MoneySettings } from "@/lib/money-input";
-import { emptyDraft } from "@/lib/transactions";
+import { type Draft, emptyDraft, emptyLine } from "@/lib/transactions";
 import { registerColumns } from "./register-columns";
-import { TransactionEditor } from "./transaction-editor";
+import { type EditorFocus, TransactionEditor } from "./transaction-editor";
 
 const usd: MoneySettings = {
   currency: "USD",
@@ -51,7 +51,14 @@ function renderEditor(
   {
     another = false,
     columns = registerColumns(false),
-  }: { another?: boolean; columns?: ReturnType<typeof registerColumns> } = {},
+    initial,
+    focusCell,
+  }: {
+    another?: boolean;
+    columns?: ReturnType<typeof registerColumns>;
+    initial?: Draft;
+    focusCell?: EditorFocus;
+  } = {},
 ) {
   const onSave = vi.fn();
   const onCancel = vi.fn();
@@ -61,7 +68,8 @@ function renderEditor(
     <table>
       <tbody>
         <TransactionEditor
-          initial={emptyDraft(accountId, "2026-10-01")}
+          initial={initial ?? emptyDraft(accountId, "2026-10-01")}
+          focusCell={focusCell}
           columns={columns}
           accounts={[
             account("checking", "checking"),
@@ -293,11 +301,76 @@ describe("TransactionEditor", () => {
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Payee"), "Mar");
     expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["Market"]);
+    // Typed on, the name completes; Backspace takes the completion off.
+    expect(screen.getByLabelText("Payee")).toHaveValue("Market");
+    await user.keyboard("{Backspace}");
     await user.click(screen.getByRole("button", { name: "Create “Mar” Payee" }));
     expect(screen.getByLabelText("Payee")).toHaveValue("Mar");
     expect(screen.getByLabelText("Category")).toHaveValue("");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ payeeName: "Mar" }), null);
+  });
+
+  it("completes a typed payee in the field, keeping it as you type on and on Tab", async () => {
+    renderEditor();
+    const user = userEvent.setup();
+    const payee = screen.getByLabelText("Payee") as HTMLInputElement;
+    await user.type(payee, "ma");
+    expect(payee).toHaveValue("Market");
+    expect([payee.selectionStart, payee.selectionEnd]).toEqual([2, 6]);
+    // Typing the next letter of the completion replaces the selection and completes again.
+    await user.keyboard("r");
+    expect(payee).toHaveValue("Market");
+    expect([payee.selectionStart, payee.selectionEnd]).toEqual([3, 6]);
+    await user.keyboard("{Tab}");
+    expect(payee).toHaveValue("Market");
+  });
+
+  describe("opened by a click on a cell", () => {
+    const split: Draft = {
+      ...emptyDraft("checking", "2026-10-01"),
+      payeeName: "Market",
+      memo: "Weekly shop",
+      outflow: "30.00",
+      lines: [
+        emptyLine({ categoryId: "groceries", outflow: "20.00" }),
+        emptyLine({ categoryId: "rent", outflow: "10.00", payeeName: "Landlord" }),
+      ],
+    };
+
+    it("starts in the clicked field instead of the date", async () => {
+      renderEditor("checking", { initial: split, focusCell: { column: "memo" } });
+      await waitFor(() => expect(screen.getByLabelText("Memo")).toHaveFocus());
+      expect(screen.getByLabelText("Date")).not.toHaveFocus();
+    });
+
+    it("selects a clicked amount, so typing replaces it", async () => {
+      renderEditor("checking", { initial: split, focusCell: { column: "outflow" } });
+      const outflow = screen.getByLabelText("Outflow") as HTMLInputElement;
+      await waitFor(() => expect(outflow).toHaveFocus());
+      expect([outflow.selectionStart, outflow.selectionEnd]).toEqual([0, outflow.value.length]);
+    });
+
+    it("starts in a split line's field, and in the first line's category for the split's", async () => {
+      renderEditor("checking", { initial: split, focusCell: { column: "payee", line: 1 } });
+      await waitFor(() => expect(screen.getByLabelText("Payee, line 2")).toHaveFocus());
+    });
+
+    it("starts in the first line's category for the split's own category", async () => {
+      renderEditor("checking", { initial: split, focusCell: { column: "category" } });
+      await waitFor(() => expect(screen.getByLabelText("Category, line 1")).toHaveFocus());
+    });
+  });
+
+  it("opens an empty category's closed list on Enter instead of saving", async () => {
+    const { onSave } = renderEditor();
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText("Category"));
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("option", { name: "Rent" })).not.toBeInTheDocument();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("option", { name: "Rent" })).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it("closes an open list on Esc before cancelling the row", async () => {

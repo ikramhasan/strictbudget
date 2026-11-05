@@ -17,8 +17,9 @@ import {
 import { Button } from "@strictbudget/ui/components/button";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { ChevronRight } from "lucide-react";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useId, useState } from "react";
 import { toast } from "sonner";
+import { useCommand } from "@/lib/commands";
 import type { BudgetMonthData } from "@/lib/months";
 import { useOptionalUndo } from "@/lib/undo";
 
@@ -123,6 +124,30 @@ function listsOption(option: AutoAssignOption, amount: bigint, one: boolean) {
 }
 
 /**
+ * What an option's row says before it's chosen: `none` when it would change nothing, `empty` for
+ * Underfunded with nothing ready to give, `over` when it assigns more than Ready to Assign (by
+ * `short`), and `partial` when Underfunded can fund only part of what's short.
+ */
+export function optionState(
+  option: AutoAssignOption,
+  value: bigint,
+  categories: readonly MonthCategory[],
+  names: ReadonlyMap<string, { name: string; group: string }>,
+  readyToAssign: bigint,
+): { kind: "none" | "empty" | "partial" | "ok" } | { kind: "over"; short: bigint } {
+  const changes = autoAssignChanges(option, categories, names, readyToAssign);
+  if (changes.length === 0) {
+    return option === "underfunded" && value > 0n && readyToAssign <= 0n
+      ? { kind: "empty" }
+      : { kind: "none" };
+  }
+  const totals = autoAssignTotals(changes, readyToAssign);
+  if (totals.short > 0n) return { kind: "over", short: totals.short };
+  if (option === "underfunded" && totals.total < value) return { kind: "partial" };
+  return { kind: "ok" };
+}
+
+/**
  * What applying the changes does to Ready to Assign: the total moved into (or out of) the
  * categories, Ready to Assign before and after, and how much past what's there it assigns.
  */
@@ -192,6 +217,7 @@ export function AutoAssignPanel({
   bare?: boolean;
 }) {
   const [preview, setPreview] = useState<AutoAssignOption | null>(null);
+  const id = useId();
   const history = useOptionalUndo();
   const close = useContext(CloseContext);
   // Labels go singular whenever one category is covered (selected or the only one in view).
@@ -223,6 +249,18 @@ export function AutoAssignPanel({
   const amountText = (delta: bigint) => `${delta > 0n ? "+" : ""}${format(delta.toString())}`;
   const totals = autoAssignTotals(changes, readyToAssign);
   const overdraws = totals.short > 0n;
+  // The command palette runs Underfunded too, always through its preview.
+  useCommand({
+    label: selection
+      ? `Assign to underfunded in ${one ? "selected category" : "selected categories"}`
+      : "Assign to underfunded",
+    keywords: ["auto-assign", "fund targets", "underfunded"],
+    run: () => setPreview("underfunded"),
+    enabled:
+      !bare &&
+      categories.length > 0 &&
+      autoAssignChanges("underfunded", categories, names, readyToAssign).length > 0,
+  });
   /** Applies an option, then says what changed, with Undo (a failure has its own toast). */
   const apply = async (option: AutoAssignOption) => {
     const applied = autoAssignChanges(option, categories, names, readyToAssign);
@@ -268,24 +306,59 @@ export function AutoAssignPanel({
             const value = buttonAmount(option, categories);
             if (!listsOption(option, value, one)) return null;
             const amount = format(value.toString());
+            const name = label(option, one, payment);
+            const state = optionState(option, value, categories, names, readyToAssign);
+            const note =
+              state.kind === "over"
+                ? `${format(state.short.toString())} more than you have`
+                : state.kind === "partial"
+                  ? `Only ${format(readyToAssign.toString())} to assign`
+                  : state.kind === "empty"
+                    ? "Nothing ready to assign"
+                    : null;
+            const noteId = `${id}-${option}`;
             return (
               <li key={option}>
                 <button
                   type="button"
-                  aria-label={`${label(option, one, payment)} ${amount}`}
-                  className="group/option flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm outline-none transition-[background-color,scale] duration-150 ease-out-quint hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98] motion-reduce:active:scale-100"
+                  aria-label={`${name} ${amount}`}
+                  aria-describedby={note ? noteId : undefined}
+                  disabled={state.kind === "none" || state.kind === "empty"}
+                  className="group/option grid min-h-8 w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 rounded-md px-2 py-1.5 text-left text-sm outline-none transition-[background-color,scale] duration-150 ease-out-quint enabled:hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring enabled:active:scale-[0.98] disabled:cursor-default motion-reduce:active:scale-100"
                   onClick={() => choose(option)}
                 >
-                  <span className="min-w-0 flex-1 truncate font-medium text-primary-text">
-                    {label(option, one, payment)}
+                  <span className="truncate font-medium text-primary-text group-disabled/option:text-muted-foreground">
+                    {name}
                   </span>
-                  <span className="text-muted-foreground tabular-nums transition-colors duration-150 group-hover/option:text-foreground group-focus-visible/option:text-foreground">
+                  <span
+                    className={cn(
+                      "text-muted-foreground tabular-nums transition-colors duration-150 group-enabled/option:group-hover/option:text-foreground group-focus-visible/option:text-foreground",
+                      state.kind === "over" &&
+                        "font-medium text-destructive group-enabled/option:group-hover/option:text-destructive",
+                      "group-disabled/option:opacity-60",
+                    )}
+                  >
                     {amount}
                   </span>
                   <ChevronRight
                     aria-hidden
-                    className="size-3.5 shrink-0 text-muted-foreground transition-[translate,color] duration-150 ease-out-quint group-hover/option:translate-x-0.5 group-hover/option:text-foreground motion-reduce:transition-none"
+                    className="size-3.5 shrink-0 text-muted-foreground transition-[translate,color] duration-150 ease-out-quint group-enabled/option:group-hover/option:translate-x-0.5 group-enabled/option:group-hover/option:text-foreground group-disabled/option:invisible motion-reduce:transition-none"
                   />
+                  {note && (
+                    <span
+                      id={noteId}
+                      className={cn(
+                        "col-span-2 text-xs",
+                        state.kind === "over"
+                          ? "text-destructive"
+                          : state.kind === "partial"
+                            ? "text-amber-700 dark:text-amber-300"
+                            : "text-muted-foreground",
+                      )}
+                    >
+                      {note}
+                    </span>
+                  )}
                 </button>
               </li>
             );

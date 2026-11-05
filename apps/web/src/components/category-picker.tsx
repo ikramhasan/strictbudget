@@ -7,6 +7,7 @@ import { cn } from "@strictbudget/ui/lib/utils";
 import { ArrowLeft, ArrowRight, Check, Plus, X } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import type { CategoryList } from "@/lib/categories";
+import { CategoryLabel } from "./category-label";
 
 export interface CategoryPicks {
   removeCategoryIds: string[];
@@ -73,6 +74,10 @@ export const STARTER_QUESTIONS: readonly StarterQuestion[] = [
 ];
 
 type Answer = "yes" | "no";
+
+/** A picked answer fills with the primary colour, so it reads at a glance against the track. */
+const ANSWER =
+  "min-w-12 data-[state=on]:text-primary-foreground! data-[state=on]:before:from-primary! data-[state=on]:before:to-[color-mix(in_oklch,var(--primary),black_10%)]!";
 
 /** A question's effect on this list: the starter categories it unticks, the ones it adds. */
 function effectOf(data: CategoryList, q: StarterQuestion) {
@@ -200,10 +205,10 @@ export function CategoryPicker({
                     }))
                   }
                 >
-                  <ToggleGroupItem value="yes" className="min-w-12">
+                  <ToggleGroupItem value="yes" className={ANSWER}>
                     Yes
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="no" className="min-w-12">
+                  <ToggleGroupItem value="no" className={ANSWER}>
                     No
                   </ToggleGroupItem>
                 </ToggleGroup>
@@ -223,7 +228,7 @@ export function CategoryPicker({
               : `${answered} of ${asked.length} answered`}
           </p>
           <Button onClick={applyAnswers}>
-            {answered === 0 ? "Skip to categories" : "See my categories"} <ArrowRight />
+            {answered === 0 ? "Continue" : "See my categories"} <ArrowRight />
           </Button>
         </div>
       </div>
@@ -252,10 +257,10 @@ export function CategoryPicker({
                 {(added[group.id] ?? []).map((name, i) => (
                   <span
                     key={`${name}-${i}`}
-                    className="inline-flex h-8 items-center gap-1 rounded-full border border-primary/30 bg-primary/10 ps-3 pe-1 text-sm"
+                    className="inline-flex h-8 max-w-full items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 ps-3 pe-1 text-sm"
                   >
-                    <Check className="size-3.5 text-primary-text" aria-hidden />
-                    {name}
+                    <Check className="size-3.5 shrink-0 text-primary-text" aria-hidden />
+                    <CategoryLabel name={name} />
                     <Button
                       type="button"
                       variant="ghost"
@@ -336,7 +341,7 @@ function Chip({
       ) : (
         <Plus className="size-3.5" aria-hidden />
       )}
-      {label}
+      <CategoryLabel name={label} />
     </label>
   );
 }

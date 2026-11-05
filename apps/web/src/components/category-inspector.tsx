@@ -14,6 +14,7 @@ import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useOptionalBudget } from "@/lib/budget-context";
 import type { Breakdown } from "@/lib/budget-view";
 import { monthName } from "@/lib/months";
+import { CategoryLabel } from "./category-label";
 
 type Format = (minorUnits: string) => string;
 
@@ -327,7 +328,7 @@ export function CategoryInspector({
     <Panel label={`${name} inspector`}>
       <div className="grid gap-0.5">
         <h2 data-inspector-name className="truncate font-semibold">
-          {name}
+          <CategoryLabel name={name} />
         </h2>
         {pairedWith}
       </div>
@@ -427,7 +428,7 @@ export function PaymentInspector({
   return (
     <Panel label={`${name} inspector`}>
       <h2 data-inspector-name className="truncate font-semibold">
-        {name}
+        <CategoryLabel name={name} />
       </h2>
       {target ??
         (!past && (

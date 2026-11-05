@@ -10,6 +10,7 @@ import {
   useIncomeExpenseCollapse,
 } from "@/lib/income-expense";
 import { monthLabel } from "@/lib/reports";
+import { CategoryLabel } from "../category-label";
 
 /** Which cell was clicked: a month, or the whole range (Average and Total). */
 export type CellColumn = BudgetMonth | "range";
@@ -231,13 +232,18 @@ export function IncomeExpenseTable({
                   ...(open
                     ? [
                         ...g.categories.map((c) =>
-                          row(`category-${c.categoryId}`, c.name, c.values, {
-                            heat,
-                            pick: {
-                              title: c.name,
-                              target: { kind: "spending", categoryId: c.categoryId },
+                          row(
+                            `category-${c.categoryId}`,
+                            <CategoryLabel name={c.name} />,
+                            c.values,
+                            {
+                              heat,
+                              pick: {
+                                title: c.name,
+                                target: { kind: "spending", categoryId: c.categoryId },
+                              },
                             },
-                          }),
+                          ),
                         ),
                         row(`group-total-${g.groupId}`, `Total ${g.name}`, g.total, {
                           kind: "subtotal",

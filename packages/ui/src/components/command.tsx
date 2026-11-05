@@ -60,8 +60,12 @@ function CommandDialog({
 
 function CommandInput({
   className,
+  chip,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & {
+  /** strictbudget: names the step the search is in ("Move money"), in front of the query. */
+  chip?: React.ReactNode;
+}) {
   return (
     <div data-slot="command-input-wrapper" className="pb-1.5">
       {/* The query is typed into the surface: the Kbd's recessed well. It
@@ -78,6 +82,15 @@ function CommandInput({
         />
         <InputGroupAddon>
           <SearchIcon className="size-4 shrink-0" />
+          {chip && (
+            // A raised key on the recessed well, like the highlighted row.
+            <span
+              data-slot="command-input-chip"
+              className="-my-0.5 inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-sm bg-background px-1.5 font-medium text-foreground text-xs shadow-[0_1px_2px_rgb(0_0_0/0.08),0_0_0_1px_rgb(0_0_0/0.06)] dark:bg-secondary dark:shadow-[0_1px_2px_rgb(0_0_0/0.5),0_0_0_1px_rgb(255_255_255/0.05)]"
+            >
+              {chip}
+            </span>
+          )}
         </InputGroupAddon>
       </InputGroup>
     </div>

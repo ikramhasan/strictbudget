@@ -12,6 +12,7 @@ import { cn } from "@strictbudget/ui/lib/utils";
 import { Info } from "lucide-react";
 import { useBudget } from "@/lib/budget-context";
 import { monthLabel } from "@/lib/reports";
+import { CategoryLabel } from "../category-label";
 import { DifferenceText, type TrendChartData } from "./spending-trends-charts";
 
 export const COMPARED_TO_AVERAGE_HINT =
@@ -131,10 +132,10 @@ export function TrendSeriesTable({
                   />
                   {onPick ? (
                     <button type="button" className="hover:underline" onClick={() => onPick(key)}>
-                      {info.label}
+                      <CategoryLabel name={info.label} />
                     </button>
                   ) : (
-                    info.label
+                    <CategoryLabel name={info.label} />
                   )}
                 </span>
               </TableCell>

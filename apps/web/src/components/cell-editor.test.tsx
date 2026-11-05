@@ -182,10 +182,17 @@ describe("CellEditor", () => {
     const groups = within(screen.getByRole("listbox")).getAllByRole("group");
     expect(groups[0]).toHaveTextContent(/^SelectedMarket$/);
     expect(options()).toEqual(["Market", "Savings", "Market", "Bakery"]);
-    // The current payee is selected, so typing replaces it. Create is on top, but the first
-    // match stays the highlighted one.
+    // The current payee is selected, so typing replaces it, and the name completes in the field
+    // with the rest selected.
     await user.keyboard("bak");
     expect(options()).toEqual(["Bakery"]);
+    const input = screen.getByLabelText("Payee") as HTMLInputElement;
+    expect(input).toHaveValue("Bakery");
+    expect([input.selectionStart, input.selectionEnd]).toEqual([3, 6]);
+    // Backspace takes the completion off. Create is on top, but the first match stays the
+    // highlighted one.
+    await user.keyboard("{Backspace}");
+    expect(input).toHaveValue("bak");
     expect(screen.getByRole("button", { name: "Create “bak” Payee" })).toBeInTheDocument();
     await user.keyboard("{Enter}");
     expect(onCommit).toHaveBeenCalledWith("Bakery", "stay", null);

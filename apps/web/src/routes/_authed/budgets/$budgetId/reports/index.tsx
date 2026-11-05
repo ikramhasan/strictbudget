@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CategoryLabel } from "@/components/category-label";
 import { ReportEmpty } from "@/components/reports/chart-card";
 import {
   describeObservation,
@@ -345,8 +346,10 @@ function ReportsHome() {
                     return (
                       <li key={r.categoryId} className="grid gap-1 text-sm">
                         <span className="flex items-baseline justify-between gap-2">
-                          <span className="min-w-0 truncate">
-                            {home.categoryNames.get(r.categoryId ?? "")}
+                          <span className="flex min-w-0 items-baseline">
+                            <CategoryLabel
+                              name={home.categoryNames.get(r.categoryId ?? "") ?? ""}
+                            />
                             {home.groupNames.has(r.categoryId ?? "") && (
                               <span className="ml-1.5 text-muted-foreground text-xs">
                                 {home.groupNames.get(r.categoryId ?? "")}

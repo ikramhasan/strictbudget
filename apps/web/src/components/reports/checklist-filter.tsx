@@ -4,6 +4,7 @@ import { Input } from "@strictbudget/ui/components/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { ChevronDown, EyeOff, Search } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { CategoryLabel } from "../category-label";
 
 export interface ChecklistItem {
   id: string;
@@ -155,7 +156,7 @@ function ChecklistBody({
                     onCheckedChange={(v) => set([i.id], v === true)}
                   />
                   {i.icon}
-                  <span className="truncate">{i.label}</span>
+                  <CategoryLabel name={i.label} />
                   {i.hidden && (
                     <EyeOff
                       aria-label="Hidden"

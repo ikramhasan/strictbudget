@@ -19,10 +19,10 @@ import {
   ResizablePanelGroup,
   useDefaultLayout,
 } from "@strictbudget/ui/components/resizable";
-import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { PanelRight, Pencil, X } from "lucide-react";
+import { PanelRight, Pencil, TriangleAlert, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -52,6 +52,7 @@ import {
 } from "@/components/move-money";
 import { PageHeader } from "@/components/page-header";
 import { PageTitle } from "@/components/page-title";
+import { PlanTableSkeleton } from "@/components/plan-skeleton";
 import { FutureMonthsPanel, ReadyToAssignBanner } from "@/components/ready-to-assign";
 import { RecentMoves } from "@/components/recent-moves";
 import { isInsidePopup } from "@/components/register-fields";
@@ -716,7 +717,7 @@ function BudgetPage() {
   const listColumn = (
     <>
       {categories.isPending ? (
-        <Skeleton className="h-64" />
+        <PlanTableSkeleton />
       ) : categories.isError ? (
         <p className="text-muted-foreground">Couldn't load categories.</p>
       ) : (
@@ -820,6 +821,24 @@ function BudgetPage() {
         </div>
       )}
     </>
+  );
+  // Overspending shows beside Ready to Assign, wherever the list is scrolled to.
+  const overspentNow = listFigures ? overspentCount(listFigures.month, visible) : 0;
+  const overspentAlert = overspentNow > 0 && filter !== "overspent" && (
+    <Button
+      variant="outline"
+      size="sm"
+      className={cn(
+        "shrink-0 border-destructive/40 text-destructive hover:bg-destructive/8 hover:text-destructive",
+        listFigures &&
+          overspentOnlyCredit(listFigures.month, visible) &&
+          "border-amber-500/50 text-amber-700 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-300",
+      )}
+      onClick={() => setFilter("overspent")}
+    >
+      <TriangleAlert />
+      {overspentNow} overspent
+    </Button>
   );
   const readyToAssign = listFigures && (
     <ReadyToAssignBanner
@@ -953,20 +972,22 @@ function BudgetPage() {
               first={range?.first ?? month}
               last={range?.last ?? month}
               onChange={goTo}
+              note={
+                figures.data &&
+                !phone && (
+                  <MonthNote
+                    key={month}
+                    note={figures.data.note}
+                    onSave={(note) => saveMonthNote(month, figures.data?.note ?? "", note)}
+                  />
+                )
+              }
             />
-            {figures.data && (
-              <div className="min-w-0 max-md:hidden">
-                <MonthNote
-                  key={month}
-                  note={figures.data.note}
-                  onSave={(note) => saveMonthNote(month, figures.data?.note ?? "", note)}
-                />
-              </div>
-            )}
           </div>
         }
         actions={
           <>
+            {overspentAlert}
             {!phone && readyToAssign}
             {!wide && listFigures && (
               <Button
@@ -1078,6 +1099,46 @@ function BudgetPage() {
 }
 
 /**
+ * A category's target and bar once `by` more is assigned, so its caption, pill and inspector move
+ * with its amounts. Money in only (taking money out can't be read off these figures alone); the
+ * server's figures replace these a moment later either way.
+ */
+function withTargetShift(
+  c: BudgetMonthData["categories"][number],
+  by: bigint,
+): Partial<BudgetMonthData["categories"][number]> {
+  if (by <= 0n || !c.target || c.target.snoozed || c.target.pastDue) return {};
+  const underfunded = BigInt(c.target.underfunded);
+  const left = underfunded > by ? underfunded - by : 0n;
+  const target = {
+    ...c.target,
+    funded: (BigInt(c.target.funded) + by).toString(),
+    underfunded: left.toString(),
+  };
+  if (!c.bar) return { target };
+  const sections = c.bar.sections.map((section) => ({
+    ...section,
+    segments: [...section.segments],
+  }));
+  const last = sections.findLast((section) => section.kind === "target");
+  if (last) {
+    const i = last.segments.findIndex((segment) => segment.kind === "available");
+    if (i >= 0) {
+      const segment = last.segments[i];
+      if (segment) {
+        last.segments[i] = { ...segment, amount: (BigInt(segment.amount) + by).toString() };
+      }
+    } else {
+      last.segments.push({ kind: "available", amount: by.toString() });
+    }
+  }
+  return {
+    target,
+    bar: { ...c.bar, tone: left > 0n ? "underfunded" : "funded", sections },
+  };
+}
+
+/**
  * The month as it will be once `amount` moves from one category (or Ready to Assign) to another:
  * what's shown until the server's figures arrive. A negative amount moves the other way.
  */
@@ -1095,6 +1156,7 @@ function movedLocally(
           ...c,
           assigned: (BigInt(c.assigned) + by).toString(),
           available: (BigInt(c.available) + by).toString(),
+          ...withTargetShift(c, by),
         }
       : c;
   let readyToAssign = BigInt(month.readyToAssign);

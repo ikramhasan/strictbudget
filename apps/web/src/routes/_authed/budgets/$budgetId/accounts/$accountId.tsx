@@ -30,7 +30,6 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@strictbudget/ui/components/empty";
-import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@strictbudget/ui/components/tooltip";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -53,6 +52,7 @@ import { PageHeader } from "@/components/page-header";
 import { PageTitle } from "@/components/page-title";
 import { ReconcileBanner, ReconcilePopover, reconciledLabel } from "@/components/reconcile";
 import { Register } from "@/components/register";
+import { AccountPageSkeleton } from "@/components/register-skeleton";
 import { REVIEW_SEARCH, ReviewBanner } from "@/components/review-banner";
 import { StarButton } from "@/components/star-button";
 import { signedAmount, UnrealizedGain } from "@/components/unrealized-gain";
@@ -125,7 +125,8 @@ function AccountPage() {
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [reconcileOpen, setReconcileOpen] = useState(false);
   // A phone's top bar keeps the account's name and puts the actions in a menu.
-  const narrow = useViewportWidth() < 768;
+  const viewportWidth = useViewportWidth();
+  const narrow = viewportWidth < 768;
   const toReconcile = useRef(false);
   const [pairing, setPairing] = useState(false);
   const [updatingToLoan, setUpdatingToLoan] = useState(false);
@@ -243,7 +244,7 @@ function AccountPage() {
     toast.success(`Deleted “${account?.name}”`);
   }
 
-  if (accounts.isPending) return <Skeleton className="h-40" />;
+  if (accounts.isPending) return <AccountPageSkeleton phone={viewportWidth < 1024} />;
   if (!account) {
     return (
       <Empty>

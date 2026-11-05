@@ -13,6 +13,7 @@ import { Flag } from "lucide-react";
 import { useBudget } from "@/lib/budget-context";
 import { FLAG_CLASS } from "@/lib/flags";
 import { type ReportRequest, rangeLabel, reportTransactionsOptions } from "@/lib/reports";
+import { CategoryLabel } from "../category-label";
 
 export interface DrillDown {
   title: string;
@@ -58,7 +59,9 @@ function DrillDownBody({ drill, onClose }: { drill: DrillDown; onClose: () => vo
   return (
     <>
       <SheetHeader className="border-b">
-        <SheetTitle>{drill.title}</SheetTitle>
+        <SheetTitle>
+          <CategoryLabel name={drill.title} />
+        </SheetTitle>
         <SheetDescription>
           {drill.period ?? rangeLabel(drill.request.range)}
           {lines.data && (

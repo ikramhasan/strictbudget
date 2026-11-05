@@ -22,7 +22,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -60,7 +59,7 @@ import {
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { FLAG_CLASS, type Flag, type FlagColor, flagLabel } from "@/lib/flags";
 import { menuKeyDown } from "@/lib/menu-keys";
-import { useShortcut } from "@/lib/shortcuts";
+import { capLabel, SHORTCUTS, type ShortcutId, useShortcut } from "@/lib/shortcuts";
 import { type CategoryOption, categoryLabel } from "@/lib/transactions";
 
 export type BulkAction =
@@ -183,12 +182,16 @@ export function SelectionBar({
   const count = summary ? summary.count + scheduledCount : null;
   const s = summary;
   const onlyScheduled = s?.count === 0 && scheduledCount > 0;
-  // Clear shows when every selected row is uncleared; otherwise the states that apply are in
-  // More. Scheduled rows have no cleared state.
+  // Mark cleared shows when every selected row is uncleared (Mark uncleared when every one is
+  // cleared); otherwise the states that apply are in More. Scheduled rows have no cleared state.
   const reviewing = (s?.unapproved ?? 0) > 0;
   const toggle =
-    s && s.count > 0 && scheduledCount === 0 && s.uncleared === s.count && !reviewing
-      ? "cleared"
+    s && s.count > 0 && scheduledCount === 0 && !reviewing
+      ? s.uncleared === s.count
+        ? "cleared"
+        : s.cleared === s.count
+          ? "uncleared"
+          : null
       : null;
   const markCleared = !toggle && s ? s.uncleared > 0 : false;
   const markUncleared = !toggle && s ? s.cleared > 0 : false;
@@ -446,10 +449,10 @@ export function SelectionBar({
             variant="ghost"
             size="sm"
             disabled={pending}
-            title="Mark as cleared"
             onClick={() => onAction({ type: "cleared", cleared: toggle })}
           >
-            <CircleCheck /> Clear
+            {toggle === "cleared" ? <CircleCheck /> : <Circle />}
+            {toggle === "cleared" ? "Mark cleared" : "Mark uncleared"}
           </Button>
         )}
         {onMatch && (
@@ -471,14 +474,16 @@ export function SelectionBar({
           <DropdownMenuContent align="end" className="w-56" onCloseAutoFocus={keepDialogFocus}>
             {markCleared && (
               <DropdownMenuItem onSelect={() => onAction({ type: "cleared", cleared: "cleared" })}>
-                <CircleCheck /> Mark as Cleared
+                <CircleCheck /> Mark cleared
+                <ShortcutKeys id="toggleCleared" />
               </DropdownMenuItem>
             )}
             {markUncleared && (
               <DropdownMenuItem
                 onSelect={() => onAction({ type: "cleared", cleared: "uncleared" })}
               >
-                <Circle /> Mark as Uncleared
+                <Circle /> Mark uncleared
+                {!markCleared && <ShortcutKeys id="toggleCleared" />}
               </DropdownMenuItem>
             )}
             {(markCleared || markUncleared) && <DropdownMenuSeparator />}
@@ -507,21 +512,21 @@ export function SelectionBar({
             {/* Match and Unmatch are listed here too, greyed when they don't apply. */}
             <DropdownMenuItem disabled={!onMatch} onSelect={() => onMatch?.()}>
               <Link2 /> Match
-              <DropdownMenuShortcut>M</DropdownMenuShortcut>
+              <ShortcutKeys id="match" />
             </DropdownMenuItem>
             <DropdownMenuItem disabled={!onUnmatch} onSelect={() => onUnmatch?.()}>
               <Unlink /> Unmatch
-              <DropdownMenuShortcut>shift U</DropdownMenuShortcut>
+              <ShortcutKeys id="unmatch" />
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => onAction({ type: "duplicate" })}>
               <Copy /> Duplicate
-              <DropdownMenuShortcut>shift D</DropdownMenuShortcut>
+              <ShortcutKeys id="duplicate" />
             </DropdownMenuItem>
             {onMakeRepeating && (
               <DropdownMenuItem onSelect={onMakeRepeating}>
                 <Repeat /> Make Repeating
-                <DropdownMenuShortcut>shift T</DropdownMenuShortcut>
+                <ShortcutKeys id="makeRepeating" />
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
@@ -562,7 +567,7 @@ export function SelectionBar({
                   onSelect={() => onAction({ type: "delete" })}
                 >
                   <Trash2 /> Delete
-                  <DropdownMenuShortcut>delete</DropdownMenuShortcut>
+                  <ShortcutKeys id="delete" />
                 </DropdownMenuItem>
               </>
             )}
@@ -634,6 +639,23 @@ export function SelectionBar({
         }}
       />
     </section>
+  );
+}
+
+/** How a menu writes a key: ⇧ for Shift, ⌫ for Delete (a Mac's Backspace), ⌘ or Ctrl for mod. */
+const MENU_GLYPHS: Record<string, string> = { shift: "⇧", delete: "⌫" };
+
+/**
+ * A menu item's shortcut as one key cap, from the shortcut's own keys ("⇧D", "⌫", "M"), so every
+ * hint in a menu reads the same way. Hidden from screen readers, which hear the item's name.
+ */
+function ShortcutKeys({ id }: { id: ShortcutId }) {
+  const caps: readonly string[] = SHORTCUTS[id].caps;
+  const text = caps.map((cap) => MENU_GLYPHS[cap] ?? capLabel(cap)).join("");
+  return (
+    <Kbd aria-hidden className="ml-auto tracking-wide">
+      {text}
+    </Kbd>
   );
 }
 

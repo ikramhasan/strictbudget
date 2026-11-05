@@ -35,6 +35,7 @@ import {
 } from "@/lib/scheduled";
 import { type CategoryOption, type Draft, movableAccounts, type Payee } from "@/lib/transactions";
 import { useUndo } from "@/lib/undo";
+import { CategoryLabel } from "./category-label";
 import { FlagMenu } from "./flag-menu";
 import { COLUMN_SPECS, type ColumnId, isEditable, PINNED_BG, pinned } from "./register-columns";
 import { AccountMark, ICON_CELL, REVEAL_ON_ROW, RegisterCell, RegisterRow } from "./register-table";
@@ -379,7 +380,11 @@ export function ScheduledSection({
             </span>
           );
         }
-        return categorized(row) ? row.categoryName : "";
+        return categorized(row) && row.categoryName ? (
+          <CategoryLabel name={row.categoryName} />
+        ) : (
+          ""
+        );
       case "memo":
         return row.memo;
       case "outflow":
@@ -529,7 +534,12 @@ export function ScheduledSection({
                     {withMemo(line.memo, <span className="truncate">{line.payeeName}</span>)}
                   </span>
                 ),
-                category: usesCategory(type, to) ? line.categoryName : "",
+                category:
+                  usesCategory(type, to) && line.categoryName ? (
+                    <CategoryLabel name={line.categoryName} />
+                  ) : (
+                    ""
+                  ),
                 memo: line.memo,
                 outflow: lineAmount < 0n ? show(-lineAmount, row.currency) : "",
                 inflow: lineAmount > 0n ? show(lineAmount, row.currency) : "",

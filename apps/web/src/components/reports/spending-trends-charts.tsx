@@ -26,6 +26,7 @@ import {
 import { useBudget } from "@/lib/budget-context";
 import { chartNumber, chartTick, monthLabel } from "@/lib/reports";
 import type { SeriesInfo } from "@/lib/spending-trends";
+import { CategoryLabel } from "../category-label";
 
 export interface TrendChartData {
   /** The range's months with their series (empty months included), oldest first. */
@@ -566,7 +567,7 @@ export function TrendMultiples({ data, onPick }: { data: TrendChartData; onPick:
           return (
             <li key={key} className="grid gap-1 rounded-md border p-3">
               <div className="flex items-baseline justify-between gap-2 text-sm">
-                <span className="min-w-0 truncate font-medium">{info.label}</span>
+                <CategoryLabel name={info.label} className="font-medium" />
                 <span className="shrink-0 text-muted-foreground text-xs tabular-nums">
                   {format(totals.get(key) ?? 0n)}
                 </span>
@@ -643,7 +644,7 @@ export function TrendLegend({
           className="size-2.5 shrink-0 rounded-[2px]"
           style={{ background: info.color }}
         />
-        {info.label}
+        <CategoryLabel name={info.label} />
       </>
     );
     return (

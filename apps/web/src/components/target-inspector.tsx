@@ -32,6 +32,7 @@ import {
 } from "@/lib/targets";
 import { CurrencyPicker } from "./currency-picker";
 import { DebtTargetEditor } from "./debt-target-editor";
+import { splitEmoji } from "./name-popover";
 import { DateField } from "./register-fields";
 
 type Format = (minorUnits: string) => string;
@@ -264,7 +265,9 @@ export function TargetSection({
             <Target className="size-5" />
           </span>
           <div className="grid gap-1">
-            <p className="text-balance font-medium text-sm">Plan ahead for {name}</p>
+            <p className="text-balance font-medium text-sm">
+              Plan ahead for {splitEmoji(name).text}
+            </p>
             <p className="text-pretty text-muted-foreground text-sm">
               Say what it needs and when. We'll work out what to set aside each month so the money
               is there in time.
