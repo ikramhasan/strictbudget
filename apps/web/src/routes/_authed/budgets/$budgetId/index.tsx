@@ -21,11 +21,10 @@ import {
 import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { PanelRight, Pencil, Plus } from "lucide-react";
+import { PanelRight, Pencil } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { AddAccountDialog } from "@/components/add-account-dialog";
 import { AssignedCell } from "@/components/assigned-cell";
 import { AutoAssignPanel } from "@/components/auto-assign";
 import { BudgetFilterBar } from "@/components/budget-filter-bar";
@@ -54,6 +53,7 @@ import { PageHeader } from "@/components/page-header";
 import { PageTitle } from "@/components/page-title";
 import { FutureMonthsPanel, ReadyToAssignBanner } from "@/components/ready-to-assign";
 import { RecentMoves } from "@/components/recent-moves";
+import { isInsidePopup } from "@/components/register-fields";
 import { SpendingPacePanel } from "@/components/spending-pace-panel";
 import {
   type MoneyIO,
@@ -162,8 +162,6 @@ function BudgetPage() {
   const actions = useCategoryActions(budget.id);
   const history = useUndo();
   const targetActions = useTargetActions(budget.id, history.record);
-  const accounts = useQuery(accountsQueryOptions(budget.id));
-  const [addingAccount, setAddingAccount] = useState(false);
   const { collapsed, setCollapsed } = useCollapsedGroups(budget.id);
   const { filter, setFilter } = useBudgetFilter(budget.id);
   const views = useQuery(viewsQueryOptions(budget.id));
@@ -175,6 +173,9 @@ function BudgetPage() {
     storage: layoutStorage,
   });
   const [inspectorWidth, setInspectorWidth] = useState<number | null>(null);
+  const accountList = useQuery(accountsQueryOptions(budget.id));
+  /** No open account yet: no money, so the inspector's summary panels have nothing to say. */
+  const noAccounts = accountList.data?.accounts.every((a) => a.closed) ?? false;
   const viewActions = useViewActions(budget.id);
   const [viewDialog, setViewDialog] = useState<ViewDialog>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -335,13 +336,24 @@ function BudgetPage() {
     const parse = (text: string) => parseMoneyInput(text, settings);
     const toInput = (amount: string) => toMoneyInput(amount, settings);
 
+    /** Shows a change on screen before the server confirms it; returns how to put it back. */
+    function optimistic(patch: (month: BudgetMonthData) => BudgetMonthData) {
+      const key = monthQueryOptions(budget.id, onScreen).queryKey;
+      const previous = queryClient.getQueryData<BudgetMonthData>(key);
+      if (!previous) return () => {};
+      queryClient.setQueryData(key, patch(previous));
+      return () => queryClient.setQueryData(key, previous);
+    }
+
     async function save(
       work: () => Promise<BudgetMonthData>,
       inverse: () => Promise<BudgetMonthData>,
       label: string,
       failure: string,
       replay = work,
+      expected?: (month: BudgetMonthData) => BudgetMonthData,
     ) {
+      const rollback = expected ? optimistic(expected) : undefined;
       try {
         const updated = await work();
         if (updated.month === onScreen) {
@@ -353,6 +365,7 @@ function BudgetPage() {
           redo: () => saveHistory(replay),
         });
       } catch (error) {
+        rollback?.();
         toast.error(apiErrorMessage(error, failure));
       } finally {
         await refreshBudget();
@@ -444,6 +457,7 @@ function BudgetPage() {
                 "assigned amount",
                 "Couldn't assign the money.",
                 () => moveDelta(false),
+                (m) => movedLocally(m, readyToAssignId, readyToAssignId, categoryId, delta),
               );
             },
           },
@@ -491,11 +505,16 @@ function BudgetPage() {
             today: todayIso(),
           },
         });
+      const readyToAssignId = categories.data?.readyToAssignCategoryId;
       return save(
         () => mutate(fromCategoryId, toCategoryId),
         () => mutate(toCategoryId, fromCategoryId),
         "money move",
         "Couldn't move the money.",
+        undefined,
+        m === onScreen
+          ? (d) => movedLocally(d, readyToAssignId, fromCategoryId, toCategoryId, amount)
+          : undefined,
       );
     }
     // mutateAsync is stable; the mutation objects themselves change every render.
@@ -663,7 +682,7 @@ function BudgetPage() {
 
   // Below lg the inspector is a drawer; from there it's beside the list, as wide as the user drags
   // it (25–50% of the area, a third to start, kept in this browser).
-  const wide = viewportWidth >= 1024;
+  const wide = viewportWidth >= 1200;
   // On a phone, picking one category opens the inspector drawer for it. A tablet shows the
   // Assigned column, so a tap there edits it in place, as on a desktop; Summary opens the drawer.
   const pickedOne = selection.size === 1 ? [...selection][0] : undefined;
@@ -677,9 +696,9 @@ function BudgetPage() {
       ) : categories.isError ? (
         <p className="text-muted-foreground">Couldn't load categories.</p>
       ) : (
-        <div className="grid gap-3">
+        <div className={wide ? "flex h-full min-h-0 flex-col gap-3" : "grid gap-3"}>
           {/* The divider is an inset shadow the selected tab's underline paints over. */}
-          <div className="flex flex-wrap items-end gap-x-2 gap-y-1 shadow-[inset_0_-1px_0_var(--border)]">
+          <div className="flex shrink-0 flex-wrap items-end gap-x-2 gap-y-1 shadow-[inset_0_-1px_0_var(--border)]">
             {listFigures && (
               <BudgetFilterBar
                 filter={customView ? filter : preset}
@@ -763,6 +782,7 @@ function BudgetPage() {
             collapsed={collapsed}
             onCollapsedChange={setCollapsed}
             addGroupDisabled={Boolean(customView)}
+            fill={wide}
           />
         </div>
       )}
@@ -793,26 +813,42 @@ function BudgetPage() {
   );
   const inspectorColumn = listFigures && (
     <aside className="grid grid-cols-[minmax(0,1fr)] gap-4" aria-label="Inspector">
-      <Inspector
-        figures={listFigures}
-        selection={selection}
-        shown={shown}
-        listed={listed}
-        onNoteChange={(categoryId, note) => actions.updateCategory(categoryId, { note })}
-        targetActions={targetActions}
-        onShowOverspent={() => setFilter("overspent")}
-      />
-      {selection.size === 0 && month <= today && <SpendingPacePanel month={month} />}
-      {/* Uncategorized alone has no Auto-Assign: money can't be assigned to it. */}
-      {!(selection.size === 1 && selection.has(UNCATEGORIZED)) && autoAssignPanel(selection)}
-      {month === today && (
-        <FutureMonthsPanel data={listFigures.month} format={listFigures.format} />
+      {noAccounts && selection.size === 0 ? (
+        // Nothing to sum up yet: say what this panel will show instead of a page of zeros.
+        <section className="grid gap-2 rounded-lg border border-dashed p-4 text-sm">
+          <h2 className="font-semibold">Your month at a glance</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            Once you add an account, this panel sums up the month: what you assigned, what you
+            spent, what's left, and what your targets still need. Pick a category to see its
+            details.
+          </p>
+        </section>
+      ) : (
+        <>
+          <Inspector
+            figures={listFigures}
+            selection={selection}
+            shown={shown}
+            listed={listed}
+            onNoteChange={(categoryId, note) => actions.updateCategory(categoryId, { note })}
+            targetActions={targetActions}
+            onShowOverspent={() => setFilter("overspent")}
+          />
+          {selection.size === 0 && month <= today && <SpendingPacePanel month={month} />}
+          {/* Uncategorized alone has no Auto-Assign: money can't be assigned to it. */}
+          {!(selection.size === 1 && selection.has(UNCATEGORIZED)) && autoAssignPanel(selection)}
+          {month === today && (
+            <FutureMonthsPanel data={listFigures.month} format={listFigures.format} />
+          )}
+        </>
       )}
     </aside>
   );
 
   return (
-    <div className="grid gap-4">
+    // On a wide screen the page is exactly the window's height: the month and Ready to Assign stay
+    // put while the categories and the inspector each scroll on their own.
+    <div className={wide ? "flex h-[calc(100svh-6rem)] flex-col gap-4" : "grid gap-4"}>
       <TemplateGallery
         open={galleryOpen}
         onOpenChange={setGalleryOpen}
@@ -836,7 +872,7 @@ function BudgetPage() {
         }}
       />
       <div
-        className="flex flex-wrap items-center justify-between gap-4 lg:grid"
+        className="flex shrink-0 flex-wrap items-center justify-between gap-4 lg:grid"
         style={
           wide && inspectorWidth !== null
             ? { gridTemplateColumns: `minmax(0,1fr) ${inspectorWidth}px` }
@@ -846,7 +882,7 @@ function BudgetPage() {
         <div className="grid gap-1">
           <PageTitle name={budget.name} />
           <PageHeader
-            title={budget.name}
+            title="Budget"
             actions={
               !wide &&
               listFigures && (
@@ -909,31 +945,17 @@ function BudgetPage() {
         )}
       </div>
       {budget.archivedAt && (
-        <p className="rounded-lg border bg-muted/40 px-4 py-3 text-sm">
+        <p className="shrink-0 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
           This budget was archived by a fresh start on {formatDate(budget.archivedAt.slice(0, 10))}.
           Its history is kept here; new budgeting happens in the budget that replaced it.
         </p>
-      )}
-      {accounts.data && accounts.data.accounts.length === 0 && !budget.archivedAt && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed px-4 py-3">
-          <div className="grid gap-0.5">
-            <p className="font-medium text-sm">Add your first account</p>
-            <p className="text-muted-foreground text-sm">
-              Its balance today becomes money you can give a job.
-            </p>
-          </div>
-          <Button size="sm" onClick={() => setAddingAccount(true)}>
-            <Plus /> Add Account
-          </Button>
-          <AddAccountDialog budget={budget} open={addingAccount} onOpenChange={setAddingAccount} />
-        </div>
       )}
       {wide ? (
         <ResizablePanelGroup
           id="budget-inspector"
           defaultLayout={inspectorLayout.defaultLayout}
           onLayoutChanged={inspectorLayout.onLayoutChanged}
-          className="items-start"
+          className="min-h-0 flex-1"
         >
           <ResizablePanel id="list" minSize="50" className="min-w-0">
             {listColumn}
@@ -949,7 +971,9 @@ function BudgetPage() {
             maxSize={String(INSPECTOR_SHARE.max)}
             onResize={(size) => setInspectorWidth(size.inPixels)}
           >
-            {inspectorColumn}
+            <div className="h-full overflow-y-auto overscroll-contain pb-4 scrollbar-thin">
+              {inspectorColumn}
+            </div>
           </ResizablePanel>
         </ResizablePanelGroup>
       ) : (
@@ -963,14 +987,25 @@ function BudgetPage() {
             }}
             direction={phone ? "bottom" : "right"}
           >
-            <DrawerContent className="data-[vaul-drawer-direction=bottom]:max-h-[90svh] data-[vaul-drawer-direction=right]:w-[min(26rem,92vw)] data-[vaul-drawer-direction=right]:sm:max-w-none">
+            <DrawerContent
+              className="data-[vaul-drawer-direction=bottom]:max-h-[90svh] data-[vaul-drawer-direction=right]:w-[min(26rem,92vw)] data-[vaul-drawer-direction=right]:sm:max-w-none"
+              // A picker inside the drawer (cover, move, target) lists its options in a portal of
+              // its own: choosing one isn't a click outside the drawer.
+              onInteractOutside={(e) => {
+                if (isInsidePopup(e.target)) e.preventDefault();
+              }}
+            >
               <DrawerHeader className="text-left">
                 <DrawerTitle>{inspectorTitle}</DrawerTitle>
                 <DrawerDescription className="sr-only">
                   The category's numbers, target and note, or the month's summary.
                 </DrawerDescription>
               </DrawerHeader>
-              <div className="grid gap-4 overflow-y-auto px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+              {/*
+               * The drawer's title already names the category. In the drawer the inspector's
+               * panels are flat sections between hairlines, not cards inside a card.
+               */}
+              <div className="grid gap-4 overflow-y-auto px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] [&_[data-inspector-name]]:sr-only [&>aside]:gap-0 [&>aside>section]:rounded-none [&>aside>section]:border-x-0 [&>aside>section]:border-b-0 [&>aside>section]:px-0 [&>aside>section]:py-5 [&>aside>section:last-child]:pb-1">
                 {drawerAssigned}
                 {inspectorColumn}
               </div>
@@ -980,6 +1015,35 @@ function BudgetPage() {
       )}
     </div>
   );
+}
+
+/**
+ * The month as it will be once `amount` moves from one category (or Ready to Assign) to another:
+ * what's shown until the server's figures arrive. A negative amount moves the other way.
+ */
+function movedLocally(
+  month: BudgetMonthData,
+  readyToAssignId: string | undefined,
+  from: string | undefined,
+  to: string,
+  amount: bigint,
+): BudgetMonthData {
+  if (amount === 0n || from === undefined) return month;
+  const shift = (id: string, by: bigint) => (c: BudgetMonthData["categories"][number]) =>
+    c.categoryId === id
+      ? {
+          ...c,
+          assigned: (BigInt(c.assigned) + by).toString(),
+          available: (BigInt(c.available) + by).toString(),
+        }
+      : c;
+  let readyToAssign = BigInt(month.readyToAssign);
+  let categories = month.categories;
+  if (from === readyToAssignId) readyToAssign -= amount;
+  else categories = categories.map(shift(from, -amount));
+  if (to === readyToAssignId) readyToAssign += amount;
+  else categories = categories.map(shift(to, amount));
+  return { ...month, readyToAssign: readyToAssign.toString(), categories };
 }
 
 const paymentFigures = (p: NonNullable<BudgetMonthData["categories"][number]["payment"]>) =>
@@ -1152,7 +1216,7 @@ function Inspector({
               )
             ) : (
               <TargetSection
-                key={only}
+                key={`target-${only}`}
                 name={category.name}
                 target={category.target}
                 need={totals.target}
@@ -1204,7 +1268,26 @@ function Inspector({
         }
         available={available}
         upcoming={upcoming}
-        history={<CategoryHistoryPanel key={only} categoryId={only} month={month.month} />}
+        history={
+          <CategoryHistoryPanel key={`history-${only}`} categoryId={only} month={month.month} />
+        }
+        cover={
+          figures.move &&
+          totals.available.startsWith("-") && (
+            <AvailableButton
+              categoryId={only}
+              categoryName={category.name}
+              amount={totals.available}
+              format={format}
+              actions={figures.move}
+              trigger={
+                <Button size="sm" variant="outline" className="justify-self-start bg-background">
+                  Cover overspending
+                </Button>
+              }
+            />
+          )
+        }
         note={category.note}
         onNoteChange={(note) => onNoteChange(only, note)}
         target={
@@ -1218,7 +1301,7 @@ function Inspector({
             />
           ) : (
             <TargetSection
-              key={only}
+              key={`target-${only}`}
               name={category.name}
               target={category.target}
               need={totals.target}

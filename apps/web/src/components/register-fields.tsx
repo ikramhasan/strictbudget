@@ -51,7 +51,16 @@ import {
   Split,
   X,
 } from "lucide-react";
-import { type KeyboardEvent, type ReactNode, useId, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  type KeyboardEvent,
+  type ReactNode,
+  useContext,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { dateForKey, dateToIso, isoToDate, parseDateInput, todayIso } from "@/lib/dates";
 import { useShortcutsEnabled } from "@/lib/preferences";
 import {
@@ -321,7 +330,18 @@ export function PayeeField({
       [...known, ...toAccounts].find((p) => matches(p, trimmed));
     // Untyped, the list is "Selected", then "Payments and Transfers", then "Saved Payees"; once
     // something is typed, saved payees come first.
-    const saved = { value: "Saved Payees", items: known };
+    // Typed text ranks names that start with it, then ones with a word that does, so "sh" puts
+    // Shell before FreshMart (the list still keeps every name that contains it).
+    const rank = (label: string) => {
+      const lower = label.toLowerCase();
+      const text = trimmed.toLowerCase();
+      if (lower.startsWith(text)) return 0;
+      return lower.split(/[\s\-/&.]+/).some((w) => w.startsWith(text)) ? 1 : 2;
+    };
+    const saved = {
+      value: "Saved Payees",
+      items: typed && trimmed ? [...known].sort((a, b) => rank(a.label) - rank(b.label)) : known,
+    };
     const moves = { value: "Payments and Transfers", items: toAccounts };
     const selected = chosen && !typed ? [{ value: "Selected", items: [asSelected(chosen)] }] : [];
     return {
@@ -381,6 +401,14 @@ export function PayeeField({
           setTyped(false);
           setOpen(true);
           e.currentTarget.select();
+        }}
+        onKeyDown={(e) => {
+          // Tab takes the highlighted suggestion (and its category) before moving on, so a
+          // partly typed name never becomes a new payee by accident.
+          if (e.key !== "Tab" || e.shiftKey || !open || !typed) return;
+          const item = highlighted.current;
+          if (!item || item.label === value) return;
+          onChange(choose(item.label, item));
         }}
         className="h-8 w-full"
       />
@@ -566,12 +594,23 @@ interface CategoryGroupItems {
   items: CategoryOption[];
 }
 
+/**
+ * What each category has available, shown beside it in every category field below (a register
+ * provides the current month's), so the right envelope is picked without leaving the row.
+ */
+export const CategoryBalancesContext = createContext<
+  ((option: CategoryOption) => ReactNode) | null
+>(null);
+
 const SPLIT: CategoryOption = { id: "__split", name: "Split", group: "" };
 const PAYMENT_TRANSFER: CategoryOption = {
   id: "__payment_transfer",
   name: "Payment/Transfer",
   group: "",
 };
+
+const CATEGORY_ACTION =
+  "inline-flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1 font-medium text-muted-foreground text-xs hover:bg-accent hover:text-foreground";
 
 /** Copies of categories listed again under "Selected" or "Suggested", told apart by id. */
 const SHORTCUT = "__shortcut:";
@@ -612,10 +651,12 @@ export function CategoryField({
   describe,
   shortcuts = false,
   suggestedIds,
+  chevron = false,
 }: {
   label?: string;
   value: string | null;
-  onChange: (id: string | null) => void;
+  /** `via` is "tab" when Tab took the highlighted category on the way to the next field. */
+  onChange: (id: string | null, via?: "tab") => void;
   onSplit?: () => void;
   onPaymentTransfer?: () => void;
   categories: readonly CategoryOption[];
@@ -627,9 +668,14 @@ export function CategoryField({
   shortcuts?: boolean;
   /** The payee's recent categories, most recent first (see `payeeSuggestions`). */
   suggestedIds?: readonly string[];
+  /** A dropdown chevron at the end (a standalone picker, not a register cell). */
+  chevron?: boolean;
 }) {
+  const balances = useContext(CategoryBalancesContext);
+  const describeOption = describe ?? balances ?? undefined;
   const selected = categories.find((c) => c.id === value) ?? null;
   const [query, setQuery] = useState("");
+  const highlighted = useRef<CategoryOption | undefined>(undefined);
   const typing = query.trim() !== "" && (!selected || query !== categoryLabel(selected));
   const groups = useMemo(() => {
     const byGroup = new Map<string, CategoryOption[]>();
@@ -663,6 +709,9 @@ export function CategoryField({
           onPaymentTransfer?.();
         } else onChange(option?.id.replace(SHORTCUT, "") ?? null);
       }}
+      onItemHighlighted={(option: CategoryOption | undefined) => {
+        highlighted.current = option;
+      }}
       itemToStringLabel={categoryLabel}
       // The Selected copy and the category in its group are both ticked.
       isItemEqualToValue={(a, b) => a.id.replace(SHORTCUT, "") === b.id.replace(SHORTCUT, "")}
@@ -671,13 +720,50 @@ export function CategoryField({
       <ComboboxInput
         aria-label={label}
         placeholder={placeholder}
-        showTrigger={false}
+        showTrigger={chevron}
         showClear={selected !== null}
         autoFocus={autoFocus}
         onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          // Tab files the row under the highlighted match, as Enter would, then moves on.
+          if (e.key !== "Tab" || e.shiftKey || !open || !typing) return;
+          const option = highlighted.current;
+          if (!option || option.id === SPLIT.id || option.id === PAYMENT_TRANSFER.id) return;
+          onChange(option.id.replace(SHORTCUT, ""), "tab");
+        }}
         className="h-8 w-full"
       />
-      <ComboboxContent className="min-w-64">
+      <ComboboxContent className="max-h-[min(20rem,var(--available-height))] min-w-72">
+        {(onSplit || onPaymentTransfer) && (
+          <div className="flex gap-1 border-b p-1">
+            {onPaymentTransfer && (
+              <button
+                type="button"
+                className={CATEGORY_ACTION}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setOpen(false);
+                  onPaymentTransfer();
+                }}
+              >
+                <ArrowLeftRight className="size-3.5" /> Payment/Transfer
+              </button>
+            )}
+            {onSplit && (
+              <button
+                type="button"
+                className={CATEGORY_ACTION}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setOpen(false);
+                  onSplit();
+                }}
+              >
+                <Split className="size-3.5" /> Split
+              </button>
+            )}
+          </div>
+        )}
         <ComboboxEmpty>No matching category</ComboboxEmpty>
         <ComboboxList>
           {(group: CategoryGroupItems) => (
@@ -701,16 +787,16 @@ export function CategoryField({
                           {option.name}{" "}
                           <span className="text-muted-foreground">({option.group})</span>
                         </span>
-                        {describe && (
+                        {describeOption && (
                           <span className="shrink-0 tabular-nums">
-                            {describe({ ...option, id: option.id.replace(SHORTCUT, "") })}
+                            {describeOption({ ...option, id: option.id.replace(SHORTCUT, "") })}
                           </span>
                         )}
                       </span>
-                    ) : describe ? (
+                    ) : describeOption ? (
                       <span className="flex w-full items-center justify-between gap-3">
                         <span className="truncate">{option.name}</span>
-                        <span className="shrink-0 tabular-nums">{describe(option)}</span>
+                        <span className="shrink-0 tabular-nums">{describeOption(option)}</span>
                       </span>
                     ) : (
                       option.name

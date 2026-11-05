@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { CategoryList } from "./categories";
-import type { ReportSum, ReportTransaction } from "./reports";
+import {
+  OTHER_COLOR,
+  type ReportSum,
+  type ReportTransaction,
+  UNCATEGORIZED_COLOR,
+} from "./reports";
 import {
   type BreakdownRow,
   breakdownOf,
@@ -64,6 +69,71 @@ const october = [
 ];
 
 describe("spending breakdown rows", () => {
+  it("gives a group's categories its hue's tints, biggest strongest, Uncategorized grey", () => {
+    // Nine categories in one group: five tints, then the smallest share Other's colour.
+    const many: CategoryList = {
+      ...categories,
+      groups: [
+        {
+          id: "g",
+          name: "G",
+          hidden: false,
+          kind: null,
+          categories: Array.from({ length: 9 }, (_, i) => category(`c${i}`, "g", `C${i}`)),
+        },
+      ],
+    };
+    const rows = breakdownRows(
+      [sum("unc", -100), ...Array.from({ length: 9 }, (_, i) => sum(`c${i}`, -1000 * (i + 1)))],
+      "category",
+      { ...names, categories: many },
+    );
+    const b = breakdownOf(rows);
+    const colors = b.spending.map((r) => r.color);
+    expect(colors.slice(0, 5)).toEqual([1, 2, 3, 4, 5].map((t) => `var(--report-1-${t})`));
+    expect(b.spending.find((r) => r.key === "unc")?.color).toBe(UNCATEGORIZED_COLOR);
+    const hued = colors.filter((c) => c !== OTHER_COLOR);
+    expect(new Set(hued).size).toBe(hued.length);
+    // Past the group's tints, the smallest rows share Other's colour (the donut's "Other" slice).
+    expect(colors.filter((c) => c === OTHER_COLOR)).toHaveLength(4);
+    expect(b.spending.at(-2)?.color).toBe(OTHER_COLOR);
+  });
+
+  it("keeps each group's hue for its categories and for the group itself", () => {
+    const sums = [sum("o13", -5000), sum("r4", -4000), sum("t8d", -3000), sum("t2", -2000)];
+    const byCategory = breakdownOf(breakdownRows(sums, "category", names));
+    expect(Object.fromEntries(byCategory.spending.map((r) => [r.key, r.color]))).toEqual({
+      o13: "var(--report-1-1)",
+      r4: "var(--report-5-1)",
+      t8d: "var(--report-1-2)",
+      t2: "var(--report-5-2)",
+    });
+    const byGroup = breakdownOf(breakdownRows(sums, "group", names));
+    expect(Object.fromEntries(byGroup.spending.map((r) => [r.key, r.color]))).toEqual({
+      "g-test": "var(--report-1-1)",
+      "g-wants": "var(--report-5-1)",
+    });
+  });
+
+  it("colours payees along one ramp, biggest strongest", () => {
+    const payees = [
+      { id: "p1", name: "P1" },
+      { id: "p2", name: "P2" },
+    ];
+    const rows = breakdownRows(
+      [
+        { ...sum("x", -100), categoryId: null, payeeId: "p1" },
+        { ...sum("x", -900), categoryId: null, payeeId: "p2" },
+      ],
+      "payee",
+      { ...names, payees },
+    );
+    expect(breakdownOf(rows).spending.map((r) => [r.key, r.color])).toEqual([
+      ["p2", "var(--report-1-1)"],
+      ["p1", "var(--report-1-2)"],
+    ]);
+  });
+
   it("lists categories most spent first and positive ones smallest first", () => {
     const b = breakdownOf(breakdownRows(october, "category", names));
     expect(b.spending.map((r) => r.name)).toEqual(["Uncategorized", "O13", "O11", "R4"]);

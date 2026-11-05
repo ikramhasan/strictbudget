@@ -8,25 +8,26 @@ import {
   TableHeader,
   TableRow,
 } from "@strictbudget/ui/components/table";
-import {
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ReferenceArea,
-  ReferenceLine,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { cn } from "@strictbudget/ui/lib/utils";
+import { CartesianGrid, ComposedChart, Line, ReferenceLine, Tooltip, XAxis, YAxis } from "recharts";
 import { useBudget } from "@/lib/budget-context";
 import { chartNumber, chartTick } from "@/lib/reports";
 import { dayLabel, type PaceLine } from "@/lib/spending-pace";
 
-const config = {
-  remaining: { label: "Left to spend", color: "var(--report-1)" },
-  ideal: { label: "Even pace", color: "var(--muted-foreground)" },
-  projection: { label: "At this pace", color: "var(--report-4)" },
-} satisfies ChartConfig;
+const REMAINING_COLOR = "var(--report-1)";
+const IDEAL_COLOR = "var(--muted-foreground)";
+const TODAY_COLOR = "color-mix(in oklab, var(--foreground) 45%, transparent)";
+
+/** The projection is red only when it runs out; otherwise it continues the line it projects. */
+const projectionColor = (line: PaceLine) =>
+  line.runOutDate !== null || line.status === "behind" ? "var(--destructive)" : REMAINING_COLOR;
+
+const configOf = (line: PaceLine) =>
+  ({
+    remaining: { label: "Left to spend", color: REMAINING_COLOR },
+    ideal: { label: "Even pace", color: IDEAL_COLOR },
+    projection: { label: "At this pace", color: projectionColor(line) },
+  }) satisfies ChartConfig;
 
 interface Point {
   /** Days since the month began: 0 is its start, n the end of day n. */
@@ -78,7 +79,8 @@ function chartPoints(line: PaceLine, elapsed: number, finished: boolean, currenc
 
 /**
  * The burndown: money left to spend at the end of each day so far, the even pace to zero (dashed,
- * grey), the projection at the pace so far (dashed) and the days passed shaded up to today.
+ * grey), the projection at the pace so far (dashed, red when it runs out) and today's line.
+ * SpendingPaceLegend names each mark.
  */
 export function SpendingPaceChart({
   line,
@@ -91,7 +93,7 @@ export function SpendingPaceChart({
   elapsed: number;
   finished: boolean;
   className?: string;
-  /** No axes, grid or tooltip (the plan screen's version). */
+  /** Small (the plan screen's version): no grid, only the first and last day and the start. */
   compact?: boolean;
 }) {
   const { budget, formatAmount } = useBudget();
@@ -102,32 +104,28 @@ export function SpendingPaceChart({
   const spec = NUMBER_FORMAT_SPECS[budget.numberFormat];
   const tick = (units: number) => chartTick(units, currency, exact, spec.decimal);
   const dateOf = (day: number) => line.points[Math.max(0, day - 1)]?.date ?? "";
-  const ticks = [1, 8, 15, 22, days];
+  const ticks = compact ? [1, days] : [1, 8, 15, 22, days];
+  const startUnits = chartNumber(BigInt(line.start), currency);
 
   return (
-    <ChartContainer config={config} className={className}>
+    <ChartContainer config={configOf(line)} className={className}>
       <ComposedChart
         data={data}
-        margin={compact ? { top: 4, right: 4, bottom: 4, left: 4 } : { top: 8, right: 16, left: 8 }}
+        margin={
+          compact ? { top: 14, right: 8, bottom: 0, left: 0 } : { top: 20, right: 16, left: 8 }
+        }
       >
         {!compact && <CartesianGrid vertical={false} strokeDasharray="3 3" />}
-        <ReferenceArea
-          x1={0}
-          x2={elapsed}
-          fill="var(--muted-foreground)"
-          fillOpacity={0.08}
-          ifOverflow="extendDomain"
-        />
         {!finished && (
           <ReferenceLine
             x={elapsed}
-            stroke="var(--foreground)"
-            strokeOpacity={0.4}
-            label={
-              compact
-                ? undefined
-                : { value: "Today", position: "insideTopRight", fontSize: 11, fill: "currentColor" }
-            }
+            stroke={TODAY_COLOR}
+            label={{
+              value: "Today",
+              position: "top",
+              fontSize: compact ? 10 : 11,
+              fill: "var(--muted-foreground)",
+            }}
           />
         )}
         <ReferenceLine y={0} stroke="var(--border)" />
@@ -142,9 +140,16 @@ export function SpendingPaceChart({
           tickFormatter={(d: number) => dayLabel(dateOf(d))}
           tickLine={false}
           axisLine={false}
-          hide={compact}
+          fontSize={compact ? 10 : undefined}
         />
-        <YAxis tickFormatter={tick} tickLine={false} axisLine={false} width={80} hide={compact} />
+        <YAxis
+          {...(compact ? { ticks: [0, startUnits], fontSize: 10, width: 64 } : { width: 80 })}
+          niceTicks={compact ? undefined : "snap125"}
+          // The small chart's one amount, the start, reads as whole units.
+          tickFormatter={compact ? (units: number) => tick(Math.trunc(units)) : tick}
+          tickLine={false}
+          axisLine={false}
+        />
         {!compact && (
           <Tooltip
             content={({ active, payload }) => {
@@ -203,6 +208,45 @@ export function SpendingPaceChart({
         />
       </ComposedChart>
     </ChartContainer>
+  );
+}
+
+/** Names every mark on SpendingPaceChart. */
+export function SpendingPaceLegend({
+  line,
+  finished,
+  className,
+}: {
+  line: PaceLine;
+  finished: boolean;
+  className?: string;
+}) {
+  const items: { label: string; border: string; vertical?: boolean }[] = [
+    { label: "Left to spend", border: `2px solid ${REMAINING_COLOR}` },
+    { label: "Even pace", border: `2px dashed ${IDEAL_COLOR}` },
+    ...(finished
+      ? []
+      : [
+          { label: "At this pace", border: `2px dashed ${projectionColor(line)}` },
+          { label: "Today", border: `1px solid ${TODAY_COLOR}`, vertical: true },
+        ]),
+  ];
+  return (
+    <ul
+      aria-label="Legend"
+      className={cn("flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground text-xs", className)}
+    >
+      {items.map((i) => (
+        <li key={i.label} className="flex items-center gap-1.5">
+          <span
+            aria-hidden
+            className={i.vertical ? "h-3 w-px" : "h-0 w-4"}
+            style={i.vertical ? { borderLeft: i.border } : { borderTop: i.border }}
+          />
+          {i.label}
+        </li>
+      ))}
+    </ul>
   );
 }
 

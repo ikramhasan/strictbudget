@@ -61,8 +61,16 @@ export function CellEditor({
   const [transferAccountId, setTransferAccountId] = useState(transaction.transferAccountId);
   // Enter/Tab commit and unmount the cell; the blur that may follow must not commit again.
   const done = useRef(false);
+  // A field can change the value in the same keystroke that commits it (Tab taking a
+  // suggestion), before the state update lands.
+  const latest = useRef({ value, transfer: transferAccountId });
+  function update(next: string | null, transfer = latest.current.transfer) {
+    latest.current = { value: next, transfer };
+    setValue(next);
+    setTransferAccountId(transfer);
+  }
 
-  function finish(exit: CellExit, next = value, transfer = transferAccountId) {
+  function finish(exit: CellExit, next = latest.current.value, transfer = latest.current.transfer) {
     if (done.current) return;
     done.current = true;
     onCommit(next, exit, transfer);
@@ -104,7 +112,7 @@ export function CellEditor({
             aria-label="Account"
             autoFocus
             value={value ?? ""}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => update(e.target.value)}
             className="h-8 w-full"
           >
             {accounts.map((a) => (
@@ -118,7 +126,7 @@ export function CellEditor({
         return (
           <DateField
             value={value ?? transaction.date}
-            onChange={setValue}
+            onChange={update}
             onPick={(date) => finish("stay", date)}
             format={dateFormat}
             autoFocus
@@ -137,10 +145,7 @@ export function CellEditor({
         return (
           <PayeeField
             value={value ?? ""}
-            onChange={(choice) => {
-              setValue(choice.name);
-              setTransferAccountId(choice.transferAccountId);
-            }}
+            onChange={(choice) => update(choice.name, choice.transferAccountId)}
             onPick={(choice) => finish("stay", choice.name, choice.transferAccountId)}
             payees={payees}
             transfers={transfers}
@@ -157,7 +162,7 @@ export function CellEditor({
         return (
           <CategoryField
             value={value}
-            onChange={(id) => finish("stay", id)}
+            onChange={(id, via) => (via === "tab" ? update(id) : finish("stay", id))}
             onSplit={
               onSplit
                 ? () => {
@@ -178,7 +183,7 @@ export function CellEditor({
             aria-label="Memo"
             autoFocus
             value={value ?? ""}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => update(e.target.value)}
             className="h-8"
           />
         );
@@ -191,7 +196,7 @@ export function CellEditor({
             onFocus={(e) => e.currentTarget.select()}
             inputMode="decimal"
             value={value ?? ""}
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => update(e.target.value)}
             className="h-8 text-right tabular-nums"
           />
         );

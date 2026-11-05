@@ -57,7 +57,7 @@ import {
   Unlink,
   X,
 } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { FLAG_CLASS, type Flag, type FlagColor, flagLabel } from "@/lib/flags";
 import { menuKeyDown } from "@/lib/menu-keys";
 import { useShortcut } from "@/lib/shortcuts";
@@ -90,6 +90,33 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
  * Flag and the cleared states move into More. Enter Now shows when only scheduled rows are
  * selected, and Make Repeating when one plain transaction is.
  */
+/**
+ * The page's content column (the sidebar's inset), measured: its middle on the window and its
+ * width, kept up as the sidebar is resized, collapsed to its rail or hidden. Null outside the app
+ * shell.
+ */
+function useContentColumn(ref: React.RefObject<HTMLElement | null>) {
+  const [column, setColumn] = useState<{ centre: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const inset = ref.current?.closest<HTMLElement>("[data-slot=sidebar-inset]");
+    if (!inset) return;
+    const measure = () => {
+      const box = inset.getBoundingClientRect();
+      setColumn({ centre: box.left + box.width / 2, width: box.width });
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    // The inset narrows and widens with the sidebar, as it animates.
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(inset);
+    return () => {
+      window.removeEventListener("resize", measure);
+      observer?.disconnect();
+    };
+  }, [ref]);
+  return column;
+}
+
 export function SelectionBar({
   summary,
   total,
@@ -112,6 +139,7 @@ export function SelectionBar({
 }: {
   /** Undefined while it loads. */
   summary: Summary | undefined;
+  /** The selection's net amount, signed ("+$99.70", "-$2.00"); null across currencies. */
   total: string | null;
   allMatching: boolean;
   /** Offer "Select all matching" (there are rows beyond the ticked ones). */
@@ -137,6 +165,8 @@ export function SelectionBar({
   /** K with one transaction selected opens its category list instead of the menu. */
   onCategorizeKey?: () => void;
 }) {
+  const barRef = useRef<HTMLElement>(null);
+  const column = useContentColumn(barRef);
   const [flagOpen, setFlagOpen] = useState(false);
   const [categorizeOpen, setCategorizeOpen] = useState(false);
   const moreRef = useRef<HTMLButtonElement>(null);
@@ -215,7 +245,10 @@ export function SelectionBar({
 
   return (
     <section
+      ref={barRef}
       aria-label="Selected transactions"
+      // Centred on the page's content, beside the sidebar; the window until that's measured.
+      style={column ? { left: column.centre, maxWidth: column.width - 32 } : undefined}
       // Floats at the bottom, so the rows don't jump when it appears.
       className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 md:bottom-6 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center gap-2 rounded-lg border bg-popover px-3 py-2 text-sm shadow-lg duration-200 ease-out-quint animate-in fade-in-0 slide-in-from-bottom-2 motion-reduce:slide-in-from-bottom-0"
     >
@@ -234,7 +267,11 @@ export function SelectionBar({
           {count === null ? "Counting…" : plural(count, "Transaction")}
         </span>
       </span>
-      {total !== null && <span className="text-muted-foreground tabular-nums">Total {total}</span>}
+      {total !== null && (
+        <span className="text-muted-foreground tabular-nums" title="Inflows minus outflows">
+          <span className="font-medium text-foreground">{total}</span> net
+        </span>
+      )}
       {canSelectAll && !allMatching && (
         <Button type="button" variant="link" size="sm" onClick={onSelectAll}>
           Select all matching

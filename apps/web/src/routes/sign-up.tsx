@@ -51,7 +51,7 @@ function SignUpPage() {
   return (
     <AuthCard
       title="Create your account"
-      description="Give every cent a job."
+      description="Start giving every dollar a job."
       footer={<span>Already have an account? {signInLink}</span>}
     >
       <SignUpForm

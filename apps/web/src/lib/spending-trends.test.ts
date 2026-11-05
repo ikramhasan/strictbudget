@@ -10,6 +10,8 @@ import {
   chartedMonths,
   exportMoney,
   OTHER_KEY,
+  seriesColors,
+  seriesInfo,
   seriesKeys,
   summaryExportRows,
   transactionExportRows,
@@ -106,6 +108,49 @@ describe("trend series", () => {
     expect(folded[3]?.nets.get(OTHER_KEY)).toBe(-21000n);
     // Totals don't change.
     expect(folded.map((m) => m.total)).toEqual(byCategory.map((m) => m.total));
+  });
+
+  it("names a lone leftover series instead of folding it into Other", () => {
+    const byCategory = trendMonths(cellsOf(rows, catalog, "category"), months);
+    const { keys } = withOther(byCategory, 4);
+    expect(keys).not.toContain(OTHER_KEY);
+    expect(keys).toHaveLength(5);
+  });
+
+  it("gives a group's categories its hue's tints and folds those past them into Other", () => {
+    const many = {
+      ...list,
+      groups: [
+        {
+          id: "g",
+          name: "G",
+          hidden: false,
+          kind: null,
+          categories: Array.from({ length: 7 }, (_, i) => category(`c${i}`, "g", `C${i}`)),
+        },
+      ],
+    } as CategoryList;
+    const big = catalogOf(many);
+    const byCategory = trendMonths(
+      cellsOf(
+        Array.from({ length: 7 }, (_, i) => row("2026-10", `c${i}`, String(-1000 * (i + 1)))),
+        big,
+        "category",
+      ),
+      months,
+    );
+    const info = (key: string) => seriesInfo(big, "category", key);
+    const { keys, months: folded } = withOther(byCategory, 7, info);
+    expect(keys).toEqual(["c6", "c5", "c4", "c3", "c2", OTHER_KEY]);
+    const colors = seriesColors(folded, keys, info);
+    expect(keys.map((k) => colors.get(k))).toEqual([
+      "var(--report-1-1)",
+      "var(--report-1-2)",
+      "var(--report-1-3)",
+      "var(--report-1-4)",
+      "var(--report-1-5)",
+      "var(--report-other)",
+    ]);
   });
 
   it("charts only months with transactions", () => {

@@ -12,6 +12,8 @@ export type ColumnId =
   | "memo"
   | "outflow"
   | "inflow"
+  /** Outflow and Inflow folded into one signed figure, where the register is too narrow for both. */
+  | "amount"
   | "balance"
   | "enteredBy"
   | "cleared"
@@ -25,30 +27,32 @@ export type EditableColumn = Extract<
 
 interface ColumnSpec {
   header: string;
-  /** Fixed width; the memo column takes what's left. */
+  /** Fixed width; Payee, Category and Memo share what's left (FLEX). */
   width?: string;
   align?: "right" | "center";
   srOnly?: boolean;
 }
 
 export const COLUMN_SPECS: Record<ColumnId, ColumnSpec> = {
-  select: { header: "Select", width: "2.25rem", align: "center", srOnly: true },
+  select: { header: "Select", width: "2rem", align: "center", srOnly: true },
   review: { header: "Approval", width: "2.25rem", align: "center", srOnly: true },
-  flag: { header: "Flag", width: "2.5rem", align: "center", srOnly: true },
-  attachment: { header: "Attachment", width: "2.75rem", align: "center", srOnly: true },
+  flag: { header: "Flag", width: "2rem", align: "center", srOnly: true },
+  attachment: { header: "Attachment", width: "2rem", align: "center", srOnly: true },
   account: { header: "Account", width: "8rem" },
-  // Room for the date editor: the date plus its calendar button.
-  date: { header: "Date", width: "8.75rem" },
-  payee: { header: "Payee", width: "11.5rem" },
-  category: { header: "Category", width: "12.5rem" },
+  // layoutColumns sizes the date to its format (dateWidth).
+  date: { header: "Date", width: "7.5rem" },
+  payee: { header: "Payee" },
+  category: { header: "Category" },
   memo: { header: "Memo" },
-  // Fits "$100,000.00" with the cell padding.
-  outflow: { header: "Outflow", width: "6.5rem", align: "right" },
-  inflow: { header: "Inflow", width: "6.5rem", align: "right" },
+  // Fits "$10,000.00" with the cell padding; the row editor's amount fits too.
+  outflow: { header: "Outflow", width: "5.75rem", align: "right" },
+  inflow: { header: "Inflow", width: "5.75rem", align: "right" },
+  // Signed, and its editor has a direction toggle beside the figure.
+  amount: { header: "Amount", width: "6.5rem", align: "right" },
   balance: { header: "Balance", width: "6.5rem", align: "right" },
   enteredBy: { header: "Entered by", width: "2.75rem", align: "center", srOnly: true },
-  cleared: { header: "Cleared", width: "2.75rem", align: "center", srOnly: true },
-  actions: { header: "Actions", width: "2.75rem", srOnly: true },
+  cleared: { header: "Cleared", width: "2.5rem", align: "center", srOnly: true },
+  actions: { header: "Actions", width: "2.5rem", srOnly: true },
 };
 
 /**
@@ -95,7 +99,7 @@ export const PINNED_BG = {
    * Transaction and split-line rows at rest, and jumped to. Hover, an open menu and selection come
    * from RegisterRow, which paints them on every cell in opaque colours.
    */
-  row: "bg-background [tr[data-highlighted]>&]:animate-[row-highlight-pinned_2.5s_ease-out]",
+  row: "bg-background [tr[data-highlighted=jump]>&]:animate-[row-highlight-pinned_2.5s_ease-out] [tr[data-highlighted=saved]>&]:animate-[row-highlight-pinned_0.9s_ease-out]",
   /** The inline editor's rows (`bg-muted/50`). */
   editor: "bg-[color-mix(in_oklab,var(--muted)_50%,var(--background))]",
   /** Scheduled rows (`bg-muted/40`); their selected tint comes from the row (SCHEDULED_ROW in scheduled-section). */
@@ -106,8 +110,9 @@ export const PINNED_BG = {
 
 /**
  * Pins Cleared and Actions to the right edge while the other columns scroll beneath them: sticky
- * at the summed width of the pinned columns after it, the first one with a divider on its left.
- * `null` for the scrolling columns.
+ * at the summed width of the pinned columns after it, the first one with a divider on its left
+ * while the table is wider than the register (`data-overflowing` on the table). `null` for the
+ * scrolling columns.
  */
 export function pinned(
   columns: readonly ColumnId[],
@@ -120,7 +125,7 @@ export function pinned(
   return {
     className: [
       "sticky z-[1]",
-      visible[0] === id ? "shadow-[inset_1px_0_0_var(--border)]" : "",
+      visible[0] === id ? "[table[data-overflowing]_&]:shadow-[inset_1px_0_0_var(--border)]" : "",
     ].join(" "),
     style: { right },
   };
@@ -134,10 +139,7 @@ export const pinnedWidth = (columns: readonly ColumnId[]) =>
     .map((c) => ` + ${COLUMN_SPECS[c].width}`)
     .join("")})`;
 
-/**
- * Memo takes what's left, so it grows and shrinks as the others are dragged; the icon columns stay
- * as they are.
- */
+/** Columns whose header edge can be dragged; Memo takes what's left, the icon columns stay put. */
 export const RESIZABLE: readonly ColumnId[] = [
   "account",
   "date",
@@ -151,9 +153,161 @@ export const MIN_COLUMN_PX = 30;
 
 export type ColumnWidths = Partial<Record<ColumnId, number>>;
 
-export function columnWidth(widths: ColumnWidths, id: ColumnId): string | undefined {
-  const dragged = widths[id];
-  return dragged === undefined ? COLUMN_SPECS[id].width : `${dragged}px`;
+const REM_PX = 16;
+
+/**
+ * Payee, Category and Memo share what the fixed columns leave, in these proportions.
+ * `comfortable` is what each needs to read well: a layout that gives every one of them that
+ * much wins over a wider one that doesn't, so Memo goes (into the payee cell) before Payee and
+ * Category get cramped. `min` is the least they're squeezed to before the register scrolls
+ * sideways. Memo takes the remainder (Category without it), so the row always fills the register.
+ */
+const FLEX: Partial<Record<ColumnId, { min: number; comfortable: number; share: number }>> = {
+  payee: { min: 104, comfortable: 176, share: 0.36 },
+  category: { min: 120, comfortable: 200, share: 0.36 },
+  memo: { min: 80, comfortable: 140, share: 0.28 },
+};
+
+/**
+ * Wide enough for the row editor's date field (the date and its calendar button, see
+ * DATE_EDITOR_FIT), so the column is the same width whether or not a row is being edited. Dashes
+ * are wider than slashes and dots.
+ */
+function dateWidth(format: string) {
+  return (format.includes("-") ? 8 : 7.5) * REM_PX;
+}
+
+interface Sizing {
+  dragged: ColumnWidths;
+  dateFormat: string;
+  /** The account column shows only each account's logo. */
+  accountIcon?: boolean;
+}
+
+/** The account's logo and the cell's padding. */
+const ACCOUNT_ICON_PX = 36;
+
+function fixedWidth(id: ColumnId, { dragged, dateFormat, accountIcon }: Sizing) {
+  if (id === "date") return Math.max(dragged.date ?? 0, dateWidth(dateFormat));
+  if (id === "account" && accountIcon) return ACCOUNT_ICON_PX;
+  return dragged[id] ?? Number.parseFloat(COLUMN_SPECS[id].width ?? "0") * REM_PX;
+}
+
+const isFlex = (id: ColumnId, dragged: ColumnWidths) =>
+  FLEX[id] !== undefined && dragged[id] === undefined;
+
+type Fit = "min" | "comfortable";
+
+/** The width a set of columns needs: the fixed ones, and the flexible ones at `fit`. */
+function neededWidth(columns: readonly ColumnId[], sizing: Sizing, fit: Fit) {
+  return columns.reduce(
+    (sum, id) =>
+      sum + (isFlex(id, sizing.dragged) ? (FLEX[id]?.[fit] ?? 0) : fixedWidth(id, sizing)),
+    0,
+  );
+}
+
+export interface ColumnLayout {
+  columns: ColumnId[];
+  /** Each column's width in px; undefined for the one that takes what's left (Memo, if shown). */
+  widths: Partial<Record<ColumnId, number>>;
+  /** The table's least width: wider than the register only when even the narrowest layout isn't. */
+  minWidth: number;
+  /** The account column shows only each account's logo. */
+  accountIcon: boolean;
+  /** Memo is on but has no room: each row shows it after the payee, and edits it there. */
+  memoInPayee: boolean;
+}
+
+/**
+ * Fits the View menu's columns into the register's width (`available`, px; null before it's
+ * measured), so the money columns never scroll under the pinned Cleared and Actions and Payee and
+ * Category keep room to read. When they don't all fit, Memo goes first (each row shows its memo
+ * after the payee); then Outflow and Inflow fold into one signed Amount; then the running balance
+ * goes; then All Accounts shows each account's logo without its name. Where even that leaves Payee
+ * and Category short of comfortable, the most compact layout gives them what room there is. The
+ * row editors use the same layout (they edit a folded Amount and a logo-only account in place),
+ * so nothing moves when a row starts or stops being edited. Past the narrowest layout the table
+ * scrolls sideways.
+ */
+export function layoutColumns(
+  shown: readonly ColumnId[],
+  {
+    dragged,
+    available,
+    dateFormat,
+  }: { dragged: ColumnWidths; available: number | null; dateFormat: string },
+): ColumnLayout {
+  const folded = shown.flatMap((id): ColumnId[] =>
+    id === "outflow" ? ["amount"] : id === "inflow" ? [] : [id],
+  );
+  const without =
+    (drop: ColumnId) =>
+    (columns: readonly ColumnId[]): ColumnId[] =>
+      columns.filter((id) => id !== drop);
+  const noMemo = without("memo");
+  const noBalance = without("balance");
+  const base = { dragged, dateFormat };
+  const tiers: { columns: readonly ColumnId[]; sizing: Sizing }[] = [
+    { columns: shown, sizing: base },
+    { columns: noMemo(shown), sizing: base },
+    { columns: noMemo(folded), sizing: base },
+    { columns: noBalance(noMemo(folded)), sizing: base },
+    {
+      columns: noBalance(noMemo(folded)),
+      sizing: { ...base, accountIcon: shown.includes("account") },
+    },
+  ];
+  const tier =
+    (available === null
+      ? tiers[0]
+      : (tiers.find((t) => neededWidth(t.columns, t.sizing, "comfortable") <= available) ??
+        tiers.at(-1))) ?? (tiers[0] as (typeof tiers)[number]);
+  const columns = [...tier.columns];
+  const { sizing } = tier;
+
+  const minWidth = neededWidth(columns, sizing, "min");
+  const fixed = columns
+    .filter((id) => !isFlex(id, dragged))
+    .reduce((sum, id) => sum + fixedWidth(id, sizing), 0);
+  const free = Math.max((available ?? minWidth) - fixed, 0);
+  // Floors at the comfortable widths where there's room for them all.
+  const flexible = columns.filter((id) => isFlex(id, dragged));
+  const fit: Fit = neededWidth(flexible, sizing, "comfortable") <= free ? "comfortable" : "min";
+  const widths: Partial<Record<ColumnId, number>> = {};
+  for (const id of columns) {
+    if (!isFlex(id, dragged)) widths[id] = fixedWidth(id, sizing);
+  }
+  // Each flexible column's share of what's free, those that would fall below their floor held at
+  // it and the rest shared again among the others.
+  let open = flexible;
+  let left = free;
+  for (;;) {
+    const total = open.reduce((sum, id) => sum + (FLEX[id]?.share ?? 0), 0);
+    const short = open.filter(
+      (id) => (left * (FLEX[id]?.share ?? 0)) / total < (FLEX[id]?.[fit] ?? 0),
+    );
+    if (short.length === 0) {
+      for (const id of open) widths[id] = Math.floor((left * (FLEX[id]?.share ?? 0)) / total);
+      break;
+    }
+    for (const id of short) {
+      widths[id] = FLEX[id]?.[fit] ?? 0;
+      left -= widths[id] ?? 0;
+    }
+    open = open.filter((id) => !short.includes(id));
+    if (open.length === 0) break;
+  }
+  // Memo takes what's left (Category, or Payee, without it), so rounding never leaves a gap.
+  const remainder = (["memo", "category", "payee"] as const).find((id) => flexible.includes(id));
+  if (remainder) delete widths[remainder];
+  return {
+    columns,
+    widths,
+    minWidth,
+    accountIcon: sizing.accountIcon ?? false,
+    memoInPayee: shown.includes("memo") && !columns.includes("memo"),
+  };
 }
 
 /** Dragged widths per register (an account's, or All Accounts'), kept in this browser. */

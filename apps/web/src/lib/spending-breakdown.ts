@@ -15,13 +15,14 @@ import {
 } from "@strictbudget/engine";
 import { z } from "zod";
 import type { CategoryList } from "./categories";
-import { COLOR_LABEL, type Flag, type FlagColor, flagName } from "./flags";
+import { COLOR_LABEL, FLAG_COLOR, type Flag, type FlagColor, flagName } from "./flags";
 import {
+  distinctColors,
   monthLabel,
-  planColors,
+  planHues,
+  RAMP_FAMILY,
   type ReportSum,
   type ReportTransaction,
-  reportColor,
   reportSearchSchema,
   UNCATEGORIZED_COLOR,
 } from "./reports";
@@ -56,7 +57,14 @@ export const NONE = "none";
 export interface BreakdownRow {
   key: string;
   name: string;
+  /** The row's colour in the chart (breakdownOf gives each row its own). */
   color: string;
+  /** The hue it keeps where it can (its group's place in the plan). */
+  hue?: number;
+  /** The rows sharing its hue (a category's group); none for a row of its own. */
+  family?: string;
+  /** A colour of its own (Uncategorized's grey, a flag's colour). */
+  ownColor?: string;
   /** For a category: its group, which the treemap nests it in. */
   groupKey?: string;
   groupName?: string;
@@ -82,11 +90,11 @@ export function planCategories(list: CategoryList | undefined) {
     groupName: string;
     index: number;
     groupIndex: number;
-    color: string;
-    groupColor: string;
+    hue: number | undefined;
+    groupHue: number | undefined;
   }[] = [];
   if (!list) return out;
-  const colors = planColors(list);
+  const hues = planHues(list);
   out.push({
     id: list.uncategorizedCategoryId,
     name: "Uncategorized",
@@ -94,8 +102,8 @@ export function planCategories(list: CategoryList | undefined) {
     groupName: "Uncategorized",
     index: 0,
     groupIndex: 0,
-    color: UNCATEGORIZED_COLOR,
-    groupColor: UNCATEGORIZED_COLOR,
+    hue: undefined,
+    groupHue: undefined,
   });
   list.groups.forEach((g, gi) => {
     for (const c of g.categories) {
@@ -106,8 +114,8 @@ export function planCategories(list: CategoryList | undefined) {
         groupName: g.name,
         index: out.length,
         groupIndex: gi + 1,
-        color: colors.categories.get(c.id) ?? UNCATEGORIZED_COLOR,
-        groupColor: colors.groups.get(g.id) ?? UNCATEGORIZED_COLOR,
+        hue: hues.categories.get(c.id)?.hue,
+        groupHue: hues.groups.get(g.id),
       });
     }
   });
@@ -145,13 +153,17 @@ export function breakdownRows(
       const c = plan.get(id);
       const groupKey = c?.groupKey ?? NONE;
       if (group !== undefined && groupKey !== group) continue;
-      const key = by === "group" && group === undefined ? groupKey : id;
+      const groups = by === "group" && group === undefined;
+      const key = groups ? groupKey : id;
+      // A group is a family of its own; a category shares its group's hue.
+      const hue = groups ? c?.groupHue : c?.hue;
       const row = rows.get(key) ?? {
         key,
-        name: by === "group" && group === undefined ? (c?.groupName ?? "") : (c?.name ?? ""),
-        // The same colour in every report (planColors).
-        color:
-          (by === "group" && group === undefined ? c?.groupColor : c?.color) ?? UNCATEGORIZED_COLOR,
+        name: groups ? (c?.groupName ?? "") : (c?.name ?? ""),
+        color: UNCATEGORIZED_COLOR,
+        ...(hue === undefined
+          ? { ownColor: UNCATEGORIZED_COLOR }
+          : { hue, ...(!groups && { family: groupKey }) }),
         ...(c && { groupKey: c.groupKey, groupName: c.groupName }),
         net: 0n,
         count: 0,
@@ -168,12 +180,16 @@ export function breakdownRows(
     if (by === "account") return names.accounts.find((a) => a.id === key)?.name ?? "";
     return flagName(key === NONE ? null : (key as FlagColor), names.flags);
   };
-  return sums.map((sum, index) => {
+  return sums.map((sum) => {
     const key = keyOf(sum, by);
+    const own =
+      key === NONE ? UNCATEGORIZED_COLOR : by === "flag" ? FLAG_COLOR[key as FlagColor] : undefined;
     return {
       key,
       name: label(key),
-      color: reportColor(index),
+      color: own ?? UNCATEGORIZED_COLOR,
+      // Payees and accounts are one dimension: one ramp, the biggest strongest.
+      ...(own ? { ownColor: own } : { hue: 0, family: RAMP_FAMILY }),
       net: BigInt(sum.net),
       count: sum.count,
     };
@@ -196,11 +212,35 @@ export interface Breakdown {
   total: bigint;
 }
 
+/** Rows the donut names before folding the rest into "Other". */
+export const BREAKDOWN_NAMED = 10;
+
+/**
+ * The rows split into spending and positive inflows, each row coloured (distinctColors): a group
+ * keeps its hue and its categories take its tints, biggest strongest, none repeated; the rest get
+ * OTHER_COLOR, which the donut folds into "Other".
+ */
 export function breakdownOf(rows: readonly BreakdownRow[]): Breakdown {
   const split = splitSpending(rows.map((r) => ({ key: r, net: r.net })));
+  const spending = split.spending
+    .map((r) => r.key)
+    .sort((a, b) => cmp(a.net, b.net) || byName(a, b));
+  const positive = split.positive
+    .map((r) => r.key)
+    .sort((a, b) => cmp(a.net, b.net) || byName(a, b));
+  const colors = distinctColors(
+    [...spending, ...positive].map((r) => ({
+      key: r.key,
+      hue: r.hue,
+      family: r.family,
+      color: r.ownColor,
+    })),
+    BREAKDOWN_NAMED,
+  );
+  const colored = (r: BreakdownRow) => ({ ...r, color: colors.get(r.key) ?? r.color });
   return {
-    spending: split.spending.map((r) => r.key).sort((a, b) => cmp(a.net, b.net) || byName(a, b)),
-    positive: split.positive.map((r) => r.key).sort((a, b) => cmp(a.net, b.net) || byName(a, b)),
+    spending: spending.map(colored),
+    positive: positive.map(colored),
     grossOutflows: split.grossOutflows,
     positiveInflows: split.positiveInflows,
     total: split.total,

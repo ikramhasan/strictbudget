@@ -31,7 +31,7 @@ describe("DisplayOptionsDialog", () => {
     expect(pill("negative").className).toContain("bg-red-100");
     await user.click(screen.getByRole("button", { name: "Apply" }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(pill("negative").className).toContain("bg-[#bf2e3b]");
+    expect(pill("negative").className).toContain("bg-(--bar-overspent)");
     expect(pill("caution").className).toContain("border-black");
     expect(pill("positive").className).toContain("bg-green-100");
     expect(localStorage.getItem("strictbudget:differentiate-without-color")).toBe("true");

@@ -36,7 +36,7 @@ import {
   pickerGroups,
 } from "@/lib/category-history";
 import { todayIso } from "@/lib/dates";
-import { monthLabel, rangeLabel } from "@/lib/reports";
+import { monthLabel } from "@/lib/reports";
 import { useReportState } from "@/lib/use-report";
 
 export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/category-history")({
@@ -82,9 +82,9 @@ function Report() {
   const empty = query.isError
     ? "Couldn't load the report."
     : subject === undefined && categories.data
-      ? "Add a category to see its history."
+      ? "Add a category on the plan to see its history here."
       : history && history.months.length === 0
-        ? "The plan has no months in this range."
+        ? "The plan has no months in this range. Pick a range from the plan's first month on."
         : undefined;
 
   const onPick = (month: BudgetMonth) =>
@@ -130,7 +130,7 @@ function Report() {
         />
       }
       filters={
-        <div className="flex flex-wrap items-center gap-2">
+        <>
           {categories.data && (
             <SubjectPicker
               list={categories.data}
@@ -158,7 +158,7 @@ function Report() {
             earliest={state.earliest}
             show={[]}
           />
-        </div>
+        </>
       }
     >
       <section
@@ -190,7 +190,7 @@ function Report() {
       </section>
 
       <ChartCard
-        title={`${history?.name ?? "Category"}${history?.hidden ? " (hidden)" : ""} · ${rangeLabel(state.range)}`}
+        title={`${history?.name ?? "Category"}${history?.hidden ? " (hidden)" : ""}`}
         view={search.view ?? "chart"}
         onViewChange={(view) => update({ view })}
         loading={loading}

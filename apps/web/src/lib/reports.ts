@@ -18,7 +18,7 @@ import { strToU8, zipSync } from "fflate";
 import { z } from "zod";
 import { $api } from "./api";
 import { todayIso } from "./dates";
-import { monthName, monthLabel as shortMonthLabel } from "./months";
+import { monthName, monthLabel as shortMonthLabel, shortMonthName } from "./months";
 
 export type ReportSum = components["schemas"]["ReportSum"];
 export type ReportTransaction = components["schemas"]["ReportTransaction"];
@@ -151,13 +151,92 @@ export function chartNumber(minorUnits: string | bigint, currency: CurrencyCode)
 }
 
 /**
- * The report palette: Okabe–Ito's colour-blind-safe hues (CSS variables defined for both themes in
- * packages/ui's globals.css), handed out by a category's or group's place in the budget so it keeps
- * its colour in every report.
+ * The report palette: seven colour-blind-safe hues (`--report-1` to `--report-7`, defined for both
+ * themes in packages/ui's theme.css), each with five tints strongest first
+ * (`--report-<hue>-<1..5>`, all at least 3:1 against the background), and a grey (`--report-8`).
  */
-export const REPORT_COLOR_COUNT = 8;
-export const reportColor = (index: number) =>
-  `var(--report-${(((index % REPORT_COLOR_COUNT) + REPORT_COLOR_COUNT) % REPORT_COLOR_COUNT) + 1})`;
+export const REPORT_HUES = 7;
+export const REPORT_TINTS = 5;
+const wrap = (hue: number) => ((hue % REPORT_HUES) + REPORT_HUES) % REPORT_HUES;
+/** A hue's mid tone, for charts whose series mean one thing each (income, debts…). */
+export const reportColor = (hue: number) => `var(--report-${wrap(hue) + 1})`;
+/** A hue's tint, 0 the strongest. */
+export const reportTint = (hue: number, tint: number) =>
+  `var(--report-${wrap(hue) + 1}-${Math.min(Math.max(tint, 0), REPORT_TINTS - 1) + 1})`;
+
+/** Uncategorized, "No payee" and the like: the palette's grey. */
+export const UNCATEGORIZED_COLOR = "var(--report-8)";
+/** "Other" (the series a chart folds together): a lighter neutral, apart from Uncategorized. */
+export const OTHER_COLOR = "var(--report-other)";
+
+/** Text on a report colour (theme.css picks light or dark ink per theme for each band). */
+export function reportInk(color: string) {
+  const tint = /^var\(--report-\d-(\d)\)$/.exec(color)?.[1];
+  if (tint) return Number(tint) <= 3 ? "var(--report-ink-strong)" : "var(--report-ink-soft)";
+  if (color === UNCATEGORIZED_COLOR) return "var(--report-ink-strong)";
+  return "var(--report-ink-soft)";
+}
+
+export interface ColorRequest {
+  key: string;
+  /**
+   * The family the series belongs to (a category's group): a family shares one hue, its series
+   * taking that hue's tints. Without one the series is a family of its own.
+   */
+  family?: string;
+  /** The hue the family keeps wherever it can (its group's place in the plan). */
+  hue?: number;
+  /** A colour of its own (Uncategorized's grey, a flag's colour), never handed to another series. */
+  color?: string;
+}
+
+/**
+ * One chart's colours, none repeated. `series` come biggest first. Each family takes its hue
+ * unless a bigger family has it, else the first hue still free, and its series take the hue's
+ * tints in turn, so the biggest is the strongest. Past a family's tints, past the free hues or
+ * past `max` named series, the rest get OTHER_COLOR and the chart folds them into "Other".
+ */
+export function distinctColors(
+  series: readonly ColorRequest[],
+  max = Number.POSITIVE_INFINITY,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  const taken = new Set<number>();
+  // A hue whose colour is some series' own (a flag that is also a palette hue) is never handed out.
+  for (const s of series) {
+    const own = s.color && /^var\(--report-(\d)(?:-\d)?\)$/.exec(s.color)?.[1];
+    if (own && Number(own) <= REPORT_HUES) taken.add(Number(own) - 1);
+  }
+  const families = new Map<string, { hue: number; used: number }>();
+  let named = 0;
+  for (const s of series) {
+    if (s.color) {
+      out.set(s.key, s.color);
+      continue;
+    }
+    const id = s.family ?? s.key;
+    let family = families.get(id);
+    if (!family) {
+      let hue = s.hue !== undefined && !taken.has(wrap(s.hue)) ? wrap(s.hue) : -1;
+      for (let h = 0; hue < 0 && h < REPORT_HUES; h++) if (!taken.has(h)) hue = h;
+      if (hue >= 0) {
+        taken.add(hue);
+        family = { hue, used: 0 };
+        families.set(id, family);
+      }
+    }
+    if (!family || family.used >= REPORT_TINTS || named >= max) {
+      out.set(s.key, OTHER_COLOR);
+      continue;
+    }
+    out.set(s.key, reportTint(family.hue, family.used++));
+    named++;
+  }
+  return out;
+}
+
+/** One ramp for a chart of one dimension (payees, accounts): its biggest series strongest. */
+export const RAMP_FAMILY = "ramp";
 
 /**
  * An axis tick's label: the tick (a chart position) rounded to the minor unit and formatted,
@@ -176,27 +255,28 @@ export function chartTick(
 }
 
 /**
- * Each category's and group's colour, the same in every report: Uncategorized grey, then the
- * plan's groups and categories in plan order through the seven hues (grey is kept for
- * Uncategorized and "Other").
+ * The order groups take the hues in: blue, purple, cyan, amber and pink first; green and
+ * vermillion last, since they also mean income and spending (and good and bad) elsewhere.
  */
-export function planColors(list: {
-  uncategorizedCategoryId: string;
+const GROUP_HUES = [0, 4, 6, 1, 5, 2, 3];
+
+/**
+ * Each group's hue (its place in the plan) and each category's group, so a group keeps one hue
+ * across reports and its categories take that hue's tints (distinctColors). Uncategorized has
+ * none: it's always grey.
+ */
+export function planHues(list: {
   groups: readonly { id: string; categories: readonly { id: string }[] }[];
 }) {
-  const hue = (i: number) => reportColor(i % (REPORT_COLOR_COUNT - 1));
-  const categories = new Map<string, string>([[list.uncategorizedCategoryId, UNCATEGORIZED_COLOR]]);
-  const groups = new Map<string, string>();
-  let index = 0;
-  list.groups.forEach((g, groupIndex) => {
-    groups.set(g.id, hue(groupIndex));
-    for (const c of g.categories) categories.set(c.id, hue(index++));
+  const groups = new Map<string, number>();
+  const categories = new Map<string, { hue: number; family: string }>();
+  list.groups.forEach((g, index) => {
+    const hue = GROUP_HUES[index % REPORT_HUES] ?? 0;
+    groups.set(g.id, hue);
+    for (const c of g.categories) categories.set(c.id, { hue, family: g.id });
   });
   return { categories, groups };
 }
-
-/** Uncategorized and "Other": the palette's grey. */
-export const UNCATEGORIZED_COLOR = reportColor(REPORT_COLOR_COUNT - 1);
 
 export interface ExportFile {
   name: string;
@@ -225,13 +305,14 @@ export function saveBlob(blob: Blob, name: string) {
 }
 
 /**
- * "Oct 2026" (`short`, the range picker), "October 2026" (`long`, table rows) or "10/26" (`axis`,
- * chart ticks).
+ * "Oct 2026" (`short`, the range picker), "October 2026" (`long`, table rows) or "Oct" (`axis`,
+ * chart ticks), where January carries its year ("Jan ’27") so a range across years reads.
  */
 export function monthLabel(month: BudgetMonth, style: "short" | "long" | "axis" = "short") {
   if (style === "short") return shortMonthLabel(month);
   if (style === "long") return `${monthName(month)} ${month.slice(0, 4)}`;
-  return `${month.slice(5, 7)}/${month.slice(2, 4)}`;
+  const name = shortMonthName(month);
+  return month.endsWith("-01") ? `${name} ’${month.slice(2, 4)}` : name;
 }
 
 /** "Aug 2026 – Oct 2026", or "Oct 2026" for one month. */

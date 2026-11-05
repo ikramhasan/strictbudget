@@ -1,9 +1,15 @@
-import { addMonths } from "@strictbudget/engine";
+import { addMonths, isOnBudget } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { cn } from "@strictbudget/ui/lib/utils";
-import { CircleCheck, CircleMinus, CirclePlus, Info, TriangleAlert } from "lucide-react";
-import type { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { CircleCheck, CircleMinus, CirclePlus, Info, Plus, TriangleAlert } from "lucide-react";
+import { type ReactNode, useState } from "react";
+import { accountsQueryOptions } from "@/lib/accounts";
+import { useOptionalBudget } from "@/lib/budget-context";
 import { type BudgetMonthData, monthName } from "@/lib/months";
+import { useOptionalQueryClient } from "@/lib/query-client";
+import { AddAccountDialog } from "./add-account-dialog";
 import { TargetPie } from "./move-money";
 
 type Breakdown = BudgetMonthData["readyToAssignBreakdown"];
@@ -131,6 +137,8 @@ export function ReadyToAssignBanner({
   breakdown?: { lines: Breakdown; month: string };
 }) {
   const sign = amount === "0" ? 0 : amount.startsWith("-") ? -1 : 1;
+  const noAccounts = useNoBudgetAccounts();
+  if (sign === 0 && noAccounts) return <AddAccountPrompt />;
   const negativeLabel = overdraft
     ? "Overdraft? We can help with that!"
     : "You assigned more than you have";
@@ -171,6 +179,58 @@ export function ReadyToAssignBanner({
       {sign > 0 && assign}
       {sign === 0 && <CircleCheck className="size-6" aria-hidden />}
       {sign < 0 && !overdraft && action}
+    </output>
+  );
+}
+
+/**
+ * The budget has no open cash or credit account, so there's no money to assign yet (outside a
+ * budget, or before the accounts load: false).
+ */
+function useNoBudgetAccounts() {
+  const context = useOptionalBudget();
+  const { client, present } = useOptionalQueryClient();
+  const accounts = useQuery(
+    { ...accountsQueryOptions(context?.budget.id ?? ""), enabled: present && context !== null },
+    client,
+  );
+  return (
+    accounts.data !== undefined &&
+    !accounts.data.accounts.some((a) => !a.closed && isOnBudget(a.type))
+  );
+}
+
+/** In place of "All Money Assigned" while there's no account for money to come from. */
+function AddAccountPrompt() {
+  const context = useOptionalBudget();
+  const [adding, setAdding] = useState(false);
+  // Mounted on first use, so the banner needs no router until then.
+  const [dialogMounted, setDialogMounted] = useState(false);
+  return (
+    <output
+      aria-live="polite"
+      className="flex min-w-56 flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-input border-dashed bg-muted/40 px-4 py-2 max-md:w-full sm:flex-nowrap"
+    >
+      <span className="grid sm:whitespace-nowrap">
+        <span className="font-semibold text-base">No money yet</span>
+        <span className="text-muted-foreground text-sm">Add an account to start</span>
+      </span>
+      {context && !context.readOnly && (
+        <>
+          <Button
+            size="sm"
+            onClick={() => {
+              setDialogMounted(true);
+              setAdding(true);
+            }}
+          >
+            <Plus /> Add account
+          </Button>
+          {dialogMounted && (
+            <AddAccountDialog budget={context.budget} open={adding} onOpenChange={setAdding} />
+          )}
+        </>
+      )}
     </output>
   );
 }

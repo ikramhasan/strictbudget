@@ -356,11 +356,7 @@ function TargetSummary({
             {message.suffix}
           </p>
           {onAssign && (
-            <Button
-              size="sm"
-              className="bg-yellow-400 text-yellow-950 hover:bg-yellow-500"
-              onClick={() => onAssign(BigInt(need.underfunded))}
-            >
+            <Button size="sm" variant="warning" onClick={() => onAssign(BigInt(need.underfunded))}>
               Assign
             </Button>
           )}
@@ -468,7 +464,7 @@ function SnoozeHelp() {
           <CircleHelp />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 text-sm">
+      <PopoverContent arrow className="w-64 text-sm">
         <p className="font-medium">Snooze Target</p>
         <p className="text-muted-foreground">
           When you snooze a Target, strictbudget will treat the category as if it didn't have a

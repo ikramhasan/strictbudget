@@ -143,7 +143,12 @@ describe("useShortcut in the command palette", () => {
 describe("SHORTCUTS", () => {
   it("lists the dialog in its sections, plus the command palette", () => {
     const sections = new Set(Object.values(SHORTCUTS).map((s) => s.section));
-    expect([...sections]).toEqual(["Universal", "Plan Actions", "Account Actions", "Date Picker"]);
+    expect([...sections]).toEqual([
+      "Universal",
+      "Budget Actions",
+      "Account Actions",
+      "Date Picker",
+    ]);
     expect(Object.keys(SHORTCUTS)).toHaveLength(41);
     expect(SHORTCUTS.palette.keys).toBe("mod+k");
   });

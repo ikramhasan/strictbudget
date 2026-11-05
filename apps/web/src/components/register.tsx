@@ -27,6 +27,7 @@ import {
 } from "@strictbudget/ui/components/dropdown-menu";
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -48,19 +49,19 @@ import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-tab
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   ArrowDown,
+  ArrowDownLeft,
   ArrowLeftRight,
   ArrowUp,
   Bookmark,
   Check,
   ChevronRight,
-  Circle,
   CircleCheck,
   CircleHelp,
   CircleX,
   CreditCard,
   History,
   Image as ImageIcon,
-  Lock,
+  Landmark,
   MoreHorizontal,
   Paperclip,
   Plus,
@@ -94,7 +95,13 @@ import {
   rowDeleteScope,
 } from "@/lib/reconciled-warnings";
 import { type RegisterSearch, registerQuery, searchText } from "@/lib/register-filters";
-import { DEFAULT_SORT, nextSort, type SortColumn, type SortField } from "@/lib/register-sort";
+import {
+  DEFAULT_SORT,
+  enteredOrder,
+  nextSort,
+  type SortColumn,
+  type SortField,
+} from "@/lib/register-sort";
 import {
   addMonths,
   rangeDates,
@@ -126,6 +133,7 @@ import { sessionQueryOptions } from "@/lib/session";
 import { useShortcut } from "@/lib/shortcuts";
 import { createBodyFromTransaction, updateBodyFromTransaction } from "@/lib/transaction-history";
 import {
+  type CategoryOption,
   type CellColumn,
   categoryOptions,
   cellUpdate,
@@ -148,6 +156,7 @@ import {
 import { type UndoCommand, useUndo } from "@/lib/undo";
 import { useViewportWidth } from "@/lib/use-viewport-width";
 import { AccountLogo } from "./accounts-nav";
+import { AddAccountDialog } from "./add-account-dialog";
 import { CellEditor, type CellExit } from "./cell-editor";
 import { ChangeHistoryDialog } from "./change-history-dialog";
 import { FileImportButton } from "./file-import";
@@ -156,17 +165,29 @@ import { MemberAvatar } from "./member-avatar";
 import {
   COLUMN_SPECS,
   type ColumnId,
-  columnWidth,
   isEditable,
+  layoutColumns,
   MIN_COLUMN_PX,
   PINNED_BG,
   pinned,
+  pinnedWidth,
   RESIZABLE,
   registerColumns,
   useColumnWidths,
 } from "./register-columns";
+import { CategoryBalancesContext } from "./register-fields";
 import { RegisterSearchBox } from "./register-search-box";
-import { RegisterBody, RegisterCell, RegisterHead, RegisterRow } from "./register-table";
+import {
+  ClearedMark,
+  DATE_EDITOR_FIT,
+  EDITOR_CELL,
+  ICON_CELL,
+  REVEAL_ON_ROW,
+  RegisterBody,
+  RegisterCell,
+  RegisterHead,
+  RegisterRow,
+} from "./register-table";
 import { RegisterViewMenu } from "./register-view-menu";
 import { NeedsCategoryPill, ReviewCell } from "./review-cell";
 import { ScheduledSection } from "./scheduled-section";
@@ -174,6 +195,7 @@ import { type BulkAction, SelectionBar } from "./selection-bar";
 import { AttachmentCell, AttachmentField } from "./transaction-attachment";
 import { TransactionEditor } from "./transaction-editor";
 import { UndoRedoButtons } from "./undo-redo-buttons";
+import { signedAmount } from "./unrealized-gain";
 
 /** The tray's colour, on the scroll area and its sticky header cells (which must be opaque). */
 const REGISTER_TRAY = "bg-muted dark:bg-[color-mix(in_oklch,var(--background),black_20%)]";
@@ -188,6 +210,8 @@ const SORTABLE: Partial<Record<ColumnId, SortColumn>> = {
   memo: "memo",
   outflow: "outflow",
   inflow: "inflow",
+  // Largest outflows first, as the Outflow header would.
+  amount: "outflow",
   cleared: "cleared",
 };
 
@@ -211,8 +235,6 @@ const NO_SUMMARY = {
   deletable: 0,
 };
 const ROW_HEIGHT = 41;
-/** The least the Memo column gets; it takes whatever width the fixed columns leave beyond that. */
-const MEMO_MIN_WIDTH = "9rem";
 
 interface EditingCell {
   id: string;
@@ -230,6 +252,8 @@ interface EditingSplit {
   draft: Draft;
   /** Opened with the S key, which starts in the memo. */
   fromKey?: boolean;
+  /** Just split from its category or the Actions menu: starts in the first line's amount. */
+  splitting?: boolean;
 }
 
 /**
@@ -241,6 +265,16 @@ interface EditingSplit {
  */
 /** A saved transaction's version, and its transfer's other side's, by id. */
 type PayeeRuleSnapshot = components["schemas"]["PayeeRuleSnapshot"];
+
+/**
+ * The side a folded Amount edits: the transaction's own (an FX revaluation, which has no native
+ * amount, by its base amount's sign).
+ */
+function amountSide(t: Transaction): "outflow" | "inflow" {
+  const amount = BigInt(t.amount);
+  const sign = amount === 0n ? BigInt(t.baseAmount) : amount;
+  return sign > 0n ? "inflow" : "outflow";
+}
 
 function versionsOf(row: Transaction): Record<string, number> {
   return {
@@ -343,9 +377,10 @@ export function Register({
     observer.current = new ResizeObserver(() => setScheduledHeight(node.offsetHeight));
     observer.current.observe(node);
   }, []);
+  // A day's transactions newest entry first, so a new one shows at the top of its day.
   const loaded = useMemo(
-    () => transactions.data?.pages.flatMap((p) => p.transactions) ?? EMPTY,
-    [transactions.data],
+    () => enteredOrder(transactions.data?.pages.flatMap((p) => p.transactions) ?? EMPTY, view.sort),
+    [transactions.data, view.sort],
   );
   const someHidden = transactions.data?.pages[0]?.someHidden ?? false;
   // The info column hides when no row in view needs approval or a category.
@@ -441,7 +476,7 @@ export function Register({
   // Narrower than lg (a phone, a tablet upright) the register is cards, edited in a drawer: the
   // table's columns don't fit and the amounts would scroll out of sight.
   const phone = useViewportWidth() < 1024;
-  const columnIds = useMemo(
+  const shownColumns = useMemo(
     () =>
       registerColumns(allAccounts).filter(
         (c) =>
@@ -463,6 +498,19 @@ export function Register({
       readOnly,
     ],
   );
+  /** The register's width (px), measured once it's on screen; null before (and in tests). */
+  const [registerWidth, setRegisterWidth] = useState<number | null>(null);
+  // The row editors share the read rows' layout, so nothing moves as a row opens or closes.
+  const layout = useMemo(
+    () =>
+      layoutColumns(shownColumns, {
+        dragged: widths,
+        available: registerWidth,
+        dateFormat: budget.dateFormat,
+      }),
+    [shownColumns, widths, registerWidth, budget.dateFormat],
+  );
+  const columnIds = layout.columns;
   const accountList = accounts.data?.accounts ?? [];
   const accountById = useMemo(() => new Map(accountList.map((a) => [a.id, a])), [accountList]);
   /** An amount in `currency` (a row's, or its account's): the budget's by default. */
@@ -516,11 +564,50 @@ export function Register({
     [categories.data],
   );
   const payeeList = payees.data?.payees ?? [];
+  /**
+   * A phone's new transaction offers these payees to tap: the latest ones in the register (by
+   * date), otherwise the most used.
+   */
+  const recentPayees = useMemo(() => {
+    const list = payees.data?.payees ?? [];
+    const hidden = new Set(list.filter((p) => p.hidden).map((p) => p.name));
+    const newestFirst = (view.sort[0] ?? DEFAULT_SORT[0])?.dir === "desc" && dateFirst(view.sort);
+    const names = newestFirst
+      ? loaded.flatMap((t) => (t.payeeName && !t.transferAccountId ? [t.payeeName] : []))
+      : [...list].sort((a, b) => b.useCount - a.useCount).map((p) => p.name);
+    return [...new Set(names)].filter((name) => !hidden.has(name)).slice(0, 6);
+  }, [payees.data, loaded, view.sort]);
   const flags = flagList.data?.flags ?? [];
   const searchSources = useMemo(
     () => ({ categories: options, accounts: accountList, flags, settings: registerSettings }),
     [options, accountList, flags, registerSettings],
   );
+
+  /** Each category's available this month, beside it in the category fields. */
+  const describeBalance = useMemo(() => {
+    if (!monthData.data || !categories.data) return null;
+    const available = new Map(monthData.data.categories.map((c) => [c.categoryId, c.available]));
+    available.set(categories.data.readyToAssignCategoryId, monthData.data.readyToAssign);
+    const currency = inCurrency(budget, undefined).currency;
+    return (option: CategoryOption) => {
+      const amount = available.get(option.id);
+      if (amount === undefined) return null;
+      return (
+        <span
+          className={cn(
+            "text-xs",
+            amount.startsWith("-")
+              ? "text-destructive"
+              : amount === "0"
+                ? "text-muted-foreground"
+                : "text-success",
+          )}
+        >
+          {formatAmount(money(BigInt(amount), currency))}
+        </span>
+      );
+    };
+  }, [monthData.data, categories.data, budget, formatAmount]);
 
   const tableColumns = useMemo(
     () =>
@@ -556,6 +643,29 @@ export function Register({
   );
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  /**
+   * The scroll area, measured for the width the columns share: its own width less the table
+   * frame's padding (the frame itself grows with a table wider than the register).
+   */
+  const viewportRef = useCallback((viewport: HTMLDivElement | null) => {
+    scrollRef.current = viewport;
+    if (!viewport || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const frame = viewport.querySelector("[data-slot=table-container]");
+      const style = frame ? getComputedStyle(frame) : null;
+      const padding = style
+        ? Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight)
+        : 0;
+      setRegisterWidth(viewport.clientWidth - padding);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(viewport);
+    return () => {
+      observer.disconnect();
+      scrollRef.current = null;
+    };
+  }, []);
   const virtualizer = useVirtualizer({
     count: flat.length,
     getScrollElement: () => scrollRef.current,
@@ -577,7 +687,13 @@ export function Register({
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, lastIndex, flat.length]);
 
-  const [highlightId, setHighlightId] = useState<string | null>(null);
+  /** A row that glows briefly: jumped to (the other side of a transfer), or just saved. */
+  const [highlight, setHighlight] = useState<{ id: string; kind: "jump" | "saved" } | null>(null);
+  useEffect(() => {
+    if (!highlight) return;
+    const timer = setTimeout(() => setHighlight(null), highlight.kind === "jump" ? 2500 : 900);
+    return () => clearTimeout(timer);
+  }, [highlight]);
   const focused = useRef<string | null>(null);
   useEffect(() => {
     if (!focusId || focused.current === focusId) return;
@@ -598,9 +714,7 @@ export function Register({
     }
     focused.current = focusId;
     virtualizer.scrollToIndex(index, { align: "center" });
-    setHighlightId(focusId);
-    const timer = setTimeout(() => setHighlightId(null), 2500);
-    return () => clearTimeout(timer);
+    setHighlight({ id: focusId, kind: "jump" });
   }, [
     focusId,
     flat,
@@ -611,6 +725,31 @@ export function Register({
     scheduledRows,
     scheduled.isPending,
   ]);
+  /**
+   * A transaction just saved, once the refreshed rows are in: brought into view (unless it was
+   * saved with "Save and add another", whose new row stays put) and flashed. One the register
+   * doesn't show (searched out, another account, further back) gets a toast instead.
+   */
+  const [reveal, setReveal] = useState<{ id: string; scroll: boolean } | null>(null);
+  useEffect(() => {
+    if (!reveal) return;
+    setReveal(null);
+    const index = flat.findIndex((r) => r.key === reveal.id);
+    if (index === -1) {
+      toast.success("Transaction saved");
+      return;
+    }
+    if (reveal.scroll) {
+      if (phone) {
+        document
+          .querySelector(`li[data-transaction-id="${reveal.id}"]`)
+          ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      } else {
+        virtualizer.scrollToIndex(index, { align: "auto" });
+      }
+    }
+    setHighlight({ id: reveal.id, kind: "saved" });
+  }, [reveal, flat, virtualizer, phone]);
   const loadedIds = useMemo(() => loaded.map((t) => t.id), [loaded]);
   // The selection's filter is the register's, without the sort, and with the list's today so a
   // year-less `Income:` matches the same rows.
@@ -1130,6 +1269,52 @@ export function Register({
     return usesCategory(type, transferType);
   }
 
+  /** How many categories a split's lines go to. */
+  function splitCount(t: Transaction) {
+    return new Set(t.subtransactions.map((l) => l.categoryId ?? l.transferAccountId)).size;
+  }
+
+  /**
+   * A row's category as plain text, for a tooltip or a phone's summary line (`short`: "Split (2)",
+   * and nothing where no category is needed).
+   */
+  function categoryText(t: Transaction, short = false): string {
+    if (t.subtransactions.length > 0) {
+      const count = splitCount(t);
+      return short
+        ? `Split (${count})`
+        : `Split (${count} ${count === 1 ? "category" : "categories"})`;
+    }
+    if (t.needsCategory) return "Needs a category";
+    const notNeeded = categoryNotNeeded({
+      accountType: accountById.get(t.accountId)?.type ?? "checking",
+      transferAccountType: t.transferAccountId
+        ? (accountById.get(t.transferAccountId)?.type ?? null)
+        : null,
+      payeeName: t.payeeName,
+    });
+    if (!notNeeded) {
+      return short && t.categoryId === categories.data?.readyToAssignCategoryId
+        ? "Ready to Assign"
+        : (t.categoryName ?? "");
+    }
+    return (
+      transferCategory(t.accountId, t.transferAccountId) || (short ? "" : "Category not needed")
+    );
+  }
+
+  /** The full text of a cell that may be cut short, for its tooltip. */
+  function cellTitle(t: Transaction, id: ColumnId): string | undefined {
+    if (id === "payee") {
+      const payee = rowPayee(t.accountId, t.transferAccountId, BigInt(t.amount), t.payeeName);
+      // Without its own column, the memo follows the payee.
+      return [payee, layout.memoInPayee ? t.memo : ""].filter(Boolean).join(" · ") || undefined;
+    }
+    if (id === "category") return categoryText(t) || undefined;
+    if (id === "memo") return t.memo || undefined;
+    return undefined;
+  }
+
   /** A saved row's category cell; "Category not needed" in muted text. */
   function rowCategory(t: Transaction): ReactNode {
     const notNeeded = categoryNotNeeded({
@@ -1139,11 +1324,27 @@ export function Register({
         : null,
       payeeName: t.payeeName,
     });
-    if (!notNeeded) return t.categoryName;
+    if (!notNeeded) return categoryName(t);
     return (
       transferCategory(t.accountId, t.transferAccountId) || (
         <span className="text-muted-foreground">Category not needed</span>
       )
+    );
+  }
+
+  /**
+   * A category's name in a row: income reads "Ready to Assign" behind an inflow arrow (the stored
+   * "Inflow: Ready to Assign" says it twice and doesn't fit a narrow column).
+   */
+  function categoryName(row: { categoryId: string | null; categoryName: string | null }) {
+    if (!row.categoryId || row.categoryId !== categories.data?.readyToAssignCategoryId) {
+      return row.categoryName;
+    }
+    return (
+      <span className="inline-flex min-w-0 items-center gap-1">
+        <ArrowDownLeft className="size-3.5 shrink-0 text-success" role="img" aria-label="Inflow:" />
+        <span className="truncate">Ready to Assign</span>
+      </span>
     );
   }
 
@@ -1154,12 +1355,33 @@ export function Register({
   function editableColumns(t: Transaction): CellColumn[] {
     if (readOnly) return [];
     const categorized = hasCategory(t);
-    return columnIds.filter(
-      (c): c is CellColumn =>
-        isEditable(c) &&
-        (c !== "category" || categorized) &&
-        (!t.transferFromSplit || c === "memo" || c === "category"),
+    return (
+      columnIds
+        // A memo without its own column is edited in the payee's cell, after the payee.
+        .flatMap((c): ColumnId[] =>
+          c === "amount"
+            ? [amountSide(t)]
+            : c === "payee" && layout.memoInPayee
+              ? [c, "memo"]
+              : [c],
+        )
+        .filter(
+          (c): c is CellColumn =>
+            isEditable(c) &&
+            (c !== "category" || categorized) &&
+            (!t.transferFromSplit || c === "memo" || c === "category"),
+        )
     );
+  }
+
+  /**
+   * The register column a cell is edited in: a folded Amount holds Outflow and Inflow, and the
+   * payee's cell a memo without its own column.
+   */
+  function columnOf(cell: CellColumn): ColumnId {
+    if ((cell === "outflow" || cell === "inflow") && columnIds.includes("amount")) return "amount";
+    if (cell === "memo" && layout.memoInPayee) return "payee";
+    return cell;
   }
 
   /** Splits open as a whole, as do transactions being split from the category cell. */
@@ -1168,7 +1390,12 @@ export function Register({
     setEditing(null);
     setAdding(false);
     setSplitError(null);
-    setEditingSplit({ id: t.id, draft: split ? startSplit(draft) : draft, fromKey });
+    setEditingSplit({
+      id: t.id,
+      draft: split ? startSplit(draft) : draft,
+      fromKey,
+      splitting: split && !fromKey,
+    });
   }
 
   async function saveSplit(t: Transaction, draft: Draft, confirmed = false) {
@@ -1195,6 +1422,7 @@ export function Register({
         });
         recordUpdate("transaction edit", t, after);
         await refresh();
+        setReveal({ id: t.id, scroll: true });
       }
       setEditingSplit(null);
     } catch (e) {
@@ -1298,6 +1526,7 @@ export function Register({
       if (file) await attachToNew(created.id, file);
       afterNewSaved(draft, another);
       await refresh();
+      setReveal({ id: created.id, scroll: !another });
     } catch (e) {
       setNewError(apiErrorMessage(e, "Couldn't save the transaction."));
     }
@@ -1374,6 +1603,12 @@ export function Register({
       });
       afterNewSaved(draft, another);
       await refresh();
+      // A past date with a repeat enters that one now; the rest wait in Scheduled Transactions.
+      if (written.enteredTransactionId) {
+        setReveal({ id: written.enteredTransactionId, scroll: !another });
+      } else {
+        toast.success("Added to Scheduled Transactions");
+      }
     } catch (e) {
       setNewError(apiErrorMessage(e, "Couldn't save the transaction."));
     }
@@ -1438,7 +1673,7 @@ export function Register({
     requestAnimationFrame(() => {
       const row = document.querySelector(`tr[data-transaction-id="${id}"]`);
       if (!row) return;
-      const at = columnIds.indexOf(cell);
+      const at = columnIds.indexOf(columnOf(cell));
       const cells = [...row.children];
       const beyond = exit === "next" ? cells.slice(at + 1) : cells.slice(0, at).reverse();
       for (const td of beyond) {
@@ -1491,6 +1726,8 @@ export function Register({
         });
         recordUpdate("transaction edit", t, after);
         await refresh();
+        // A new date moves the row: follow it.
+        if (result.body.date) setReveal({ id: t.id, scroll: true });
       } catch (e) {
         toast.error(apiErrorMessage(e, "Couldn't save the change."));
       }
@@ -1624,6 +1861,9 @@ export function Register({
   }
 
   const defaultAccountId = accountId ?? openAccounts[0]?.id;
+  // A budget without accounts has nowhere to put a transaction: All Accounts offers to add one.
+  const noAccounts = allAccounts && accounts.isSuccess && accountList.length === 0;
+  const [addingAccount, setAddingAccount] = useState(false);
   const canAdd = defaultAccountId !== undefined && (allAccounts || account?.closed === false);
 
   // Arriving from the payment inspector's Record Payment opens the same row the toolbar does.
@@ -1725,7 +1965,9 @@ export function Register({
   const editingTransaction = editingSplit
     ? loaded.find((t) => t.id === editingSplit.id)
     : undefined;
-  if (transactions.isPending) return <Skeleton className="h-64" />;
+  // The accounts too: without them a budget that has none would first read as one without
+  // transactions.
+  if (transactions.isPending || accounts.isPending) return <Skeleton className="h-64" />;
   if (transactions.isError) {
     return (
       <p role="alert" className="text-destructive text-sm">
@@ -1734,9 +1976,28 @@ export function Register({
     );
   }
   const q = searchText(search);
+  // Nothing to show at all: an empty state in the table's place.
+  const empty = rows.length === 0 && scheduledRows.length === 0 && !adding && !someHidden;
   const [first]: readonly SortField[] = view.sort.length > 0 ? view.sort : DEFAULT_SORT;
   const sort = first?.column;
   const dir = first?.dir;
+
+  /**
+   * A payee cell's content with the row's memo after it, quieter, when Memo has no column of its
+   * own. The payee keeps its room; the memo takes what's left.
+   */
+  function withMemo(memo: string, payee: ReactNode): ReactNode {
+    if (!layout.memoInPayee || !memo) return payee;
+    return (
+      // One line: a memo without room for a few letters wraps out of sight, not to a sliver.
+      <span className="flex h-5 min-w-0 flex-wrap items-baseline gap-x-2 overflow-hidden">
+        <span className="max-w-full truncate">{payee}</span>
+        <span data-memo className="min-w-12 flex-1 basis-0 truncate text-muted-foreground text-xs">
+          {memo}
+        </span>
+      </span>
+    );
+  }
 
   function display(t: Transaction, id: ColumnId) {
     const amount = BigInt(t.amount);
@@ -1803,62 +2064,73 @@ export function Register({
           ) : null;
         }
         return (
-          <FlagMenu
-            value={t.flag}
-            flags={flags}
-            onChange={(flag) => void setFlag(t, flag)}
-            onRename={renameFlags}
-          />
+          <span className={cn("flex justify-center", !t.flag && REVEAL_ON_ROW)}>
+            <FlagMenu
+              value={t.flag}
+              flags={flags}
+              onChange={(flag) => void setFlag(t, flag)}
+              onRename={renameFlags}
+            />
+          </span>
         );
       case "attachment":
-        return <AttachmentCell budgetId={budget.id} transaction={t} readOnly={readOnly} />;
+        return (
+          <span className={cn("flex justify-center", !t.attachment && REVEAL_ON_ROW)}>
+            <AttachmentCell budgetId={budget.id} transaction={t} readOnly={readOnly} />
+          </span>
+        );
       case "account":
         return (
-          <span className="flex min-w-0 items-center gap-2">
+          <span
+            className="flex min-w-0 items-center gap-2"
+            title={layout.accountIcon ? t.accountName : undefined}
+          >
             <AccountLogo name={t.accountName} logo={accountById.get(t.accountId)?.logo ?? null} />
-            <span className="truncate">{t.accountName}</span>
+            <span className={cn("truncate", layout.accountIcon && "sr-only")}>{t.accountName}</span>
           </span>
         );
       case "date":
         return formatDate(t.date);
       case "payee":
-        return t.transferAccountId ? (
-          <span className="flex min-w-0 items-center gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              className="-ml-1 shrink-0 text-muted-foreground"
-              aria-label={`Go to the matching transaction in ${
-                accountById.get(t.transferAccountId)?.name ?? "the other account"
-              }`}
-              title="Go to the other side of this transfer"
-              onClick={(e) => {
-                e.stopPropagation();
-                jumpToOtherSide(t);
-              }}
-            >
-              <ArrowLeftRight />
-            </Button>
-            <span className="truncate">
-              {rowPayee(t.accountId, t.transferAccountId, amount, t.payeeName)}
-            </span>
-          </span>
-        ) : (
-          t.payeeName
-        );
-      case "category":
-        if (t.subtransactions.length > 0) {
-          const count = new Set(t.subtransactions.map((l) => l.categoryId ?? l.transferAccountId))
-            .size;
-          const folded = Boolean(collapsedSplits[t.id]);
-          return (
-            <span className="flex items-center gap-1.5">
+        return withMemo(
+          t.memo,
+          t.transferAccountId ? (
+            <span className="flex min-w-0 items-center gap-1">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-xs"
-                className="-ml-1 shrink-0"
+                className="-ml-1 shrink-0 text-muted-foreground"
+                aria-label={`Go to the matching transaction in ${
+                  accountById.get(t.transferAccountId)?.name ?? "the other account"
+                }`}
+                title="Go to the other side of this transfer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  jumpToOtherSide(t);
+                }}
+              >
+                <ArrowLeftRight />
+              </Button>
+              <span className="truncate">
+                {rowPayee(t.accountId, t.transferAccountId, amount, t.payeeName)}
+              </span>
+            </span>
+          ) : (
+            t.payeeName
+          ),
+        );
+      case "category":
+        if (t.subtransactions.length > 0) {
+          const folded = Boolean(collapsedSplits[t.id]);
+          return (
+            <span className="flex min-w-0 items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                // Expanded is its resting state here, not an open menu's.
+                className="-ml-1 shrink-0 aria-expanded:bg-transparent hover:aria-expanded:bg-accent"
                 aria-expanded={!folded}
                 aria-label={folded ? "Show split lines" : "Hide split lines"}
                 onClick={(e) => {
@@ -1868,10 +2140,11 @@ export function Register({
               >
                 <ChevronRight className={cn("transition-transform", !folded && "rotate-90")} />
               </Button>
-              <Split className="size-4 shrink-0" />
-              <span className="truncate">
-                Split ({count} {count === 1 ? "category" : "categories"})
+              {/* Short enough for a narrow column; the full wording is the tooltip's. */}
+              <span className="truncate" aria-hidden>
+                Split · {splitCount(t)}
               </span>
+              <span className="sr-only">{categoryText(t)}</span>
             </span>
           );
         }
@@ -1886,10 +2159,22 @@ export function Register({
         if (id === "outflow" ? sign >= 0n : sign <= 0n) return "";
         return withBase(show(amount < 0n ? -amount : amount, t.currency), t);
       }
+      case "amount": {
+        const sign = amount === 0n ? BigInt(t.baseAmount) : amount;
+        return (
+          <span className={cn(sign > 0n && "text-success")}>
+            {withBase(
+              signedAmount(amount, (m) => show(m, t.currency)),
+              t,
+            )}
+          </span>
+        );
+      }
       case "balance": {
         const balance = BigInt(t.runningBalance);
+        // Quieter than the amounts beside it: it follows from them.
         return (
-          <span className={cn(balance < 0n && "text-destructive")}>
+          <span className={cn(balance < 0n ? "text-destructive" : "text-muted-foreground")}>
             {show(balance, t.currency)}
           </span>
         );
@@ -1915,28 +2200,27 @@ export function Register({
           />
         ) : null;
       case "cleared":
-        if (readOnly && t.cleared !== "reconciled") {
-          return t.cleared === "cleared" ? (
-            <CircleCheck className="mx-auto size-4 text-primary-text" aria-label="Cleared" />
-          ) : (
-            <Circle className="mx-auto size-4 text-muted-foreground" aria-label="Uncleared" />
+        if (readOnly || t.cleared === "reconciled") {
+          const label = { cleared: "Cleared", uncleared: "Uncleared", reconciled: "Reconciled" }[
+            t.cleared
+          ];
+          return (
+            <span role="img" aria-label={label} title={label} className="inline-flex align-middle">
+              <ClearedMark state={t.cleared} />
+            </span>
           );
         }
-        return t.cleared === "reconciled" ? (
-          <Lock className="mx-auto size-4 text-muted-foreground" aria-label="Reconciled" />
-        ) : (
+        return (
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
+            className="group/cleared"
             aria-label={t.cleared === "cleared" ? "Mark uncleared" : "Mark cleared"}
+            title={t.cleared === "cleared" ? "Cleared" : "Uncleared"}
             onClick={() => void toggleCleared(t)}
           >
-            {t.cleared === "cleared" ? (
-              <CircleCheck className="text-primary-text" />
-            ) : (
-              <Circle className="text-muted-foreground" />
-            )}
+            <ClearedMark state={t.cleared} />
           </Button>
         );
       case "actions":
@@ -2002,16 +2286,19 @@ export function Register({
             {line.transferAccountId && (
               <ArrowLeftRight className="size-3.5 shrink-0" aria-label="Transfer" />
             )}
-            <span className="truncate">
-              {rowPayee(t.accountId, line.transferAccountId, amount, line.payeeName)}
-            </span>
+            {withMemo(
+              line.memo,
+              <span className="truncate">
+                {rowPayee(t.accountId, line.transferAccountId, amount, line.payeeName)}
+              </span>,
+            )}
           </span>
         );
       case "category": {
         const type = accountById.get(t.accountId)?.type ?? "checking";
         const to = line.transferAccountId ? accountById.get(line.transferAccountId)?.type : null;
         if (!usesCategory(type, to)) return transferCategory(t.accountId, line.transferAccountId);
-        return line.needsCategory ? <NeedsCategoryPill /> : line.categoryName;
+        return line.needsCategory ? <NeedsCategoryPill /> : categoryName(line);
       }
       case "memo":
         return line.memo;
@@ -2019,536 +2306,610 @@ export function Register({
         return amount < 0n ? show(-amount, t.currency) : "";
       case "inflow":
         return amount > 0n ? show(amount, t.currency) : "";
+      case "amount":
+        return amount === 0n ? "" : signedAmount(amount, (m) => show(m, t.currency));
       default:
         return null;
     }
   }
 
   return (
-    <div ref={rootRef} className="grid gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {!readOnly && (
-          <Button size="sm" onClick={() => startAdding()} disabled={!canAdd || adding}>
-            <Plus /> Add transaction
-          </Button>
-        )}
-        {recordPayment && canAdd && !readOnly && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => startAdding(recordPayment(), false)}
-            disabled={adding}
-          >
-            <CreditCard /> Record Payment
-          </Button>
-        )}
-        {!readOnly && canAdd && <FileImportButton accountId={accountId} />}
-        {!canAdd && account?.closed && (
-          <p className="text-muted-foreground text-sm">Reopen this account to add transactions.</p>
-        )}
-        <div className="ml-auto flex items-center gap-1 max-md:w-full">
-          {!readOnly && <UndoRedoButtons />}
-          <RegisterViewMenu
-            view={view}
-            onChange={setView}
-            runningBalance={!allAccounts}
-            oldestMonth={oldestMonth}
-          />
-          <RegisterSearchBox
-            value={search.q ?? ""}
-            onCommit={(text) => {
-              const q = text.trim() ? text : undefined;
-              saveSearch(budget.id, accountId ?? "all", q);
-              onSearchChange({ q });
-            }}
-            placeholder={allAccounts ? "Search All Accounts" : `Search ${account?.name ?? ""}`}
-            sources={searchSources}
-          />
-        </div>
-      </div>
-      {(!isEmpty(selection) || scheduledSelection.size > 0) && (
-        <SelectionBar
-          summary={selectionSummary}
-          total={
-            selectionSummary && !mixedCurrencies
-              ? show(
-                  BigInt(selectionSummary.total) + scheduledTotal,
-                  selectionCurrency ?? undefined,
-                )
-              : null
-          }
-          allMatching={selection.mode === "all"}
-          canSelectAll={
-            !isEmpty(selection) &&
-            (Boolean(hasNextPage) || loaded.length > (summary.data?.count ?? 0))
-          }
-          onSelectAll={() => setSelection({ mode: "all", except: new Set() })}
-          onClear={clearSelection}
-          flags={flags}
-          categories={options}
-          moveTargets={openAccounts.filter((a) => a.id !== accountId)}
-          pending={bulk.isPending || scheduledBulk.isPending}
-          onAction={requestBulk}
-          onMatch={matchPair ? () => void matchSelected() : undefined}
-          onUnmatch={unmatchable ? () => void unmatchRows(pickedRows.map((t) => t.id)) : undefined}
-          scheduledCount={scheduledSelection.size}
-          scheduledSplits={scheduledSplits(
-            scheduledRows.filter((row) => scheduledSelection.has(row.id)),
+    <CategoryBalancesContext.Provider value={describeBalance}>
+      <div ref={rootRef} className="grid gap-3">
+        {/* Nothing to add to, view or search until there's an account. */}
+        <div className={cn("flex flex-wrap items-center gap-2", noAccounts && "hidden")}>
+          {!readOnly && (
+            <Button size="sm" onClick={() => startAdding()} disabled={!canAdd || adding}>
+              <Plus /> Add transaction
+            </Button>
           )}
-          onMakeRepeating={repeatable ? () => makeRepeating(repeatable) : undefined}
-          onCategorizeKey={
-            singleCategory && single
-              ? () => setEditing({ id: single.id, column: "category" })
-              : undefined
-          }
-          onExport={() => {
-            exportSelected(budget, selectionBody(selection, selectionFilter)).catch(() =>
-              toast.error("Couldn't export the selected transactions."),
-            );
-          }}
-        />
-      )}
-
-      <ChangeHistoryDialog
-        transactionId={historyFor}
-        onOpenChange={(open) => !open && setHistoryFor(null)}
-      />
-
-      <AlertDialog
-        open={warning !== null}
-        onOpenChange={(open) => {
-          // Closing after Save/Delete is not a cancel (this runs after the action's onClick).
-          if (open || !warning || proceeding.current) return;
-          warning.cancel?.();
-          setWarning(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{warning?.warning.title}</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="grid gap-2">
-                {warning?.warning.paragraphs.map((text) => (
-                  <p key={text}>{text}</p>
-                ))}
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant={warning?.warning.confirm === "Delete" ? "destructive" : "default"}
-              onClick={() => {
-                const proceed = warning?.proceed;
-                proceeding.current = true;
-                setWarning(null);
-                proceed?.();
-                queueMicrotask(() => {
-                  proceeding.current = false;
-                });
-              }}
+          {recordPayment && canAdd && !readOnly && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => startAdding(recordPayment(), false)}
+              disabled={adding}
             >
-              {warning?.warning.confirm}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {phone ? (
-        <PhoneTransactions
-          rows={loaded}
-          scheduled={scheduledRows}
-          scheduledSelected={scheduledSelection}
-          onSelectScheduled={(id) => toggleScheduled(id, !scheduledSelection.has(id), false)}
-          isSelected={(id) => isSelected(selection, id)}
-          onSelect={(t) => toggleRow(t.id, !isSelected(selection, t.id), false)}
-          onOpen={(t) => {
-            if (!readOnly && !t.transferFromSplit) openSplit(t);
-          }}
-          onToggleCleared={readOnly ? undefined : (t) => void toggleCleared(t)}
-          show={(amount, currency) => show(amount, currency ?? undefined)}
-          formatDate={formatDate}
-          category={(t) => display(t, "category")}
-          flags={flags}
-          hasMore={Boolean(hasNextPage)}
-          loadingMore={isFetchingNextPage}
-          onLoadMore={() => void fetchNextPage()}
-        />
-      ) : (
-        // The shared Table's tray, as the scroll area so the header stays on it: an overlay
-        // scrollbar inside the rounded frame, instead of a native one that takes a strip beside
-        // the header and squares off its corner.
-        <ScrollArea
-          viewportRef={scrollRef}
-          // A query container: the editor's footer sizes to its visible width.
-          viewportClassName="@container max-h-[70vh]"
-          scrollbars="both"
-          className={cn("rounded-xl ring-1 ring-border", REGISTER_TRAY)}
-        >
-          <Table
-            // The ScrollArea is the tray; the container keeps only its padding. Rows and cells
-            // come from register-table.
-            containerClassName="overflow-visible rounded-none bg-transparent ring-0 dark:bg-transparent"
-            className="table-fixed"
-            // The fixed columns plus room for Memo (which takes what's left): a narrow window scrolls
-            // sideways, Cleared and Actions staying pinned, rather than squeezing Memo to nothing.
-            style={{
-              minWidth: `calc(${MEMO_MIN_WIDTH}${columnIds
-                .map((id) => columnWidth(widths, id))
-                .filter(Boolean)
-                .map((w) => ` + ${w}`)
-                .join("")})`,
+              <CreditCard /> Record Payment
+            </Button>
+          )}
+          {!readOnly && canAdd && <FileImportButton accountId={accountId} />}
+          {!canAdd && account?.closed && (
+            <p className="text-muted-foreground text-sm">
+              Reopen this account to add transactions.
+            </p>
+          )}
+          <div className="ml-auto flex items-center gap-1 max-md:w-full">
+            {!readOnly && <UndoRedoButtons />}
+            <RegisterViewMenu
+              view={view}
+              onChange={setView}
+              runningBalance={!allAccounts}
+              oldestMonth={oldestMonth}
+            />
+            <RegisterSearchBox
+              value={search.q ?? ""}
+              onCommit={(text) => {
+                const q = text.trim() ? text : undefined;
+                saveSearch(budget.id, accountId ?? "all", q);
+                onSearchChange({ q });
+              }}
+              placeholder={allAccounts ? "Search All Accounts" : `Search ${account?.name ?? ""}`}
+              sources={searchSources}
+            />
+          </div>
+        </div>
+        {(!isEmpty(selection) || scheduledSelection.size > 0) && (
+          <SelectionBar
+            summary={selectionSummary}
+            total={
+              selectionSummary && !mixedCurrencies
+                ? signedAmount(BigInt(selectionSummary.total) + scheduledTotal, (m) =>
+                    show(m, selectionCurrency ?? undefined),
+                  )
+                : null
+            }
+            allMatching={selection.mode === "all"}
+            canSelectAll={
+              !isEmpty(selection) &&
+              (Boolean(hasNextPage) || loaded.length > (summary.data?.count ?? 0))
+            }
+            onSelectAll={() => setSelection({ mode: "all", except: new Set() })}
+            onClear={clearSelection}
+            flags={flags}
+            categories={options}
+            moveTargets={openAccounts.filter((a) => a.id !== accountId)}
+            pending={bulk.isPending || scheduledBulk.isPending}
+            onAction={requestBulk}
+            onMatch={matchPair ? () => void matchSelected() : undefined}
+            onUnmatch={
+              unmatchable ? () => void unmatchRows(pickedRows.map((t) => t.id)) : undefined
+            }
+            scheduledCount={scheduledSelection.size}
+            scheduledSplits={scheduledSplits(
+              scheduledRows.filter((row) => scheduledSelection.has(row.id)),
+            )}
+            onMakeRepeating={repeatable ? () => makeRepeating(repeatable) : undefined}
+            onCategorizeKey={
+              singleCategory && single
+                ? () => setEditing({ id: single.id, column: "category" })
+                : undefined
+            }
+            onExport={() => {
+              exportSelected(budget, selectionBody(selection, selectionFilter)).catch(() =>
+                toast.error("Couldn't export the selected transactions."),
+              );
             }}
+          />
+        )}
+
+        <ChangeHistoryDialog
+          transactionId={historyFor}
+          onOpenChange={(open) => !open && setHistoryFor(null)}
+        />
+
+        <AlertDialog
+          open={warning !== null}
+          onOpenChange={(open) => {
+            // Closing after Save/Delete is not a cancel (this runs after the action's onClick).
+            if (open || !warning || proceeding.current) return;
+            warning.cancel?.();
+            setWarning(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{warning?.warning.title}</AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="grid gap-2">
+                  {warning?.warning.paragraphs.map((text) => (
+                    <p key={text}>{text}</p>
+                  ))}
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant={warning?.warning.confirm === "Delete" ? "destructive" : "default"}
+                onClick={() => {
+                  const proceed = warning?.proceed;
+                  proceeding.current = true;
+                  setWarning(null);
+                  proceed?.();
+                  queueMicrotask(() => {
+                    proceeding.current = false;
+                  });
+                }}
+              >
+                {warning?.warning.confirm}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {empty ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">{noAccounts ? <Landmark /> : <ReceiptText />}</EmptyMedia>
+              <EmptyTitle>{noAccounts ? "No accounts yet" : "No transactions yet"}</EmptyTitle>
+              <EmptyDescription>
+                {noAccounts
+                  ? readOnly
+                    ? "Transactions show up here once the budget has an account."
+                    : "Add a checking, savings or credit card account to start recording transactions."
+                  : canAdd && !readOnly
+                    ? "Add one to start tracking where your money goes."
+                    : "Transactions show up here once they're added."}
+              </EmptyDescription>
+            </EmptyHeader>
+            {!readOnly && (noAccounts || canAdd) && (
+              <EmptyContent>
+                {noAccounts ? (
+                  <Button size="sm" onClick={() => setAddingAccount(true)}>
+                    <Plus /> Add account
+                  </Button>
+                ) : (
+                  <Button size="sm" onClick={() => startAdding()}>
+                    <Plus /> Add transaction
+                  </Button>
+                )}
+              </EmptyContent>
+            )}
+          </Empty>
+        ) : phone ? (
+          <PhoneTransactions
+            rows={loaded}
+            scheduled={scheduledRows}
+            scheduledSelected={scheduledSelection}
+            onSelectScheduled={(id) => toggleScheduled(id, !scheduledSelection.has(id), false)}
+            isSelected={(id) => isSelected(selection, id)}
+            onSelect={(t) => toggleRow(t.id, !isSelected(selection, t.id), false)}
+            onOpen={(t) => {
+              if (!readOnly && !t.transferFromSplit) openSplit(t);
+            }}
+            onToggleCleared={readOnly ? undefined : (t) => void toggleCleared(t)}
+            show={(amount, currency) => show(amount, currency ?? undefined)}
+            formatDate={formatDate}
+            category={(t) => categoryText(t, true)}
+            flags={flags}
+            highlightId={highlight?.id ?? null}
+            hasMore={Boolean(hasNextPage)}
+            loadingMore={isFetchingNextPage}
+            onLoadMore={() => void fetchNextPage()}
+          />
+        ) : (
+          // The shared Table's tray, as the scroll area so the header stays on it: an overlay
+          // scrollbar inside the rounded frame, instead of a native one that takes a strip beside
+          // the header and squares off its corner.
+          <ScrollArea
+            viewportRef={viewportRef}
+            // A query container: the editor's footer sizes to its visible width. The scroll padding
+            // keeps a focused field clear of the sticky header and the pinned columns, should the
+            // table ever be wider than the register.
+            viewportClassName="@container max-h-[70vh] scroll-pt-10"
+            viewportProps={{ style: { scrollPaddingRight: pinnedWidth(columnIds) } }}
+            scrollbars="both"
+            className={cn("rounded-xl ring-1 ring-border", REGISTER_TRAY)}
           >
-            <colgroup>
-              {columnIds.map((id) => (
-                <col key={id} style={{ width: columnWidth(widths, id) }} />
-              ))}
-            </colgroup>
-            <TableHeader className="sticky top-0 z-10">
-              {table.getHeaderGroups().map((group) => (
-                <RegisterRow key={group.id} still>
-                  {group.headers.map((header) => {
-                    const id = header.column.id as ColumnId;
-                    const spec = COLUMN_SPECS[id];
-                    const sortBy = SORTABLE[id];
-                    // The arrow shows on the first sort field; the rest break its ties.
-                    const active = sortBy !== undefined && sortBy === sort;
-                    const HeaderIcon =
-                      id === "flag"
-                        ? Bookmark
-                        : id === "attachment"
-                          ? ImageIcon
-                          : id === "cleared"
-                            ? CircleCheck
-                            : null;
-                    const pin = pinned(columnIds, id);
-                    return (
-                      <RegisterHead
-                        key={header.id}
-                        aria-sort={
-                          active ? (dir === "asc" ? "ascending" : "descending") : undefined
-                        }
-                        style={pin?.style}
-                        className={cn(
-                          cn("font-medium text-[13px] text-muted-foreground", REGISTER_TRAY),
-                          RESIZABLE.includes(id) && "relative",
-                          pin && [pin.className, PINNED_BG.head],
-                          spec.align === "right" && "text-right",
-                          // Centred like the column's cells (the flag and cleared icons).
-                          spec.align === "center" && "text-center",
-                        )}
-                      >
-                        {id === "select" ? (
-                          <Checkbox
-                            aria-label={
-                              selection.mode === "all" ? "Unselect all" : "Select all matching"
-                            }
-                            checked={
-                              selection.mode === "all"
-                                ? selection.except.size === 0 || "indeterminate"
-                                : (selection.ids.size > 0 || scheduledSelection.size > 0) &&
-                                  "indeterminate"
-                            }
-                            disabled={loaded.length === 0 && scheduledRows.length === 0}
-                            onCheckedChange={() => {
-                              // Select all takes the scheduled rows along.
-                              if (selection.mode === "all") return clearSelection();
-                              setSelection({ mode: "all", except: new Set() });
-                              setScheduledSelection(new Set(scheduledRows.map((row) => row.id)));
-                            }}
-                          />
-                        ) : id === "balance" ? (
-                          <BalanceHeader
-                            sorted={!dateOrder}
-                            onResetSort={() => setView({ sort: [...DEFAULT_SORT] })}
-                          />
-                        ) : sortBy ? (
-                          <button
-                            type="button"
-                            className={cn(
-                              "inline-flex items-center gap-1 hover:text-foreground",
-                              active && "text-foreground",
-                            )}
-                            onClick={() => setView({ sort: nextSort(view.sort, sortBy) })}
-                          >
-                            {HeaderIcon ? (
-                              <>
-                                <HeaderIcon className="size-3.5" aria-hidden />
-                                <span className="sr-only">{spec.header}</span>
-                              </>
-                            ) : (
-                              spec.header
-                            )}
-                            {active &&
-                              (dir === "asc" ? (
-                                <ArrowUp className="size-3" aria-hidden />
+            <Table
+              // The ScrollArea is the tray; the container keeps only its padding. Rows and cells
+              // come from register-table.
+              containerClassName="overflow-visible rounded-none bg-transparent ring-0 dark:bg-transparent"
+              className="table-fixed"
+              // layoutColumns fits the columns to the register; only past its narrowest layout does
+              // the table scroll sideways, Cleared and Actions staying pinned.
+              style={{ minWidth: layout.minWidth }}
+              data-overflowing={
+                (registerWidth !== null && layout.minWidth > registerWidth) || undefined
+              }
+            >
+              <colgroup>
+                {columnIds.map((id) => (
+                  <col key={id} style={{ width: layout.widths[id] }} />
+                ))}
+              </colgroup>
+              <TableHeader className="sticky top-0 z-10">
+                {table.getHeaderGroups().map((group) => (
+                  <RegisterRow key={group.id} still>
+                    {group.headers.map((header) => {
+                      const id = header.column.id as ColumnId;
+                      const spec = COLUMN_SPECS[id];
+                      const sortBy = SORTABLE[id];
+                      // The arrow shows on the first sort field; the rest break its ties.
+                      const active =
+                        sortBy !== undefined &&
+                        (sortBy === sort || (id === "amount" && sort === "inflow"));
+                      const HeaderIcon =
+                        id === "flag"
+                          ? Bookmark
+                          : id === "attachment"
+                            ? ImageIcon
+                            : id === "cleared"
+                              ? CircleCheck
+                              : id === "account" && layout.accountIcon
+                                ? Landmark
+                                : null;
+                      const resizable = RESIZABLE.includes(id) && HeaderIcon === null;
+                      const pin = pinned(columnIds, id);
+                      return (
+                        <RegisterHead
+                          key={header.id}
+                          aria-sort={
+                            active ? (dir === "asc" ? "ascending" : "descending") : undefined
+                          }
+                          style={pin?.style}
+                          className={cn(
+                            cn("font-medium text-[13px] text-muted-foreground", REGISTER_TRAY),
+                            resizable && "relative",
+                            pin && [pin.className, PINNED_BG.head],
+                            spec.align === "right" && "text-right",
+                            // Centred like the column's cells (the flag and cleared icons).
+                            spec.align === "center" && "text-center",
+                          )}
+                        >
+                          {id === "select" ? (
+                            <Checkbox
+                              aria-label={
+                                selection.mode === "all" ? "Unselect all" : "Select all matching"
+                              }
+                              checked={
+                                selection.mode === "all"
+                                  ? selection.except.size === 0 || "indeterminate"
+                                  : (selection.ids.size > 0 || scheduledSelection.size > 0) &&
+                                    "indeterminate"
+                              }
+                              disabled={loaded.length === 0 && scheduledRows.length === 0}
+                              onCheckedChange={() => {
+                                // Select all takes the scheduled rows along.
+                                if (selection.mode === "all") return clearSelection();
+                                setSelection({ mode: "all", except: new Set() });
+                                setScheduledSelection(new Set(scheduledRows.map((row) => row.id)));
+                              }}
+                            />
+                          ) : id === "balance" ? (
+                            <BalanceHeader
+                              sorted={!dateOrder}
+                              onResetSort={() => setView({ sort: [...DEFAULT_SORT] })}
+                            />
+                          ) : sortBy ? (
+                            <button
+                              type="button"
+                              className={cn(
+                                // Middle-aligned, so an icon-only header sits level with the words.
+                                "inline-flex items-center gap-1 align-middle hover:text-foreground",
+                                active && "text-foreground",
+                              )}
+                              onClick={() => setView({ sort: nextSort(view.sort, sortBy) })}
+                            >
+                              {HeaderIcon ? (
+                                <>
+                                  <HeaderIcon className="size-3.5" aria-hidden />
+                                  <span className="sr-only">{spec.header}</span>
+                                </>
                               ) : (
-                                <ArrowDown className="size-3" aria-hidden />
-                              ))}
-                          </button>
-                        ) : HeaderIcon ? (
-                          <span className="inline-flex">
-                            <HeaderIcon className="size-3.5" aria-hidden />
-                            <span className="sr-only">{spec.header}</span>
-                          </span>
-                        ) : (
-                          <span className={cn(spec.srOnly && "sr-only")}>{spec.header}</span>
-                        )}
-                        {RESIZABLE.includes(id) && (
-                          <ColumnResizer
-                            label={spec.header}
-                            width={widths[id] ?? Number.parseFloat(spec.width ?? "0") * 16}
-                            onWidth={(px) => setWidth(id, px)}
-                          />
-                        )}
-                      </RegisterHead>
-                    );
-                  })}
-                </RegisterRow>
-              ))}
-            </TableHeader>
-            <RegisterBody ref={measureScheduled}>
-              {adding && defaultAccountId && (
-                <TransactionEditor
-                  transferCategory={transferCategory}
-                  key={addingKey}
-                  initial={addingDraft ?? newDraft(defaultAccountId, today)}
-                  openDatePicker={addingPicker}
-                  repeat
+                                spec.header
+                              )}
+                              {active &&
+                                (dir === "asc" ? (
+                                  <ArrowUp className="size-3" aria-hidden />
+                                ) : (
+                                  <ArrowDown className="size-3" aria-hidden />
+                                ))}
+                            </button>
+                          ) : HeaderIcon ? (
+                            <span className="inline-flex align-middle">
+                              <HeaderIcon className="size-3.5" aria-hidden />
+                              <span className="sr-only">{spec.header}</span>
+                            </span>
+                          ) : (
+                            <span className={cn(spec.srOnly && "sr-only")}>{spec.header}</span>
+                          )}
+                          {resizable && (
+                            <ColumnResizer
+                              label={spec.header}
+                              width={layout.widths[id] ?? 0}
+                              onWidth={(px) => setWidth(id, px)}
+                            />
+                          )}
+                        </RegisterHead>
+                      );
+                    })}
+                  </RegisterRow>
+                ))}
+              </TableHeader>
+              <RegisterBody ref={measureScheduled}>
+                {adding && defaultAccountId && (
+                  <TransactionEditor
+                    transferCategory={transferCategory}
+                    key={addingKey}
+                    initial={addingDraft ?? newDraft(defaultAccountId, today)}
+                    openDatePicker={addingPicker}
+                    repeat
+                    columns={columnIds}
+                    accountIcon={layout.accountIcon}
+                    accounts={openAccounts}
+                    payees={payeeList}
+                    categories={options}
+                    dateFormat={budget.dateFormat}
+                    settings={budget}
+                    flags={flags}
+                    onRenameFlags={renameFlags}
+                    pending={create.isPending || createScheduled.isPending || attaching}
+                    error={newError}
+                    onSave={(draft, file) => void saveNew(draft, false, file)}
+                    onSaveAndAddAnother={(draft, file) => void saveNew(draft, true, file)}
+                    onCancel={() => setAdding(false)}
+                    newAttachment={newAttachment}
+                  />
+                )}
+                <ScheduledSection
+                  rows={scheduledRows}
+                  selected={scheduledSelection}
+                  onSelect={toggleScheduled}
                   columns={columnIds}
-                  accounts={openAccounts}
+                  accountIcon={layout.accountIcon}
+                  collapsed={view.scheduledCollapsed}
+                  onToggle={() => setView({ scheduledCollapsed: !view.scheduledCollapsed })}
+                  accounts={accountList}
                   payees={payeeList}
                   categories={options}
-                  dateFormat={budget.dateFormat}
-                  settings={budget}
                   flags={flags}
                   onRenameFlags={renameFlags}
-                  pending={create.isPending || createScheduled.isPending || attaching}
-                  error={newError}
-                  onSave={(draft, file) => void saveNew(draft, false, file)}
-                  onSaveAndAddAnother={(draft, file) => void saveNew(draft, true, file)}
-                  onCancel={() => setAdding(false)}
-                  newAttachment={newAttachment}
+                  today={today}
+                  onChanged={refresh}
                 />
-              )}
-              <ScheduledSection
-                rows={scheduledRows}
-                selected={scheduledSelection}
-                onSelect={toggleScheduled}
-                columns={columnIds}
-                collapsed={view.scheduledCollapsed}
-                onToggle={() => setView({ scheduledCollapsed: !view.scheduledCollapsed })}
-                accounts={accountList}
-                payees={payeeList}
-                categories={options}
-                flags={flags}
-                onRenameFlags={renameFlags}
-                today={today}
-                onChanged={refresh}
-              />
-            </RegisterBody>
-            <RegisterBody>
-              {paddingTop > 0 && <tr aria-hidden style={{ height: paddingTop }} />}
-              {items.map((item) => {
-                const row = flat[item.index];
-                if (!row) return null;
-                const t = row.t;
-                const future = t.date > today;
-                if (editingSplit?.id === t.id) {
-                  if (row.kind === "line") return null;
-                  return (
-                    <TransactionEditor
-                      transferCategory={transferCategory}
-                      key={t.id}
-                      initial={editingSplit.draft}
-                      focusMemo={editingSplit.fromKey}
-                      label="Edit transaction"
-                      columns={columnIds}
-                      attachment={
-                        <AttachmentCell budgetId={budget.id} transaction={t} readOnly={readOnly} />
-                      }
-                      accounts={editorAccounts(accountList, t.accountId)}
-                      accountChoices={movableAccounts(accountList, t)}
-                      payees={payeeList}
-                      categories={options}
-                      dateFormat={budget.dateFormat}
-                      settings={budget}
-                      flags={flags}
-                      onRenameFlags={renameFlags}
-                      pending={update.isPending}
-                      error={splitError}
-                      onSave={(draft) => void saveSplit(t, draft)}
-                      onCancel={() => setEditingSplit(null)}
-                    />
-                  );
-                }
-                if (row.kind === "line") {
+              </RegisterBody>
+              <RegisterBody>
+                {paddingTop > 0 && <tr aria-hidden style={{ height: paddingTop }} />}
+                {items.map((item) => {
+                  const row = flat[item.index];
+                  if (!row) return null;
+                  const t = row.t;
+                  const future = t.date > today;
+                  if (editingSplit?.id === t.id) {
+                    if (row.kind === "line") return null;
+                    return (
+                      <TransactionEditor
+                        transferCategory={transferCategory}
+                        key={t.id}
+                        initial={editingSplit.draft}
+                        focusMemo={editingSplit.fromKey}
+                        focusSplit={editingSplit.splitting}
+                        label="Edit transaction"
+                        columns={columnIds}
+                        accountIcon={layout.accountIcon}
+                        attachment={
+                          <AttachmentCell
+                            budgetId={budget.id}
+                            transaction={t}
+                            readOnly={readOnly}
+                          />
+                        }
+                        accounts={editorAccounts(accountList, t.accountId)}
+                        accountChoices={movableAccounts(accountList, t)}
+                        payees={payeeList}
+                        categories={options}
+                        dateFormat={budget.dateFormat}
+                        settings={budget}
+                        flags={flags}
+                        onRenameFlags={renameFlags}
+                        pending={update.isPending}
+                        error={splitError}
+                        onSave={(draft) => void saveSplit(t, draft)}
+                        onCancel={() => setEditingSplit(null)}
+                      />
+                    );
+                  }
+                  if (row.kind === "line") {
+                    return (
+                      <RegisterRow
+                        key={row.key}
+                        data-index={item.index}
+                        ref={virtualizer.measureElement}
+                        aria-label={`Split line of ${t.payeeName ?? "transaction"}`}
+                        className={cn("text-muted-foreground text-xs", future && "italic")}
+                      >
+                        {columnIds.map((id) => {
+                          const spec = COLUMN_SPECS[id];
+                          const pin = pinned(columnIds, id);
+                          return (
+                            <RegisterCell
+                              key={id}
+                              title={
+                                id === "memo" || (id === "payee" && layout.memoInPayee)
+                                  ? row.line.memo || undefined
+                                  : id === "category"
+                                    ? (row.line.categoryName ?? undefined)
+                                    : undefined
+                              }
+                              style={pin?.style}
+                              className={cn(
+                                "truncate py-1.5",
+                                pin && [pin.className, PINNED_BG.row],
+                                spec.align === "right" && "text-right tabular-nums",
+                                isEditable(id) && !readOnly && "cursor-text",
+                              )}
+                              onClick={isEditable(id) && !readOnly ? () => openSplit(t) : undefined}
+                            >
+                              {lineDisplay(t, row.line, id)}
+                            </RegisterCell>
+                          );
+                        })}
+                      </RegisterRow>
+                    );
+                  }
+                  const editable = editableColumns(t);
                   return (
                     <RegisterRow
-                      key={row.key}
+                      key={t.id}
                       data-index={item.index}
                       ref={virtualizer.measureElement}
-                      aria-label={`Split line of ${t.payeeName ?? "transaction"}`}
-                      className={cn("text-muted-foreground text-xs", future && "italic")}
+                      data-transaction-id={t.id}
+                      data-highlighted={highlight?.id === t.id ? highlight.kind : undefined}
+                      data-state={isSelected(selection, t.id) ? "selected" : undefined}
+                      // One height for every row, so an icon or an open editor doesn't grow it.
+                      style={{ height: ROW_HEIGHT }}
+                      className={cn(
+                        // A quick hover; a row jumped to glows, then fades out, and one just saved
+                        // flashes.
+                        "duration-100 data-[highlighted=jump]:animate-[row-highlight_2.5s_ease-out] data-[highlighted=saved]:animate-[row-highlight_0.9s_ease-out]",
+                        future && "text-muted-foreground italic",
+                        !t.approved && "font-semibold",
+                      )}
+                      title={future ? "Upcoming: not in the balance until its date" : undefined}
                     >
                       {columnIds.map((id) => {
                         const spec = COLUMN_SPECS[id];
                         const pin = pinned(columnIds, id);
+                        if (editing?.id === t.id && columnOf(editing.column) === id) {
+                          return (
+                            <RegisterCell
+                              key={id}
+                              className={cn(EDITOR_CELL, "py-1", id === "date" && DATE_EDITOR_FIT)}
+                            >
+                              <CellEditor
+                                transaction={t}
+                                column={editing.column}
+                                settings={inCurrency(budget, t.currency)}
+                                dateFormat={budget.dateFormat}
+                                accounts={movableAccounts(accountList, t)}
+                                payees={payeeList}
+                                transfers={transferTargets(t)}
+                                categories={options}
+                                onSplit={
+                                  !t.transferFromSplit && !t.transferAccountId
+                                    ? () => openSplit(t, true)
+                                    : undefined
+                                }
+                                onMakeRepeating={
+                                  t.transferFromSplit ? undefined : () => makeRepeating(t)
+                                }
+                                onCommit={(value, exit, transferAccountId) =>
+                                  void commitCell(t, editing.column, value, exit, transferAccountId)
+                                }
+                                onCancel={() => setEditing(null)}
+                                onDontRename={() => void dontRename(t)}
+                              />
+                            </RegisterCell>
+                          );
+                        }
+                        const cell = id === "amount" ? amountSide(t) : id;
+                        const canEdit = (editable as ColumnId[]).includes(cell);
                         return (
                           <RegisterCell
                             key={id}
+                            title={cellTitle(t, id)}
                             style={pin?.style}
                             className={cn(
-                              "truncate py-1.5",
+                              "truncate",
                               pin && [pin.className, PINNED_BG.row],
                               spec.align === "right" && "text-right tabular-nums",
-                              isEditable(id) && !readOnly && "cursor-text",
+                              spec.align === "center" && "py-1 text-center",
+                              ICON_CELL[id],
+                              (id === "category" || id === "memo") && "text-muted-foreground",
+                              canEdit && "cursor-text",
                             )}
-                            onClick={isEditable(id) && !readOnly ? () => openSplit(t) : undefined}
+                            onClick={
+                              canEdit || (id === "payee" && editable.includes("memo"))
+                                ? (e) => {
+                                    if (t.subtransactions.length > 0) return openSplit(t);
+                                    // The memo shown after the payee edits the memo.
+                                    const memo =
+                                      id === "payee" &&
+                                      e.target instanceof Element &&
+                                      e.target.closest("[data-memo]") !== null;
+                                    setEditing({
+                                      id: t.id,
+                                      column: memo || !canEdit ? "memo" : (cell as CellColumn),
+                                    });
+                                  }
+                                : undefined
+                            }
                           >
-                            {lineDisplay(t, row.line, id)}
+                            {display(t, id)}
                           </RegisterCell>
                         );
                       })}
                     </RegisterRow>
                   );
-                }
-                const editable = editableColumns(t);
-                return (
-                  <RegisterRow
-                    key={t.id}
-                    data-index={item.index}
-                    ref={virtualizer.measureElement}
-                    data-transaction-id={t.id}
-                    data-highlighted={highlightId === t.id || undefined}
-                    data-state={isSelected(selection, t.id) ? "selected" : undefined}
-                    // One height for every row, so an icon or an open editor doesn't grow it.
-                    style={{ height: ROW_HEIGHT }}
-                    className={cn(
-                      // A quick hover; a row jumped to glows, then fades out.
-                      "duration-100 data-highlighted:animate-[row-highlight_2.5s_ease-out]",
-                      future && "text-muted-foreground italic",
-                      !t.approved && "font-semibold",
-                    )}
-                    title={future ? "Upcoming: not in the balance until its date" : undefined}
-                  >
-                    {columnIds.map((id) => {
-                      const spec = COLUMN_SPECS[id];
-                      const pin = pinned(columnIds, id);
-                      if (editing?.id === t.id && editing.column === id) {
-                        return (
-                          <RegisterCell key={id} className="px-1.5 py-1">
-                            <CellEditor
-                              transaction={t}
-                              column={editing.column}
-                              settings={inCurrency(budget, t.currency)}
-                              dateFormat={budget.dateFormat}
-                              accounts={movableAccounts(accountList, t)}
-                              payees={payeeList}
-                              transfers={transferTargets(t)}
-                              categories={options}
-                              onSplit={
-                                !t.transferFromSplit && !t.transferAccountId
-                                  ? () => openSplit(t, true)
-                                  : undefined
-                              }
-                              onMakeRepeating={
-                                t.transferFromSplit ? undefined : () => makeRepeating(t)
-                              }
-                              onCommit={(value, exit, transferAccountId) =>
-                                void commitCell(t, editing.column, value, exit, transferAccountId)
-                              }
-                              onCancel={() => setEditing(null)}
-                              onDontRename={() => void dontRename(t)}
-                            />
-                          </RegisterCell>
-                        );
-                      }
-                      const canEdit = (editable as ColumnId[]).includes(id);
-                      return (
-                        <RegisterCell
-                          key={id}
-                          style={pin?.style}
-                          className={cn(
-                            "truncate",
-                            pin && [pin.className, PINNED_BG.row],
-                            spec.align === "right" && "text-right tabular-nums",
-                            spec.align === "center" && "py-1 text-center",
-                            id === "flag" && "px-1",
-                            id === "actions" && "py-1",
-                            (id === "category" || id === "memo") && "text-muted-foreground",
-                            canEdit && "cursor-text",
-                          )}
-                          onClick={
-                            canEdit
-                              ? () =>
-                                  t.subtransactions.length > 0
-                                    ? openSplit(t)
-                                    : setEditing({ id: t.id, column: id as CellColumn })
-                              : undefined
-                          }
-                        >
-                          {display(t, id)}
-                        </RegisterCell>
-                      );
-                    })}
-                  </RegisterRow>
-                );
-              })}
-              {paddingBottom > 0 && <tr aria-hidden style={{ height: paddingBottom }} />}
-            </RegisterBody>
-          </Table>
-        </ScrollArea>
-      )}
-      {phone && defaultAccountId && (
-        // A phone adds and edits in a full-height drawer.
-        <Drawer
-          open={adding || editingSplit !== null}
-          onOpenChange={(open) => {
-            if (open) return;
-            setAdding(false);
-            setEditingSplit(null);
-          }}
-        >
-          <DrawerContent className="data-[vaul-drawer-direction=bottom]:max-h-[96svh]">
-            <DrawerHeader className="text-left">
-              <DrawerTitle>{adding ? "New transaction" : "Edit transaction"}</DrawerTitle>
-              <DrawerDescription className="sr-only">
-                The transaction's date, payee, category, memo and amount.
-              </DrawerDescription>
-            </DrawerHeader>
-            <div className="mx-auto w-full max-w-xl overflow-y-auto px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-              {adding ? (
-                <TransactionEditor
-                  layout="stacked"
-                  transferCategory={transferCategory}
-                  key={addingKey}
-                  initial={addingDraft ?? newDraft(defaultAccountId, today)}
-                  repeat
-                  columns={columnIds}
-                  accounts={openAccounts}
-                  payees={payeeList}
-                  categories={options}
-                  dateFormat={budget.dateFormat}
-                  settings={budget}
-                  flags={flags}
-                  onRenameFlags={renameFlags}
-                  pending={create.isPending || createScheduled.isPending || attaching}
-                  error={newError}
-                  onSave={(draft, file) => void saveNew(draft, false, file)}
-                  onCancel={() => setAdding(false)}
-                  newAttachment={newAttachment}
-                />
-              ) : (
-                editingTransaction &&
-                editingSplit && (
-                  <>
+                })}
+                {paddingBottom > 0 && <tr aria-hidden style={{ height: paddingBottom }} />}
+              </RegisterBody>
+            </Table>
+          </ScrollArea>
+        )}
+        {phone && defaultAccountId && (
+          // A phone adds and edits in a full-height drawer.
+          <Drawer
+            open={adding || editingSplit !== null}
+            onOpenChange={(open) => {
+              if (open) return;
+              setAdding(false);
+              setEditingSplit(null);
+            }}
+          >
+            <DrawerContent className="data-[vaul-drawer-direction=bottom]:max-h-[96svh]">
+              <DrawerHeader className="text-left">
+                <DrawerTitle>{adding ? "New transaction" : "Edit transaction"}</DrawerTitle>
+                <DrawerDescription className="sr-only">
+                  The transaction's date, payee, category, memo and amount.
+                </DrawerDescription>
+              </DrawerHeader>
+              {/* The editor's own footer holds the home indicator's inset, so it sits at the bottom. */}
+              <div className="mx-auto w-full max-w-xl overflow-y-auto px-4">
+                {adding ? (
+                  <TransactionEditor
+                    layout="stacked"
+                    transferCategory={transferCategory}
+                    key={addingKey}
+                    initial={addingDraft ?? newDraft(defaultAccountId, today)}
+                    repeat
+                    focusAmount
+                    recentPayees={recentPayees}
+                    columns={columnIds}
+                    accounts={openAccounts}
+                    payees={payeeList}
+                    categories={options}
+                    dateFormat={budget.dateFormat}
+                    settings={budget}
+                    flags={flags}
+                    onRenameFlags={renameFlags}
+                    pending={create.isPending || createScheduled.isPending || attaching}
+                    error={newError}
+                    onSave={(draft, file) => void saveNew(draft, false, file)}
+                    onCancel={() => setAdding(false)}
+                    newAttachment={newAttachment}
+                  />
+                ) : (
+                  editingTransaction &&
+                  editingSplit && (
                     <TransactionEditor
                       layout="stacked"
                       transferCategory={transferCategory}
                       key={editingTransaction.id}
                       initial={editingSplit.draft}
+                      focusSplit={editingSplit.splitting}
                       label="Edit transaction"
                       columns={columnIds}
                       accounts={editorAccounts(accountList, editingTransaction.accountId)}
@@ -2563,76 +2924,64 @@ export function Register({
                       error={splitError}
                       onSave={(draft) => void saveSplit(editingTransaction, draft)}
                       onCancel={() => setEditingSplit(null)}
-                    />
-                    <div className="mt-3 grid gap-1.5">
-                      <span className="text-muted-foreground text-xs">Attachment</span>
-                      <AttachmentField
-                        budgetId={budget.id}
-                        transaction={editingTransaction}
-                        readOnly={readOnly}
-                      />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      className="mt-3 min-h-11 w-full text-destructive"
-                      onClick={() => {
+                      attachment={
+                        <AttachmentField
+                          budgetId={budget.id}
+                          transaction={editingTransaction}
+                          readOnly={readOnly}
+                        />
+                      }
+                      onDelete={() => {
                         setEditingSplit(null);
                         void handleDelete(editingTransaction);
                       }}
-                    >
-                      <Trash2 /> Delete transaction
-                    </Button>
-                  </>
-                )
-              )}
-            </div>
-          </DrawerContent>
-        </Drawer>
-      )}
+                    />
+                  )
+                )}
+              </div>
+            </DrawerContent>
+          </Drawer>
+        )}
 
-      {isFetchingNextPage && (
-        <p className="text-muted-foreground text-xs" aria-live="polite">
-          Loading more…
-        </p>
-      )}
-      {someHidden && (
-        <div className="grid justify-items-center gap-2 py-2 text-sm">
-          <p className="text-muted-foreground">
-            {q ? (
-              <>
-                Some transactions are hidden by your search for "
-                <strong className="text-foreground">{q}</strong>".
-              </>
-            ) : (
-              "Some transactions are hidden by filters."
-            )}
+        {isFetchingNextPage && (
+          <p className="text-muted-foreground text-xs" aria-live="polite">
+            Loading more…
           </p>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              setView({ range: "all", from: undefined, to: undefined, showReconciled: true });
-              onSearchChange({ q: undefined });
-            }}
-          >
-            View All
-          </Button>
-        </div>
-      )}
-      {rows.length === 0 && scheduledRows.length === 0 && !adding && !someHidden && (
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <ReceiptText />
-            </EmptyMedia>
-            <EmptyTitle>No transactions yet</EmptyTitle>
-            <EmptyDescription>Add one to start tracking where your money goes.</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      )}
-    </div>
+        )}
+        {someHidden && (
+          <div className="grid justify-items-center gap-2 py-2 text-sm">
+            <p className="text-muted-foreground">
+              {q ? (
+                <>
+                  Some transactions are hidden by your search for "
+                  <strong className="text-foreground">{q}</strong>".
+                </>
+              ) : (
+                "Some transactions are hidden by filters."
+              )}
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setView({ range: "all", from: undefined, to: undefined, showReconciled: true });
+                onSearchChange({ q: undefined });
+              }}
+            >
+              View All
+            </Button>
+          </div>
+        )}
+        {addingAccount && <AddAccountDialog budget={budget} open onOpenChange={setAddingAccount} />}
+      </div>
+    </CategoryBalancesContext.Provider>
   );
+}
+
+/** Whether the register is sorted by date first (the default). */
+function dateFirst(sort: readonly SortField[]) {
+  return (sort[0] ?? DEFAULT_SORT[0])?.column === "date";
 }
 
 /**
@@ -2724,8 +3073,10 @@ function ColumnResizer({
 
 /**
  * A phone's register: each transaction a card, a thumb's height or more, with its payee and
- * amount on top and its category, date and memo under them. A tap opens it in the drawer; the checkbox selects it for the selection bar.
- * Upcoming scheduled transactions come first, as on the wide register.
+ * amount on top and its date, category and memo under them. The amounts sit in a column of their
+ * own, so they end at one edge whatever the payee's length or the row's status. A tap opens it in
+ * the drawer; the checkbox selects it for the selection bar. Upcoming scheduled transactions come
+ * first, as on the wide register.
  */
 function PhoneTransactions({
   rows,
@@ -2740,6 +3091,7 @@ function PhoneTransactions({
   formatDate,
   category,
   flags,
+  highlightId,
   hasMore,
   loadingMore,
   onLoadMore,
@@ -2754,42 +3106,64 @@ function PhoneTransactions({
   onToggleCleared?: (t: Transaction) => void;
   show: (amount: bigint, currency: string | null) => string;
   formatDate: (iso: string) => string;
-  category: (t: Transaction) => ReactNode;
+  /** The row's category in a few words ("Split (2)"), or "" where it needs none. */
+  category: (t: Transaction) => string;
   flags: readonly Flag[];
+  /** A card that flashes: just saved, or jumped to. */
+  highlightId: string | null;
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
 }) {
-  const card = "flex items-start gap-3 border-b px-3 py-3 last:border-b-0";
+  const card = "flex items-center gap-3 border-b py-2 pr-1 pl-3 last:border-b-0";
+  /** Payee and amount on one line, the summary under them; the amount in its own right column. */
+  const lines = "grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5";
+  const meta = "col-span-2 truncate text-muted-foreground text-xs";
+  const signed = (amount: bigint, currency: string | null) =>
+    signedAmount(amount, (m) => show(m, currency));
   return (
     <div className="grid gap-4">
       {scheduled.length > 0 && (
         <section aria-label="Upcoming" className="overflow-hidden rounded-lg border bg-muted/30">
-          <h2 className="border-b px-3 py-2 font-medium text-muted-foreground text-xs uppercase">
-            Upcoming
-          </h2>
+          <h2 className="border-b px-3 py-2 font-medium text-muted-foreground text-xs">Upcoming</h2>
           <ul>
-            {scheduled.map((row) => (
-              <li key={row.id} className={card}>
-                <Checkbox
-                  className="mt-0.5 size-5"
-                  aria-label={`Select ${row.payeeName ?? "scheduled transaction"} on ${formatDate(row.dateNext)}`}
-                  checked={scheduledSelected.has(row.id)}
-                  onCheckedChange={() => onSelectScheduled(row.id)}
-                />
-                <div className="grid min-w-0 flex-1 gap-0.5 italic">
-                  <div className="flex items-baseline justify-between gap-2">
+            {scheduled.map((row) => {
+              const amount = BigInt(row.amount);
+              return (
+                <li key={row.id} className={card}>
+                  <Checkbox
+                    className="size-5"
+                    aria-label={`Select ${row.payeeName ?? "scheduled transaction"} on ${formatDate(row.dateNext)}`}
+                    checked={scheduledSelected.has(row.id)}
+                    onCheckedChange={() => onSelectScheduled(row.id)}
+                  />
+                  <div className={cn(lines, "min-h-11 content-center")}>
                     <span className="truncate font-medium">{row.payeeName ?? "No payee"}</span>
-                    <span className="shrink-0 tabular-nums">
-                      {show(BigInt(row.amount), row.currency)}
+                    <span
+                      className={cn(
+                        "text-right font-medium tabular-nums",
+                        amount > 0n && "text-success",
+                      )}
+                    >
+                      {signed(amount, row.currency)}
+                    </span>
+                    <span className={meta}>
+                      {[
+                        formatDate(row.dateNext),
+                        row.subtransactions.length > 0
+                          ? `Split (${row.subtransactions.length})`
+                          : row.categoryName,
+                        row.memo,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
                   </div>
-                  <span className="truncate text-muted-foreground text-xs">
-                    {[formatDate(row.dateNext), row.categoryName].filter(Boolean).join(" · ")}
-                  </span>
-                </div>
-              </li>
-            ))}
+                  {/* The cleared column's place: scheduled rows have no cleared state yet. */}
+                  <span className="size-11 shrink-0" aria-hidden />
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -2800,77 +3174,93 @@ function PhoneTransactions({
         {rows.map((t) => {
           const amount = BigInt(t.amount);
           const flag = flags.find((f) => f.color === t.flag);
+          const future = t.date > todayIso();
           return (
             <li
               key={t.id}
               data-transaction-id={t.id}
               data-state={isSelected(t.id) ? "selected" : undefined}
-              className={cn(card, "data-[state=selected]:bg-muted")}
+              data-highlighted={highlightId === t.id || undefined}
+              className={cn(
+                card,
+                "data-highlighted:animate-[row-highlight_0.9s_ease-out]",
+                "data-[state=selected]:bg-[color-mix(in_oklch,var(--primary)_8%,var(--background))] dark:data-[state=selected]:bg-[color-mix(in_oklch,var(--primary)_16%,var(--background))]",
+              )}
             >
               <Checkbox
-                className="mt-0.5 size-5"
+                className="size-5"
                 aria-label={`Select ${t.payeeName ?? "transaction"} on ${formatDate(t.date)}`}
                 checked={isSelected(t.id)}
                 onCheckedChange={() => onSelect(t)}
               />
               <button
                 type="button"
-                className="grid min-h-11 min-w-0 flex-1 gap-0.5 text-left outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(
+                  lines,
+                  "min-h-11 content-center text-left outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring",
+                  future && "text-muted-foreground italic",
+                )}
                 onClick={() => onOpen(t)}
               >
-                <span className="flex items-baseline justify-between gap-2">
-                  <span className={cn("truncate font-medium", !t.approved && "font-semibold")}>
-                    {flag && (
-                      <Bookmark
-                        className={cn("mr-1 inline size-3.5 fill-current", FLAG_CLASS[flag.color])}
-                        aria-label={`Flag: ${flagLabel(flag)}`}
-                      />
-                    )}
-                    {t.payeeName ?? "No payee"}
-                    {t.attachment && (
-                      <Paperclip
-                        className="ml-1 inline size-3.5 text-muted-foreground"
-                        aria-label="Has an attachment"
-                      />
-                    )}
-                  </span>
-                  <span
-                    className={cn(
-                      "shrink-0 tabular-nums",
-                      amount > 0n && "text-green-700 dark:text-green-400",
-                    )}
-                  >
-                    {amount > 0n ? "+" : ""}
-                    {show(amount, t.currency)}
-                  </span>
+                <span
+                  className={cn(
+                    "flex min-w-0 items-center gap-1 font-medium",
+                    !t.approved && "font-semibold",
+                  )}
+                >
+                  {flag && (
+                    <Bookmark
+                      className={cn("size-3.5 shrink-0 fill-current", FLAG_CLASS[flag.color])}
+                      aria-label={`Flag: ${flagLabel(flag)}`}
+                    />
+                  )}
+                  <span className="truncate">{t.payeeName ?? "No payee"}</span>
+                  {t.attachment && (
+                    <Paperclip
+                      className="size-3.5 shrink-0 text-muted-foreground"
+                      aria-label="Has an attachment"
+                    />
+                  )}
                 </span>
-                <span className="truncate text-muted-foreground text-xs">
-                  {formatDate(t.date)} · {category(t)}
-                  {t.memo ? ` · ${t.memo}` : ""}
+                <span
+                  className={cn(
+                    "text-right font-medium tabular-nums",
+                    amount > 0n && "text-success",
+                  )}
+                >
+                  {signed(amount, t.currency)}
                 </span>
-                {!t.approved && <span className="text-primary-text text-xs">Needs approval</span>}
+                <span className={meta}>
+                  {[formatDate(t.date), category(t), t.memo].filter(Boolean).join(" · ")}
+                </span>
+                {!t.approved && (
+                  <span className="col-span-2 text-primary-text text-xs">Needs approval</span>
+                )}
               </button>
               {onToggleCleared && t.cleared !== "reconciled" ? (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="-my-1 size-11 shrink-0"
+                  className="group/cleared size-11 shrink-0"
                   aria-label={t.cleared === "cleared" ? "Cleared" : "Uncleared"}
                   aria-pressed={t.cleared === "cleared"}
                   onClick={() => onToggleCleared(t)}
                 >
-                  {t.cleared === "cleared" ? (
-                    <CircleCheck className="text-primary-text" />
-                  ) : (
-                    <Circle className="text-muted-foreground" />
-                  )}
+                  <ClearedMark state={t.cleared} />
                 </Button>
-              ) : t.cleared === "reconciled" ? (
-                <Lock
-                  className="m-3 size-4 shrink-0 text-muted-foreground"
-                  aria-label="Reconciled"
-                />
-              ) : null}
+              ) : (
+                <span
+                  className="flex size-11 shrink-0 items-center justify-center"
+                  role="img"
+                  aria-label={
+                    { cleared: "Cleared", uncleared: "Uncleared", reconciled: "Reconciled" }[
+                      t.cleared
+                    ]
+                  }
+                >
+                  <ClearedMark state={t.cleared} />
+                </span>
+              )}
             </li>
           );
         })}

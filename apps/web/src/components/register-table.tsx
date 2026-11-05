@@ -1,4 +1,5 @@
 import { cn } from "@strictbudget/ui/lib/utils";
+import { Check, Lock } from "lucide-react";
 import type * as React from "react";
 
 // The register's table parts, in the shared Table's look (a muted tray, its rows on a raised card)
@@ -26,7 +27,7 @@ function RegisterBody({ className, ...props }: React.ComponentProps<"tbody">) {
 }
 
 const ROW_STATES =
-  "hover:*:bg-accent has-aria-expanded:*:bg-accent data-[state=selected]:*:bg-[color-mix(in_oklch,var(--primary)_8%,var(--background))] data-[state=selected]:hover:*:bg-[color-mix(in_oklch,var(--primary)_12%,var(--background))] dark:data-[state=selected]:*:bg-[color-mix(in_oklch,var(--primary)_16%,var(--background))] dark:data-[state=selected]:hover:*:bg-[color-mix(in_oklch,var(--primary)_20%,var(--background))]";
+  "hover:*:bg-accent has-[[aria-haspopup][aria-expanded=true]]:*:bg-accent data-[state=selected]:*:bg-[color-mix(in_oklch,var(--primary)_8%,var(--background))] data-[state=selected]:hover:*:bg-[color-mix(in_oklch,var(--primary)_12%,var(--background))] dark:data-[state=selected]:*:bg-[color-mix(in_oklch,var(--primary)_16%,var(--background))] dark:data-[state=selected]:hover:*:bg-[color-mix(in_oklch,var(--primary)_20%,var(--background))]";
 
 function RegisterRow({
   className,
@@ -39,7 +40,7 @@ function RegisterRow({
   return (
     <tr
       className={cn(
-        "*:transition-colors *:duration-100 not-last:*:border-b",
+        "group/row *:transition-colors *:duration-100 not-last:*:border-b",
         !still && ROW_STATES,
         className,
       )}
@@ -72,4 +73,74 @@ function RegisterCell({ className, ...props }: React.ComponentProps<"td">) {
   );
 }
 
-export { RegisterBody, RegisterCell, RegisterHead, RegisterRow };
+/**
+ * A control that's only noise while unset (an empty flag, no attachment): hidden until its row is
+ * hovered, focused or selected, or its menu is open. Still in the Tab order, and always shown on a
+ * touch screen, which has no hover.
+ */
+const REVEAL_ON_ROW =
+  "opacity-0 transition-opacity duration-100 group-hover/row:opacity-100 group-focus-within/row:opacity-100 group-data-[state=selected]/row:opacity-100 group-data-selected/row:opacity-100 has-[[data-state=open],[role=status]]:opacity-100 [@media(hover:none)]:opacity-100";
+
+/** The icon columns' buttons fill their narrow cells, so those cells keep little padding. */
+const ICON_CELL: Partial<Record<string, string>> = {
+  flag: "px-0.5",
+  attachment: "px-1",
+  cleared: "px-1",
+  actions: "px-1 py-1",
+};
+
+/**
+ * An editor's cell: inputs nearly fill it, their text where a read row's is (8px in), so nothing
+ * shifts when a row turns into its editor.
+ */
+const EDITOR_CELL =
+  "px-0.5 [&_[data-slot=input-group-control]]:pl-[5px]! [&_[data-slot=input]]:px-[5px]!";
+
+/**
+ * A date field (the date and its calendar button) slimmed to the register's date column, with the
+ * calendar button tucked against its right edge. On top of EDITOR_CELL.
+ */
+const DATE_EDITOR_FIT =
+  "[&_[data-slot=input-group-control]]:pr-0.5! [&_[data-slot=input-group-addon]]:pr-px! [&_[data-slot=input-group-addon]>button]:size-5";
+
+/**
+ * A transaction's cleared state at a glance: a solid green check once the bank has it, an empty
+ * ring until then, a lock once reconciled. Decorative: the button or label around it names it.
+ */
+function ClearedMark({
+  state,
+  className,
+}: {
+  state: "cleared" | "uncleared" | "reconciled";
+  className?: string;
+}) {
+  return (
+    <span
+      aria-hidden
+      data-cleared={state}
+      className={cn(
+        "inline-flex size-[18px] shrink-0 items-center justify-center rounded-full transition-colors",
+        state === "cleared" && "bg-success text-background",
+        state === "uncleared" &&
+          "border-[1.5px] border-muted-foreground/45 group-hover/cleared:border-success/70",
+        state === "reconciled" && "bg-success/15 text-success",
+        className,
+      )}
+    >
+      {state === "cleared" && <Check className="size-3" strokeWidth={3} />}
+      {state === "reconciled" && <Lock className="size-2.5" strokeWidth={2.75} />}
+    </span>
+  );
+}
+
+export {
+  ClearedMark,
+  DATE_EDITOR_FIT,
+  EDITOR_CELL,
+  ICON_CELL,
+  REVEAL_ON_ROW,
+  RegisterBody,
+  RegisterCell,
+  RegisterHead,
+  RegisterRow,
+};

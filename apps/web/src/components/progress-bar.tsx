@@ -1,7 +1,7 @@
 import { cn } from "@strictbudget/ui/lib/utils";
 import type { BudgetMonthData } from "@/lib/months";
 
-type Bar = NonNullable<BudgetMonthData["categories"][number]["bar"]>;
+export type Bar = NonNullable<BudgetMonthData["categories"][number]["bar"]>;
 
 /** Share of `whole` as a CSS percentage. */
 const percent = (part: string, whole: bigint) =>

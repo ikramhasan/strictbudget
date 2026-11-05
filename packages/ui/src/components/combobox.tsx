@@ -101,7 +101,9 @@ function ComboboxContent({
         align={align}
         alignOffset={alignOffset}
         anchor={anchor}
-        className="isolate z-50"
+        // strictbudget: clickable inside a modal (a drawer or dialog sets `pointer-events: none`
+        // on the body, which this portalled list would otherwise inherit).
+        className="pointer-events-auto isolate z-50"
       >
         <ComboboxPrimitive.Popup
           data-slot="combobox-content"

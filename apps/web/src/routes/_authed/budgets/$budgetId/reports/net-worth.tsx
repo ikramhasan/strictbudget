@@ -6,13 +6,13 @@ import {
 } from "@strictbudget/engine";
 import { Button } from "@strictbudget/ui/components/button";
 import { Skeleton } from "@strictbudget/ui/components/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
+
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { ImageIcon } from "lucide-react";
+import { ChartArea, ChartColumnBig, ImageIcon } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
-import { ChartCard } from "@/components/reports/chart-card";
+import { ChartCard, ReportEmpty } from "@/components/reports/chart-card";
 import { ExportButton } from "@/components/reports/export-button";
 import { NetWorthAccountsTable } from "@/components/reports/net-worth/accounts-table";
 import { CompositionChart } from "@/components/reports/net-worth/composition-chart";
@@ -61,6 +61,9 @@ function Report() {
   const [sharing, setSharing] = useState(false);
   const report = query.data;
   const chart = search.chart ?? "bars";
+  // No account has had a balance in these months: nothing to chart or explain.
+  const noData =
+    report?.months.every((m) => BigInt(m.assets) === 0n && BigInt(m.debts) === 0n) ?? false;
   const selected =
     report?.months.find((m) => m.month === search.month)?.month ?? report?.months.at(-1)?.month;
 
@@ -69,7 +72,7 @@ function Report() {
       title="Net Worth"
       actions={
         <>
-          <Button variant="default" disabled={!report} onClick={() => setSharing(true)}>
+          <Button variant="default" disabled={!report || noData} onClick={() => setSharing(true)}>
             <ImageIcon />
             <span className="hidden sm:inline">Share Your Progress</span>
             <span className="sm:hidden">Share</span>
@@ -116,43 +119,48 @@ function Report() {
           <ChartCard
             title={chart === "bars" ? "Assets and debts" : "By account type"}
             view={state.view}
-            onViewChange={(view) => update({ view })}
+            kinds={[
+              { value: "bars", label: "Assets and debts", icon: <ChartColumnBig /> },
+              { value: "composition", label: "By account type", icon: <ChartArea /> },
+            ]}
+            kind={chart}
+            onViewChange={(view, kind) =>
+              update({
+                view: view === "chart" ? undefined : view,
+                ...(kind && { chart: kind as Search["chart"] }),
+              })
+            }
+            empty={
+              noData ? (
+                <ReportEmpty title="Nothing to chart yet">
+                  {search.accounts !== undefined
+                    ? "These accounts had no balance in this range. Widen the range or pick other accounts."
+                    : "What you own and what you owe, month by month, will chart here once an account has a balance."}
+                </ReportEmpty>
+              ) : undefined
+            }
             fileName={`net-worth-${state.range.from}-${state.range.to}`}
             chart={
-              <div className="grid gap-3">
-                <ToggleGroup
-                  type="single"
-                  variant="outline"
-                  size="sm"
-                  value={chart}
-                  onValueChange={(v) => v && update({ chart: v as Search["chart"] })}
-                  aria-label="Chart"
-                  className="justify-self-start"
-                >
-                  <ToggleGroupItem value="bars">Assets and debts</ToggleGroupItem>
-                  <ToggleGroupItem value="composition">By account type</ToggleGroupItem>
-                </ToggleGroup>
-                {chart === "bars" ? (
-                  <NetWorthChart
-                    months={report.months}
-                    currency={report.currency as CurrencyCode}
-                    onSelectMonth={(month) => update({ month })}
-                  />
-                ) : (
-                  <CompositionChart report={report} />
-                )}
-              </div>
+              chart === "bars" ? (
+                <NetWorthChart
+                  months={report.months}
+                  currency={report.currency as CurrencyCode}
+                  onSelectMonth={(month) => update({ month })}
+                />
+              ) : (
+                <CompositionChart report={report} />
+              )
             }
             table={<NetWorthMonthTable report={report} />}
           />
-          {selected && (
+          {selected && !noData && (
             <WhatChanged
               report={report}
               month={selected}
               onMonthChange={(month) => update({ month })}
             />
           )}
-          {state.view === "chart" && (
+          {state.view === "chart" && !noData && (
             <section aria-label="Months" className="grid gap-3 rounded-lg border p-4">
               <h2 className="font-semibold">{rangeLabel(state.range)}</h2>
               <div className="overflow-x-auto">
@@ -160,7 +168,7 @@ function Report() {
               </div>
             </section>
           )}
-          <NetWorthAccountsTable report={report} />
+          {!noData && <NetWorthAccountsTable report={report} />}
           <ShareImageDialog
             open={sharing}
             onOpenChange={setSharing}

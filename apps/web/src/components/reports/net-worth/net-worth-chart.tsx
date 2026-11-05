@@ -70,6 +70,7 @@ export function NetWorthChart({
             minTickGap={8}
           />
           <YAxis
+            niceTicks="snap125"
             hide={!showAmounts}
             tickFormatter={format.tick}
             tickLine={false}

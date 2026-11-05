@@ -16,6 +16,7 @@ import {
 } from "@strictbudget/ui/components/alert-dialog";
 import { Button } from "@strictbudget/ui/components/button";
 import { cn } from "@strictbudget/ui/lib/utils";
+import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import type { BudgetMonthData } from "@/lib/months";
 
@@ -119,6 +120,18 @@ function listsOption(option: AutoAssignOption, amount: bigint, one: boolean) {
   return true;
 }
 
+/**
+ * What applying the changes does to Ready to Assign: the total moved into (or out of) the
+ * categories, Ready to Assign before and after, and how much past what's there it assigns.
+ */
+export function autoAssignTotals(changes: readonly { delta: bigint }[], readyToAssign: bigint) {
+  const total = changes.reduce((sum, c) => sum + c.delta, 0n);
+  const after = readyToAssign - total;
+  // Only new money assigned can overdraw: what's past Ready to Assign (all of it once it's below 0).
+  const short = after < 0n && total > 0n ? (-after < total ? -after : total) : 0n;
+  return { total, before: readyToAssign, after, short };
+}
+
 /** Cards Underfunded lists apart: credit overspending, or uncategorized transactions this month. */
 const needsAttention = (c: MonthCategory) =>
   Boolean(c.payment && (c.payment.overspentCategories !== "0" || c.payment.hasUncategorized));
@@ -180,6 +193,18 @@ export function AutoAssignPanel({
   const fullyFunded = underfunded ? listed.filter(isFull) : listed;
   const partlyFunded = underfunded ? listed.filter((c) => !isFull(c)) : [];
   const amountText = (delta: bigint) => `${delta > 0n ? "+" : ""}${format(delta.toString())}`;
+  const totals = autoAssignTotals(changes, readyToAssign);
+  const overdraws = totals.short > 0n;
+  // Selected categories apply at once, unless that would assign money that isn't there.
+  const choose = (option: AutoAssignOption) => {
+    if (!selection) return setPreview(option);
+    const short = autoAssignTotals(
+      autoAssignChanges(option, categories, names, readyToAssign),
+      readyToAssign,
+    ).short;
+    if (short > 0n) setPreview(option);
+    else void onApply(option);
+  };
   const count = (n: number) => `${n} ${n === 1 ? "category" : "categories"}`;
 
   return (
@@ -198,26 +223,34 @@ export function AutoAssignPanel({
           )}
         </div>
       ) : (
-        <div className="grid gap-1">
+        <ul className="-mx-2 grid">
           {AUTO_ASSIGN_OPTIONS.map((option) => {
             const value = buttonAmount(option, categories);
             if (!listsOption(option, value, one)) return null;
             const amount = format(value.toString());
             return (
-              <Button
-                key={option}
-                variant="secondary"
-                size="sm"
-                aria-label={`${label(option, one, payment)} ${amount}`}
-                className="justify-between font-normal"
-                onClick={() => (selection ? void onApply(option) : setPreview(option))}
-              >
-                <span>{label(option, one, payment)}</span>
-                <span className="tabular-nums">{amount}</span>
-              </Button>
+              <li key={option}>
+                <button
+                  type="button"
+                  aria-label={`${label(option, one, payment)} ${amount}`}
+                  className="group/option flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm outline-none transition-[background-color,scale] duration-150 ease-out-quint hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98] motion-reduce:active:scale-100"
+                  onClick={() => choose(option)}
+                >
+                  <span className="min-w-0 flex-1 truncate font-medium text-primary-text">
+                    {label(option, one, payment)}
+                  </span>
+                  <span className="text-muted-foreground tabular-nums transition-colors duration-150 group-hover/option:text-foreground group-focus-visible/option:text-foreground">
+                    {amount}
+                  </span>
+                  <ChevronRight
+                    aria-hidden
+                    className="size-3.5 shrink-0 text-muted-foreground transition-[translate,color] duration-150 ease-out-quint group-hover/option:translate-x-0.5 group-hover/option:text-foreground motion-reduce:transition-none"
+                  />
+                </button>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
 
       <AlertDialog open={preview !== null} onOpenChange={(open) => !open && setPreview(null)}>
@@ -263,9 +296,41 @@ export function AutoAssignPanel({
             )}
             {!underfunded && <ChangeList changes={listed} amountText={amountText} />}
           </div>
+          {changes.length > 0 && (
+            <div className="grid gap-2 border-t pt-3 text-sm">
+              <dl className="grid gap-1">
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Total change</dt>
+                  <dd className="font-medium tabular-nums">{amountText(totals.total)}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Ready to Assign</dt>
+                  <dd className="tabular-nums">
+                    {format(totals.before.toString())}
+                    <span aria-hidden className="mx-1.5 text-muted-foreground">
+                      →
+                    </span>
+                    <span className="sr-only"> becomes </span>
+                    <span className={cn("font-medium", totals.after < 0n && "text-destructive")}>
+                      {format(totals.after.toString())}
+                    </span>
+                  </dd>
+                </div>
+              </dl>
+              {overdraws && (
+                <p
+                  role="alert"
+                  className="rounded-md bg-destructive/10 px-3 py-2 text-[color-mix(in_oklch,var(--destructive),black_12%)] dark:bg-destructive/20 dark:text-[color-mix(in_oklch,var(--destructive),white_25%)]"
+                >
+                  This assigns {format(totals.short.toString())} more than you have.
+                </p>
+              )}
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              variant={overdraws ? "destructive" : "default"}
               disabled={changes.length === 0}
               onClick={() => {
                 if (preview) void onApply(preview);

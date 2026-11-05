@@ -1,5 +1,7 @@
 import { Button } from "@strictbudget/ui/components/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@strictbudget/ui/components/tooltip";
 import { Redo2, Undo2 } from "lucide-react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { apiErrorMessage } from "@/lib/budgets";
 import { useCommand } from "@/lib/commands";
@@ -26,28 +28,59 @@ export function UndoRedoButtons() {
 
   return (
     <div className="flex items-center gap-1">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Undo"
-        title={history.undoLabel ? `Undo ${history.undoLabel}` : "Nothing to undo"}
+      <HistoryButton
+        label="Undo"
+        tip={history.undoLabel ? `Undo ${history.undoLabel}` : "Nothing to undo"}
         disabled={!history.undoLabel || history.busy}
         onClick={() => void history.undo().catch(report)}
       >
         <Undo2 />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="Redo"
-        title={history.redoLabel ? `Redo ${history.redoLabel}` : "Nothing to redo"}
+      </HistoryButton>
+      <HistoryButton
+        label="Redo"
+        tip={history.redoLabel ? `Redo ${history.redoLabel}` : "Nothing to redo"}
         disabled={!history.redoLabel || history.busy}
         onClick={() => void history.redo().catch(report)}
       >
         <Redo2 />
-      </Button>
+      </HistoryButton>
     </div>
+  );
+}
+
+/** An icon button naming what it would undo or redo in a tooltip (it still shows when disabled). */
+function HistoryButton({
+  label,
+  tip,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  tip: string;
+  disabled: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {/* A span keeps the tooltip working while the button is disabled. */}
+        <span className="inline-flex">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={label}
+            aria-description={tip}
+            disabled={disabled}
+            onClick={onClick}
+          >
+            {children}
+          </Button>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{tip}</TooltipContent>
+    </Tooltip>
   );
 }

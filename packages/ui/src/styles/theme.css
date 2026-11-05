@@ -1,6 +1,7 @@
 /* The design tokens (colours, radii, fonts) and base styles, shared by the web app (through
    globals.css) and the marketing site. */
-@custom-variant dark (&:is(.dark *));
+/* strictbudget: the sidebar is dark in both themes, so `dark:` applies inside it too. */
+@custom-variant dark (&:is(.dark *, [data-sidebar="sidebar"] *));
 /* strictbudget: the vendored components style orientation with `data-horizontal:`/`data-vertical:`,
    but Radix marks it as `data-orientation="…"`, which those names don't match on their own. */
 @custom-variant data-horizontal (&[data-orientation="horizontal"]);
@@ -53,96 +54,306 @@
   --font-sans: "Inter Variable", sans-serif;
 }
 
+/*
+ * strictbudget: the brand palette. Cobalt is the logo's blue (brand-500 = #3e6ae1); Tailwind's
+ * blue is mapped onto it. Green, yellow and red carry money (available, underfunded, overspent):
+ * Tailwind's lightness steps are kept, so every existing pairing keeps its contrast, with the hues
+ * moved to sit with cobalt: a cool jade, a saffron yellow (cobalt's complement) and a crimson.
+ */
+@theme {
+  --color-brand-50: oklch(97.5% 0.01 265.4);
+  --color-brand-100: oklch(94.8% 0.024 265.4);
+  --color-brand-200: oklch(89.8% 0.048 265.4);
+  --color-brand-300: oklch(82% 0.088 265.4);
+  --color-brand-400: oklch(70.5% 0.15 265.4);
+  --color-brand-500: oklch(56.1% 0.188 265.4);
+  --color-brand-600: oklch(49% 0.19 265.4);
+  --color-brand-700: oklch(42.5% 0.17 265.4);
+  --color-brand-800: oklch(36% 0.135 265.4);
+  --color-brand-900: oklch(29.5% 0.095 265.4);
+  --color-brand-950: oklch(21.5% 0.062 265.4);
+
+  --color-blue-50: var(--color-brand-50);
+  --color-blue-100: var(--color-brand-100);
+  --color-blue-200: var(--color-brand-200);
+  --color-blue-300: var(--color-brand-300);
+  --color-blue-400: var(--color-brand-400);
+  --color-blue-500: var(--color-brand-500);
+  --color-blue-600: var(--color-brand-600);
+  --color-blue-700: var(--color-brand-700);
+  --color-blue-800: var(--color-brand-800);
+  --color-blue-900: var(--color-brand-900);
+  --color-blue-950: var(--color-brand-950);
+
+  --color-green-50: oklch(98.2% 0.014 156);
+  --color-green-100: oklch(96.2% 0.035 156);
+  --color-green-200: oklch(92.5% 0.067 156);
+  --color-green-300: oklch(87.1% 0.115 156);
+  --color-green-400: oklch(79.2% 0.15 156);
+  --color-green-500: oklch(72.3% 0.155 156);
+  --color-green-600: oklch(62.7% 0.14 156);
+  --color-green-700: oklch(52.7% 0.12 156);
+  --color-green-800: oklch(44.8% 0.095 156);
+  --color-green-900: oklch(39.3% 0.076 156);
+  --color-green-950: oklch(26.6% 0.052 156);
+
+  --color-yellow-50: oklch(98.7% 0.021 96);
+  --color-yellow-100: oklch(97.3% 0.047 96);
+  --color-yellow-200: oklch(94.5% 0.089 94);
+  --color-yellow-300: oklch(90.5% 0.131 91);
+  --color-yellow-400: oklch(85.2% 0.16 85);
+  --color-yellow-500: oklch(79.5% 0.16 79);
+  --color-yellow-600: oklch(68.1% 0.148 70);
+  --color-yellow-700: oklch(55.4% 0.128 60);
+  --color-yellow-800: oklch(47.6% 0.108 56);
+  --color-yellow-900: oklch(42.1% 0.09 56);
+  --color-yellow-950: oklch(28.6% 0.063 56);
+
+  --color-red-50: oklch(97.1% 0.012 16);
+  --color-red-100: oklch(93.6% 0.029 16);
+  --color-red-200: oklch(88.5% 0.056 17);
+  --color-red-300: oklch(80.8% 0.103 18);
+  --color-red-400: oklch(70.4% 0.17 20);
+  --color-red-500: oklch(63.7% 0.205 22);
+  --color-red-600: oklch(57.7% 0.215 22);
+  --color-red-700: oklch(50.5% 0.19 22);
+  --color-red-800: oklch(44.4% 0.159 22);
+  --color-red-900: oklch(39.6% 0.127 22);
+  --color-red-950: oklch(25.8% 0.083 22);
+
+  /*
+   * The type scale (Inter with optical sizes: the large steps get its Display cut). display: a
+   * page's headline figure; title: a page title; heading: a section or card title; body: the UI's
+   * running text; caption: labels and secondary lines. Money also takes `tabular-nums`.
+   */
+  --text-display: 2rem;
+  --text-display--line-height: 2.5rem;
+  --text-display--letter-spacing: -0.022em;
+  --text-display--font-weight: 650;
+  --text-title: 1.375rem;
+  --text-title--line-height: 1.75rem;
+  --text-title--letter-spacing: -0.017em;
+  --text-title--font-weight: 600;
+  --text-heading: 1rem;
+  --text-heading--line-height: 1.5rem;
+  --text-heading--letter-spacing: -0.006em;
+  --text-heading--font-weight: 600;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.25rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-caption--letter-spacing: 0.004em;
+}
+
 :root {
+  /* strictbudget: cobalt ink. Neutrals carry a trace of the brand's hue (265) instead of pure grey;
+     text is ink, not black. */
   --background: #ffffff;
-  --foreground: #333333;
+  --foreground: oklch(0.255 0.03 265);
   --card: #ffffff;
-  --card-foreground: #333333;
+  --card-foreground: oklch(0.255 0.03 265);
   --popover: #ffffff;
-  --popover-foreground: #333333;
+  --popover-foreground: oklch(0.255 0.03 265);
   --primary: #3e6ae1;
   --primary-foreground: #ffffff;
-  --secondary: #f5f5f5;
-  --secondary-foreground: #1a1a1a;
-  --muted: #f5f5f5;
-  --muted-foreground: #6e6e6e;
-  --accent: #f2f2f2;
-  --accent-foreground: #333333;
-  --destructive: #d42f2f;
-  --border: #ebebeb;
-  --input: #e0e0e0;
-  --ring: #0077e6;
+  --secondary: oklch(0.968 0.006 265);
+  --secondary-foreground: oklch(0.255 0.03 265);
+  --muted: oklch(0.968 0.006 265);
+  --muted-foreground: oklch(0.515 0.025 265);
+  --accent: oklch(0.958 0.012 265);
+  --accent-foreground: oklch(0.255 0.03 265);
+  --destructive: oklch(0.555 0.2 23);
+  --border: oklch(0.922 0.01 265);
+  --input: oklch(0.87 0.014 265);
+  --ring: #3e6ae1;
   --chart-1: oklch(0.555 0.18 264.5);
   --chart-2: oklch(0.6 0.105 185);
   --chart-3: oklch(0.66 0.15 62);
   --chart-4: oklch(0.56 0.2 300);
   --chart-5: oklch(0.6 0.19 18);
   /* Report palette: Okabe–Ito's colour-blind-safe hues, tuned per theme for contrast. */
-  --report-1: oklch(0.55 0.13 250);
-  --report-2: oklch(0.7 0.16 65);
-  --report-3: oklch(0.6 0.12 165);
-  --report-4: oklch(0.62 0.18 40);
-  --report-5: oklch(0.72 0.1 230);
-  --report-6: oklch(0.62 0.13 340);
-  --report-7: oklch(0.8 0.15 100);
-  --report-8: oklch(0.55 0 0);
+  --report-1: oklch(0.55 0.14 255);
+  --report-2: oklch(0.64 0.15 68);
+  --report-3: oklch(0.58 0.12 160);
+  --report-4: oklch(0.58 0.17 32);
+  --report-5: oklch(0.54 0.16 300);
+  --report-6: oklch(0.6 0.16 352);
+  --report-7: oklch(0.6 0.1 205);
+  --report-8: oklch(0.55 0.012 265);
+  /* Report ramps: five tints of each hue, strongest first (`--report-<hue>-<1..5>`). A category
+     group takes a hue and its categories the tints, biggest first. Every tint is at least 3:1
+     against --background (the strongest is the darkest here, the lightest in dark mode);
+     --report-ink-strong and -soft are the label colours on tints 1-3 and 4-5. */
+  --report-1-1: oklch(0.43 0.14 255);
+  --report-1-2: oklch(0.49 0.14 255);
+  --report-1-3: oklch(0.55 0.14 255);
+  --report-1-4: oklch(0.605 0.14 255);
+  --report-1-5: oklch(0.66 0.14 255);
+  --report-2-1: oklch(0.43 0.095 68);
+  --report-2-2: oklch(0.49 0.105 68);
+  --report-2-3: oklch(0.55 0.12 68);
+  --report-2-4: oklch(0.605 0.13 68);
+  --report-2-5: oklch(0.66 0.145 68);
+  --report-3-1: oklch(0.43 0.095 160);
+  --report-3-2: oklch(0.49 0.11 160);
+  --report-3-3: oklch(0.55 0.12 160);
+  --report-3-4: oklch(0.605 0.12 160);
+  --report-3-5: oklch(0.65 0.12 160);
+  --report-4-1: oklch(0.43 0.16 32);
+  --report-4-2: oklch(0.49 0.17 32);
+  --report-4-3: oklch(0.55 0.17 32);
+  --report-4-4: oklch(0.605 0.17 32);
+  --report-4-5: oklch(0.66 0.17 32);
+  --report-5-1: oklch(0.43 0.16 300);
+  --report-5-2: oklch(0.49 0.16 300);
+  --report-5-3: oklch(0.55 0.16 300);
+  --report-5-4: oklch(0.605 0.16 300);
+  --report-5-5: oklch(0.66 0.16 300);
+  --report-6-1: oklch(0.43 0.16 352);
+  --report-6-2: oklch(0.49 0.16 352);
+  --report-6-3: oklch(0.55 0.16 352);
+  --report-6-4: oklch(0.605 0.16 352);
+  --report-6-5: oklch(0.66 0.16 352);
+  --report-7-1: oklch(0.43 0.07 205);
+  --report-7-2: oklch(0.49 0.08 205);
+  --report-7-3: oklch(0.55 0.09 205);
+  --report-7-4: oklch(0.605 0.1 205);
+  --report-7-5: oklch(0.65 0.1 205);
+  /* "Other": a neutral apart from Uncategorized's --report-8, still 3:1. */
+  --report-other: oklch(0.66 0.012 265);
+  --report-ink-strong: #ffffff;
+  --report-ink-soft: oklch(0.2 0 0);
   --radius: 0.625rem;
-  --sidebar: #f9f9f9;
-  --sidebar-foreground: #333333;
+  /* strictbudget: the sidebar is an ink rail in both themes, the logo's tile set into it. Its
+     contents are dark-themed (see the [data-sidebar="sidebar"] rule below). */
+  --sidebar: oklch(0.218 0.034 266);
+  --sidebar-foreground: oklch(0.95 0.01 266);
   --sidebar-primary: #3e6ae1;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ededed;
-  --sidebar-accent-foreground: #333333;
-  --sidebar-border: #ebebeb;
-  --sidebar-ring: #0077e6;
-  --success: #0a772a;
+  --sidebar-accent: oklch(0.275 0.036 266);
+  --sidebar-accent-foreground: oklch(0.985 0.004 266);
+  --sidebar-border: oklch(0.3 0.034 266);
+  --sidebar-ring: oklch(0.705 0.15 265.4);
+  --sidebar-muted: oklch(0.262 0.034 266);
+  --sidebar-muted-foreground: oklch(0.76 0.035 266);
+  --sidebar-input: oklch(0.35 0.034 266);
+  --sidebar-primary-text: oklch(0.8 0.1 265.4);
+  --sidebar-destructive: oklch(0.75 0.15 20);
+  --success: oklch(0.505 0.115 156);
   /* strictbudget: primary as text. Dark mode lifts it toward white (as the library's own link and
      tick colours do): the dark --primary is 3.5:1 on --background, under WCAG AA's 4.5:1. */
   --primary-text: var(--primary);
 }
 
 .dark {
-  --background: #1c1c1c;
-  --foreground: #ececec;
-  --card: #1c1c1c;
-  --card-foreground: #ececec;
-  --popover: #1c1c1c;
-  --popover-foreground: #ececec;
+  --background: oklch(0.2 0.013 265);
+  --foreground: oklch(0.945 0.006 265);
+  --card: oklch(0.2 0.013 265);
+  --card-foreground: oklch(0.945 0.006 265);
+  /* A step lighter than the page, so menus, dialogs and drawers read as raised. */
+  --popover: oklch(0.232 0.015 265);
+  --popover-foreground: oklch(0.945 0.006 265);
   --primary: #3e6ae1;
   --primary-foreground: #ffffff;
-  --secondary: #242424;
-  --secondary-foreground: #f5f5f5;
-  --muted: #242424;
-  --muted-foreground: #9a9a9a;
-  --accent: #2a2a2a;
-  --accent-foreground: #ececec;
-  --destructive: #ff6b6b;
-  --border: #2e2e2e;
-  --input: #3a3a3a;
-  --ring: #3d9bff;
+  --secondary: oklch(0.255 0.016 265);
+  --secondary-foreground: oklch(0.945 0.006 265);
+  --muted: oklch(0.255 0.016 265);
+  --muted-foreground: oklch(0.715 0.02 265);
+  --accent: oklch(0.27 0.02 265);
+  --accent-foreground: oklch(0.945 0.006 265);
+  --destructive: oklch(0.7 0.165 22);
+  --border: oklch(0.29 0.016 265);
+  --input: oklch(0.35 0.018 265);
+  --ring: oklch(0.705 0.15 265.4);
   --chart-1: oklch(0.62 0.17 264.5);
   --chart-2: oklch(0.72 0.12 185);
   --chart-3: oklch(0.78 0.14 75);
   --chart-4: oklch(0.68 0.16 300);
   --chart-5: oklch(0.7 0.16 18);
-  --report-1: oklch(0.68 0.13 250);
-  --report-2: oklch(0.78 0.15 65);
-  --report-3: oklch(0.72 0.12 165);
-  --report-4: oklch(0.7 0.17 40);
-  --report-5: oklch(0.8 0.09 230);
-  --report-6: oklch(0.72 0.13 340);
-  --report-7: oklch(0.86 0.14 100);
-  --report-8: oklch(0.7 0 0);
-  --sidebar: #151515;
-  --sidebar-foreground: #ececec;
+  --report-1: oklch(0.7 0.13 255);
+  --report-2: oklch(0.78 0.14 68);
+  --report-3: oklch(0.74 0.12 160);
+  --report-4: oklch(0.7 0.16 32);
+  --report-5: oklch(0.7 0.14 300);
+  --report-6: oklch(0.74 0.14 352);
+  --report-7: oklch(0.76 0.1 205);
+  --report-8: oklch(0.7 0.012 265);
+  --report-1-1: oklch(0.82 0.09 255);
+  --report-1-2: oklch(0.745 0.13 255);
+  --report-1-3: oklch(0.67 0.14 255);
+  --report-1-4: oklch(0.595 0.14 255);
+  --report-1-5: oklch(0.53 0.14 255);
+  --report-2-1: oklch(0.82 0.135 68);
+  --report-2-2: oklch(0.745 0.15 68);
+  --report-2-3: oklch(0.67 0.145 68);
+  --report-2-4: oklch(0.595 0.13 68);
+  --report-2-5: oklch(0.535 0.115 68);
+  --report-3-1: oklch(0.82 0.12 160);
+  --report-3-2: oklch(0.745 0.12 160);
+  --report-3-3: oklch(0.67 0.12 160);
+  --report-3-4: oklch(0.595 0.12 160);
+  --report-3-5: oklch(0.52 0.115 160);
+  --report-4-1: oklch(0.82 0.1 32);
+  --report-4-2: oklch(0.745 0.155 32);
+  --report-4-3: oklch(0.67 0.17 32);
+  --report-4-4: oklch(0.595 0.17 32);
+  --report-4-5: oklch(0.545 0.17 32);
+  --report-5-1: oklch(0.82 0.105 300);
+  --report-5-2: oklch(0.745 0.155 300);
+  --report-5-3: oklch(0.67 0.16 300);
+  --report-5-4: oklch(0.595 0.16 300);
+  --report-5-5: oklch(0.545 0.16 300);
+  --report-6-1: oklch(0.82 0.115 352);
+  --report-6-2: oklch(0.745 0.16 352);
+  --report-6-3: oklch(0.67 0.16 352);
+  --report-6-4: oklch(0.595 0.16 352);
+  --report-6-5: oklch(0.55 0.16 352);
+  --report-7-1: oklch(0.82 0.1 205);
+  --report-7-2: oklch(0.745 0.1 205);
+  --report-7-3: oklch(0.67 0.1 205);
+  --report-7-4: oklch(0.595 0.1 205);
+  --report-7-5: oklch(0.52 0.085 205);
+  --report-other: oklch(0.56 0.012 265);
+  --report-ink-strong: oklch(0.17 0 0);
+  --report-ink-soft: #ffffff;
+  /* Darker than the page here, so the rail still frames it. */
+  --sidebar: oklch(0.165 0.02 266);
+  --sidebar-foreground: oklch(0.945 0.008 266);
   --sidebar-primary: #3e6ae1;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #313131;
-  --sidebar-accent-foreground: #ececec;
-  --sidebar-border: #2e2e2e;
-  --sidebar-ring: #3d9bff;
-  --success: #3ddc6e;
+  --sidebar-accent: oklch(0.225 0.026 266);
+  --sidebar-accent-foreground: oklch(0.985 0.004 266);
+  --sidebar-border: oklch(0.245 0.022 266);
+  --sidebar-ring: oklch(0.705 0.15 265.4);
+  --sidebar-muted: oklch(0.21 0.024 266);
+  --sidebar-muted-foreground: oklch(0.72 0.025 266);
+  --sidebar-input: oklch(0.3 0.026 266);
+  --sidebar-primary-text: oklch(0.8 0.1 265.4);
+  --sidebar-destructive: oklch(0.74 0.15 20);
+  --success: oklch(0.78 0.14 156);
   --primary-text: color-mix(in oklch, var(--primary), white 35%);
+}
+
+/* strictbudget: inside the rail the page tokens take the rail's values, so whatever sits in it
+   (menus, the account list, avatars, Kbd) is dark-themed without knowing it; the `dark:` variant
+   matches here too. Menus and tooltips it opens are portaled out and keep the page's theme. */
+[data-sidebar="sidebar"] {
+  color-scheme: dark;
+  --background: var(--sidebar);
+  --foreground: var(--sidebar-foreground);
+  --card: var(--sidebar);
+  --card-foreground: var(--sidebar-foreground);
+  --secondary: var(--sidebar-accent);
+  --secondary-foreground: var(--sidebar-foreground);
+  --muted: var(--sidebar-muted);
+  --muted-foreground: var(--sidebar-muted-foreground);
+  --accent: var(--sidebar-accent);
+  --accent-foreground: var(--sidebar-accent-foreground);
+  --border: var(--sidebar-border);
+  --input: var(--sidebar-input);
+  --ring: var(--sidebar-ring);
+  --destructive: var(--sidebar-destructive);
+  --primary-text: var(--sidebar-primary-text);
 }
 
 @layer base {

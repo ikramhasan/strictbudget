@@ -35,10 +35,10 @@ type SidebarContextProps = {
   toggleSidebar: () => void;
 };
 
-// The active item is a key lifted out of the gray sidebar: the Dropdown Menu's
-// raised row (white gradient, hairline, 1px drop shadow, inner highlight).
+// strictbudget: on the ink rail the active item is a cobalt key: a brand-tinted gradient with a
+// cobalt hairline and an inner highlight, its icon in light cobalt.
 const sidebarRaised =
-  "data-active:bg-linear-to-b data-active:from-background data-active:to-[color-mix(in_oklch,var(--background),var(--secondary)_60%)] data-active:font-medium data-active:text-sidebar-accent-foreground data-active:shadow-[0_1px_2px_rgb(0_0_0/0.08),0_0_0_1px_rgb(0_0_0/0.06),inset_0_-1px_0_rgb(0_0_0/0.03)] dark:data-active:from-[color-mix(in_oklch,var(--secondary),var(--foreground)_7%)] dark:data-active:to-[color-mix(in_oklch,var(--secondary),var(--foreground)_3%)] dark:data-active:shadow-[0_1px_2px_rgb(0_0_0/0.5),0_0_0_1px_rgb(255_255_255/0.05),inset_0_1px_0_rgb(255_255_255/0.06)]";
+  "data-active:bg-linear-to-b data-active:from-[color-mix(in_oklch,var(--sidebar-primary)_34%,var(--sidebar))] data-active:to-[color-mix(in_oklch,var(--sidebar-primary)_24%,var(--sidebar))] data-active:font-medium data-active:text-sidebar-accent-foreground data-active:shadow-[0_1px_2px_rgb(0_0_0/0.3),0_0_0_1px_color-mix(in_oklch,var(--sidebar-primary)_45%,transparent),inset_0_1px_0_rgb(255_255_255/0.08)] data-active:[&_svg:not([class*='text-'])]:text-(--sidebar-primary-text)";
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
 
@@ -442,7 +442,7 @@ const sidebarMenuButtonVariants = cva(
   cn(
     // 32px rows: 16px icon in muted-foreground, 10px to the label. Hover is a
     // flat accent fill; the active item is a raised key. A press sinks it.
-    "peer/menu-button group/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding,translate] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-has-data-[sidebar=menu-badge]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:translate-y-[0.5px] disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground motion-reduce:active:translate-y-0 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg:not([class*='text-'])]:text-muted-foreground hover:[&_svg:not([class*='text-'])]:text-sidebar-accent-foreground data-active:[&_svg:not([class*='text-'])]:text-sidebar-accent-foreground [&>span:last-child]:truncate",
+    "peer/menu-button group/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding,translate] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-has-data-[sidebar=menu-badge]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:translate-y-[0.5px] disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground motion-reduce:active:translate-y-0 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg:not([class*='text-'])]:text-muted-foreground hover:[&_svg:not([class*='text-'])]:text-sidebar-accent-foreground [&>span:last-child]:truncate",
     sidebarRaised,
   ),
   {

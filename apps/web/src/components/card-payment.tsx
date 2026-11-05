@@ -104,7 +104,7 @@ export function OverspendingFigure({
 }
 
 /**
- * The "Payment" figure at the right of a card's balance row: its payment category's Available,
+ * The "Available for payment" figure at the right of a card's balance row: its payment category's Available,
  * coloured as in the plan. While it doesn't cover the card (yellow, with a "!") it opens "You don't
  * have enough money set aside for your payment." with a link to the category in this month's plan.
  */
@@ -137,12 +137,12 @@ export function PaymentFigure({
               variant="ghost"
               size="sm"
               className="h-auto rounded-full p-0 hover:bg-transparent"
-              aria-label={`Payment ${format(available.toString())}: not enough set aside`}
+              aria-label={`Available for payment ${format(available.toString())}: not enough set aside`}
             >
               {pill}
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="end" className="grid w-72 gap-2 text-sm">
+          <PopoverContent align="end" arrow className="grid w-72 gap-2 text-sm">
             <p>You don't have enough money set aside for your payment.</p>
             <p>
               You can{" "}
@@ -160,7 +160,7 @@ export function PaymentFigure({
       ) : (
         <span title={format(available.toString())}>{pill}</span>
       )}
-      <span className="text-muted-foreground text-xs">Payment</span>
+      <span className="text-muted-foreground text-xs">Available for payment</span>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { Account } from "@/lib/accounts";
@@ -41,7 +41,18 @@ const account = (id: string, type: Account["type"]): Account => ({
   balances: { cleared: "0", uncleared: "0", working: "0" },
 });
 
-function renderEditor(accountId = "checking", { another = false } = {}) {
+/** The register's columns with Outflow and Inflow folded into one Amount (a narrow register). */
+const folded = registerColumns(false).flatMap((c) =>
+  c === "outflow" ? (["amount"] as const) : c === "inflow" ? [] : [c],
+);
+
+function renderEditor(
+  accountId = "checking",
+  {
+    another = false,
+    columns = registerColumns(false),
+  }: { another?: boolean; columns?: ReturnType<typeof registerColumns> } = {},
+) {
   const onSave = vi.fn();
   const onCancel = vi.fn();
   const onSaveAndAddAnother = vi.fn();
@@ -51,7 +62,7 @@ function renderEditor(accountId = "checking", { another = false } = {}) {
       <tbody>
         <TransactionEditor
           initial={emptyDraft(accountId, "2026-10-01")}
-          columns={registerColumns(false)}
+          columns={columns}
           accounts={[
             account("checking", "checking"),
             account("savings", "savings"),
@@ -403,21 +414,82 @@ describe("TransactionEditor", () => {
     await user.type(screen.getByLabelText("Outflow"), "120");
     await user.click(screen.getByLabelText("Category"));
     await user.click(screen.getByRole("option", { name: "Split" }));
-    expect(screen.getByText("Split (2 lines)")).toBeInTheDocument();
-    expect(screen.getByText("120.00 left to split")).toBeInTheDocument();
+    expect(screen.getByText("Split into 2 lines")).toBeInTheDocument();
+    // What's left is only a count while the lines are being typed, not an error.
+    expect(screen.getByText("$120.00 left to split")).not.toHaveClass("text-destructive");
+    // The amount reads as the budget writes amounts once it's left.
+    expect(screen.getByLabelText("Outflow")).toHaveValue("120.00");
 
+    // The last empty line takes the rest once the other has an amount.
     await user.type(screen.getByLabelText("Outflow, line 1"), "80");
-    await user.type(screen.getByLabelText("Outflow, line 2"), "40");
-    expect(screen.getByText("Fully split")).toBeInTheDocument();
+    await user.tab();
+    expect(screen.getByLabelText("Outflow, line 1")).toHaveValue("80.00");
+    expect(screen.getByLabelText("Outflow, line 2")).toHaveValue("40.00");
+    expect(screen.getByText("Fully split")).toHaveClass("text-success");
     await user.click(screen.getByRole("button", { name: "Add line" }));
     await user.click(screen.getByRole("button", { name: "Remove line 3" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
-        outflow: "120",
+        outflow: "120.00",
         lines: [
-          expect.objectContaining({ outflow: "80" }),
-          expect.objectContaining({ outflow: "40" }),
+          expect.objectContaining({ outflow: "80.00" }),
+          expect.objectContaining({ outflow: "40.00" }),
+        ],
+      }),
+      null,
+    );
+  });
+
+  it("moves to the first line's amount once split from the category list", async () => {
+    renderEditor();
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Inflow"), "50");
+    await user.click(screen.getByLabelText("Category"));
+    await user.click(screen.getByRole("option", { name: "Split" }));
+    // On the transaction's side: an inflow's lines start in Inflow.
+    await waitFor(() => expect(screen.getByLabelText("Inflow, line 1")).toHaveFocus());
+  });
+
+  it("edits a folded Amount, its sign switched by its button or a typed + or -", async () => {
+    const { onSave } = renderEditor("checking", { columns: folded });
+    const user = userEvent.setup();
+    expect(screen.queryByLabelText("Inflow")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Outflow"), "+25");
+    expect(screen.getByLabelText("Inflow")).toHaveValue("25");
+    await user.click(screen.getByRole("button", { name: "Make it an outflow" }));
+    expect(screen.getByLabelText("Outflow")).toHaveValue("25.00");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ outflow: "25.00", inflow: "" }),
+      null,
+    );
+
+    await user.clear(screen.getByLabelText("Outflow"));
+    await user.type(screen.getByLabelText("Outflow"), "+12");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenLastCalledWith(
+      expect.objectContaining({ outflow: "", inflow: "12.00" }),
+      null,
+    );
+  });
+
+  it("splits within a folded Amount, each line on the transaction's side", async () => {
+    const { onSave } = renderEditor("checking", { columns: folded });
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Outflow"), "120");
+    await user.click(screen.getByLabelText("Category"));
+    await user.click(screen.getByRole("option", { name: "Split" }));
+    await waitFor(() => expect(screen.getByLabelText("Outflow, line 1")).toHaveFocus());
+    await user.type(screen.getByLabelText("Outflow, line 1"), "80");
+    await user.tab();
+    expect(screen.getByLabelText("Outflow, line 2")).toHaveValue("40.00");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lines: [
+          expect.objectContaining({ outflow: "80.00" }),
+          expect.objectContaining({ outflow: "40.00" }),
         ],
       }),
       null,
@@ -431,6 +503,7 @@ describe("TransactionEditor", () => {
     await user.click(screen.getByLabelText("Category"));
     await user.click(screen.getByRole("option", { name: "Split" }));
     await user.type(screen.getByLabelText("Outflow, line 1"), "3");
+    await user.clear(screen.getByLabelText("Outflow, line 2"));
     await user.type(screen.getByLabelText("Outflow, line 2"), "4");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).not.toHaveBeenCalled();
@@ -461,10 +534,13 @@ describe("TransactionEditor", () => {
     await user.click(screen.getByLabelText("Category"));
     await user.click(screen.getByRole("option", { name: "Split" }));
     await user.type(screen.getByLabelText("Outflow, line 1"), "3");
+    await user.clear(screen.getByLabelText("Outflow, line 2"));
     await user.type(screen.getByLabelText("Outflow, line 2"), "4");
     await user.click(screen.getByRole("button", { name: "Save" }));
     await user.click(await screen.findByRole("button", { name: "Adjust Manually" }));
-    expect(screen.getByLabelText("Outflow")).toHaveValue("10");
+    expect(screen.getByLabelText("Outflow")).toHaveValue("10.00");
+    // Saving found the lines short, so what's left now reads as a problem.
+    expect(screen.getByText("$3.00 left to split")).toHaveClass("text-destructive");
     await user.click(screen.getByRole("button", { name: "Save" }));
     await user.click(await screen.findByRole("button", { name: "Update Total" }));
     expect(screen.getByLabelText("Outflow")).toHaveValue("7.00");
@@ -502,7 +578,7 @@ describe("TransactionEditor", () => {
 });
 
 describe("TransactionEditor, stacked for a phone's drawer", () => {
-  it("names each field, opens without focusing one, and saves", async () => {
+  function renderStacked(props: { focusAmount?: boolean; recentPayees?: string[] } = {}) {
     const onSave = vi.fn();
     render(
       <TransactionEditor
@@ -510,7 +586,19 @@ describe("TransactionEditor, stacked for a phone's drawer", () => {
         initial={emptyDraft("checking", "2026-10-01")}
         columns={registerColumns(false)}
         accounts={[account("checking", "checking")]}
-        payees={[]}
+        payees={[
+          {
+            id: "p1",
+            name: "Market",
+            hidden: false,
+            useCount: 3,
+            categorization: "auto",
+            defaultCategoryId: null,
+            autoCategoryId: "rent",
+            prefillCategoryId: "rent",
+            recentCategoryIds: ["rent"],
+          },
+        ]}
         categories={[{ id: "rent", name: "Rent", group: "Bills" }]}
         dateFormat="MM/DD/YYYY"
         settings={usd}
@@ -520,16 +608,67 @@ describe("TransactionEditor, stacked for a phone's drawer", () => {
         error={null}
         onSave={onSave}
         onCancel={vi.fn()}
+        {...props}
       />,
     );
-    const form = screen.getByRole("form", { name: "New transaction" });
+    return { onSave, form: screen.getByRole("form", { name: "New transaction" }) };
+  }
+
+  it("names each field, opens without focusing one, and saves", async () => {
+    const { onSave, form } = renderStacked();
     for (const name of ["Date", "Payee", "Category", "Memo", "Outflow", "Inflow"]) {
       expect(within(form).getByText(name)).toBeInTheDocument();
     }
+    // The memo is named above it, not again inside it.
+    expect(within(form).getByLabelText("Memo")).not.toHaveAttribute("placeholder");
     expect(document.activeElement).toBe(document.body);
     const user = userEvent.setup();
-    await user.type(within(form).getByLabelText("Outflow"), "12.50");
+    await user.type(within(form).getByLabelText("Outflow"), "12.5");
     await user.click(within(form).getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ outflow: "12.50" }), null);
+  });
+
+  it("starts in the amount, switched between outflow and inflow, with recent payees a tap away", async () => {
+    const { onSave, form } = renderStacked({ focusAmount: true, recentPayees: ["Market"] });
+    const amount = within(form).getByLabelText("Outflow");
+    expect(amount).toHaveFocus();
+    expect(amount).toHaveAttribute("inputmode", "decimal");
+    const user = userEvent.setup();
+    await user.keyboard("40");
+    await user.click(within(form).getByRole("radio", { name: "Inflow" }));
+    expect(within(form).getByLabelText("Inflow")).toHaveValue("40.00");
+    await user.click(within(form).getByRole("button", { name: "Market" }));
+    expect(within(form).getByLabelText("Payee")).toHaveValue("Market");
+    await user.click(within(form).getByRole("button", { name: "Save" }));
+    // The payee's category comes with it.
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inflow: "40.00",
+        outflow: "",
+        payeeName: "Market",
+        categoryId: "rent",
+      }),
+      null,
+    );
+  });
+});
+
+describe("TransactionEditor in a register without room for Memo", () => {
+  it("edits the memo in its footer, and each split line's before its payee", async () => {
+    renderEditor("checking", {
+      columns: registerColumns(false).filter((c) => c !== "memo"),
+    });
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Memo"), "Lunch");
+    await user.type(screen.getByLabelText("Outflow"), "20");
+    await user.click(screen.getByLabelText("Category"));
+    await user.click(screen.getByRole("option", { name: "Split" }));
+    // Splitting moves to the first line's amount; then on to its memo.
+    await waitFor(() => expect(screen.getByLabelText("Outflow, line 1")).toHaveFocus());
+    await user.type(screen.getByLabelText("Memo, line 1"), "Mine");
+    expect(screen.getByLabelText("Memo")).toHaveValue("Lunch");
+    expect(screen.getByLabelText("Memo, line 1")).toHaveValue("Mine");
+    // The line's memo spans the cells its row leaves empty, before the payee.
+    expect(screen.getByLabelText("Memo, line 1").closest("td")).toHaveAttribute("colspan");
   });
 });

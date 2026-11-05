@@ -58,7 +58,13 @@ export function CompositionChart({
             axisLine={false}
             minTickGap={8}
           />
-          <YAxis tickFormatter={format.tick} tickLine={false} axisLine={false} width={80} />
+          <YAxis
+            niceTicks="snap125"
+            tickFormatter={format.tick}
+            tickLine={false}
+            axisLine={false}
+            width={80}
+          />
           <ReferenceLine y={0} stroke="var(--border)" />
           <Tooltip
             content={({ active, label }) => {

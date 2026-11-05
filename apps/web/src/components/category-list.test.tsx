@@ -685,6 +685,18 @@ describe("CategoryList keys", () => {
     expect(selectedNow()).toBe("c2");
   });
 
+  it("tabs from one Assigned input to the next category's, saving it", async () => {
+    const { user, onAssign } = setup();
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+    await user.keyboard("{Control>}a{/Control}42");
+    await user.tab();
+    expect(onAssign).toHaveBeenCalledWith("pay", 42n);
+    expect(selectedNow()).toBe("c1");
+    expect(screen.getByRole("textbox", { name: "Assigned to Rent" })).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(screen.getByRole("textbox", { name: "Assigned to Visa" })).toHaveFocus();
+  });
+
   it("saves the Assigned amount it leaves", async () => {
     const { user, onAssign } = setup();
     await user.keyboard("{ArrowDown}{ArrowDown}");

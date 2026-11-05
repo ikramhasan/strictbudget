@@ -300,6 +300,7 @@ export function CategoryInspector({
   history,
   pairedWith,
   loan,
+  cover,
 }: {
   name: string;
   totals: Breakdown;
@@ -317,6 +318,8 @@ export function CategoryInspector({
   upcoming?: ReactNode;
   /** The compact 12-month history chart, under the breakdown and upcoming transactions. */
   history?: ReactNode;
+  /** Opens "Cover overspending from" (absent for a viewer). */
+  cover?: ReactNode;
 }) {
   const overspent = totals.available < 0n;
   const shortfall = format((-totals.available).toString());
@@ -324,7 +327,9 @@ export function CategoryInspector({
   return (
     <Panel label={`${name} inspector`}>
       <div className="grid gap-0.5">
-        <h2 className="truncate font-semibold">{name}</h2>
+        <h2 data-inspector-name className="truncate font-semibold">
+          {name}
+        </h2>
         {pairedWith}
       </div>
       {loan}
@@ -332,6 +337,14 @@ export function CategoryInspector({
         <span className="font-medium text-sm">Available Balance</span>
         {available}
       </div>
+      {overspent && !loan && (
+        <OverspentMessage
+          totals={totals}
+          uncategorized={uncategorized}
+          cover={uncategorized ? undefined : cover}
+          {...{ shortfall, cashShortfall }}
+        />
+      )}
       <dl className="grid gap-2">
         <Line
           label="Cash Left Over From Last Month"
@@ -348,13 +361,6 @@ export function CategoryInspector({
       </dl>
       {upcoming}
       {history}
-      {overspent && !loan && (
-        <OverspentMessage
-          totals={totals}
-          uncategorized={uncategorized}
-          {...{ shortfall, cashShortfall }}
-        />
-      )}
       {target}
       {!uncategorized && <NoteField key={name} note={note} onChange={onNoteChange} />}
     </Panel>
@@ -421,7 +427,9 @@ export function PaymentInspector({
 }) {
   return (
     <Panel label={`${name} inspector`}>
-      <h2 className="truncate font-semibold">{name}</h2>
+      <h2 data-inspector-name className="truncate font-semibold">
+        {name}
+      </h2>
       {target ??
         (!past && (
           <PaymentAlert
@@ -621,49 +629,46 @@ export function PaymentAlert({
 }
 
 /**
- * The overspending message, by kind: cash only, credit only ("…with credit. Cover this
- * overspending to avoid creating debt!") or both ("…with cash and credit. Add at least $1.00 …",
- * the cash part). Uncategorized quotes only its cash part.
+ * The overspending callout, by kind (cash, credit or both), with a way to cover it. Uncategorized
+ * quotes only its cash part, which comes out of next month's Ready to Assign.
  */
 function OverspentMessage({
   totals,
   uncategorized,
   shortfall,
   cashShortfall,
+  cover,
 }: {
   totals: Breakdown;
   uncategorized: boolean;
   shortfall: string;
   cashShortfall: string;
+  cover?: ReactNode;
 }) {
   const cash = totals.cashOverspent < 0n;
   const credit = totals.creditOverspent < 0n;
-  if (uncategorized) {
-    if (!cash) return null;
-    return (
-      <p className="text-destructive text-sm">
-        {`Uncategorized cash transactions still affect your plan! Assign them to categories or ${cashShortfall} will be deducted from the amount you have available to assign next month.`}
-      </p>
-    );
-  }
-  if (cash && credit) {
-    return (
-      <p className="text-destructive text-sm">
-        {`You've overspent this category by ${shortfall} with cash and credit. Add at least ${cashShortfall} to this category or you can't trust your plan balances!`}
-      </p>
-    );
-  }
-  if (credit) {
-    return (
-      <p className="text-sm text-yellow-800 dark:text-yellow-200">
-        {`You've overspent this category by ${shortfall} with credit. Cover this overspending to avoid creating debt!`}
-      </p>
-    );
-  }
+  if (uncategorized && !cash) return null;
+  const creditOnly = credit && !cash;
+  const message = uncategorized
+    ? `Uncategorized cash spending still counts. Categorize it, or ${cashShortfall} comes out of next month's Ready to Assign.`
+    : cash && credit
+      ? `Overspent by ${shortfall} with cash and credit. Move in at least ${cashShortfall} to keep your available balances accurate.`
+      : creditOnly
+        ? `Overspent by ${shortfall} on credit. Cover it so the card balance doesn't grow into new debt.`
+        : `Overspent by ${shortfall}. Move money in from another category to keep your plan accurate.`;
   return (
-    <p className="text-destructive text-sm">
-      {`You've overspent this category by ${shortfall}. Cover this overspending or you can't trust your plan balances!`}
-    </p>
+    <div
+      role="status"
+      className={cn(
+        "grid gap-2.5 rounded-lg border p-3 text-sm",
+        creditOnly
+          ? "border-amber-500/30 bg-amber-500/8 text-amber-900 dark:text-amber-200"
+          : "border-destructive/25 bg-destructive/6 text-destructive",
+      )}
+    >
+      <p className="leading-relaxed">{message}</p>
+      {cover}
+    </div>
   );
 }
 

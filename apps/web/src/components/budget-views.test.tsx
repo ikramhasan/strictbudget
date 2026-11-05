@@ -214,17 +214,18 @@ describe("BudgetFilterBar overflow", () => {
         )}
       />,
     );
-    // The first four, and the selected V6.
+    // The first four (Overspent keeps its place at zero), and the selected V6.
     expect(screen.getAllByRole("radio").map((b) => b.textContent)).toEqual([
       "All",
+      "Overspent",
       "Underfunded",
       "Overfunded",
-      "Money Available",
       "V6",
     ]);
     await userEvent.click(screen.getByRole("button", { name: "More" }));
     const items = await screen.findAllByRole("menuitem");
     expect(items.map((i) => i.textContent?.trim())).toEqual([
+      "Money Available",
       "Snoozed",
       "V1",
       "V2",

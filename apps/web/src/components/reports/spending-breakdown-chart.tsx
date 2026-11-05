@@ -2,10 +2,12 @@ import { type CurrencyCode, money, shareLabel } from "@strictbudget/engine";
 import { ChartContainer } from "@strictbudget/ui/components/chart";
 import { Pie, PieChart, Tooltip, Treemap, type TreemapNode } from "recharts";
 import { useBudget } from "@/lib/budget-context";
-import { chartNumber } from "@/lib/reports";
+import { chartNumber, OTHER_COLOR, reportInk } from "@/lib/reports";
 import type { Breakdown, BreakdownRow } from "@/lib/spending-breakdown";
 
 export type BreakdownChartKind = "donut" | "treemap";
+
+const OTHER_KEY = "__other";
 
 function RowTip({ row, breakdown }: { row: BreakdownRow; breakdown: Breakdown }) {
   const { budget, formatAmount } = useBudget();
@@ -81,7 +83,30 @@ export function SpendingBreakdownChart({
     );
   }
 
-  const data = marks.map((r) => ({ name: r.name, value: value(r), rowKey: r.key, fill: r.color }));
+  // Rows past the palette's tints share one "Other" slice, so no two slices share a colour (a lone
+  // one keeps its own).
+  const folds = marks.filter((r) => r.color === OTHER_COLOR).length > 1;
+  const named = folds ? marks.filter((r) => r.color !== OTHER_COLOR) : marks;
+  const rest = folds ? marks.filter((r) => r.color === OTHER_COLOR) : [];
+  const other: BreakdownRow | undefined = rest.length
+    ? {
+        key: OTHER_KEY,
+        name: `Other (${rest.length})`,
+        color: OTHER_COLOR,
+        net: rest.reduce((s, r) => s + r.net, 0n),
+        count: rest.reduce((s, r) => s + r.count, 0),
+      }
+    : undefined;
+  if (other) byKey.set(OTHER_KEY, other);
+  // A group's slices sit together (its hue's tints, biggest first), groups biggest first.
+  const data = [...nestByGroup(named).flatMap((g) => g.rows), ...(other ? [other] : [])].map(
+    (r) => ({
+      name: r.name,
+      value: value(r),
+      rowKey: r.key,
+      fill: r.color,
+    }),
+  );
   return (
     <div className="relative">
       <ChartContainer config={{}} className="mx-auto aspect-square h-64 max-w-full sm:h-72">
@@ -92,13 +117,17 @@ export function SpendingBreakdownChart({
             nameKey="name"
             innerRadius="64%"
             outerRadius="100%"
+            // Clockwise from twelve o'clock, the biggest group first.
+            startAngle={90}
+            endAngle={-270}
             paddingAngle={data.length > 1 ? 1 : 0}
             stroke="var(--background)"
             strokeWidth={1}
             isAnimationActive={false}
             className="cursor-pointer"
             onClick={(entry: { payload?: { rowKey?: string } }) => {
-              const row = entry.payload?.rowKey ? byKey.get(entry.payload.rowKey) : undefined;
+              const key = entry.payload?.rowKey;
+              const row = key && key !== OTHER_KEY ? byKey.get(key) : undefined;
               if (row) onSelect(row);
             }}
           />
@@ -169,11 +198,9 @@ function TreemapCell({ node, onSelect }: { node: TreemapNode; onSelect: (key: st
           x={x + 6}
           y={y + 16}
           fontSize={12}
-          fill="white"
+          fontWeight={500}
+          fill={reportInk(node.fill as string)}
           className="pointer-events-none"
-          style={{ paintOrder: "stroke" }}
-          stroke="rgb(0 0 0 / 0.35)"
-          strokeWidth={2}
         >
           {name.length * 7 > width - 12
             ? `${name.slice(0, Math.max(1, Math.floor((width - 12) / 7) - 1))}…`

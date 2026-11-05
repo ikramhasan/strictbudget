@@ -18,30 +18,33 @@
 
 /*
  * Progress bar colours: the empty track and its border, then the available (funded, underfunded)
- * and spent (stripes of two shades) parts, and overspending.
+ * and spent (stripes of two shades) parts, and overspending. The brand's money colours
+ * (theme.css): jade, saffron and crimson on a cool track.
  */
 :root {
-  --bar-track: #f3eee2;
-  --bar-border: #ece7da;
-  --bar-funded: #77ba21;
-  --bar-funded-spent: #aee865;
-  --bar-funded-spent-stripe: #f1fbe9;
-  --bar-underfunded: #f6c91d;
-  --bar-underfunded-spent: #fbe48e;
-  --bar-underfunded-spent-stripe: #fef9ed;
-  --bar-overspent: #bf2e3b;
-  --bar-overspent-stripe: #fdd7d3;
+  --bar-track: oklch(0.955 0.008 265);
+  --bar-border: oklch(0.915 0.012 265);
+  --bar-funded: oklch(0.615 0.145 156);
+  --bar-funded-spent: oklch(0.84 0.1 156);
+  --bar-funded-spent-stripe: oklch(0.96 0.03 156);
+  --bar-underfunded: oklch(0.8 0.16 79);
+  --bar-underfunded-spent: oklch(0.89 0.105 85);
+  --bar-underfunded-spent-stripe: oklch(0.97 0.035 90);
+  --bar-overspent: oklch(0.555 0.2 23);
+  --bar-overspent-stripe: oklch(0.9 0.05 18);
 }
 
 .dark {
-  --bar-track: #3c3e53;
-  --bar-border: #3c3e53;
-  --bar-funded-spent: #346011;
-  --bar-funded-spent-stripe: #1d300d;
-  --bar-underfunded-spent: #6d5600;
-  --bar-underfunded-spent-stripe: #362c05;
-  --bar-overspent: #912333;
-  --bar-overspent-stripe: #4c0814;
+  --bar-track: oklch(0.27 0.016 265);
+  --bar-border: oklch(0.31 0.018 265);
+  --bar-funded: oklch(0.7 0.15 156);
+  --bar-funded-spent: oklch(0.45 0.09 156);
+  --bar-funded-spent-stripe: oklch(0.33 0.05 156);
+  --bar-underfunded: oklch(0.8 0.155 79);
+  --bar-underfunded-spent: oklch(0.5 0.1 72);
+  --bar-underfunded-spent-stripe: oklch(0.35 0.06 70);
+  --bar-overspent: oklch(0.58 0.18 22);
+  --bar-overspent-stripe: oklch(0.36 0.09 20);
 }
 
 /*
@@ -70,5 +73,21 @@
       height: max(100%, 2.75rem);
       transform: translate(-50%, -50%);
     }
+  }
+}
+
+/* An Available pill whose amount the user just changed: one soft pulse. */
+@keyframes pill-flash {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in oklab, currentColor 35%, transparent);
+  }
+  30% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 2px color-mix(in oklab, currentColor 22%, transparent);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
   }
 }

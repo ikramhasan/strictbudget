@@ -50,19 +50,15 @@ export function BudgetFilterBar({
 }) {
   const labels: Record<BudgetFilter, string> = {
     all: "All",
-    overspent: `${overspent} Overspent`,
+    overspent: overspent > 0 ? `${overspent} Overspent` : "Overspent",
     underfunded: "Underfunded",
     overfunded: "Overfunded",
     available: "Money Available",
     snoozed: "Snoozed",
   };
   const names = new Map(custom.map((v) => [v.id, v.name]));
-  // Overspent is left out when nothing is, unless that view is on ("0 Overspent").
-  const keys = [...FIXED, ...order].filter(
-    (key) =>
-      (isPresetFilter(key) || names.has(key)) &&
-      (key !== "overspent" || overspent > 0 || filter === key),
-  );
+  // Overspent always keeps its place (muted at zero), so the tabs never shift as it changes.
+  const keys = [...FIXED, ...order].filter((key) => isPresetFilter(key) || names.has(key));
   const label = (key: string) => (isPresetFilter(key) ? labels[key] : (names.get(key) ?? key));
   const onBar = keys.filter(
     (key, i) => key === filter || (i < BAR_VIEWS && fitsViewsBar(i, viewportWidth)),

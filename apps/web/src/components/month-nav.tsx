@@ -1,6 +1,7 @@
 import { addMonths, type BudgetMonth } from "@strictbudget/engine";
 import { Button } from "@strictbudget/ui/components/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { monthLabel } from "@/lib/months";
@@ -119,11 +120,17 @@ export function MonthNav({
       >
         <ChevronRight />
       </Button>
-      {month !== current && (
-        <Button variant="secondary" size="sm" className="ml-1" onClick={() => onChange(current)}>
-          Today
-        </Button>
-      )}
+      {/* Always there, hidden on the current month, so the controls never shift. */}
+      <Button
+        variant="secondary"
+        size="sm"
+        className={cn("ml-1", month === current && "invisible")}
+        aria-hidden={month === current || undefined}
+        tabIndex={month === current ? -1 : undefined}
+        onClick={() => onChange(current)}
+      >
+        Today
+      </Button>
     </div>
   );
 }

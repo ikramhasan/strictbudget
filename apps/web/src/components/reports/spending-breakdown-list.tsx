@@ -52,6 +52,9 @@ export function SpendingBreakdownList({
     ...[...(previous?.values() ?? [])].map((v) => chartNumber(v, currency)),
   );
   const width = (a: bigint) => `${Math.max(0, (chartNumber(a, currency) / max) * 100)}%`;
+  // Categories from several groups: name each one's group, which its colour's hue stands for.
+  const groupsShown =
+    new Set(breakdown.spending.flatMap((r) => (r.family ? [r.groupKey] : []))).size > 1;
   return (
     <div className="grid gap-4">
       <ul className="grid gap-1">
@@ -84,6 +87,9 @@ export function SpendingBreakdownList({
                   />
                 </span>
                 <span className="flex flex-wrap gap-x-3 text-muted-foreground text-xs tabular-nums">
+                  {groupsShown && row.family && row.groupName && (
+                    <span className="max-w-full truncate">{row.groupName}</span>
+                  )}
                   {share.ofTotal && <span>{share.ofTotal} of spending</span>}
                   {share.ofIncome && <span>{share.ofIncome} of income</span>}
                   {change && (

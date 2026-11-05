@@ -1,6 +1,11 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
+import { accountsQueryOptions } from "@/lib/accounts";
+import { BudgetProvider } from "@/lib/budget-context";
+import type { Budget } from "@/lib/budgets";
 import { breakdownSections, FutureTargetIcon, ReadyToAssignBanner } from "./ready-to-assign";
 
 const format = (a: string) => `$${Number(a) / 100}`;
@@ -41,6 +46,55 @@ describe("ReadyToAssignBanner", () => {
     );
     expect(screen.getByText("Overdraft? We can help with that!")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Fix This" })).not.toBeInTheDocument();
+  });
+});
+
+describe("ReadyToAssignBanner in a budget without accounts", () => {
+  const budget = {
+    id: "b1",
+    currency: "USD",
+    numberFormat: "comma_dot",
+    currencySymbolPosition: "before",
+    dateFormat: "MM/DD/YYYY",
+    role: "owner",
+  } as Budget;
+
+  function inBudget(accounts: { type: string; closed: boolean }[], role = "owner") {
+    const client = new QueryClient();
+    client.setQueryData(accountsQueryOptions("b1").queryKey, { accounts } as never);
+    return ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>
+        <BudgetProvider budget={{ ...budget, role } as Budget}>{children}</BudgetProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  it("asks for an account instead of calling $0 all assigned", () => {
+    render(<ReadyToAssignBanner amount="0" overdraft={false} format={format} />, {
+      wrapper: inBudget([
+        { type: "checking", closed: true },
+        { type: "asset", closed: false },
+      ]),
+    });
+    expect(screen.getByText("No money yet")).toBeInTheDocument();
+    expect(screen.getByText("Add an account to start")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add account" })).toBeInTheDocument();
+    expect(screen.queryByText("All Money Assigned")).not.toBeInTheDocument();
+  });
+
+  it("leaves the button out for a viewer", () => {
+    render(<ReadyToAssignBanner amount="0" overdraft={false} format={format} />, {
+      wrapper: inBudget([], "viewer"),
+    });
+    expect(screen.getByText("No money yet")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add account" })).not.toBeInTheDocument();
+  });
+
+  it("says all money is assigned once there's an account", () => {
+    render(<ReadyToAssignBanner amount="0" overdraft={false} format={format} />, {
+      wrapper: inBudget([{ type: "checking", closed: false }]),
+    });
+    expect(screen.getByText("All Money Assigned")).toBeInTheDocument();
   });
 });
 

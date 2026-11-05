@@ -12,6 +12,18 @@ const OPERATORS = [
   { operator: "/", label: "Divide", Icon: Divide },
 ] as const;
 
+/**
+ * The expression to evaluate for typed text. Typing over the amount with a leading operator works
+ * on what's assigned now ("+80" adds 80, "*2" doubles it; "-20" takes 20 off a positive amount);
+ * text that still starts with the opening amount ("120.00+30"), or anything else, stands as typed.
+ */
+export function withCurrent(typed: string, opening: string, current: bigint): string {
+  const start = opening.trim();
+  if (start !== "" && typed.startsWith(start)) return typed;
+  if (/^[+*/]/.test(typed) || (typed.startsWith("-") && current > 0n)) return `${start}${typed}`;
+  return typed;
+}
+
 export interface AssignActions {
   /** Reads typed text (math allowed, e.g. "200+50") into minor units, or explains why not. */
   parse: (text: string) => bigint | string;
@@ -47,13 +59,19 @@ export function AssignedCell({
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState("");
   const [calculator, setCalculator] = useState(false);
+  /** What's wrong with the typed amount, after Enter: the input stays open to fix it. */
+  const [invalid, setInvalid] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // Enter commits and unmounts the input; the blur that follows must not commit again.
   const done = useRef(false);
+  /** The amount the input opened with, to tell what the user actually typed. */
+  const initial = useRef("");
 
   function start() {
     done.current = false;
-    setText(actions.toInput(amount));
+    setInvalid(null);
+    initial.current = actions.toInput(amount);
+    setText(initial.current);
     setEditing(true);
   }
 
@@ -63,11 +81,24 @@ export function AssignedCell({
     onStartedEditing?.();
   }, [startEditing]);
 
-  async function commit() {
+  async function commit(via: "enter" | "blur") {
     if (done.current) return;
+    const typed = text.trim();
+    if (typed === initial.current.trim()) {
+      // Opened and left without a change: nothing to save.
+      done.current = true;
+      setEditing(false);
+      return;
+    }
+    const parsed = actions.parse(withCurrent(typed, initial.current, BigInt(amount)));
+    if (typeof parsed === "string" && via === "enter") {
+      // Stay put with the reason beside it, rather than throwing the typing away.
+      setInvalid(parsed);
+      inputRef.current?.select();
+      return;
+    }
     done.current = true;
     setEditing(false);
-    const parsed = actions.parse(text);
     if (typeof parsed === "string") {
       toast.error(parsed);
       return;
@@ -91,28 +122,49 @@ export function AssignedCell({
 
   if (editing) {
     return (
-      <div className="relative">
+      <div className="relative h-7">
         <Input
           ref={inputRef}
           aria-label={`Assigned to ${categoryName}`}
           autoFocus
           inputMode="decimal"
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          aria-invalid={invalid !== null || undefined}
+          aria-describedby={invalid ? `${categoryId}-assigned-error` : undefined}
+          title={invalid ?? undefined}
+          onChange={(e) => {
+            setText(e.target.value);
+            setInvalid(null);
+          }}
           onFocus={(e) => e.currentTarget.select()}
-          onBlur={() => void commit()}
+          onBlur={() => void commit("blur")}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              void commit();
+              void commit("enter");
             } else if (e.key === "Escape") {
               e.preventDefault();
               done.current = true;
               setEditing(false);
             }
           }}
-          className={cn("h-7 pl-6 text-right tabular-nums", className)}
+          className={cn(
+            "h-7 pl-6 text-right tabular-nums",
+            // An expression longer than the column grows leftward over the name, in full view.
+            text.length > 10 && "absolute right-0 z-10 w-auto shadow-md",
+            className,
+          )}
+          style={text.length > 10 ? { width: `calc(${text.length}ch + 3rem)` } : undefined}
         />
+        {invalid && (
+          <p
+            id={`${categoryId}-assigned-error`}
+            role="alert"
+            className="absolute top-full right-0 z-20 mt-1 w-max max-w-56 rounded-md bg-destructive px-2 py-1 text-white text-xs shadow-md"
+          >
+            {invalid}
+          </p>
+        )}
         <Popover open={calculator} onOpenChange={setCalculator}>
           <PopoverTrigger asChild>
             <button
@@ -121,7 +173,12 @@ export function AssignedCell({
               aria-label="Open calculator"
               title="Open calculator"
               onMouseDown={keepFocus}
-              className="absolute top-1/2 left-1 grid size-5 -translate-y-1/2 place-items-center rounded text-muted-foreground hover:text-foreground"
+              className={cn(
+                "absolute top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded text-muted-foreground hover:text-foreground",
+                text.length > 10 ? "z-20" : "left-1",
+              )}
+              // On a widened input, at its own left edge.
+              style={text.length > 10 ? { right: `calc(${text.length}ch + 1.75rem)` } : undefined}
             >
               <Calculator className="size-3.5" />
             </button>

@@ -3,6 +3,7 @@ import {
   type AccountType,
   accountFamily,
   distributeSplit,
+  formatAmount,
   impliedRate,
   isCurrencyCode,
   isDebtAccount,
@@ -414,11 +415,43 @@ export function withSplitTotal(draft: Draft, settings: MoneySettings): Draft {
   return mismatch ? { ...draft, ...sides(mismatch.lines, settings) } : draft;
 }
 
-/** How the editor and errors describe what's left of a split. */
-export function remainingLabel(remaining: bigint, settings: MoneySettings) {
-  if (remaining === 0n) return "Fully split";
-  const amount = toMoneyInput(remaining < 0n ? -remaining : remaining, settings);
-  return remaining > 0n ? `${amount} left to split` : `${amount} too much on the lines`;
+/**
+ * How the editor and errors describe what's left of a split, in the account's currency. With
+ * `total` zero (nothing typed yet) there's nothing to call split.
+ */
+export function remainingLabel(remaining: bigint, settings: MoneySettings, total?: bigint) {
+  if (remaining === 0n) return total === 0n ? "Enter an amount on each line" : "Fully split";
+  const amount = formatAmount(
+    money(remaining < 0n ? -remaining : remaining, settings.currency),
+    settings,
+  );
+  return remaining > 0n ? `${amount} left to split` : `${amount} over the total`;
+}
+
+/**
+ * An empty split line takes whatever of the total is still unsplit, so the last line never has
+ * to be worked out by hand. Unchanged when the line has an amount or nothing is left.
+ */
+export function withRemainder(draft: Draft, key: string, settings: MoneySettings): Draft {
+  const line = draft.lines?.find((l) => l.key === key);
+  if (!draft.lines || !line || line.outflow.trim() !== "" || line.inflow.trim() !== "") {
+    return draft;
+  }
+  if (draft.outflow.trim() === "" && draft.inflow.trim() === "") return draft;
+  const total = draftAmount(draft, settings);
+  if (typeof total === "string") return draft;
+  let lines = 0n;
+  for (const l of draft.lines) {
+    const amount = draftAmount(l, settings);
+    if (typeof amount === "string") return draft;
+    lines += amount;
+  }
+  const missing = total - lines;
+  if (missing === 0n || missing < 0n !== total < 0n) return draft;
+  return {
+    ...draft,
+    lines: draft.lines.map((l) => (l.key === key ? { ...l, ...sides(missing, settings) } : l)),
+  };
 }
 
 /**

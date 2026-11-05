@@ -72,10 +72,71 @@ describe("AutoAssignPanel", () => {
     const dialog = screen.getByRole("alertdialog");
     expect(within(dialog).getByText(/for 1 category/)).toBeInTheDocument();
     expect(within(dialog).getByText("Rent")).toBeInTheDocument();
-    expect(within(dialog).getByText("+A2000")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("+A2000")).toHaveLength(2);
     expect(onApply).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Update Assigned Amounts" }));
     expect(onApply).toHaveBeenCalledWith("assignedLastMonth");
+  });
+
+  it("totals the preview and warns when it assigns more than Ready to Assign", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <AutoAssignPanel
+        categories={categories}
+        names={names}
+        selection={false}
+        readyToAssign={500n}
+        format={format}
+        onApply={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Assigned Last Month A3000" }));
+    let dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).getByText("Total change").nextSibling).toHaveTextContent("+A2000");
+    expect(within(dialog).getByText("Ready to Assign").nextSibling).toHaveTextContent(
+      /A500\s*→ becomes A-1500/,
+    );
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "This assigns A1500 more than you have.",
+    );
+    expect(within(dialog).getByRole("button", { name: "Update Assigned Amounts" })).toHaveAttribute(
+      "data-variant",
+      "destructive",
+    );
+    rerender(
+      <AutoAssignPanel
+        categories={categories}
+        names={names}
+        selection={false}
+        readyToAssign={5000n}
+        format={format}
+        onApply={vi.fn()}
+      />,
+    );
+    dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Update Assigned Amounts" })).toHaveAttribute(
+      "data-variant",
+      "default",
+    );
+  });
+
+  it("previews selected categories first when applying would overdraw", async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AutoAssignPanel
+        categories={categories.slice(0, 1)}
+        names={names}
+        selection
+        readyToAssign={0n}
+        format={format}
+        onApply={onApply}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /Assigned Last Month/ }));
+    expect(onApply).not.toHaveBeenCalled();
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   });
 
   it("applies straight away to selected categories, with singular labels for one", async () => {

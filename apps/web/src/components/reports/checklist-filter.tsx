@@ -29,7 +29,7 @@ export function ChecklistFilter({
   selected,
   onChange,
 }: {
-  /** The button's text with everything selected ("All Categories"). */
+  /** The button's text with everything selected ("Categories"). */
   allLabel: string;
   /** Singular and plural for a partial selection ("1 Category", "3 Categories"). */
   noun: [string, string];
@@ -50,9 +50,13 @@ export function ChecklistFilter({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="gap-1" data-partial={count < all.length || undefined}>
+        <Button
+          variant="outline"
+          className="gap-1 data-partial:border-primary/40 data-partial:bg-primary/5 data-partial:text-primary-text"
+          data-partial={count < all.length || undefined}
+        >
           {label}
-          <ChevronDown className="size-4" />
+          <ChevronDown className="size-4 opacity-60" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)] p-0">

@@ -61,7 +61,8 @@ function useFormat() {
  * Per month: Assigned and Spent (−Activity) side by side, Available as a line, what the target
  * asked as a step line, overspent months shaded in the plan's cash or credit colour, and a dot
  * under months with money moved in or out (the tooltip lists the moves). Bar heights are
- * positions only; every amount shown is the exact one.
+ * positions only; every amount shown is the exact one. The compact version keeps just the two
+ * bars and their legend; its tooltip still has the rest.
  */
 export function CategoryHistoryChart({
   history,
@@ -73,7 +74,7 @@ export function CategoryHistoryChart({
   history: CategoryHistory;
   /** Category names by id, for the moves' other sides. */
   names: Map<string, string>;
-  /** The inspector's small version: no value axis or legend. */
+  /** The inspector's small version: Assigned and Spent only, no value axis. */
   compact?: boolean;
   onPick?: (month: BudgetMonth) => void;
   className?: string;
@@ -106,30 +107,40 @@ export function CategoryHistoryChart({
           barCategoryGap={compact ? "15%" : "20%"}
         >
           {!compact && <CartesianGrid vertical={false} strokeDasharray="3 3" />}
-          {history.months.map((m) => {
-            const kind = overspentKind(m);
-            return kind ? (
-              <ReferenceArea
-                key={m.month}
-                x1={m.month}
-                x2={m.month}
-                fill={OVERSPENT_FILL[kind]}
-                fillOpacity={0.12}
-                ifOverflow="extendDomain"
-                className="pointer-events-none"
-              />
-            ) : null;
-          })}
+          {!compact &&
+            history.months.map((m) => {
+              const kind = overspentKind(m);
+              return kind ? (
+                <ReferenceArea
+                  key={m.month}
+                  x1={m.month}
+                  x2={m.month}
+                  fill={OVERSPENT_FILL[kind]}
+                  fillOpacity={0.12}
+                  ifOverflow="extendDomain"
+                  className="pointer-events-none"
+                />
+              ) : null;
+            })}
           <XAxis
             dataKey="month"
             tickFormatter={(m: string) => monthLabel(m as BudgetMonth, "axis")}
             tickLine={false}
             axisLine={false}
             fontSize={compact ? 10 : undefined}
-            minTickGap={compact ? 12 : 4}
+            tick={compact ? { fill: "var(--muted-foreground)" } : undefined}
+            interval={compact ? "preserveStartEnd" : undefined}
+            minTickGap={compact ? 8 : 4}
           />
-          <YAxis hide={compact} tickFormatter={tick} tickLine={false} axisLine={false} width={80} />
-          <YAxis yAxisId="moves" hide domain={[0, 1]} />
+          <YAxis
+            niceTicks="snap125"
+            hide={compact}
+            tickFormatter={tick}
+            tickLine={false}
+            axisLine={false}
+            width={80}
+          />
+          {!compact && <YAxis yAxisId="moves" hide domain={[0, 1]} />}
           <ReferenceLine y={0} stroke="var(--border)" />
           <Tooltip
             cursor={{ fill: "var(--muted)", opacity: 0.5 }}
@@ -156,20 +167,18 @@ export function CategoryHistoryChart({
             className={onPick && "cursor-pointer"}
             onClick={pick}
           />
-          <Scatter
-            yAxisId="moves"
-            dataKey="moved"
-            fill={MOVE_COLOR}
-            isAnimationActive={false}
-            shape={(p: { cx?: number; cy?: number; payload?: { moved: number | null } }) =>
-              p.payload?.moved ? (
-                <circle cx={p.cx} cy={p.cy} r={compact ? 2 : 3} fill={MOVE_COLOR} />
-              ) : (
-                <g />
-              )
-            }
-          />
-          {hasTarget && (
+          {!compact && (
+            <Scatter
+              yAxisId="moves"
+              dataKey="moved"
+              fill={MOVE_COLOR}
+              isAnimationActive={false}
+              shape={(p: { cx?: number; cy?: number; payload?: { moved: number | null } }) =>
+                p.payload?.moved ? <circle cx={p.cx} cy={p.cy} r={3} fill={MOVE_COLOR} /> : <g />
+              }
+            />
+          )}
+          {!compact && hasTarget && (
             <Line
               dataKey="target"
               type="step"
@@ -181,35 +190,70 @@ export function CategoryHistoryChart({
               isAnimationActive={false}
             />
           )}
-          <Line
-            dataKey="available"
-            type="linear"
-            stroke="var(--color-available)"
-            strokeWidth={compact ? 1.5 : 2}
-            isAnimationActive={false}
-            dot={(props: { cx?: number; cy?: number; index?: number }) => {
-              const m = history.months[props.index ?? -1];
-              // A group can hold an overspent category while its total stays above zero.
-              const kind = m && BigInt(m.available) < 0n ? overspentKind(m) : null;
-              return (
-                <circle
-                  key={props.index}
-                  cx={props.cx}
-                  cy={props.cy}
-                  r={compact ? 2 : 3}
-                  fill={kind ? OVERSPENT_FILL[kind] : "var(--color-available)"}
-                />
-              );
-            }}
-          />
+          {!compact && (
+            <Line
+              dataKey="available"
+              type="linear"
+              stroke="var(--color-available)"
+              strokeWidth={2}
+              isAnimationActive={false}
+              dot={(props: { cx?: number; cy?: number; index?: number }) => {
+                const m = history.months[props.index ?? -1];
+                // A group can hold an overspent category while its total stays above zero.
+                const kind = m && BigInt(m.available) < 0n ? overspentKind(m) : null;
+                return (
+                  <circle
+                    key={props.index}
+                    cx={props.cx}
+                    cy={props.cy}
+                    r={3}
+                    fill={kind ? OVERSPENT_FILL[kind] : "var(--color-available)"}
+                  />
+                );
+              }}
+            />
+          )}
         </ComposedChart>
       </ChartContainer>
-      {!compact && <Legend target={hasTarget} />}
+      {compact ? (
+        <CompactLegend />
+      ) : (
+        <Legend
+          target={hasTarget}
+          moved={history.months.some((m) => m.moves.length > 0)}
+          cash={history.months.some((m) => overspentKind(m) === "cash")}
+          credit={history.months.some((m) => overspentKind(m) === "credit")}
+        />
+      )}
     </div>
   );
 }
 
-function Legend({ target }: { target: boolean }) {
+function CompactLegend() {
+  return (
+    <ul className="flex gap-3 text-[11px] text-muted-foreground leading-none">
+      {[config.assigned, config.spent].map((s) => (
+        <li key={s.label} className="flex items-center gap-1.5">
+          <span aria-hidden className="size-2 rounded-[2px]" style={{ background: s.color }} />
+          {s.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Only the marks the chart has. */
+function Legend({
+  target,
+  moved,
+  cash,
+  credit,
+}: {
+  target: boolean;
+  moved: boolean;
+  cash: boolean;
+  credit: boolean;
+}) {
   const item = "flex items-center gap-1.5";
   return (
     <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-muted-foreground text-xs">
@@ -243,18 +287,24 @@ function Legend({ target }: { target: boolean }) {
           Target
         </li>
       )}
-      <li className={item}>
-        <span aria-hidden className="size-2 rounded-full" style={{ background: MOVE_COLOR }} />
-        Money moved
-      </li>
-      <li className={item}>
-        <span aria-hidden className="size-2.5 rounded-xs bg-destructive/25" />
-        Overspent (cash)
-      </li>
-      <li className={item}>
-        <span aria-hidden className="size-2.5 rounded-xs bg-yellow-500/25" />
-        Overspent (credit)
-      </li>
+      {moved && (
+        <li className={item}>
+          <span aria-hidden className="size-2 rounded-full" style={{ background: MOVE_COLOR }} />
+          Money moved
+        </li>
+      )}
+      {cash && (
+        <li className={item}>
+          <span aria-hidden className="size-2.5 rounded-xs bg-destructive/25" />
+          Overspent (cash)
+        </li>
+      )}
+      {credit && (
+        <li className={item}>
+          <span aria-hidden className="size-2.5 rounded-xs bg-yellow-500/25" />
+          Overspent (credit)
+        </li>
+      )}
     </ul>
   );
 }

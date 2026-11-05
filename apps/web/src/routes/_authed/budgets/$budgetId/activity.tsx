@@ -3,7 +3,7 @@ import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/na
 import { Spinner } from "@strictbudget/ui/components/spinner";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { format as formatDay } from "date-fns";
+import { format as formatDay, subDays } from "date-fns";
 import { useMemo, useState } from "react";
 import { ActivityList } from "@/components/activity-list";
 import { PageHeader } from "@/components/page-header";
@@ -44,6 +44,10 @@ function ActivityPage() {
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
   });
+  const today = formatDay(new Date(), "yyyy-MM-dd");
+  const yesterday = formatDay(subDays(new Date(), 1), "yyyy-MM-dd");
+  const dayLabel = (day: string) =>
+    day === today ? "Today" : day === yesterday ? "Yesterday" : formatDate(day);
   const days = useMemo(() => {
     const byDay = new Map<string, ActivityEvent[]>();
     for (const e of activity.data?.pages.flatMap((p) => p.events) ?? []) {
@@ -65,9 +69,10 @@ function ActivityPage() {
           </span>
         }
       />
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2">
         <NativeSelect
           size="sm"
+          className="min-w-0 flex-1 sm:flex-none"
           aria-label="Member"
           value={member}
           onChange={(e) => setMember(e.target.value)}
@@ -82,6 +87,7 @@ function ActivityPage() {
         </NativeSelect>
         <NativeSelect
           size="sm"
+          className="min-w-0 flex-1 sm:flex-none"
           aria-label="What changed"
           value={entity}
           onChange={(e) => setEntity(e.target.value)}
@@ -95,16 +101,27 @@ function ActivityPage() {
         </NativeSelect>
       </div>
       {activity.isPending ? (
-        <Spinner className="mx-auto" />
+        <Spinner className="mx-auto my-6" />
+      ) : activity.isError ? (
+        <p className="rounded-lg border border-dashed px-6 py-10 text-center text-muted-foreground text-sm">
+          Couldn't load the activity. Try again in a moment.
+        </p>
       ) : days.length === 0 ? (
-        <ActivityList events={[]} />
+        <p className="rounded-lg border border-dashed px-6 py-10 text-center text-muted-foreground text-sm">
+          {member || entity
+            ? "No changes match these filters."
+            : "Every change to this budget will be listed here: who made it and when."}
+        </p>
       ) : (
-        days.map(([day, events]) => (
-          <section key={day} className="grid gap-2" aria-label={formatDate(day)}>
-            <h2 className="font-medium text-sm">{formatDate(day)}</h2>
-            <ActivityList events={events} />
-          </section>
-        ))
+        days.map(([day, events]) => {
+          const label = dayLabel(day);
+          return (
+            <section key={day} className="grid gap-2" aria-label={label}>
+              <h2 className="font-medium text-muted-foreground text-sm">{label}</h2>
+              <ActivityList events={events} />
+            </section>
+          );
+        })
       )}
       {activity.hasNextPage && (
         <Button

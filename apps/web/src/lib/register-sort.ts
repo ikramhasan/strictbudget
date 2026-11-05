@@ -17,7 +17,7 @@ export interface SortField {
   dir: SortDir;
 }
 
-/** Newest first (a day's largest outflow on top). */
+/** Newest first (within a day, the last entered on top). */
 export const DEFAULT_SORT: readonly SortField[] = [{ column: "date", dir: "desc" }];
 
 /**
@@ -50,4 +50,72 @@ export function readSort(value: unknown): SortField[] {
     if (!stack.some((f) => f.column === column)) stack.push({ column: column as SortColumn, dir });
   }
   return stack.length > 0 ? stack : [...DEFAULT_SORT];
+}
+
+interface DayRow {
+  id: string;
+  date: string;
+  accountId: string;
+  amount: string;
+  runningBalance: string;
+}
+
+/**
+ * Under a sort by date alone, each day's transactions in the order they were entered: newest
+ * first when dates descend (oldest first when they ascend), so one just added sits at the top of
+ * its day instead of wherever its amount puts it. Ids are UUIDv7, so they sort by creation. The API
+ * breaks a day's ties by amount, so each account's running balances are worked out again for the
+ * new order, ending the day where the API's last one did.
+ */
+export function enteredOrder<T extends DayRow>(
+  rows: readonly T[],
+  sort: readonly SortField[],
+): readonly T[] {
+  const stack = sort.length > 0 ? sort : DEFAULT_SORT;
+  const [first] = stack;
+  if (stack.length !== 1 || first?.column !== "date") return rows;
+  const newestFirst = first.dir === "desc";
+  const out: T[] = [];
+  for (let start = 0; start < rows.length; ) {
+    let end = start + 1;
+    while (end < rows.length && rows[end]?.date === rows[start]?.date) end++;
+    const day = rows.slice(start, end);
+    start = end;
+    if (day.length === 1) {
+      out.push(...day);
+      continue;
+    }
+    const balances = dayBalances(day);
+    day.sort((a, b) => (a.id < b.id ? 1 : -1) * (newestFirst ? 1 : -1));
+    out.push(
+      ...day.map((row) => {
+        const balance = balances.get(row.id);
+        return balance === undefined || balance === row.runningBalance
+          ? row
+          : { ...row, runningBalance: balance };
+      }),
+    );
+  }
+  return out;
+}
+
+/** One day's running balances, per account, with its transactions in the order they were entered. */
+function dayBalances(day: readonly DayRow[]): Map<string, string> {
+  const byAccount = new Map<string, DayRow[]>();
+  for (const row of day)
+    byAccount.set(row.accountId, [...(byAccount.get(row.accountId) ?? []), row]);
+  const balances = new Map<string, string>();
+  for (const rows of byAccount.values()) {
+    // The API's last of the day: the largest outflow, the last entered among equals.
+    const last = rows.reduce((a, b) => {
+      const diff = BigInt(a.amount) - BigInt(b.amount);
+      return diff > 0n || (diff === 0n && b.id > a.id) ? b : a;
+    });
+    let balance = BigInt(last.runningBalance);
+    for (const row of [...rows].sort((a, b) => (a.id < b.id ? 1 : -1))) {
+      balances.set(row.id, balance.toString());
+      balance -= BigInt(row.amount);
+    }
+  }
+  return balances;
 }

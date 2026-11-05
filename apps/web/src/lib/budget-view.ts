@@ -250,18 +250,20 @@ export function isPresetFilter(view: string): view is BudgetFilter {
   return (BUDGET_FILTERS as readonly string[]).includes(view);
 }
 
+/**
+ * A preset's filter (Overspent, Underfunded…) lasts this browser session; a custom view, which the
+ * user built to come back to, lasts across sessions. So a returning user starts on All rather than
+ * on a filter that may have nothing left in it.
+ */
 function readFilter(key: string): string {
   try {
-    return localStorage.getItem(key) || "all";
+    return sessionStorage.getItem(key) || localStorage.getItem(key) || "all";
   } catch {
     return "all";
   }
 }
 
-/**
- * The budget list's view: a preset (`BudgetFilter`) or a custom view's id, kept across reloads and
- * months in this browser, per budget.
- */
+/** The budget list's view: a preset (`BudgetFilter`) or a custom view's id, per budget. */
 export function useBudgetFilter(budgetId: string) {
   const key = `strictbudget:budget-filter:${budgetId}`;
   const [filter, setFilter] = useState<string>(() => readFilter(key));
@@ -269,7 +271,9 @@ export function useBudgetFilter(budgetId: string) {
     (next: string) => {
       setFilter(next);
       try {
-        localStorage.setItem(key, next);
+        sessionStorage.setItem(key, next);
+        if (isPresetFilter(next)) localStorage.removeItem(key);
+        else localStorage.setItem(key, next);
       } catch {
         // Storage can be unavailable (private windows); the view still works for this visit.
       }

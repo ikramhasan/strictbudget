@@ -38,7 +38,7 @@ import { useUndo } from "@/lib/undo";
 import { AccountLogo } from "./accounts-nav";
 import { FlagMenu } from "./flag-menu";
 import { COLUMN_SPECS, type ColumnId, isEditable, PINNED_BG, pinned } from "./register-columns";
-import { RegisterCell, RegisterRow } from "./register-table";
+import { ICON_CELL, REVEAL_ON_ROW, RegisterCell, RegisterRow } from "./register-table";
 import { ScheduledAttachmentCell } from "./transaction-attachment";
 import { TransactionEditor } from "./transaction-editor";
 
@@ -68,6 +68,7 @@ export function ScheduledSection({
   onChanged,
   selected,
   onSelect,
+  accountIcon = false,
 }: {
   rows: readonly ScheduledTransaction[];
   columns: readonly ColumnId[];
@@ -82,6 +83,8 @@ export function ScheduledSection({
   onChanged: () => Promise<void>;
   selected: ReadonlySet<string>;
   onSelect: (id: string, on: boolean, shift: boolean) => void;
+  /** The account column shows only each account's logo. */
+  accountIcon?: boolean;
 }) {
   // A viewer sees the schedules but can't change or enter them.
   const { budget, formatAmount, readOnly: viewer } = useBudget();
@@ -274,6 +277,21 @@ export function ScheduledSection({
     setEditing({ id: row.id, draft: draftFromScheduled(row, inCurrency(budget, row.currency)) });
   }
 
+  // Memo has no column of its own in a narrow register: each row's follows its payee.
+  const memoInPayee = !columns.includes("memo");
+  function withMemo(memo: string, payee: ReactNode): ReactNode {
+    if (!memoInPayee || !memo) return payee;
+    return (
+      // One line: a memo without room for a few letters wraps out of sight, not to a sliver.
+      <span className="flex h-5 min-w-0 flex-wrap items-baseline gap-x-2 overflow-hidden">
+        <span className="max-w-full truncate">{payee}</span>
+        <span className="min-w-12 flex-1 basis-0 truncate text-muted-foreground text-xs">
+          {memo}
+        </span>
+      </span>
+    );
+  }
+
   function display(row: ScheduledTransaction, id: ColumnId) {
     const amount = BigInt(row.amount);
     switch (id) {
@@ -292,24 +310,33 @@ export function ScheduledSection({
           />
         );
       case "attachment":
-        return <ScheduledAttachmentCell />;
+        return (
+          <span className={cn("flex justify-center", REVEAL_ON_ROW)}>
+            <ScheduledAttachmentCell />
+          </span>
+        );
       case "flag":
         return row.kind === "splitTransfer" || viewer ? null : (
-          <FlagMenu
-            value={row.flag}
-            flags={flags}
-            onChange={(flag) => void setFlag(row, flag)}
-            onRename={onRenameFlags}
-          />
+          <span className={cn("flex justify-center", !row.flag && REVEAL_ON_ROW)}>
+            <FlagMenu
+              value={row.flag}
+              flags={flags}
+              onChange={(flag) => void setFlag(row, flag)}
+              onRename={onRenameFlags}
+            />
+          </span>
         );
       case "account":
         return (
-          <span className="flex min-w-0 items-center gap-2">
+          <span
+            className="flex min-w-0 items-center gap-2"
+            title={accountIcon ? row.accountName : undefined}
+          >
             <AccountLogo
               name={row.accountName}
               logo={accountById.get(row.accountId)?.logo ?? null}
             />
-            <span className="truncate">{row.accountName}</span>
+            <span className={cn("truncate", accountIcon && "sr-only")}>{row.accountName}</span>
           </span>
         );
       case "date": {
@@ -329,13 +356,16 @@ export function ScheduledSection({
         );
       }
       case "payee":
-        return row.transferAccountId ? (
-          <span className="flex min-w-0 items-center gap-1">
-            <ArrowLeftRight className="size-3.5 shrink-0" aria-label="Transfer" />
-            <span className="truncate">{row.payeeName}</span>
-          </span>
-        ) : (
-          row.payeeName
+        return withMemo(
+          row.memo,
+          row.transferAccountId ? (
+            <span className="flex min-w-0 items-center gap-1">
+              <ArrowLeftRight className="size-3.5 shrink-0" aria-label="Transfer" />
+              <span className="truncate">{row.payeeName}</span>
+            </span>
+          ) : (
+            row.payeeName
+          ),
         );
       case "category":
         if (row.subtransactions.length > 0) {
@@ -343,8 +373,11 @@ export function ScheduledSection({
             .size;
           return (
             <span className="flex items-center gap-1.5">
-              <Split className="size-4 shrink-0" />
-              <span className="truncate">
+              <Split className="size-4 shrink-0" aria-hidden />
+              <span className="truncate" aria-hidden>
+                Split · {count}
+              </span>
+              <span className="sr-only">
                 Split ({count} {count === 1 ? "category" : "categories"})
               </span>
             </span>
@@ -357,6 +390,12 @@ export function ScheduledSection({
         return amount < 0n ? show(-amount, row.currency) : "";
       case "inflow":
         return amount > 0n ? show(amount, row.currency) : "";
+      case "amount":
+        return (
+          <span className={cn(amount > 0n && "text-success")}>
+            {amount > 0n ? `+${show(amount, row.currency)}` : show(amount, row.currency)}
+          </span>
+        );
       case "actions":
         return viewer ? null : (
           <DropdownMenu>
@@ -397,6 +436,7 @@ export function ScheduledSection({
           >
             <CalendarDays className="size-4 text-muted-foreground" />
             Scheduled Transactions
+            <span className="font-normal text-muted-foreground tabular-nums">{rows.length}</span>
             {collapsed ? (
               <ChevronRight className="size-4" aria-hidden />
             ) : (
@@ -414,6 +454,7 @@ export function ScheduledSection({
                 initial={editing.draft}
                 label="Edit scheduled transaction"
                 columns={columns}
+                accountIcon={accountIcon}
                 accounts={accounts.filter((a) => !a.closed || a.id === row.accountId)}
                 accountChoices={movableAccounts(accounts, row)}
                 payees={payees}
@@ -444,19 +485,29 @@ export function ScheduledSection({
             >
               {columns.map((id) => {
                 const spec = COLUMN_SPECS[id];
-                const editable = !readOnly && !viewer && isEditable(id);
+                const editable = !readOnly && !viewer && (isEditable(id) || id === "amount");
                 const pin = pinned(columns, id);
                 return (
                   <RegisterCell
                     key={id}
+                    title={
+                      id === "payee"
+                        ? [row.payeeName, memoInPayee ? row.memo : ""]
+                            .filter(Boolean)
+                            .join(" · ") || undefined
+                        : id === "category"
+                          ? (row.categoryName ?? undefined)
+                          : id === "memo"
+                            ? row.memo || undefined
+                            : undefined
+                    }
                     style={pin?.style}
                     className={cn(
                       "truncate",
                       pin && [pin.className, PINNED_BG.scheduled],
                       spec.align === "right" && "text-right tabular-nums",
                       spec.align === "center" && "py-1 text-center",
-                      id === "flag" && "px-1",
-                      id === "actions" && "py-1",
+                      ICON_CELL[id],
                       (id === "category" || id === "memo") && "text-muted-foreground",
                       editable && "cursor-text",
                     )}
@@ -479,13 +530,17 @@ export function ScheduledSection({
                     {line.transferAccountId && (
                       <ArrowLeftRight className="size-3.5 shrink-0" aria-label="Transfer" />
                     )}
-                    <span className="truncate">{line.payeeName}</span>
+                    {withMemo(line.memo, <span className="truncate">{line.payeeName}</span>)}
                   </span>
                 ),
                 category: usesCategory(type, to) ? line.categoryName : "",
                 memo: line.memo,
                 outflow: lineAmount < 0n ? show(-lineAmount, row.currency) : "",
                 inflow: lineAmount > 0n ? show(lineAmount, row.currency) : "",
+                amount:
+                  lineAmount > 0n
+                    ? `+${show(lineAmount, row.currency)}`
+                    : show(lineAmount, row.currency),
               };
               return (
                 <RegisterRow

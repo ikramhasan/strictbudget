@@ -23,10 +23,10 @@
   --color-cover-blue: #eef2fc;
   --color-cover-beige: #f3eee2;
   --color-cover-green: #e9f6ec;
-  --color-bar-track: #f3eee2;
-  --color-bar-border: #ece7da;
-  --color-bar-funded: #77ba21;
-  --color-bar-underfunded: #f6c91d;
+  --color-bar-track: oklch(0.955 0.008 265);
+  --color-bar-border: oklch(0.915 0.012 265);
+  --color-bar-funded: oklch(0.615 0.145 156);
+  --color-bar-underfunded: oklch(0.8 0.16 79);
 }
 
 @layer base {

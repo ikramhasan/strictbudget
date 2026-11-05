@@ -1,5 +1,6 @@
 import type { components } from "@strictbudget/api-client";
 import { type CurrencyCode, type Money, money } from "@strictbudget/engine";
+import { format, parse } from "date-fns";
 
 export type ActivityEvent = components["schemas"]["ActivityEvent"];
 type Values = NonNullable<ActivityEvent["before"]>;
@@ -25,7 +26,7 @@ export interface ActivityChange {
 export interface ActivityLine {
   /** "added a transaction", "changed the category", "deleted a payee rule"… */
   action: string;
-  /** What it was about: "Groceries · $30.00", "Rent (Oct 2026)"… */
+  /** What it was about: "Groceries · $30.00", "Rent (Nov 2026)"… */
   subject: string | null;
   changes: ActivityChange[];
 }
@@ -95,6 +96,12 @@ const HIDDEN = new Set([
   "storage_key",
   "content_type",
   "byte_size",
+  // A payee's bookkeeping, updated behind the scenes as transactions are entered.
+  "internal_kind",
+  "categorization",
+  "carried_category_id",
+  "auto_category_id",
+  "auto_category_saved",
 ]);
 
 const LABELS: Record<string, string> = {
@@ -102,24 +109,30 @@ const LABELS: Record<string, string> = {
   category_id: "Category",
   group_id: "Group",
   payee_id: "Payee",
+  default_category_id: "Default category",
   amount: "Amount",
   memo: "Memo",
   date: "Date",
   date_next: "Next date",
-  cleared: "Cleared",
+  date_first: "First date",
+  cleared: "Status",
   flag: "Flag",
-  approved: "Approved",
+  approved: "Approval",
   name: "Name",
   note: "Note",
-  hidden: "Hidden",
-  closed: "Closed",
+  hidden: "Visibility",
+  closed: "Status",
   month: "Month",
   role: "Role",
   status: "Status",
   email: "Email",
   frequency: "Repeat",
   fx_rate: "Exchange rate",
+  rate: "Exchange rate",
   file_name: "File",
+  interest_rate: "Interest rate",
+  operator: "Match",
+  text: "Text",
 };
 
 const humanize = (column: string) =>
@@ -127,26 +140,83 @@ const humanize = (column: string) =>
 
 const MONEY = new Set(["amount", "balance", "minimum_payment", "escrow_amount"]);
 
+/** Yes/no columns, worded as what they mean: [when true, when false]. */
+const BOOLEANS: Record<string, [string, string]> = {
+  approved: ["Approved", "Not approved"],
+  hidden: ["Hidden", "Shown"],
+  closed: ["Closed", "Open"],
+};
+
+/** What a new row has unless someone chose otherwise, not worth listing on an insert. */
+const DEFAULTS: Record<string, string> = {
+  approved: "true",
+  hidden: "false",
+  closed: "false",
+  cleared: "uncleared",
+};
+
+/** Columns holding a fixed set of words ("set_aside", "every_other_week"), written as words. */
+const ENUMS = new Set([
+  "cleared",
+  "flag",
+  "color",
+  "frequency",
+  "cadence",
+  "behavior",
+  "repeat_unit",
+  "role",
+  "status",
+  "delivery",
+  "kind",
+  "type",
+  "operator",
+  "pace",
+  "auto_assign_method",
+]);
+
+const EMPTY = "—";
+
+const words = (value: string) =>
+  (value.charAt(0).toUpperCase() + value.slice(1)).replaceAll("_", " ");
+
+/** "2026-11-01" (a month's first day) as "Nov 2026". */
+const monthOfDate = (value: string) =>
+  format(parse(value.slice(0, 7), "yyyy-MM", new Date()), "MMM yyyy");
+
+const isMonthColumn = (column: string) => column === "month" || column.endsWith("_month");
+
 function show(
   column: string,
   value: string | null,
   row: Values,
   l: ActivityLookups,
 ): string | null {
-  if (value === null || value === "") return value === "" ? "(blank)" : null;
+  if (value === null || value === "") return null;
   if (MONEY.has(column) && /^-?\d+$/.test(value)) {
     const currency = (row.currency as CurrencyCode | null) ?? l.currency;
     return l.formatAmount(money(BigInt(value), currency));
   }
   if (column === "account_id") return l.account(value) ?? "a deleted account";
-  if (column === "category_id") return l.category(value) ?? "a deleted category";
+  if (column === "category_id" || column === "default_category_id")
+    return l.category(value) ?? "a deleted category";
   if (column === "group_id") return l.group(value) ?? "a deleted group";
   if (column === "payee_id") return l.payee(value) ?? "a deleted payee";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return l.formatDate(value);
+  if (isMonthColumn(column) && /^\d{4}-\d{2}/.test(value)) return monthOfDate(value);
+  if (/^\d{4}-\d{2}-\d{2}([T ]|$)/.test(value)) return l.formatDate(value.slice(0, 10));
+  const phrases = BOOLEANS[column];
+  if (phrases && (value === "true" || value === "false"))
+    return value === "true" ? phrases[0] : phrases[1];
   if (value === "true") return "Yes";
   if (value === "false") return "No";
+  if (column === "interest_rate" && /^\d+(\.\d+)?$/.test(value)) return `${trimZeros(value)}%`;
+  if (column === "rate" || column === "fx_rate") return trimZeros(value);
+  if (column === "operator" && value === "is") return "Is exactly";
+  if (ENUMS.has(column) && /^[a-z]+(_[a-z]+)*$/.test(value)) return words(value);
   return value;
 }
+
+/** "5.250" as "5.25", "1.000000000000" as "1". */
+const trimZeros = (value: string) => (value.includes(".") ? value.replace(/\.?0+$/, "") : value);
 
 function subjectOf(entity: string, row: Values, l: ActivityLookups): string | null {
   const amount = row.amount ? show("amount", row.amount, row, l) : null;
@@ -161,23 +231,39 @@ function subjectOf(entity: string, row: Values, l: ActivityLookups): string | nu
     case "category_assignment":
     case "category_target": {
       const name = row.category_id ? show("category_id", row.category_id, row, l) : null;
-      const month = row.month ? ` (${row.month.slice(0, 7)})` : "";
+      const month = row.month ? ` (${monthOfDate(row.month)})` : "";
       return name ? `${name}${month}` : null;
     }
     case "transaction_attachment":
       return row.file_name ?? null;
     case "month_note":
-      return row.month ? row.month.slice(0, 7) : null;
+      return row.month ? monthOfDate(row.month) : null;
     case "budget_member":
       return row.user_id ? (l.member(row.user_id) ?? "someone who has left") : null;
     case "budget_invitation":
       return [row.name, row.email].filter(Boolean).join(" · ") || null;
     case "loan_terms":
-    case "loan_charge":
+    case "loan_charge": {
+      const account = row.account_id ? show("account_id", row.account_id, row, l) : null;
+      const kind = row.kind ? show("kind", row.kind, row, l) : null;
+      const month = row.month ? ` (${monthOfDate(row.month)})` : "";
+      return account ? `${[account, kind].filter(Boolean).join(" · ")}${month}` : null;
+    }
     case "account_logo":
       return row.account_id ? show("account_id", row.account_id, row, l) : null;
+    case "payee_rule": {
+      const payee = row.payee_id ? show("payee_id", row.payee_id, row, l) : null;
+      const rule = row.text ? `${row.operator === "is" ? "is" : "contains"} “${row.text}”` : null;
+      return [payee, rule].filter(Boolean).join(" · ") || null;
+    }
+    case "flag_name":
+      return row.name || (row.color ? show("color", row.color, row, l) : null);
+    case "fx_rate_override":
+      return row.currency && row.date
+        ? `${row.currency} on ${l.formatDate(row.date)}`
+        : (row.currency ?? null);
     default:
-      return row.name ?? null;
+      return row.name || null;
   }
 }
 
@@ -190,23 +276,47 @@ export function changesOf(event: ActivityEvent, l: ActivityLookups): ActivityCha
     if (HIDDEN.has(column)) continue;
     const b = before[column] ?? null;
     const a = after[column] ?? null;
-    if (event.op === "update" && b === a) continue;
-    // Inserts and deletes only list what the row had.
-    if (event.op !== "update" && (event.op === "insert" ? a : b) === null) continue;
+    if (event.op === "update") {
+      if ((b ?? "") === (a ?? "")) continue;
+      // A blank on either side of a change reads as a dash.
+      changes.push({
+        label: humanize(column),
+        before: show(column, b, before, l) ?? EMPTY,
+        after: show(column, a, after, l) ?? EMPTY,
+      });
+      continue;
+    }
+    // Inserts and deletes only list what the row had, leaving out blanks and the usual defaults.
+    const value = event.op === "insert" ? a : b;
+    if (value === null || value === "" || DEFAULTS[column] === value) continue;
+    const shown = show(column, value, event.op === "insert" ? after : before, l);
     changes.push({
       label: humanize(column),
-      before: event.op === "insert" ? null : show(column, b, before, l),
-      after: event.op === "delete" ? null : show(column, a, after, l),
+      before: event.op === "insert" ? null : shown,
+      after: event.op === "delete" ? null : shown,
     });
   }
   return changes;
 }
 
-export function describeEvent(event: ActivityEvent, l: ActivityLookups): ActivityLine {
+/**
+ * `related`: the other changes saved with it (groupEvents), so a transaction whose category was
+ * cleared as it was split reads "Split" rather than a blank.
+ */
+export function describeEvent(
+  event: ActivityEvent,
+  l: ActivityLookups,
+  related: readonly ActivityEvent[] = [],
+): ActivityLine {
   const noun = NOUNS[event.entity] ?? humanize(event.entity).toLowerCase();
   const row = event.after ?? event.before ?? {};
   const subject = subjectOf(event.entity, row, l);
-  const changes = changesOf(event, l);
+  const split =
+    event.entity === "transaction" &&
+    related.some((e) => e.entity === "sub_transaction" && e.op === "insert");
+  const changes = changesOf(event, l).map((c) =>
+    split && c.label === "Category" && c.after === EMPTY ? { ...c, after: "Split" } : c,
+  );
   if (event.entity === "budget_member") {
     const action =
       event.op === "insert"
@@ -226,6 +336,40 @@ export function describeEvent(event: ActivityEvent, l: ActivityLookups): Activit
   const verb = event.op === "insert" ? "added" : event.op === "delete" ? "deleted" : "changed";
   const article = /^[aeiou]/.test(noun) ? "an" : "a";
   return { action: `${verb} ${article} ${noun}`, subject, changes };
+}
+
+/**
+ * Changes saved together (one transaction with its split lines and new payee, one Auto-Assign)
+ * as one entry: the same person or job within a couple of seconds, in list order. The lead is the
+ * transaction when there is one; changes with nothing to show (bookkeeping only) are left out.
+ */
+export function groupEvents(
+  events: readonly ActivityEvent[],
+  l: ActivityLookups,
+): { lead: ActivityEvent; rest: ActivityEvent[] }[] {
+  const shown = events.filter((e) => e.op !== "update" || changesOf(e, l).length > 0);
+  const actorKey = (e: ActivityEvent) =>
+    `${e.source}:${e.actor?.userId ?? ""}:${e.actor?.agent?.name ?? ""}`;
+  const groups: ActivityEvent[][] = [];
+  for (const event of shown) {
+    const group = groups.at(-1);
+    const first = group?.[0];
+    if (
+      group &&
+      first &&
+      actorKey(first) === actorKey(event) &&
+      Math.abs(Date.parse(first.at) - Date.parse(event.at)) <= 2000
+    ) {
+      group.push(event);
+    } else {
+      groups.push([event]);
+    }
+  }
+  const LEADS = ["transaction", "scheduled_transaction"];
+  return groups.map((group) => {
+    const lead = group.find((e) => LEADS.includes(e.entity)) ?? group[0];
+    return { lead: lead as ActivityEvent, rest: group.filter((e) => e !== lead) };
+  });
 }
 
 /** Who made a change, for the line: the member, or why nobody did. */

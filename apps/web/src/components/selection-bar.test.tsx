@@ -62,6 +62,11 @@ async function categorizeAs(group: string, category: string) {
 }
 
 describe("SelectionBar", () => {
+  it("labels the selection's signed total as its net", () => {
+    bar(summary({ count: 2, total: "9970" }), { total: "+$99.70" });
+    expect(screen.getByTitle("Inflows minus outflows")).toHaveTextContent("+$99.70 net");
+  });
+
   it("offers Export # Transactions in More", async () => {
     const onExport = vi.fn();
     bar(summary({ count: 2 }), { onExport });

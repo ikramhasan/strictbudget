@@ -110,7 +110,16 @@ function Report() {
               : undefined
         }
         fileName={`age-of-money-${span}`}
-        chart={<AgeChart points={points} />}
+        chart={
+          <div className="grid gap-2">
+            <AgeChart points={points} />
+            {points.length === 1 && (
+              <p className="text-muted-foreground text-xs">
+                One month so far. Each month-end adds a point, and the line starts with the next.
+              </p>
+            )}
+          </div>
+        }
         table={<AgeTable rows={rows} />}
       />
 

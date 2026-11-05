@@ -11,7 +11,7 @@ describe("KeyboardShortcutsDialog", () => {
     const headings = within(dialog)
       .getAllByRole("heading", { level: 3 })
       .map((h) => h.textContent);
-    expect(headings).toEqual(["Universal", "Plan Actions", "Account Actions", "Date Picker"]);
+    expect(headings).toEqual(["Universal", "Budget Actions", "Account Actions", "Date Picker"]);
     const flag = within(dialog).getByText("Flag").closest("div");
     expect(flag).toHaveTextContent("shiftFthen0‑6");
     await userEvent.click(within(dialog).getByRole("button", { name: "OK" }));

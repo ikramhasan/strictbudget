@@ -1,18 +1,12 @@
 import { Button } from "@strictbudget/ui/components/button";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@strictbudget/ui/components/empty";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, notFound, Outlet } from "@tanstack/react-router";
-import { Eye } from "lucide-react";
+import { Eye, House } from "lucide-react";
 import { AiAssistant } from "@/components/ai-assistant";
+import { StatusLayout } from "@/components/error-screen";
 import { FileDropImport } from "@/components/file-import";
 import { ManagePayeesProvider } from "@/components/manage-payees";
-import { PageTitle } from "@/components/page-title";
+import { NotFound } from "@/components/not-found";
 import { apiBaseUrl } from "@/lib/api";
 import { BudgetProvider } from "@/lib/budget-context";
 import { apiErrorCode, budgetQueryOptions } from "@/lib/budgets";
@@ -63,18 +57,23 @@ function BudgetLayout() {
 }
 
 function BudgetNotFound() {
+  const { budgetId } = Route.useParams();
+  const queryClient = useQueryClient();
+  // The budget loaded, so it's a page inside it that doesn't exist.
+  if (queryClient.getQueryData(budgetQueryOptions(budgetId).queryKey)) return <NotFound />;
   return (
-    <Empty className="py-12">
-      <PageTitle name="Budget not found" />
-      <EmptyHeader>
-        <EmptyTitle>Budget not found</EmptyTitle>
-        <EmptyDescription>It may have been deleted, or it isn't shared with you.</EmptyDescription>
-      </EmptyHeader>
-      <EmptyContent>
-        <Button asChild variant="outline">
-          <Link to="/budgets">View all budgets</Link>
-        </Button>
-      </EmptyContent>
-    </Empty>
+    <StatusLayout fullPage={false} title="Budget not found">
+      <div className="grid justify-items-center gap-1.5 text-center">
+        <h1 className="font-semibold text-2xl tracking-tight">We can't find that budget</h1>
+        <p className="text-pretty text-muted-foreground">
+          It may have been deleted, or it isn't shared with you.
+        </p>
+      </div>
+      <Button asChild>
+        <Link to="/budgets">
+          <House /> Go to my budgets
+        </Link>
+      </Button>
+    </StatusLayout>
   );
 }

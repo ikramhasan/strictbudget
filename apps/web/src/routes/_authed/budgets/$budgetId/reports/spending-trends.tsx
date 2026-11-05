@@ -10,11 +10,10 @@ import {
   money,
   monthsIn,
   rollingAverage,
+  type TrendMonth,
   toDelimited,
   trendMonths,
 } from "@strictbudget/engine";
-import { Button } from "@strictbudget/ui/components/button";
-import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
 import {
   Table,
   TableBody,
@@ -24,7 +23,6 @@ import {
   TableRow,
 } from "@strictbudget/ui/components/table";
 import { Toggle } from "@strictbudget/ui/components/toggle";
-import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -36,10 +34,10 @@ import {
   Percent,
 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
-import { ChartCard } from "@/components/reports/chart-card";
+import { ChartCard, ReportEmpty } from "@/components/reports/chart-card";
 import { type DrillDown, DrillDownSheet } from "@/components/reports/drill-down-sheet";
 import { ExportButton } from "@/components/reports/export-button";
-import { ReportFilterBar } from "@/components/reports/report-filter-bar";
+import { GroupBySelect, ReportFilterBar } from "@/components/reports/report-filter-bar";
 import { ReportPage } from "@/components/reports/report-page";
 import { SpendingCalendar } from "@/components/reports/spending-trends-calendar";
 import {
@@ -58,11 +56,13 @@ import { categoriesQueryOptions } from "@/lib/categories";
 import { todayIso } from "@/lib/dates";
 import {
   COMPARISON_LABELS,
+  OTHER_COLOR,
   type ReportRequest,
   reportActivityOptions,
   reportTransactionsOptions,
 } from "@/lib/reports";
 import {
+  BAR_SERIES,
   type CalendarDay,
   type Catalog,
   catalogOf,
@@ -70,6 +70,7 @@ import {
   chartedMonths,
   exportBaseName,
   OTHER_KEY,
+  seriesColors,
   seriesInfo,
   seriesKeys,
   summaryExportRows,
@@ -179,12 +180,30 @@ function Report() {
         };
       }
     }
-    const info = (key: string) => seriesInfo(catalog, level, key);
-    const base = { average, previous, rolling, comparison: compared, info };
-    const all: TrendChartData = { ...base, months, keys: seriesKeys(months, catalog, level) };
-    const folded = withOther(months, TOP_SERIES);
-    const top: TrendChartData = { ...base, months: folded.months, keys: folded.keys };
-    return { all, top, total, average };
+    const plain = (key: string) => seriesInfo(catalog, level, key);
+    const base = { average, previous, rolling, comparison: compared };
+    // Each chart's series get colours of their own (seriesColors); series a chart folds into
+    // "Other" share its neutral wherever they're listed.
+    const colored = (
+      folded: { months: TrendMonth<string>[]; keys: string[] },
+      colors = seriesColors(folded.months, folded.keys, plain),
+    ): TrendChartData => ({
+      ...base,
+      ...folded,
+      info: (key) => ({ ...plain(key), color: colors.get(key) ?? OTHER_COLOR }),
+    });
+    const barsFolded = withOther(months, BAR_SERIES, plain);
+    const bars = colored({
+      months: barsFolded.months,
+      // Stacked in plan order, Other on top.
+      keys: [...barsFolded.keys].sort((a, b) => plain(a).order - plain(b).order),
+    });
+    const all = colored(
+      { months, keys: seriesKeys(months, catalog, level) },
+      new Map(barsFolded.keys.map((k) => [k, bars.info(k).color])),
+    );
+    const top = colored(withOther(months, TOP_SERIES, plain));
+    return { all, bars, top, total, average };
   }, [
     catalog,
     activity.data,
@@ -264,7 +283,15 @@ function Report() {
 
   const groupName = search.group && catalog?.groups.get(search.group)?.label;
   const loading = !derived;
-  const empty = derived && derived.all.keys.length === 0 ? "No spending in this range." : undefined;
+  const filtered = Object.keys(state.filters).length > 0;
+  const empty =
+    derived && derived.all.keys.length === 0 ? (
+      <ReportEmpty title="No spending to show">
+        {filtered
+          ? "Nothing matches these filters in this range. Widen the range or clear a filter."
+          : "How your spending changes month to month will show here once you add transactions."}
+      </ReportEmpty>
+    ) : undefined;
   const dayMap = new Map(
     (daily.data?.rows ?? []).flatMap((r) =>
       r.day ? [[r.day, { total: -BigInt(r.net), count: r.count }] as const] : [],
@@ -273,19 +300,19 @@ function Report() {
 
   const chart = (() => {
     if (!derived) return null;
-    const { all, top } = derived;
+    const { all, bars, top } = derived;
     switch (mode) {
       case "bars":
         return (
           <div className="grid gap-2">
             <TrendBarsChart
-              data={all}
-              charted={chartedMonths(all.months)}
+              data={bars}
+              charted={chartedMonths(bars.months)}
               overlays={overlays}
-              onPick={(m, k) => pick(m, k, all)}
+              onPick={(m, k) => pick(m, k, bars)}
             />
-            <TrendBarsKey data={all} overlays={overlays} />
-            <TrendLegend data={all} onPick={(k) => pick(null, k, all)} />
+            <TrendBarsKey data={bars} overlays={overlays} />
+            <TrendLegend data={bars} onPick={(k) => pick(null, k, bars)} />
           </div>
         );
       case "lines":
@@ -369,7 +396,20 @@ function Report() {
           earliest={state.earliest}
           show={["categories", "accounts", "payees", "flags", "compare"]}
           accountFilter={(a) => isOnBudget(a.type)}
-        />
+        >
+          {mode !== "calendar" && (
+            <GroupBySelect
+              value={search.group ? "group" : level}
+              options={[
+                { value: "category", label: "Category" },
+                { value: "group", label: "Category group" },
+              ]}
+              onChange={(by) =>
+                update({ by: by === "group" ? "group" : undefined, group: undefined })
+              }
+            />
+          )}
+        </ReportFilterBar>
       }
     >
       <section aria-label="Summary" className="flex flex-wrap items-end gap-x-8 gap-y-2">
@@ -387,77 +427,58 @@ function Report() {
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          size="sm"
-          value={mode}
-          onValueChange={(v) => v && update({ mode: v === "bars" ? undefined : (v as TrendMode) })}
-          aria-label="Chart type"
-        >
-          {TREND_MODES.map((m) => (
-            <ToggleGroupItem
-              key={m}
-              value={m}
-              aria-label={TREND_MODE_LABELS[m]}
-              title={TREND_MODE_LABELS[m]}
-            >
-              {MODE_ICONS[m]}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-        {mode !== "calendar" &&
-          (search.group ? (
-            <nav aria-label="Drill-down" className="flex items-center gap-1 text-sm">
-              <Button
-                variant="link"
-                size="sm"
-                className="h-auto px-0"
-                onClick={() => update({ group: undefined, by: "group" })}
-              >
-                All groups
-              </Button>
-              <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
-              <span className="font-medium">{groupName ?? "Group"}</span>
-            </nav>
-          ) : (
-            <NativeSelect
-              aria-label="Series"
-              size="sm"
-              value={level}
-              onChange={(e) => update({ by: e.target.value === "group" ? "group" : undefined })}
-            >
-              <NativeSelectOption value="category">By category</NativeSelectOption>
-              <NativeSelectOption value="group">By category group</NativeSelectOption>
-            </NativeSelect>
-          ))}
-        {mode === "bars" && (
-          <div className="flex items-center gap-1">
-            <Toggle
-              size="sm"
-              variant="outline"
-              pressed={overlays.average}
-              onPressedChange={(average) => setOverlays((o) => ({ ...o, average }))}
-            >
-              Average
-            </Toggle>
-            <Toggle
-              size="sm"
-              variant="outline"
-              pressed={overlays.rolling}
-              onPressedChange={(rolling) => setOverlays((o) => ({ ...o, rolling }))}
-            >
-              3-month average
-            </Toggle>
-          </div>
-        )}
-      </div>
+      {mode !== "calendar" && search.group && (
+        <nav aria-label="Drill-down" className="flex items-center gap-1 font-medium text-lg">
+          <button
+            type="button"
+            className="rounded-sm text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => update({ group: undefined, by: "group" })}
+          >
+            All groups
+          </button>
+          <ChevronRight aria-hidden className="size-4 text-muted-foreground" />
+          <span>{groupName ?? "Group"}</span>
+        </nav>
+      )}
 
       <ChartCard
-        title={TREND_MODE_LABELS[mode]}
+        title={mode === "calendar" ? "Spending by day" : "Spending by month"}
         view={state.view}
-        onViewChange={(view) => update({ view: view === "chart" ? undefined : view })}
+        kinds={TREND_MODES.map((m) => ({
+          value: m,
+          label: TREND_MODE_LABELS[m],
+          icon: MODE_ICONS[m],
+        }))}
+        kind={mode}
+        onViewChange={(view, kind) =>
+          update({
+            view: view === "chart" ? undefined : view,
+            ...(kind && { mode: kind === "bars" ? undefined : (kind as TrendMode) }),
+          })
+        }
+        options={
+          mode === "bars" && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-muted-foreground text-xs">Show</span>
+              <Toggle
+                size="sm"
+                variant="outline"
+                pressed={overlays.average}
+                onPressedChange={(average) => setOverlays((o) => ({ ...o, average }))}
+              >
+                Average
+              </Toggle>
+              <Toggle
+                size="sm"
+                variant="outline"
+                pressed={overlays.rolling}
+                onPressedChange={(rolling) => setOverlays((o) => ({ ...o, rolling }))}
+              >
+                3-month average
+              </Toggle>
+            </div>
+          )
+        }
         loading={loading || (mode === "calendar" && daily.isPending)}
         empty={empty}
         chart={chart}
@@ -465,7 +486,7 @@ function Report() {
         fileName={exportBaseName(todayIso())}
       />
 
-      {derived && (
+      {derived && !empty && (
         <section aria-label="Months" className="overflow-x-auto rounded-lg border">
           <TrendMonthsTable data={derived.all} />
         </section>

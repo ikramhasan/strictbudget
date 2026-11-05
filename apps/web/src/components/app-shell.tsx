@@ -32,15 +32,19 @@ import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
 import {
   Activity,
   ChartColumn,
+  ChevronRight,
   ChevronsUpDown,
   Keyboard,
   Landmark,
   LayoutGrid,
   LogOut,
   Menu,
+  Monitor,
+  Moon,
   Search,
   Settings,
   Sparkles,
+  Sun,
   UserCog,
   Wallet,
 } from "lucide-react";
@@ -49,7 +53,6 @@ import { useAiSettings } from "@/lib/ai";
 import { authClient } from "@/lib/auth-client";
 import { budgetQueryOptions, budgetsQueryOptions } from "@/lib/budgets";
 import { CommandRegistryProvider } from "@/lib/commands";
-import { lastViewedMonth } from "@/lib/months";
 import { pictureSrc } from "@/lib/pictures";
 import { capLabel, useShortcut } from "@/lib/shortcuts";
 import { AccountsNav } from "./accounts-nav";
@@ -59,10 +62,10 @@ import { KeyboardShortcutsDialog } from "./keyboard-shortcuts-dialog";
 import { PageHeaderSlotProvider } from "./page-header";
 import { SidebarDropdownContent } from "./sidebar-dropdown-content";
 
-const THEMES: readonly { value: Theme; label: string }[] = [
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-  { value: "system", label: "System" },
+const THEMES: readonly { value: Theme; label: string; icon: typeof Sun }[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Monitor },
 ];
 
 /**
@@ -70,7 +73,7 @@ const THEMES: readonly { value: Theme; label: string }[] = [
  * chosen one filled. The radio item's check (`[data-slot=...indicator]`) is hidden; the fill shows it.
  */
 const THEME_ITEM =
-  "min-w-0 flex-1 justify-center rounded-none border-l px-1 py-1.5 text-xs first:border-l-0 data-[state=checked]:bg-muted data-[state=checked]:font-medium [&>[data-slot=dropdown-menu-radio-item-indicator]]:hidden";
+  "min-w-0 flex-1 justify-center gap-1 rounded-[5px] px-1 py-1 text-muted-foreground text-xs data-[state=checked]:bg-background data-[state=checked]:font-medium data-[state=checked]:text-foreground data-[state=checked]:shadow-[0_1px_2px_rgb(0_0_0/0.12)] dark:data-[state=checked]:bg-accent [&>[data-slot=dropdown-menu-radio-item-indicator]]:hidden [&_svg]:size-3.5";
 
 /** The page's scrolling element: the router resets it to the top on navigation and restores it. */
 export const APP_SCROLL_ID = "app-scroll";
@@ -173,11 +176,10 @@ export function AppShell({
                     <>
                       <SidebarMenuItem>
                         <SidebarMenuButton asChild tooltip="Budget">
+                          {/* This month, always: the month arrows and Back reach any other. */}
                           <Link
                             to="/budgets/$budgetId"
                             params={{ budgetId }}
-                            // Back to the month last viewed.
-                            search={{ month: lastViewedMonth(budgetId) }}
                             activeOptions={{ exact: true, includeSearch: false }}
                             activeProps={{ "data-active": true }}
                           >
@@ -318,15 +320,16 @@ export function AppShell({
                           aria-label="Theme"
                           value={theme}
                           onValueChange={(value) => setTheme(value as Theme)}
-                          className="flex overflow-hidden rounded-md border"
+                          className="flex gap-0.5 rounded-md bg-muted p-0.5"
                         >
-                          {THEMES.map(({ value, label }) => (
+                          {THEMES.map(({ value, label, icon: Icon }) => (
                             <DropdownMenuRadioItem
                               key={value}
                               value={value}
                               onSelect={(event) => event.preventDefault()}
                               className={THEME_ITEM}
                             >
+                              <Icon aria-hidden />
                               {label}
                             </DropdownMenuRadioItem>
                           ))}
@@ -352,6 +355,7 @@ export function AppShell({
           <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4 data-vertical:self-center" />
+            {budgetId && currentBudget.data && <BudgetCrumb name={currentBudget.data.name} />}
             <div ref={setHeaderSlot} className="flex min-w-0 flex-1 items-center gap-2" />
           </header>
           <ScrollArea
@@ -387,6 +391,21 @@ function GlobalShortcuts({ onHelp, onPalette }: { onHelp: () => void; onPalette:
 }
 
 const anyField = () => true;
+
+/**
+ * The budget's name before the page title while the sidebar is folded to the icon rail, where the
+ * switcher can't show it. With the sidebar open the bar is the page's alone.
+ */
+function BudgetCrumb({ name }: { name: string }) {
+  const { state, isMobile } = useSidebar();
+  if (isMobile || state !== "collapsed") return null;
+  return (
+    <span className="flex min-w-0 max-w-48 shrink items-center gap-2 text-muted-foreground text-sm">
+      <span className="truncate">{name}</span>
+      <ChevronRight aria-hidden className="size-3.5 shrink-0" />
+    </span>
+  );
+}
 
 /** The command palette's entry in the sidebar, with its keys; on a phone it closes the sheet. */
 function PaletteButton({ onOpen }: { onOpen: () => void }) {
@@ -483,7 +502,7 @@ function SidebarResizer({
       aria-valuemax={SIDEBAR.max}
       aria-valuenow={open ? width : 0}
       tabIndex={0}
-      className="absolute inset-y-0 -right-1 z-20 w-2 cursor-ew-resize outline-none after:absolute after:inset-y-0 after:left-1/2 after:w-px after:bg-transparent hover:after:bg-sidebar-border focus-visible:after:bg-ring"
+      className="absolute inset-y-0 -right-1 z-20 w-2 cursor-ew-resize outline-none after:absolute after:inset-y-0 after:left-1/2 after:w-px after:bg-transparent hover:after:bg-sidebar-ring focus-visible:after:bg-ring"
       onPointerDown={(e) => {
         e.preventDefault();
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -520,7 +539,7 @@ function SidebarResizer({
 function BottomNav({ budgetId }: { budgetId: string }) {
   const { setOpenMobile } = useSidebar();
   const item =
-    "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[0.7rem] text-muted-foreground outline-none focus-visible:bg-muted data-[active]:font-medium data-[active]:text-foreground [&_svg]:size-5";
+    "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[0.7rem] text-muted-foreground outline-none focus-visible:bg-muted data-[active]:font-medium data-[active]:text-foreground data-[active]:[&_svg]:text-primary-text [&_svg]:size-5";
   return (
     <nav
       aria-label="Quick navigation"
@@ -529,7 +548,6 @@ function BottomNav({ budgetId }: { budgetId: string }) {
       <Link
         to="/budgets/$budgetId"
         params={{ budgetId }}
-        search={{ month: lastViewedMonth(budgetId) }}
         activeOptions={{ exact: true, includeSearch: false }}
         activeProps={{ "data-active": true, "aria-current": "page" }}
         className={item}

@@ -69,7 +69,7 @@ function Report() {
   const empty = query.isError
     ? "Couldn't load the report."
     : report && report.groups.length === 0
-      ? "Nothing was assigned or spent in these months."
+      ? "Nothing was assigned or spent in these months. Assign money on the plan, and each category's plan against its spending will show here."
       : undefined;
 
   const onCategory = (row: { categoryId: string; name: string }, month?: BudgetMonth) =>
@@ -143,7 +143,9 @@ function Report() {
             <Stat
               label={left >= 0n ? "Left" : "Over plan"}
               value={format(left < 0n ? -left : left)}
-              color={STATUS_COLOR[status]}
+              color={
+                report.assigned === 0n && report.spent === 0n ? undefined : STATUS_COLOR[status]
+              }
             />
             <Stat label="Spent of plan" value={percent === null ? "—" : `${percent.toFixed(1)}%`} />
           </>
@@ -156,7 +158,7 @@ function Report() {
       </p>
 
       <ChartCard
-        title={`Assigned vs spent · ${rangeLabel(state.range)}`}
+        title="Assigned vs spent"
         view={search.view ?? "chart"}
         onViewChange={(view) => update({ view })}
         loading={loading}

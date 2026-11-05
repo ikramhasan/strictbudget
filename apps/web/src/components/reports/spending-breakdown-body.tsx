@@ -1,8 +1,7 @@
 import { type CurrencyCode, money } from "@strictbudget/engine";
-import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronRight, Flag } from "lucide-react";
+import { ChartPie, ChevronRight, Flag, LayoutDashboard } from "lucide-react";
 import type { ReactNode } from "react";
 import { accountsQueryOptions } from "@/lib/accounts";
 import { useBudget } from "@/lib/budget-context";
@@ -10,12 +9,10 @@ import { categoriesQueryOptions } from "@/lib/categories";
 import { FLAG_CLASS, flagsQueryOptions } from "@/lib/flags";
 import {
   type ReportRequest,
-  rangeLabel,
   reportActivityOptions,
   reportTransactionsOptions,
 } from "@/lib/reports";
 import {
-  BREAKDOWN_BY,
   BREAKDOWN_LABELS,
   type BreakdownBy,
   type BreakdownRow,
@@ -27,7 +24,7 @@ import {
   UNCATEGORIZED_GROUP,
 } from "@/lib/spending-breakdown";
 import type { useReportState } from "@/lib/use-report";
-import { ChartCard } from "./chart-card";
+import { ChartCard, type ChartKind, ReportEmpty } from "./chart-card";
 import type { DrillDown } from "./drill-down-sheet";
 import { type BreakdownChartKind, SpendingBreakdownChart } from "./spending-breakdown-chart";
 import { SpendingBreakdownList, SpendingBreakdownTable } from "./spending-breakdown-list";
@@ -157,41 +154,31 @@ export function SpendingBreakdownBody({
     });
 
   const loading = activity.isPending || categories.isPending;
+  const filtered = Object.keys(state.filters).length > 0;
+  const noSpending = (
+    <ReportEmpty title="No spending to break down">
+      {filtered
+        ? "Nothing matches these filters in this range. Widen the range or clear a filter."
+        : "Spending from your budget accounts in this range will be broken down here once you add transactions."}
+    </ReportEmpty>
+  );
   const chartKind: BreakdownChartKind = search.chart ?? "donut";
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        {group !== undefined ? (
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1 font-medium text-lg">
-            <button
-              type="button"
-              className="text-primary-text hover:underline"
-              onClick={() => update({ group: undefined })}
-            >
-              All Groups
-            </button>
-            <ChevronRight className="size-4 text-muted-foreground" />
-            <span>{groupName ?? "…"}</span>
-          </nav>
-        ) : null}
-        <div className="-mx-1 ml-auto max-w-full overflow-x-auto px-1">
-          <ToggleGroup
-            type="single"
-            variant="outline"
-            size="sm"
-            value={by}
-            onValueChange={(v) => v && update({ by: v as BreakdownBy, group: undefined })}
-            aria-label="Break down by"
+      {group !== undefined && (
+        <nav aria-label="Breadcrumb" className="flex items-center gap-1 font-medium text-lg">
+          <button
+            type="button"
+            className="rounded-sm text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => update({ group: undefined })}
           >
-            {BREAKDOWN_BY.map((b) => (
-              <ToggleGroupItem key={b} value={b} className="px-2.5">
-                {BREAKDOWN_LABELS[b].many}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        </div>
-      </div>
+            All groups
+          </button>
+          <ChevronRight aria-hidden className="size-4 text-muted-foreground" />
+          <span>{groupName ?? "…"}</span>
+        </nav>
+      )}
 
       <dl className="grid grid-cols-2 gap-3 rounded-lg border p-4 sm:grid-cols-3 lg:grid-cols-5">
         <Stat label="Total Spending" big>
@@ -228,40 +215,27 @@ export function SpendingBreakdownBody({
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <ChartCard
-          title={`Total Spending · ${rangeLabel(state.range)}`}
+          title="Total Spending"
           view={state.view}
-          onViewChange={(view) => update({ view })}
+          kinds={CHART_KINDS}
+          kind={chartKind}
+          onViewChange={(view, kind) =>
+            update({
+              view: view === "chart" ? undefined : view,
+              ...(kind && { chart: kind === "donut" ? undefined : (kind as BreakdownChartKind) }),
+            })
+          }
           loading={loading}
-          empty={rows.length === 0 ? "No spending in this range with these filters." : undefined}
+          empty={rows.length === 0 ? noSpending : undefined}
           fileName="strictbudget-spending-breakdown"
           className="content-start"
           chart={
-            <div className="grid gap-2">
-              <ToggleGroup
-                type="single"
-                variant="outline"
-                size="sm"
-                value={chartKind}
-                onValueChange={(v) =>
-                  v && update({ chart: v === "donut" ? undefined : (v as BreakdownChartKind) })
-                }
-                aria-label="Chart type"
-                className="justify-self-end"
-              >
-                <ToggleGroupItem value="donut" className="px-2.5">
-                  Donut
-                </ToggleGroupItem>
-                <ToggleGroupItem value="treemap" className="px-2.5">
-                  Treemap
-                </ToggleGroupItem>
-              </ToggleGroup>
-              <SpendingBreakdownChart
-                kind={chartKind}
-                breakdown={breakdown}
-                nested={by === "category"}
-                onSelect={select}
-              />
-            </div>
+            <SpendingBreakdownChart
+              kind={chartKind}
+              breakdown={breakdown}
+              nested={by === "category"}
+              onSelect={select}
+            />
           }
           table={
             <SpendingBreakdownTable
@@ -283,7 +257,9 @@ export function SpendingBreakdownBody({
             <span className="font-normal text-muted-foreground text-sm">Total Spending</span>
           </h2>
           {loading ? null : rows.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Nothing to show.</p>
+            <p className="py-2 text-muted-foreground text-sm">
+              Each {rowNoun.one.toLowerCase()}'s share of your spending will be listed here.
+            </p>
           ) : (
             <SpendingBreakdownList
               breakdown={breakdown}
@@ -337,6 +313,11 @@ export function SpendingBreakdownBody({
     </>
   );
 }
+
+const CHART_KINDS: readonly ChartKind[] = [
+  { value: "donut", label: "Donut", icon: <ChartPie /> },
+  { value: "treemap", label: "Treemap", icon: <LayoutDashboard /> },
+];
 
 function TransactionMeta({
   t,

@@ -47,9 +47,7 @@ describe("CategoryInspector", () => {
       expect(screen.getByText(label as string).nextSibling).toHaveTextContent(amount as string);
     }
     expect(
-      screen.getByText(
-        /You've overspent this category by A2500 with cash and credit\. Add at least A1000/,
-      ),
+      screen.getByText(/Overspent by A2500 with cash and credit\. Move in at least A1000/),
     ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Notes"), "Quarterly");
@@ -82,7 +80,7 @@ describe("CategoryInspector", () => {
     expect(screen.getByText("Assigned This Month").nextSibling).toHaveTextContent("–");
     expect(screen.getByText("Credit Spending").nextSibling).toHaveTextContent("A-100");
     // Only the cash part comes out of next month's Ready to Assign.
-    expect(screen.getByText(/A200 will be deducted/)).toBeInTheDocument();
+    expect(screen.getByText(/A200 comes out of next month/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Notes")).not.toBeInTheDocument();
   });
 });
@@ -114,7 +112,7 @@ describe("CategoryInspector overspending", () => {
     show(breakdown(-400n, 0n, -400n));
     expect(
       screen.getByText(
-        "You've overspent this category by A400 with credit. Cover this overspending to avoid creating debt!",
+        "Overspent by A400 on credit. Cover it so the card balance doesn't grow into new debt.",
       ),
     ).toBeInTheDocument();
   });
@@ -122,7 +120,7 @@ describe("CategoryInspector overspending", () => {
   it("asks for the cash part of a mixed shortfall", () => {
     show(breakdown(-300n, -100n, -200n));
     expect(
-      screen.getByText(/by A300 with cash and credit\. Add at least A100 to this category/),
+      screen.getByText(/by A300 with cash and credit\. Move in at least A100/),
     ).toBeInTheDocument();
   });
 });

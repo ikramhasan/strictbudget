@@ -71,7 +71,13 @@ export function IncomeExpenseChart({
             tickLine={false}
             axisLine={false}
           />
-          <YAxis tickFormatter={tick} tickLine={false} axisLine={false} width={80} />
+          <YAxis
+            niceTicks="snap125"
+            tickFormatter={tick}
+            tickLine={false}
+            axisLine={false}
+            width={80}
+          />
           <ReferenceLine y={0} stroke="var(--border)" />
           <Tooltip
             cursor={{ fill: "var(--muted)", fillOpacity: 0.4 }}

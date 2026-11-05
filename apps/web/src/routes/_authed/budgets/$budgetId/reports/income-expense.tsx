@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
-import { ChartCard } from "@/components/reports/chart-card";
+import { ChartCard, ReportEmpty } from "@/components/reports/chart-card";
 import { type DrillDown, DrillDownSheet } from "@/components/reports/drill-down-sheet";
 import { ExportButton } from "@/components/reports/export-button";
 import { type ChartSeries, IncomeExpenseChart } from "@/components/reports/income-expense-chart";
@@ -140,6 +140,10 @@ function Report() {
   };
 
   const loading = !table;
+  const filtered = Object.keys(state.filters).length > 0;
+  const noData =
+    table !== null &&
+    [...table.totalIncome.months, ...table.totalExpenses.months].every((v) => v === 0n);
   return (
     <ReportPage
       title="Income v Expense"
@@ -162,6 +166,15 @@ function Report() {
         view={state.view}
         onViewChange={(view) => update({ view })}
         loading={loading}
+        empty={
+          noData ? (
+            <ReportEmpty title="No income or expenses yet">
+              {filtered
+                ? "Nothing matches these filters in this range. Widen the range or clear a filter."
+                : "What came in and what went out each month will chart here once you add transactions."}
+            </ReportEmpty>
+          ) : undefined
+        }
         fileName="income-expense"
         chart={table && <IncomeExpenseChart table={table} onPick={onChartPick} />}
         table={
@@ -201,20 +214,22 @@ function Report() {
           )
         }
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="font-semibold">Table</h2>
-        <div className="ml-auto flex items-center gap-2">
-          <Switch
-            id="income-expense-heat"
-            checked={search.heat === true}
-            onCheckedChange={(on) => update({ heat: on || undefined })}
-          />
-          <Label htmlFor="income-expense-heat" className="font-normal text-sm">
-            Shade unusual spending
-          </Label>
+      {!noData && (
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="font-semibold">Table</h2>
+          <div className="ml-auto flex items-center gap-2">
+            <Switch
+              id="income-expense-heat"
+              checked={search.heat === true}
+              onCheckedChange={(on) => update({ heat: on || undefined })}
+            />
+            <Label htmlFor="income-expense-heat" className="font-normal text-sm">
+              Shade unusual spending
+            </Label>
+          </div>
         </div>
-      </div>
-      {table ? (
+      )}
+      {noData ? null : table ? (
         <IncomeExpenseTable table={table} heat={search.heat === true} onPick={onPick} />
       ) : income.isError || expenses.isError || categories.isError ? (
         <p className="text-muted-foreground text-sm">Couldn't load the report.</p>

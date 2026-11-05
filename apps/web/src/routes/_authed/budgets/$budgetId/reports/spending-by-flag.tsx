@@ -26,7 +26,7 @@ import { useBudget } from "@/lib/budget-context";
 import { categoriesQueryOptions } from "@/lib/categories";
 import { todayIso } from "@/lib/dates";
 import { FLAG_CLASS, FLAG_COLOR, flagName, flagsQueryOptions } from "@/lib/flags";
-import { monthLabel, rangeLabel, reportActivityOptions, UNCATEGORIZED_COLOR } from "@/lib/reports";
+import { monthLabel, reportActivityOptions, UNCATEGORIZED_COLOR } from "@/lib/reports";
 import { breakdownOf, breakdownRows } from "@/lib/spending-breakdown";
 import {
   exportName,
@@ -179,7 +179,7 @@ function Overview({
         )}
       </section>
       <ChartCard
-        title={`Spending by flag · ${rangeLabel(state.range)}`}
+        title="Spending by flag"
         view={search.view ?? "chart"}
         onViewChange={(view) => update({ view })}
         loading={loading}
@@ -270,10 +270,10 @@ function OneFlag({
 
   return (
     <>
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-sm">
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1 font-medium text-lg">
         <button
           type="button"
-          className="text-muted-foreground hover:text-foreground hover:underline"
+          className="rounded-sm text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={() => update({ flag: undefined, view: undefined, months: undefined })}
         >
           All flags
@@ -302,7 +302,7 @@ function OneFlag({
         )}
       </section>
       <ChartCard
-        title={`Categories · ${rangeLabel(state.range)}`}
+        title="Categories"
         view={search.view ?? "chart"}
         onViewChange={(view) => update({ view })}
         loading={loading}
@@ -329,7 +329,7 @@ function OneFlag({
         }
       />
       <ChartCard
-        title={`By month · ${rangeLabel(state.range)}`}
+        title="By month"
         view={search.months ?? "chart"}
         onViewChange={(months) => update({ months })}
         loading={byMonth.isPending}

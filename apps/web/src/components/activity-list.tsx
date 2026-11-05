@@ -1,7 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { accountsQueryOptions } from "@/lib/accounts";
-import { type ActivityEvent, type ActivityLookups, actorName, describeEvent } from "@/lib/activity";
+import {
+  type ActivityEvent,
+  type ActivityLookups,
+  actorName,
+  describeEvent,
+  groupEvents,
+} from "@/lib/activity";
 import { $api } from "@/lib/api";
 import { useBudget } from "@/lib/budget-context";
 import { categoriesQueryOptions } from "@/lib/categories";
@@ -47,6 +53,8 @@ export function useActivityLookups(): ActivityLookups {
   }, [accounts.data, categories.data, payees.data, members.data, formatAmount, formatDate, budget]);
 }
 
+const MAX_RELATED = 6;
+
 export function ActivityList({
   events,
   dateOf,
@@ -63,8 +71,8 @@ export function ActivityList({
   return (
     // One bordered list with dividers, like the register and category list, not a stack of cards.
     <ol className="divide-y rounded-lg border">
-      {events.map((event) => {
-        const line = describeEvent(event, lookups);
+      {groupEvents(events, lookups).map(({ lead: event, rest }) => {
+        const line = describeEvent(event, lookups, rest);
         return (
           <li key={event.id} className="flex gap-3 px-4 py-3 text-sm">
             <MemberAvatar
@@ -99,6 +107,23 @@ export function ActivityList({
                     </div>
                   ))}
                 </dl>
+              )}
+              {rest.length > 0 && (
+                // What else the same save did, one line each.
+                <ul className="grid gap-0.5 border-l-2 pl-2.5 text-muted-foreground text-xs">
+                  {rest.slice(0, MAX_RELATED).map((other) => {
+                    const related = describeEvent(other, lookups);
+                    return (
+                      <li key={other.id} className="truncate">
+                        {related.action.charAt(0).toUpperCase() + related.action.slice(1)}
+                        {related.subject && (
+                          <span className="text-foreground"> · {related.subject}</span>
+                        )}
+                      </li>
+                    );
+                  })}
+                  {rest.length > MAX_RELATED && <li>and {rest.length - MAX_RELATED} more</li>}
+                </ul>
               )}
             </div>
             <time

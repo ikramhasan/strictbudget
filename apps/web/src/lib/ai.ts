@@ -37,7 +37,7 @@ export function useUpdateAiSettings(budgetId: string) {
 export function aiUnavailableMessage(reason: AiSettings["unavailableReason"]): string | null {
   switch (reason) {
     case "NOT_CONFIGURED":
-      return "AI isn't set up on this strictbudget server yet. Whoever runs it needs to add an AI key (AI_API_KEY) before AI features can be turned on.";
+      return "AI isn't available on this server yet. Whoever runs it can turn it on by adding an Anthropic API key to the server's settings.";
     case null:
       return null;
   }

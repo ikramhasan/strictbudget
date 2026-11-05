@@ -47,7 +47,7 @@ function SignInPage() {
   return (
     <AuthCard
       title="Welcome back"
-      description="Sign in to your budget."
+      description="Sign in to pick up where you left off."
       footer={
         <span>
           New here?{" "}

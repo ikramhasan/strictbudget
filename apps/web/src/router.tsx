@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
+import { ErrorScreen } from "./components/error-screen";
 import { NotFound } from "./components/not-found";
 import { routeTree } from "./routeTree.gen";
 
@@ -13,7 +14,8 @@ export function createAppRouter(queryClient: QueryClient) {
     scrollRestoration: true,
     // The app shell's ScrollArea viewport scrolls the page, not the window.
     scrollToTopSelectors: ["#app-scroll"],
-    defaultNotFoundComponent: NotFound,
+    defaultNotFoundComponent: () => <NotFound />,
+    defaultErrorComponent: ({ error, reset }) => <ErrorScreen error={error} reset={reset} />,
   });
 }
 

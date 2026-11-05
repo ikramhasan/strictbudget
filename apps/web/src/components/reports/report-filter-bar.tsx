@@ -9,6 +9,7 @@ import {
 import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
 import { useQuery } from "@tanstack/react-query";
 import { Flag } from "lucide-react";
+import type { ReactNode } from "react";
 import { accountsQueryOptions } from "@/lib/accounts";
 import { useBudget } from "@/lib/budget-context";
 import { categoriesQueryOptions } from "@/lib/categories";
@@ -29,7 +30,10 @@ const ACCOUNT_SECTIONS = [
   ["tracking", "Tracking Accounts"],
 ] as const;
 
-/** A report's filters, kept in its URL. */
+/**
+ * A report's filters, kept in its URL: the range, then what to include, then anything the report
+ * adds (`children`, such as Group by), as items of the report's one toolbar row.
+ */
 export function ReportFilterBar({
   search,
   update,
@@ -39,6 +43,7 @@ export function ReportFilterBar({
   earliest,
   show,
   accountFilter,
+  children,
 }: {
   search: ReportSearch;
   update: UpdateSearch;
@@ -49,6 +54,7 @@ export function ReportFilterBar({
   show: readonly ReportFilterName[];
   /** Which accounts the account filter offers (budget accounts for spending reports). */
   accountFilter?: (account: { type: Parameters<typeof accountFamily>[0] }) => boolean;
+  children?: ReactNode;
 }) {
   const { budget } = useBudget();
   const categories = useQuery({
@@ -111,7 +117,7 @@ export function ReportFilterBar({
   ].filter((s) => s.items.length);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <>
       <RangePicker
         range={range}
         preset={preset}
@@ -121,7 +127,7 @@ export function ReportFilterBar({
       />
       {show.includes("categories") && (
         <ChecklistFilter
-          allLabel="All Categories"
+          allLabel="Categories"
           noun={["Category", "Categories"]}
           searchPlaceholder="Search All Categories"
           sections={categorySections}
@@ -131,7 +137,7 @@ export function ReportFilterBar({
       )}
       {show.includes("accounts") && (
         <ChecklistFilter
-          allLabel="All Accounts"
+          allLabel="Accounts"
           noun={["Account", "Accounts"]}
           searchPlaceholder="Search All Accounts"
           sections={accountSections}
@@ -141,7 +147,7 @@ export function ReportFilterBar({
       )}
       {show.includes("payees") && (
         <ChecklistFilter
-          allLabel="All Payees"
+          allLabel="Payees"
           noun={["Payee", "Payees"]}
           searchPlaceholder="Search All Payees"
           sections={[
@@ -159,7 +165,7 @@ export function ReportFilterBar({
       )}
       {show.includes("flags") && (
         <ChecklistFilter
-          allLabel="All Flags"
+          allLabel="Flags"
           noun={["Flag", "Flags"]}
           searchPlaceholder="Search Flags"
           sections={[
@@ -189,7 +195,7 @@ export function ReportFilterBar({
             update({ compare: (e.target.value || undefined) as ReportComparison | undefined })
           }
         >
-          <NativeSelectOption value="">No comparison</NativeSelectOption>
+          <NativeSelectOption value="">Compare: Off</NativeSelectOption>
           {REPORT_COMPARISONS.map((c) => (
             <NativeSelectOption key={c} value={c}>
               Compare: {COMPARISON_LABELS[c]}
@@ -197,6 +203,33 @@ export function ReportFilterBar({
           ))}
         </NativeSelect>
       )}
-    </div>
+      {children}
+    </>
+  );
+}
+
+/** How a report groups its rows, as one select in the toolbar. */
+export function GroupBySelect<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: readonly { value: T; label: string }[];
+  onChange: (value: T) => void;
+}) {
+  return (
+    <NativeSelect
+      aria-label="Group by"
+      style={{ fieldSizing: "content" }}
+      value={value}
+      onChange={(e) => onChange(e.target.value as T)}
+    >
+      {options.map((o) => (
+        <NativeSelectOption key={o.value} value={o.value}>
+          By {o.label.toLowerCase()}
+        </NativeSelectOption>
+      ))}
+    </NativeSelect>
   );
 }

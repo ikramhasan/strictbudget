@@ -513,7 +513,7 @@ describe("splits", () => {
     });
     expect(createBody(short, usd)).toEqual({
       ok: false,
-      error: "The lines must add up to the total: 10.00 left to split.",
+      error: "The lines must add up to the total: $10.00 left to split.",
     });
   });
 

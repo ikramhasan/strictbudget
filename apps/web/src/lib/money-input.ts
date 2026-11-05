@@ -31,7 +31,9 @@ export function inCurrency<S extends MoneySettings>(
  */
 export function parseMoneyInput(text: string, settings: MoneySettings): bigint | string {
   try {
-    return evaluateAmount(text, settings.currency, settings.numberFormat).amount;
+    // A pasted amount may carry the displayed minus sign.
+    return evaluateAmount(text.replaceAll("\u2212", "-"), settings.currency, settings.numberFormat)
+      .amount;
   } catch (error) {
     if (error instanceof MoneyParseError) {
       return `Enter an amount like ${formatAmount(money(123456n, settings.currency), {

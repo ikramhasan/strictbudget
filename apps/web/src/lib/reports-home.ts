@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { categoriesQueryOptions } from "./categories";
 import { monthQueryOptions } from "./months";
 import { netWorthOptions } from "./net-worth";
-import { currentMonth, planColors, type ReportSum, reportActivityOptions } from "./reports";
+import { currentMonth, planHues, type ReportSum, reportActivityOptions } from "./reports";
 
 /** Spending per month, positive (Total Spending: minus the months' category nets). */
 export function spentByMonth(rows: readonly ReportSum[]): Map<BudgetMonth, bigint> {
@@ -202,23 +202,38 @@ export function useReportsHomeData(budgetId: string) {
       })
     : [];
 
-  // Cash in open budget cash accounts (the budget's currency, today's rate) for the runway.
-  const cash = (worth.data?.accounts ?? [])
-    .filter((a) => !a.closed && accountFamily(a.type) === "cash")
-    .reduce((s, a) => s + BigInt(a.balances.at(-1)?.base ?? "0"), 0n);
+  // Cash in open budget cash accounts (the budget's currency, today's rate) for the runway, and
+  // at each month-end for its sparkline.
+  const cashAccounts = (worth.data?.accounts ?? []).filter(
+    (a) => !a.closed && accountFamily(a.type) === "cash",
+  );
+  const cash = cashAccounts.reduce((s, a) => s + BigInt(a.balances.at(-1)?.base ?? "0"), 0n);
+  const cashByMonth = new Map<BudgetMonth, bigint>(
+    (worth.data?.months ?? []).map((m, i) => [
+      m.month as BudgetMonth,
+      cashAccounts.reduce((s, a) => s + BigInt(a.balances[i]?.base ?? "0"), 0n),
+    ]),
+  );
   return {
     month,
     loading: !ready && !failed,
     failed,
     netWorth: worth.data,
     cash,
+    cashByMonth,
     months: monthsIn(range),
     spent,
     earned,
     categoryNames: names,
-    categoryColors: categories.data
-      ? planColors(categories.data).categories
-      : new Map<string, string>(),
+    /** Each category's group hue and group (its colour family), and its group's name. */
+    categoryHues: categories.data
+      ? planHues(categories.data).categories
+      : new Map<string, { hue: number; family: string }>(),
+    groupNames: new Map(
+      (categories.data?.groups ?? []).flatMap((g) =>
+        g.categories.map((c) => [c.id, g.name] as const),
+      ),
+    ),
     byCategory: byCategory.data?.rows ?? [],
     observations: notes,
   };

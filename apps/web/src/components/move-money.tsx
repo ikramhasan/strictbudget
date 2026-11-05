@@ -6,12 +6,21 @@ import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/na
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@strictbudget/ui/components/tabs";
 import { cn } from "@strictbudget/ui/lib/utils";
+import { useIsMutating } from "@tanstack/react-query";
 import { CalendarDays, ChevronDown, CircleCheck, Zap } from "lucide-react";
-import { type FormEvent, type ReactElement, type ReactNode, useState } from "react";
+import {
+  type FormEvent,
+  type ReactElement,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type { TargetMark } from "@/lib/budget-view";
 import { useDifferentiateWithoutColor } from "@/lib/display-options";
 import { type MoneyOption, minAmount, monthLabel } from "@/lib/months";
-import { CategoryField } from "./register-fields";
+import { useOptionalQueryClient } from "@/lib/query-client";
+import { CategoryField, isInsidePopup } from "./register-fields";
 
 export interface MoveActions {
   /** Ready to Assign and the visible categories, with what's available in each. */
@@ -56,9 +65,8 @@ export const PILL = {
  */
 export const STRONG_PILL = {
   caution:
-    "border border-black bg-[#f6c91d] px-[7px] py-px text-[#191818] dark:border-white dark:bg-[#fbe48e] dark:text-[#0c0d22]",
-  negative:
-    "border border-black bg-[#bf2e3b] px-[7px] py-px text-white dark:border-white dark:bg-[#912333]",
+    "border border-black bg-(--bar-underfunded) px-[7px] py-px text-black dark:border-white dark:text-black",
+  negative: "border border-black bg-(--bar-overspent) px-[7px] py-px text-white dark:border-white",
 };
 
 /**
@@ -86,10 +94,14 @@ export function AvailablePill({
   const mark = sign >= 0 ? target : undefined;
   const [strong] = useDifferentiateWithoutColor();
   const tone = caution ? "caution" : sign > 0 ? "positive" : sign < 0 ? "negative" : "zero";
+  const flash = useChangeFlash(amount);
   return (
     <span
+      // A new key restarts the pulse on each change.
+      key={flash}
       data-tone={tone}
       className={cn(
+        flash > 0 && "motion-safe:animate-[pill-flash_700ms_var(--ease-out-quint)]",
         "inline-flex max-w-full items-center gap-1 truncate rounded-full px-2 py-0.5 align-middle font-medium text-sm transition-colors duration-150 ease-out-quint",
         strong && (tone === "caution" || tone === "negative") ? STRONG_PILL[tone] : PILL[tone],
         className,
@@ -123,6 +135,38 @@ export function AvailablePill({
       )}
     </span>
   );
+}
+
+/** A choice in the category picker's own (portalled) list isn't a click outside the popover. */
+const keepForPicker = (event: Event) => {
+  if (isInsidePopup(event.target)) event.preventDefault();
+};
+
+/**
+ * Counts changes to `value` that follow the user's own edits (an assign, a move, undo), so the
+ * pill that changed pulses once. Moving between months or someone else's edit doesn't.
+ */
+function useChangeFlash(value: string) {
+  const { client } = useOptionalQueryClient();
+  const mutating = useIsMutating({}, client);
+  const edited = useRef(false);
+  if (mutating > 0) edited.current = true;
+  const previous = useRef(value);
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (previous.current === value) return;
+    previous.current = value;
+    if (edited.current) setCount((n) => n + 1);
+  }, [value]);
+  useEffect(() => {
+    if (mutating > 0) return;
+    // The refetch after an edit lands shortly after it.
+    const timer = setTimeout(() => {
+      edited.current = false;
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [mutating]);
+  return count;
 }
 
 /** A small ring filled clockwise from the top to `percent` (the underfunded icon). */
@@ -207,7 +251,7 @@ export function AvailableButton({
           </button>
         )}
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80">
+      <PopoverContent arrow onInteractOutside={keepForPicker} align="end" className="w-80">
         {overspent ? (
           <PickSourceForm
             key={month}
@@ -233,6 +277,8 @@ export function AvailableButton({
               (o) => (later || o.id !== categoryId) && BigInt(o.available) > 0n,
             )}
             format={format}
+            needed={-BigInt(amount)}
+            verb="Cover"
             onCancel={() => setOpen(false)}
             onPick={async (source) => {
               setOpen(false);
@@ -313,6 +359,7 @@ function MoveForm({
       <Field>
         <FieldLabel>To</FieldLabel>
         <CategoryField
+          chevron
           label={`${label} to`}
           placeholder=""
           value={to}
@@ -365,13 +412,14 @@ export function AssignButton({
   };
   return (
     <Popover open={open} onOpenChange={setOpen}>
+      {/* Green, toned to the Ready to Assign card it sits on. */}
       <PopoverTrigger asChild>
-        <Button size="sm" className="bg-green-800 text-white hover:bg-green-900">
+        <Button size="sm" variant="success">
           Assign
           <ChevronDown />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="center" className="w-80">
+      <PopoverContent arrow onInteractOutside={keepForPicker} align="center" className="w-80">
         <Tabs value={tab} onValueChange={choose}>
           <TabsList className="w-full">
             <TabsTrigger value="auto">
@@ -406,6 +454,8 @@ function PickSourceForm({
   aside,
   options,
   format,
+  needed,
+  verb,
   onCancel,
   onPick,
 }: {
@@ -414,11 +464,19 @@ function PickSourceForm({
   aside?: ReactNode;
   options: readonly MoneyOption[];
   format: Format;
+  /** The shortfall to make up: a source with enough is used as soon as it's picked. */
+  needed: bigint;
+  /** What the button does, e.g. "Cover". */
+  verb: string;
   onCancel: () => void;
   onPick: (source: MoneyOption) => Promise<void>;
 }) {
   const [from, setFrom] = useState<string | null>(null);
+  const submitRef = useRef<HTMLButtonElement>(null);
   const source = options.find((o) => o.id === from);
+  const taken = source ? minAmount(BigInt(source.available), needed) : 0n;
+  const short = needed - taken;
+  const show = (amount: bigint) => format(amount.toString());
   return (
     <form
       onSubmit={(event) => {
@@ -433,21 +491,41 @@ function PickSourceForm({
           {aside}
         </div>
         <CategoryField
+          chevron
           label={label}
-          placeholder=""
+          placeholder="Pick a category"
           value={from}
-          onChange={setFrom}
+          onChange={(id) => {
+            setFrom(id);
+            // Picking fills the field; Enter (or a click) on the button then confirms, as in Move.
+            requestAnimationFrame(() => submitRef.current?.focus());
+          }}
           categories={options}
           describe={describer(options, format)}
           autoFocus
         />
       </Field>
+      {source && (
+        <p
+          className={cn(
+            "rounded-md px-2.5 py-2 text-xs leading-relaxed",
+            short > 0n
+              ? "bg-amber-500/10 text-amber-800 dark:text-amber-300"
+              : "bg-muted text-muted-foreground",
+          )}
+          aria-live="polite"
+        >
+          {short > 0n
+            ? `${source.name} has ${show(taken)}, so ${show(short)} of the ${show(needed)} stays short.`
+            : `Moves ${show(taken)} from ${source.name}.`}
+        </p>
+      )}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" size="sm" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" size="sm" disabled={!source}>
-          OK
+        <Button ref={submitRef} type="submit" size="sm" disabled={!source}>
+          {source ? `${verb} ${show(taken)}` : verb}
         </Button>
       </div>
     </form>
@@ -497,7 +575,7 @@ export function FixThisButton({
           Fix This
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80">
+      <PopoverContent arrow onInteractOutside={keepForPicker} align="end" className="w-80">
         <PickSourceForm
           key={month}
           label="Un-assign money from"
@@ -522,6 +600,8 @@ export function FixThisButton({
             (o) => o.id !== actions.readyToAssignId && BigInt(o.available) > 0n,
           )}
           format={format}
+          needed={-BigInt(readyToAssign)}
+          verb="Un-assign"
           onCancel={() => setOpen(false)}
           onPick={async (source) => {
             setOpen(false);

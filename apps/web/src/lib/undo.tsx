@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { toast } from "sonner";
 import { useShortcutsEnabled } from "./preferences";
 
 export interface UndoCommand {
@@ -89,6 +90,20 @@ export function UndoProvider({ children }: { children: ReactNode }) {
     setFuture([]);
   }, []);
 
+  // The toast's button runs the latest undo or redo, whatever the history is by then.
+  const latest = useRef<{ undo: () => Promise<void>; redo: () => Promise<void> } | null>(null);
+  /** Says what just happened, with the way back. */
+  const announce = useCallback((done: "Undone" | "Redone", label: string) => {
+    const back = done === "Undone" ? "Redo" : "Undo";
+    toast(`${done} · ${label.charAt(0).toUpperCase()}${label.slice(1)}`, {
+      id: "undo",
+      action: {
+        label: back,
+        onClick: () => void (back === "Redo" ? latest.current?.redo() : latest.current?.undo()),
+      },
+    });
+  }, []);
+
   const undo = useCallback(async () => {
     const command = past.at(-1);
     if (!command || busy) return;
@@ -97,13 +112,14 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       await command.undo();
       setPast((commands) => commands.slice(0, -1));
       setFuture((commands) => [...commands, command]);
+      announce("Undone", command.label);
     } catch (error) {
       if (isStaleVersion(error)) setPast((commands) => commands.slice(0, -1));
       throw error;
     } finally {
       setBusy(false);
     }
-  }, [past, busy]);
+  }, [past, busy, announce]);
 
   const redo = useCallback(async () => {
     const command = future.at(-1);
@@ -113,13 +129,15 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       await command.redo();
       setFuture((commands) => commands.slice(0, -1));
       setPast((commands) => [...commands, command]);
+      announce("Redone", command.label);
     } catch (error) {
       if (isStaleVersion(error)) setFuture((commands) => commands.slice(0, -1));
       throw error;
     } finally {
       setBusy(false);
     }
-  }, [future, busy]);
+  }, [future, busy, announce]);
+  latest.current = { undo, redo };
 
   return (
     <UndoContext.Provider

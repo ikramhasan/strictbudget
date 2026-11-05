@@ -15,12 +15,12 @@ import {
   LayoutGrid,
   Palette,
   Plus,
-  Wallet,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Budget } from "@/lib/budgets";
 import { exportPlan } from "@/lib/exports";
+import { BrandMark } from "./brand";
 import { DisplayOptionsDialog } from "./display-options-dialog";
 import { EditFlagsDialog } from "./edit-flags-dialog";
 import { SidebarDropdownContent } from "./sidebar-dropdown-content";
@@ -40,9 +40,7 @@ export function BudgetSwitcher({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <SidebarMenuButton size="lg">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Wallet className="size-4 text-primary-foreground" />
-            </div>
+            <BrandMark className="size-8!" />
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-semibold">{current?.name ?? "Select a budget"}</span>
               <span className="truncate text-muted-foreground text-xs">
@@ -93,7 +91,7 @@ export function BudgetSwitcher({
                   exportPlan(current).catch(() => toast.error("Couldn't export the budget."));
                 }}
               >
-                <FileDown /> Export Plan
+                <FileDown /> Export Budget
               </DropdownMenuItem>
             </>
           )}

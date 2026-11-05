@@ -270,7 +270,6 @@ function PaletteBody({
               void navigate({
                 to: "/budgets/$budgetId",
                 params,
-                search: { month: lastViewedMonth(budgetId) },
               }),
           },
           {

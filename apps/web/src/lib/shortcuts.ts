@@ -5,7 +5,7 @@ import { useShortcutsEnabled } from "./preferences";
 
 export const SHORTCUT_SECTIONS = [
   "Universal",
-  "Plan Actions",
+  "Budget Actions",
   "Account Actions",
   "Date Picker",
 ] as const;
@@ -69,26 +69,26 @@ export const SHORTCUTS = {
 
   snooze: {
     label: "Snooze target",
-    section: "Plan Actions",
+    section: "Budget Actions",
     caps: ["shift", "Z"],
     keys: "shift+z",
     command: "Snooze or wake selected targets",
   },
   collapseGroups: {
     label: "Collapse/expand groups",
-    section: "Plan Actions",
+    section: "Budget Actions",
     caps: ["mod", "↑/↓"],
     keys: "mod+up, mod+down",
   },
   moveRows: {
     label: "Move between plan rows",
-    section: "Plan Actions",
+    section: "Budget Actions",
     caps: ["↑/↓"],
     keys: "up, down",
   },
   extendCategories: {
     label: "Select multiple categories",
-    section: "Plan Actions",
+    section: "Budget Actions",
     caps: ["shift", "↑/↓"],
     keys: "shift+up, shift+down",
   },

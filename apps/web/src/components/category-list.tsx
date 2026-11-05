@@ -59,7 +59,7 @@ import { type AssignActions, AssignedCell } from "./assigned-cell";
 import { ActivityButton, type ActivityTarget, type CardSummary } from "./category-activity";
 import { CategoryMovesButton, type CategoryMovesContext } from "./category-moves";
 import { AvailableButton, AvailablePill, type MoveActions } from "./move-money";
-import { NamePopover } from "./name-popover";
+import { NamePopover, splitEmoji } from "./name-popover";
 import { ProgressBar } from "./progress-bar";
 
 export interface CategoryListActions {
@@ -165,10 +165,12 @@ const NAME_BUTTON = "min-w-0 shrink justify-start";
 // a hovered row's, so the two read apart in both themes.
 const TRAY =
   "overflow-x-auto rounded-xl bg-muted px-[5px] pb-[5px] ring-1 ring-border dark:bg-[color-mix(in_oklch,var(--background),black_20%)]";
+/** The tray's own colour, for its pinned header (rows scroll under it). */
+const TRAY_FILL = "bg-muted dark:bg-[color-mix(in_oklch,var(--background),black_20%)]";
 const BODY =
   "overflow-hidden rounded-[10px] border bg-background shadow-[0_1px_2px_rgb(0_0_0/0.04)] dark:shadow-[0_1px_2px_rgb(0_0_0/0.4)]";
 const GROUP_ROW =
-  "bg-[color-mix(in_oklch,var(--muted),var(--foreground)_6%)] dark:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_8%)]";
+  "bg-[color-mix(in_oklch,var(--muted),var(--background)_35%)] dark:bg-[color-mix(in_oklch,var(--muted),var(--background)_45%)]";
 const HOVER_ROW =
   "hover:bg-muted dark:hover:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_3%)]";
 const SELECTED_ROW =
@@ -200,6 +202,7 @@ export function CategoryList({
   collapsed = NO_GROUPS,
   onCollapsedChange,
   addGroupDisabled = false,
+  fill = false,
 }: {
   data: CategoryListData;
   actions: CategoryListActions;
@@ -208,6 +211,11 @@ export function CategoryList({
   onCollapsedChange?: (collapsed: ReadonlySet<string>) => void;
   /** Greys out the header's "Add a category group" button (as in a custom view). */
   addGroupDisabled?: boolean;
+  /**
+   * Fill the height it's given and scroll inside the tray, the column header pinned on top, so
+   * the labels never leave the screen.
+   */
+  fill?: boolean;
 }) {
   // A viewer can't add, rename, hide, delete or reorder.
   const readOnly = useOptionalBudget()?.readOnly ?? false;
@@ -285,20 +293,22 @@ export function CategoryList({
     const active = document.activeElement;
     if (active instanceof HTMLElement && active.closest("[data-assigned-cell]")) active.blur();
   }
-  function stepCategories(direction: 1 | -1, extend: boolean) {
-    if (!selection) return;
+  /** Moves the selection a row up or down; false when there's no row that way. */
+  function stepCategories(direction: 1 | -1, extend: boolean): boolean {
+    if (!selection) return false;
     const next = stepSelection(onScreen, selection.selected, cursor.current, direction, {
       extend,
       several: "none",
     });
-    if (!next) return;
+    if (!next) return false;
     cursor.current = next.cursor;
     leaveAssigned();
     selection.setAll(next.ids);
     const id = next.cursor.head;
-    if (!id) return;
+    if (!id) return true;
     if (!extend && id !== UNCATEGORIZED_ID && figures?.assign) setKeyEdit(id);
     document.querySelector(`[data-category-row="${id}"]`)?.scrollIntoView?.({ block: "nearest" });
+    return true;
   }
   const keys = { enabled: selection !== undefined, allowIn: inAssigned };
   useShortcut("moveRows", (e) => stepCategories(e.key === "ArrowUp" ? -1 : 1, false), keys);
@@ -384,10 +394,26 @@ export function CategoryList({
   }
 
   return (
-    <div className="grid gap-4">
-      <div className={TRAY}>
+    <div className={fill ? "flex min-h-0 flex-1 flex-col" : "grid gap-4"}>
+      {/* Tab in an Assigned input saves it and opens the next category's, like a spreadsheet. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard handling for the inputs inside */}
+      <div
+        className={cn(TRAY, fill && "min-h-0 overflow-y-auto overscroll-contain scrollbar-thin")}
+        onKeyDown={(e) => {
+          if (e.key !== "Tab" || !(e.target instanceof HTMLInputElement) || !inAssigned(e.target)) {
+            return;
+          }
+          if (stepCategories(e.shiftKey ? -1 : 1, false)) e.preventDefault();
+        }}
+      >
         <div className="min-w-fit">
-          <div className={cn(ROW, "font-medium text-[13px] text-muted-foreground")}>
+          <div
+            className={cn(
+              ROW,
+              "font-medium text-[13px] text-muted-foreground",
+              fill && cn("sticky top-0 z-10", TRAY_FILL),
+            )}
+          >
             <div className={NAME_CELL}>
               <Button
                 variant="ghost"
@@ -919,6 +945,7 @@ function CategoryRow({
 }) {
   const { format, assign, move, selection } = figures ?? {};
   const isPayment = Boolean(category.linkedAccountId);
+  const showStatus = Boolean(totals && figures && figures.progressBars !== false);
   const caution =
     totals && figures ? isCaution(totals, figures.month.month, figures.currentMonth) : false;
   const { ref, handleRef, isDragSource } = useSortable({
@@ -986,7 +1013,7 @@ function CategoryRow({
       onClick={onRowClick}
     >
       <div className="grid min-w-0 gap-1">
-        <div className={NAME_CELL}>
+        <div className={cn(NAME_CELL, "flex-wrap gap-y-0.5")}>
           {/* The handle takes the slot a group's chevron uses, shown when the row is hovered. */}
           {reorderable ? (
             <DragHandle
@@ -1052,7 +1079,7 @@ function CategoryRow({
                   selectAndEdit();
                 }}
               >
-                <span className="truncate">{category.name}</span>
+                <CategoryName name={category.name} />
               </Button>
             }
           />
@@ -1062,13 +1089,11 @@ function CategoryRow({
               aria-label="Has a note"
             />
           )}
-          {totals &&
-            format &&
+          {/* The target's status, right-aligned on the name's line: the name gives way first. */}
+          {showStatus &&
+            totals &&
             figures &&
-            figures.progressBars !== false &&
-            // No note under a payment category, target or not.
-            !isPayment &&
-            (totals.available.startsWith("-") ? (
+            (isPayment || !format ? null : totals.available.startsWith("-") ? (
               <OverspentNote totals={totals} format={format} />
             ) : (
               <RowNote
@@ -1082,7 +1107,7 @@ function CategoryRow({
               />
             ))}
         </div>
-        {totals?.bar && figures?.progressBars !== false && (
+        {showStatus && totals?.bar && (
           // Lined up with the name, past the two slots and the name button's padding.
           <ProgressBar bar={totals.bar} className="mr-1 ml-16" />
         )}
@@ -1159,11 +1184,17 @@ function CategoryRow({
   );
 }
 
+/**
+ * The status caption: right-aligned beside the name, or on its own line under it when both don't
+ * fit (the name cell wraps), so neither has to be cut short.
+ */
+const NOTE = "ml-auto max-w-full truncate whitespace-nowrap pl-2 text-right text-xs leading-4";
+
 /** The note under a category's name: its target's status, or what was spent. */
 function RowNote({ note }: { note: { strong: string; rest: string } | null }) {
   if (!note) return null;
   return (
-    <span className="min-w-0 flex-1 basis-0 truncate pl-2 text-right text-muted-foreground text-xs">
+    <span className={cn(NOTE, "text-muted-foreground")} title={`${note.strong}${note.rest}`}>
       {note.strong && <span className="font-medium text-foreground">{note.strong}</span>}
       {note.rest}
     </span>
@@ -1171,9 +1202,24 @@ function RowNote({ note }: { note: { strong: string; rest: string } | null }) {
 }
 
 /**
- * The note on an overspent category: what was spent of what it had (carried in plus assigned),
- * e.g. "Overspent. $25.00 of $10.00".
+ * A category's name with its leading emoji (if any) on a soft backdrop, so a dark emoji stays
+ * visible on a dark row.
  */
+function CategoryName({ name }: { name: string }) {
+  const { emoji, text } = splitEmoji(name);
+  if (!emoji) return <span className="truncate">{name}</span>;
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <span aria-hidden className="shrink-0 rounded-sm px-0.5 leading-none dark:bg-foreground/12">
+        {emoji}
+      </span>
+      <span className="sr-only">{emoji} </span>
+      <span className="truncate">{text}</span>
+    </span>
+  );
+}
+
+/** The note on an overspent category: by how much, e.g. "Overspent by $15.00". */
 function OverspentNote({
   totals,
   format,
@@ -1181,11 +1227,11 @@ function OverspentNote({
   totals: MonthTotals;
   format: CategoryFigures["format"];
 }) {
-  const spent = -BigInt(totals.activity);
-  const had = BigInt(totals.available) - BigInt(totals.activity);
+  const over = -BigInt(totals.available);
+  if (over <= 0n) return null;
   return (
-    <span className="min-w-0 flex-1 basis-0 truncate pl-2 text-right text-destructive text-xs">
-      Overspent. {format(spent.toString())} of {format(had.toString())}
+    <span className={cn(NOTE, "font-medium text-destructive")}>
+      Overspent by {format(over.toString())}
     </span>
   );
 }

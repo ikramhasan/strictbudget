@@ -140,7 +140,7 @@ describe("a card's Record Payment", () => {
 describe("the card register's Payment figure", () => {
   it("is plain green when the payment is covered", () => {
     render(<PaymentFigure categoryId="pay" available={300n} caution={false} format={format} />);
-    expect(screen.getByText("Payment")).toBeTruthy();
+    expect(screen.getByText("Available for payment")).toBeTruthy();
     expect(screen.getByTitle("$3.00")).toBeTruthy();
     expect(screen.queryByRole("button")).toBeNull();
   });
