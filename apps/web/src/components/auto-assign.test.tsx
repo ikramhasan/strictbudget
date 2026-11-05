@@ -1,8 +1,10 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { Toaster, toast } from "sonner";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { UndoProvider } from "@/lib/undo";
 import { NO_AUTO_ASSIGN } from "@/test/fixtures";
-import { AutoAssignPanel } from "./auto-assign";
+import { AutoAssignClose, AutoAssignPanel, autoAssignSummary } from "./auto-assign";
 
 const categories = [
   {
@@ -54,7 +56,79 @@ const names = new Map([
 ]);
 const format = (a: string) => `A${a}`;
 
+describe("autoAssignSummary", () => {
+  it("says how much moved and into or out of how many categories", () => {
+    expect(autoAssignSummary([{ delta: 13899n }], format)).toBe("Assigned A13899 to 1 category");
+    expect(autoAssignSummary([{ delta: -500n }, { delta: -100n }], format)).toBe(
+      "Moved A600 from 2 categories to Ready to Assign",
+    );
+    expect(autoAssignSummary([{ delta: 700n }, { delta: -500n }], format)).toBe(
+      "Updated 2 categories, assigning A200 more",
+    );
+    expect(autoAssignSummary([{ delta: 100n }, { delta: -500n }], format)).toBe(
+      "Updated 2 categories, returning A400 to Ready to Assign",
+    );
+    expect(autoAssignSummary([{ delta: 500n }, { delta: -500n }], format)).toBe(
+      "Updated 2 categories",
+    );
+  });
+});
+
 describe("AutoAssignPanel", () => {
+  // Sonner keeps its toasts across renders.
+  afterEach(() => toast.dismiss());
+
+  it("closes the pop-up it sits in and says what changed, with Undo", async () => {
+    const user = userEvent.setup();
+    const close = vi.fn();
+    render(
+      <UndoProvider>
+        <Toaster />
+        <AutoAssignClose value={close}>
+          <AutoAssignPanel
+            bare
+            categories={categories}
+            names={names}
+            selection={false}
+            readyToAssign={0n}
+            format={format}
+            onApply={vi.fn().mockResolvedValue(undefined)}
+          />
+        </AutoAssignClose>
+      </UndoProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: "Assigned Last Month A3000" }));
+    expect(close).not.toHaveBeenCalled();
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Apply Changes" }),
+    );
+    expect(close).toHaveBeenCalled();
+    expect(await screen.findByText("Assigned A2000 to 1 category")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+  });
+
+  it("says nothing when applying fails (the failure has its own message)", async () => {
+    const user = userEvent.setup();
+    render(
+      <UndoProvider>
+        <Toaster />
+        <AutoAssignPanel
+          categories={categories}
+          names={names}
+          selection={false}
+          readyToAssign={0n}
+          format={format}
+          onApply={vi.fn().mockRejectedValue(new Error("offline"))}
+        />
+      </UndoProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: "Assigned Last Month A3000" }));
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Apply Changes" }),
+    );
+    expect(screen.queryByText(/Assigned A2000/)).not.toBeInTheDocument();
+  });
+
   it("previews the whole plan before assigning", async () => {
     const user = userEvent.setup();
     const onApply = vi.fn().mockResolvedValue(undefined);
@@ -74,7 +148,7 @@ describe("AutoAssignPanel", () => {
     expect(within(dialog).getByText("Rent")).toBeInTheDocument();
     expect(within(dialog).getAllByText("+A2000")).toHaveLength(2);
     expect(onApply).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Update Assigned Amounts" }));
+    await user.click(within(dialog).getByRole("button", { name: "Apply Changes" }));
     expect(onApply).toHaveBeenCalledWith("assignedLastMonth");
   });
 
@@ -99,7 +173,7 @@ describe("AutoAssignPanel", () => {
     expect(within(dialog).getByRole("alert")).toHaveTextContent(
       "This assigns A1500 more than you have.",
     );
-    expect(within(dialog).getByRole("button", { name: "Update Assigned Amounts" })).toHaveAttribute(
+    expect(within(dialog).getByRole("button", { name: "Apply Changes" })).toHaveAttribute(
       "data-variant",
       "destructive",
     );
@@ -115,7 +189,7 @@ describe("AutoAssignPanel", () => {
     );
     dialog = screen.getByRole("alertdialog");
     expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Update Assigned Amounts" })).toHaveAttribute(
+    expect(within(dialog).getByRole("button", { name: "Apply Changes" })).toHaveAttribute(
       "data-variant",
       "default",
     );
@@ -241,7 +315,7 @@ describe("AutoAssignPanel", () => {
       expect(within(dialog).getByText("+A1500")).toBeInTheDocument();
       expect(within(dialog).getByText(/may need more attention/)).toBeInTheDocument();
       expect(within(dialog).getByText("Visa")).toBeInTheDocument();
-      await user.click(within(dialog).getByRole("button", { name: "Assign Money" }));
+      await user.click(within(dialog).getByRole("button", { name: "Apply Changes" }));
       expect(onApply).toHaveBeenCalledWith("underfunded");
     });
 

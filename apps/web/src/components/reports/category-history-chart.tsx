@@ -326,7 +326,7 @@ function MonthTooltip({
     </p>
   );
   return (
-    <div className="grid min-w-52 max-w-72 gap-1 rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
+    <div className="grid min-w-52 max-w-72 gap-1 rounded-lg border bg-popover px-3 py-2 text-xs shadow-md text-popover-foreground">
       <p className="font-medium">{monthLabel(m.month as BudgetMonth, "long")}</p>
       {row("Assigned", format(m.assigned), config.assigned.color)}
       {row("Spent", format(-BigInt(m.activity)), config.spent.color)}

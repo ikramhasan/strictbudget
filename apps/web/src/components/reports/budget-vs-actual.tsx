@@ -21,11 +21,11 @@ import {
 } from "@/lib/budget-vs-actual";
 import { monthLabel } from "@/lib/reports";
 
-/** Under, on and over plan: blue, green and vermillion from the report palette (both themes). */
+/** Under, on and over plan: blue, teal and orange from the report palette (both themes). */
 export const STATUS_COLOR: Record<PlanStatus, string> = {
   under: "var(--report-1)",
   on: "var(--report-3)",
-  over: "var(--report-4)",
+  over: "var(--report-2)",
 };
 
 export const STATUS_LABEL: Record<PlanStatus, string> = {
@@ -328,7 +328,7 @@ export function Heatmap({
         <table className="w-full border-separate border-spacing-0.5 text-xs">
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 bg-background" />
+              <th className="sticky left-0 z-10 bg-card" />
               {report.months.map((m) => (
                 <th
                   key={m}
@@ -345,7 +345,7 @@ export function Heatmap({
               <tr key={r.categoryId}>
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 max-w-36 truncate bg-background pr-2 text-left font-normal"
+                  className="sticky left-0 z-10 max-w-36 truncate bg-card pr-2 text-left font-normal"
                 >
                   {r.name}
                 </th>

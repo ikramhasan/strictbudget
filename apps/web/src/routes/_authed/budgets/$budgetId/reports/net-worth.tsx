@@ -161,7 +161,7 @@ function Report() {
             />
           )}
           {state.view === "chart" && !noData && (
-            <section aria-label="Months" className="grid gap-3 rounded-lg border p-4">
+            <section aria-label="Months" className="grid gap-3 rounded-lg border bg-card p-4">
               <h2 className="font-semibold">{rangeLabel(state.range)}</h2>
               <div className="overflow-x-auto">
                 <NetWorthMonthTable report={report} />

@@ -75,8 +75,9 @@ export function RecentMoves({
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label="Recent Moves">
+            <Button variant="ghost" size="sm" className="text-muted-foreground">
               <History />
+              <span className="max-lg:sr-only">Recent moves</span>
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>

@@ -34,13 +34,13 @@ interface ColumnSpec {
 }
 
 export const COLUMN_SPECS: Record<ColumnId, ColumnSpec> = {
-  select: { header: "Select", width: "2rem", align: "center", srOnly: true },
+  select: { header: "Select", width: "1.75rem", align: "center", srOnly: true },
   review: { header: "Approval", width: "2.25rem", align: "center", srOnly: true },
-  flag: { header: "Flag", width: "2rem", align: "center", srOnly: true },
-  attachment: { header: "Attachment", width: "2rem", align: "center", srOnly: true },
-  account: { header: "Account", width: "8rem" },
+  flag: { header: "Flag", width: "1.75rem", align: "center", srOnly: true },
+  attachment: { header: "Attachment", width: "1.75rem", align: "center", srOnly: true },
+  account: { header: "Account", width: "7rem" },
   // layoutColumns sizes the date to its format (dateWidth).
-  date: { header: "Date", width: "7.5rem" },
+  date: { header: "Date", width: "7rem" },
   payee: { header: "Payee" },
   category: { header: "Category" },
   memo: { header: "Memo" },
@@ -49,10 +49,11 @@ export const COLUMN_SPECS: Record<ColumnId, ColumnSpec> = {
   inflow: { header: "Inflow", width: "5.75rem", align: "right" },
   // Signed, and its editor has a direction toggle beside the figure.
   amount: { header: "Amount", width: "6.5rem", align: "right" },
-  balance: { header: "Balance", width: "6.5rem", align: "right" },
-  enteredBy: { header: "Entered by", width: "2.75rem", align: "center", srOnly: true },
-  cleared: { header: "Cleared", width: "2.5rem", align: "center", srOnly: true },
-  actions: { header: "Actions", width: "2.5rem", srOnly: true },
+  // Fits "-$10,000.00".
+  balance: { header: "Balance", width: "6.25rem", align: "right" },
+  enteredBy: { header: "Entered by", width: "2.5rem", align: "center", srOnly: true },
+  cleared: { header: "Cleared", width: "2.25rem", align: "center", srOnly: true },
+  actions: { header: "Actions", width: "2.25rem", srOnly: true },
 };
 
 /**
@@ -157,15 +158,15 @@ const REM_PX = 16;
 
 /**
  * Payee, Category and Memo share what the fixed columns leave, in these proportions.
- * `comfortable` is what each needs to read well: a layout that gives every one of them that
- * much wins over a wider one that doesn't, so Memo goes (into the payee cell) before Payee and
- * Category get cramped. `min` is the least they're squeezed to before the register scrolls
- * sideways. Memo takes the remainder (Category without it), so the row always fills the register.
+ * `comfortable` is what each needs to read most entries whole (longer ones truncate, with the full
+ * text on hover): a layout that gives every one of them that much wins over a wider one that
+ * doesn't. `min` is the least they're squeezed to before the register scrolls sideways. Memo takes
+ * the remainder (Category without it), so the row always fills the register.
  */
 const FLEX: Partial<Record<ColumnId, { min: number; comfortable: number; share: number }>> = {
-  payee: { min: 104, comfortable: 176, share: 0.36 },
-  category: { min: 120, comfortable: 200, share: 0.36 },
-  memo: { min: 80, comfortable: 140, share: 0.28 },
+  payee: { min: 96, comfortable: 132, share: 0.36 },
+  category: { min: 104, comfortable: 140, share: 0.36 },
+  memo: { min: 72, comfortable: 100, share: 0.28 },
 };
 
 /**
@@ -174,23 +175,23 @@ const FLEX: Partial<Record<ColumnId, { min: number; comfortable: number; share: 
  * are wider than slashes and dots.
  */
 function dateWidth(format: string) {
-  return (format.includes("-") ? 8 : 7.5) * REM_PX;
+  return (format.includes("-") ? 7.25 : 7) * REM_PX;
 }
 
 interface Sizing {
   dragged: ColumnWidths;
   dateFormat: string;
-  /** The account column shows only each account's logo. */
-  accountIcon?: boolean;
+  /** The account column shows each account's name without its logo, in less room. */
+  accountCompact?: boolean;
 }
 
-/** The account's logo and the cell's padding. */
-const ACCOUNT_ICON_PX = 36;
+/** Room for "Checking" or "Visa Card" with the cell's padding; longer names truncate. */
+const ACCOUNT_COMPACT_PX = 84;
 
-function fixedWidth(id: ColumnId, { dragged, dateFormat, accountIcon }: Sizing) {
+function fixedWidth(id: ColumnId, { dragged, dateFormat, accountCompact }: Sizing) {
   if (id === "date") return Math.max(dragged.date ?? 0, dateWidth(dateFormat));
-  if (id === "account" && accountIcon) return ACCOUNT_ICON_PX;
-  return dragged[id] ?? Number.parseFloat(COLUMN_SPECS[id].width ?? "0") * REM_PX;
+  const width = dragged[id] ?? Number.parseFloat(COLUMN_SPECS[id].width ?? "0") * REM_PX;
+  return id === "account" && accountCompact ? Math.min(width, ACCOUNT_COMPACT_PX) : width;
 }
 
 const isFlex = (id: ColumnId, dragged: ColumnWidths) =>
@@ -213,8 +214,8 @@ export interface ColumnLayout {
   widths: Partial<Record<ColumnId, number>>;
   /** The table's least width: wider than the register only when even the narrowest layout isn't. */
   minWidth: number;
-  /** The account column shows only each account's logo. */
-  accountIcon: boolean;
+  /** The account column shows each account's name without its logo. */
+  accountCompact: boolean;
   /** Memo is on but has no room: each row shows it after the payee, and edits it there. */
   memoInPayee: boolean;
 }
@@ -222,13 +223,13 @@ export interface ColumnLayout {
 /**
  * Fits the View menu's columns into the register's width (`available`, px; null before it's
  * measured), so the money columns never scroll under the pinned Cleared and Actions and Payee and
- * Category keep room to read. When they don't all fit, Memo goes first (each row shows its memo
- * after the payee); then Outflow and Inflow fold into one signed Amount; then the running balance
- * goes; then All Accounts shows each account's logo without its name. Where even that leaves Payee
- * and Category short of comfortable, the most compact layout gives them what room there is. The
- * row editors use the same layout (they edit a folded Amount and a logo-only account in place),
- * so nothing moves when a row starts or stops being edited. Past the narrowest layout the table
- * scrolls sideways.
+ * Category keep room to read. When they don't all fit, All Accounts first narrows its account
+ * column to the name alone; then Memo goes (each row shows its memo after the payee); then
+ * Outflow and Inflow fold into one signed Amount; then the running balance goes. Where even that
+ * leaves Payee and Category short of comfortable, the most compact layout gives them what room
+ * there is. The row editors use the same layout (they edit a folded Amount in place), so nothing
+ * moves when a row starts or stops being edited. Past the narrowest layout the table scrolls
+ * sideways.
  */
 export function layoutColumns(
   shown: readonly ColumnId[],
@@ -248,15 +249,13 @@ export function layoutColumns(
   const noMemo = without("memo");
   const noBalance = without("balance");
   const base = { dragged, dateFormat };
+  const compact = { ...base, accountCompact: shown.includes("account") };
   const tiers: { columns: readonly ColumnId[]; sizing: Sizing }[] = [
     { columns: shown, sizing: base },
-    { columns: noMemo(shown), sizing: base },
-    { columns: noMemo(folded), sizing: base },
-    { columns: noBalance(noMemo(folded)), sizing: base },
-    {
-      columns: noBalance(noMemo(folded)),
-      sizing: { ...base, accountIcon: shown.includes("account") },
-    },
+    { columns: shown, sizing: compact },
+    { columns: noMemo(shown), sizing: compact },
+    { columns: noMemo(folded), sizing: compact },
+    { columns: noBalance(noMemo(folded)), sizing: compact },
   ];
   const tier =
     (available === null
@@ -305,7 +304,7 @@ export function layoutColumns(
     columns,
     widths,
     minWidth,
-    accountIcon: sizing.accountIcon ?? false,
+    accountCompact: sizing.accountCompact ?? false,
     memoInPayee: shown.includes("memo") && !columns.includes("memo"),
   };
 }

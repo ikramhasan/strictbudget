@@ -366,11 +366,11 @@ function Stat({
     <button
       type="button"
       onClick={onClick}
-      className="grid content-start gap-1 rounded-lg border p-4 text-left transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="grid content-start gap-1 rounded-lg border bg-card p-4 text-left transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {body}
     </button>
   ) : (
-    <div className="grid content-start gap-1 rounded-lg border p-4">{body}</div>
+    <div className="grid content-start gap-1 rounded-lg border bg-card p-4">{body}</div>
   );
 }

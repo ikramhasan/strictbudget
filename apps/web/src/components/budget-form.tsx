@@ -41,6 +41,7 @@ const SYMBOL_POSITION_LABELS: Record<CurrencySymbolPosition, string> = {
 export function BudgetForm({
   defaultValues,
   currencyLocked = false,
+  requireChange = false,
   submitLabel,
   pendingLabel,
   onSubmit,
@@ -48,6 +49,8 @@ export function BudgetForm({
   defaultValues: BudgetFormValues;
   /** The base currency can't change after creation. */
   currencyLocked?: boolean;
+  /** Editing saved settings: Save waits until something differs from `defaultValues`. */
+  requireChange?: boolean;
   submitLabel: string;
   pendingLabel: string;
   onSubmit: (values: BudgetFormValues) => Promise<string | null>;
@@ -58,6 +61,9 @@ export function BudgetForm({
   const set = <K extends keyof BudgetFormValues>(key: K, value: BudgetFormValues[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
 
+  const changed = (Object.keys(values) as (keyof BudgetFormValues)[]).some((key) =>
+    key === "name" ? values.name.trim() !== defaultValues.name : values[key] !== defaultValues[key],
+  );
   const today = todayIso();
   const sample = previewAmount(values.currency);
 
@@ -163,7 +169,11 @@ export function BudgetForm({
       </div>
 
       {error && <FieldError>{error}</FieldError>}
-      <Button type="submit" disabled={pending} className="justify-self-start">
+      <Button
+        type="submit"
+        disabled={pending || (requireChange && !changed)}
+        className="justify-self-start"
+      >
         {pending && <Spinner />}
         {pending ? pendingLabel : submitLabel}
       </Button>

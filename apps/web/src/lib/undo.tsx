@@ -32,6 +32,8 @@ interface UndoState {
   redoLabel: string | null;
   busy: boolean;
   record: (command: UndoCommand) => void;
+  /** Says what was just done ("Assigned $20.00 to 1 category"), with Undo. */
+  announce: (message: string) => void;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
 }
@@ -104,6 +106,13 @@ export function UndoProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const announceDone = useCallback((message: string) => {
+    toast(message, {
+      id: "undo",
+      action: { label: "Undo", onClick: () => void latest.current?.undo() },
+    });
+  }, []);
+
   const undo = useCallback(async () => {
     const command = past.at(-1);
     if (!command || busy) return;
@@ -148,6 +157,7 @@ export function UndoProvider({ children }: { children: ReactNode }) {
         redoLabel: future.at(-1)?.label ?? null,
         busy,
         record,
+        announce: announceDone,
         undo,
         redo,
       }}
@@ -155,6 +165,11 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       {children}
     </UndoContext.Provider>
   );
+}
+
+/** The history, or null outside a budget (a component shown on its own, as in tests). */
+export function useOptionalUndo() {
+  return useContext(UndoContext);
 }
 
 export function useUndo() {

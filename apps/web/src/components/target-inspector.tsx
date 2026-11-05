@@ -7,8 +7,11 @@ import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/na
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { Switch } from "@strictbudget/ui/components/switch";
 import { cn } from "@strictbudget/ui/lib/utils";
-import { Check, CircleHelp, Trash2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Check, CircleHelp, Plus, Target, Trash2 } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
+import { accountsQueryOptions } from "@/lib/accounts";
+import { useOptionalBudget } from "@/lib/budget-context";
 import { todayIso } from "@/lib/dates";
 import type { LoanPlan } from "@/lib/loan-planner";
 import {
@@ -82,9 +85,9 @@ const CADENCES: { value: Cadence; label: string }[] = [
 
 /** Behaviour choices and their help, per cadence. */
 const CHOICES = {
-  set_aside: { use: "Use for: bills, subscriptions, saving over time" },
-  refill: { use: "Use for: gasoline, fun money, dining out" },
-  balance: { use: "Use for: long-term savings" },
+  set_aside: { use: "Good for bills, subscriptions and saving up over time." },
+  refill: { use: "Good for spending that starts over, like fuel, fun money or eating out." },
+  balance: { use: "Good for long-term savings." },
 } as const;
 
 function choiceLabel(cadence: Cadence, behavior: Behavior, amount: string) {
@@ -253,14 +256,24 @@ export function TargetSection({
   if (!target || !need) {
     return (
       <Section title={title}>
-        <p className="font-medium text-sm">How much do you need for {name}?</p>
-        <p className="text-muted-foreground text-sm">
-          When you create a target, we'll let you know how much money to set aside to stay on track
-          over time.
-        </p>
-        <Button size="sm" variant="secondary" className="w-fit" onClick={() => setEditing(true)}>
-          Create Target
-        </Button>
+        <div className="grid justify-items-center gap-3 rounded-lg border border-dashed bg-muted/40 px-4 py-5 text-center">
+          <span
+            aria-hidden
+            className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary-text ring-1 ring-primary/20"
+          >
+            <Target className="size-5" />
+          </span>
+          <div className="grid gap-1">
+            <p className="text-balance font-medium text-sm">Plan ahead for {name}</p>
+            <p className="text-pretty text-muted-foreground text-sm">
+              Say what it needs and when. We'll work out what to set aside each month so the money
+              is there in time.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setEditing(true)}>
+            <Plus /> Create Target
+          </Button>
+        </div>
       </Section>
     );
   }
@@ -467,9 +480,8 @@ function SnoozeHelp() {
       <PopoverContent arrow className="w-64 text-sm">
         <p className="font-medium">Snooze Target</p>
         <p className="text-muted-foreground">
-          When you snooze a Target, strictbudget will treat the category as if it didn't have a
-          Target (which means the category won't show as underfunded). At the start of next month,
-          your Target will reactivate, well-rested and in a very good mood!
+          A snoozed target asks for nothing this month, so the category doesn't count as
+          underfunded. It wakes up again on the first of next month.
         </p>
       </PopoverContent>
     </Popover>
@@ -536,6 +548,19 @@ function ProgressRing({ percent, green }: { percent: number; green: boolean }) {
   );
 }
 
+/** Whether the budget has an open account in a currency other than `budgetCurrency`. */
+function useHasOtherCurrencies(budgetCurrency: CurrencyCode | undefined) {
+  const budgetId = useOptionalBudget()?.budget.id;
+  const accounts = useQuery({
+    ...accountsQueryOptions(budgetId ?? ""),
+    enabled: Boolean(budgetId && budgetCurrency),
+  });
+  return Boolean(
+    budgetCurrency &&
+      accounts.data?.accounts.some((a) => !a.closed && a.currency !== budgetCurrency),
+  );
+}
+
 /** The first of next month, the default due date for a new dated target. */
 function firstOfNextMonth() {
   const [y, m] = todayIso().split("-").map(Number) as [number, number];
@@ -568,6 +593,14 @@ function TargetEditor({
   const [currency, setCurrency] = useState<CurrencyCode | null>(
     currencies ? (target?.currency ?? currencies.budgetCurrency) : null,
   );
+  const otherCurrencies = useHasOtherCurrencies(currencies?.budgetCurrency);
+  // A budget kept in one currency doesn't ask which; a target already in another one still shows it.
+  const showCurrency =
+    currencies &&
+    currency &&
+    (otherCurrencies ||
+      currency !== currencies.budgetCurrency ||
+      (target !== null && target.currency !== currencies.budgetCurrency));
   const { format, parse, toInput } =
     currencies && currency
       ? currencies.moneyIn(currency)
@@ -685,7 +718,7 @@ function TargetEditor({
           />
           {error && <FieldError>{error}</FieldError>}
         </Field>
-        {currencies && currency && (
+        {showCurrency && (
           <Field>
             <FieldLabel htmlFor="target-currency">Currency</FieldLabel>
             <CurrencyPicker id="target-currency" value={currency} onChange={setCurrency} />

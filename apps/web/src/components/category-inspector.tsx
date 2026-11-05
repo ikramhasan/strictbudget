@@ -99,7 +99,7 @@ export function MonthSummary({
   reportCategories?: string[];
   selectedNames?: string[];
   /**
-   * What the plan's targets ask of this month and the next ("Cost to Be Me"), with the budget's
+   * What the plan's targets ask of this month and the next ("Targets and Income"), with the budget's
    * expected income; shown in the current month only.
    */
   targets?: {
@@ -152,12 +152,11 @@ export function MonthSummary({
       </dl>
       {targets && (
         <>
-          <h3 className="font-semibold text-sm">Cost to Be Me</h3>
-          <CostToBeMe name={name} targets={targets} format={format} />
+          <h3 className="font-semibold text-sm">Targets and Income</h3>
+          <TargetsAndIncome name={name} targets={targets} format={format} />
           {targets.nextMonth > targets.month && (
             <p className="rounded-md bg-muted p-2 text-center text-muted-foreground text-xs">
-              Next month's targets could increase your total to{" "}
-              {format(targets.nextMonth.toString())}
+              Next month's targets add up to {format(targets.nextMonth.toString())}.
             </p>
           )}
         </>
@@ -171,12 +170,12 @@ const barWidth = (part: bigint, whole: bigint) =>
   whole <= 0n || part >= whole ? "100%" : `${Number((part * 10000n) / whole) / 100}%`;
 
 /**
- * Cost to Be Me: the month's targets and, once entered, the expected income, each with a bar
+ * Targets and Income: the month's targets and, once entered, the expected income, each with a bar
  * against the larger of the two. The targets bar is blue while the income covers them and red
  * when it falls short; the income bar is grey. "Enter your expected income" opens an amount
  * field; zero leaves it as it was (it can't be cleared).
  */
-function CostToBeMe({
+function TargetsAndIncome({
   name,
   targets,
   format,
@@ -576,10 +575,8 @@ export function PaymentAlert({
         ) : covered ? (
           <>
             <p>
-              <span className="font-medium">
-                You have enough money to pay off your current balance!
-              </span>{" "}
-              You can make this payment anytime.
+              <span className="font-medium">The balance is covered.</span> You have enough set aside
+              to pay it off whenever you're ready.
             </p>
             {onRecordPayment && (
               <Button size="sm" onClick={onRecordPayment}>
@@ -588,7 +585,7 @@ export function PaymentAlert({
             )}
           </>
         ) : payment.balance >= 0n ? (
-          <p>Your {name} is paid off! Being debt free is a wonderful thing.</p>
+          <p>{name} is paid off. Nothing is owed on it.</p>
         ) : null}
         {!overpaid && warn && payment.overspentCategories > 0n && onCoverOverspent && (
           // One click, no money moves; it shows the Overspent view.
@@ -600,8 +597,8 @@ export function PaymentAlert({
           <>
             <p className="text-center text-muted-foreground">
               {payment.overspentCategories > 0n
-                ? "Can't cover the overspent categories?"
-                : "Don't have more money to assign?"}
+                ? "Can't cover it all this month?"
+                : "Paying it off over time?"}
             </p>
             <Button size="sm" variant="secondary" onClick={onCreateTarget}>
               Create a Debt Payoff Target
@@ -692,7 +689,7 @@ function NoteField({
       <Textarea
         id="category-note"
         value={text}
-        placeholder="Enter a note..."
+        placeholder="Add a note"
         rows={3}
         readOnly={readOnly}
         onChange={(e) => setText(e.target.value)}

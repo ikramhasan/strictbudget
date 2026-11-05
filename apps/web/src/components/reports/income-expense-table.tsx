@@ -24,7 +24,7 @@ export interface CellPick {
   column: CellColumn;
 }
 
-const STICKY = "sticky left-0 z-10 bg-background";
+const STICKY = "sticky left-0 z-10 bg-card";
 
 /**
  * Sections, All Income Sources and groups fold (remembered by the browser); a folded group shows
@@ -158,7 +158,7 @@ export function IncomeExpenseTable({
     value === null ? "—" : `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
 
   return (
-    <div className="max-h-[75vh] overflow-auto rounded-lg border">
+    <div className="max-h-[75vh] overflow-auto rounded-lg border bg-card">
       <table className="w-full min-w-max border-separate border-spacing-0 text-sm [&_td]:border-b [&_th]:border-b">
         <thead>
           <tr>
@@ -169,7 +169,7 @@ export function IncomeExpenseTable({
               <th
                 key={label}
                 scope="col"
-                className="sticky top-0 z-20 min-w-28 bg-background px-3 py-2 text-right font-medium text-muted-foreground text-xs uppercase"
+                className="sticky top-0 z-20 min-w-28 bg-card px-3 py-2 text-right font-medium text-muted-foreground text-xs uppercase"
               >
                 {label}
               </th>
@@ -303,6 +303,6 @@ export function IncomeExpenseTable({
 function heatStyle(heat: number | null): CSSProperties {
   if (heat === null || Math.abs(heat) < 0.1) return {};
   const strength = Math.round(8 + Math.abs(heat) * 30);
-  const color = heat > 0 ? "var(--destructive)" : "var(--report-3)";
+  const color = heat > 0 ? "var(--report-2)" : "var(--report-1)";
   return { backgroundColor: `color-mix(in oklab, ${color} ${strength}%, transparent)` };
 }

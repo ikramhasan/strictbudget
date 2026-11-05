@@ -257,7 +257,7 @@ function SubjectPicker({
 
 function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <div className="grid content-start gap-1 rounded-lg border p-4">
+    <div className="grid content-start gap-1 rounded-lg border bg-card p-4">
       <span className="text-muted-foreground text-sm">{label}</span>
       <span className="font-semibold text-2xl tabular-nums">{value}</span>
       {note && <span className="text-muted-foreground text-xs tabular-nums">{note}</span>}

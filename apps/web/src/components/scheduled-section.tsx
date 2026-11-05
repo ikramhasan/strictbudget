@@ -35,10 +35,9 @@ import {
 } from "@/lib/scheduled";
 import { type CategoryOption, type Draft, movableAccounts, type Payee } from "@/lib/transactions";
 import { useUndo } from "@/lib/undo";
-import { AccountLogo } from "./accounts-nav";
 import { FlagMenu } from "./flag-menu";
 import { COLUMN_SPECS, type ColumnId, isEditable, PINNED_BG, pinned } from "./register-columns";
-import { ICON_CELL, REVEAL_ON_ROW, RegisterCell, RegisterRow } from "./register-table";
+import { AccountMark, ICON_CELL, REVEAL_ON_ROW, RegisterCell, RegisterRow } from "./register-table";
 import { ScheduledAttachmentCell } from "./transaction-attachment";
 import { TransactionEditor } from "./transaction-editor";
 
@@ -68,7 +67,7 @@ export function ScheduledSection({
   onChanged,
   selected,
   onSelect,
-  accountIcon = false,
+  accountCompact = false,
 }: {
   rows: readonly ScheduledTransaction[];
   columns: readonly ColumnId[];
@@ -83,8 +82,8 @@ export function ScheduledSection({
   onChanged: () => Promise<void>;
   selected: ReadonlySet<string>;
   onSelect: (id: string, on: boolean, shift: boolean) => void;
-  /** The account column shows only each account's logo. */
-  accountIcon?: boolean;
+  /** The account column shows each account's name without its logo. */
+  accountCompact?: boolean;
 }) {
   // A viewer sees the schedules but can't change or enter them.
   const { budget, formatAmount, readOnly: viewer } = useBudget();
@@ -328,15 +327,11 @@ export function ScheduledSection({
         );
       case "account":
         return (
-          <span
-            className="flex min-w-0 items-center gap-2"
-            title={accountIcon ? row.accountName : undefined}
-          >
-            <AccountLogo
-              name={row.accountName}
-              logo={accountById.get(row.accountId)?.logo ?? null}
-            />
-            <span className={cn("truncate", accountIcon && "sr-only")}>{row.accountName}</span>
+          <span className="flex min-w-0 items-center gap-2" title={row.accountName}>
+            {!accountCompact && accounts.some((a) => a.logo) && (
+              <AccountMark logo={accountById.get(row.accountId)?.logo ?? null} />
+            )}
+            <span className="truncate">{row.accountName}</span>
           </span>
         );
       case "date": {
@@ -454,7 +449,6 @@ export function ScheduledSection({
                 initial={editing.draft}
                 label="Edit scheduled transaction"
                 columns={columns}
-                accountIcon={accountIcon}
                 accounts={accounts.filter((a) => !a.closed || a.id === row.accountId)}
                 accountChoices={movableAccounts(accounts, row)}
                 payees={payees}
@@ -481,7 +475,7 @@ export function ScheduledSection({
                 budget.dateFormat,
               )}`}
               data-selected={selected.has(row.id) || undefined}
-              className={SCHEDULED_ROW}
+              className={cn("h-9 pointer-coarse:h-11", SCHEDULED_ROW)}
             >
               {columns.map((id) => {
                 const spec = COLUMN_SPECS[id];
@@ -503,10 +497,11 @@ export function ScheduledSection({
                     }
                     style={pin?.style}
                     className={cn(
-                      "truncate",
+                      // The row sets the height, as the transactions' rows do.
+                      "truncate py-0",
                       pin && [pin.className, PINNED_BG.scheduled],
                       spec.align === "right" && "text-right tabular-nums",
-                      spec.align === "center" && "py-1 text-center",
+                      spec.align === "center" && "text-center",
                       ICON_CELL[id],
                       (id === "category" || id === "memo") && "text-muted-foreground",
                       editable && "cursor-text",

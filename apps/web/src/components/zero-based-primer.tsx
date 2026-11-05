@@ -29,8 +29,8 @@ export function ZeroBasedPrimer({ example }: { example: (units: number) => strin
       </Move>
       <Move
         n={2}
-        title="Give every dollar a job"
-        body="Assign it to categories until Ready to Assign reaches zero."
+        title="Assign every dollar"
+        body="Put it into categories until Ready to Assign reaches zero."
       >
         <div className="grid w-full max-w-56 gap-2">
           <div className="flex h-2.5 overflow-hidden rounded-full">
@@ -70,7 +70,7 @@ export function ZeroBasedPrimer({ example }: { example: (units: number) => strin
       </Move>
       <Move
         n={4}
-        title="Roll with the punches"
+        title="Adjust as you go"
         body="Overspent somewhere? Move money from another category. Changing the plan is part of the plan."
       >
         <div className="grid w-full max-w-56 gap-1.5 text-xs">

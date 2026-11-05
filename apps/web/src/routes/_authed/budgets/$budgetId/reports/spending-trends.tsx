@@ -186,13 +186,13 @@ function Report() {
     // "Other" share its neutral wherever they're listed.
     const colored = (
       folded: { months: TrendMonth<string>[]; keys: string[] },
-      colors = seriesColors(folded.months, folded.keys, plain),
+      colors = seriesColors(folded.keys, plain),
     ): TrendChartData => ({
       ...base,
       ...folded,
       info: (key) => ({ ...plain(key), color: colors.get(key) ?? OTHER_COLOR }),
     });
-    const barsFolded = withOther(months, BAR_SERIES, plain);
+    const barsFolded = withOther(months, BAR_SERIES);
     const bars = colored({
       months: barsFolded.months,
       // Stacked in plan order, Other on top.
@@ -202,7 +202,7 @@ function Report() {
       { months, keys: seriesKeys(months, catalog, level) },
       new Map(barsFolded.keys.map((k) => [k, bars.info(k).color])),
     );
-    const top = colored(withOther(months, TOP_SERIES, plain));
+    const top = colored(withOther(months, TOP_SERIES));
     return { all, bars, top, total, average };
   }, [
     catalog,
@@ -487,7 +487,7 @@ function Report() {
       />
 
       {derived && !empty && (
-        <section aria-label="Months" className="overflow-x-auto rounded-lg border">
+        <section aria-label="Months" className="overflow-x-auto rounded-lg border bg-card">
           <TrendMonthsTable data={derived.all} />
         </section>
       )}

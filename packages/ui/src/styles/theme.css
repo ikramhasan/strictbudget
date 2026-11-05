@@ -12,6 +12,7 @@
   /* strictbudget: a strong ease-out (easeOutQuint) for UI transitions; the built-in ease-out is too weak. */
   --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
   --color-success: var(--success);
+  --color-scrim: var(--scrim);
   --color-primary-text: var(--primary-text);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -148,7 +149,9 @@
 :root {
   /* strictbudget: cobalt ink. Neutrals carry a trace of the brand's hue (265) instead of pure grey;
      text is ink, not black. */
-  --background: #ffffff;
+  /* Three surfaces: the page a cool off-white, cards and popovers white on it, so a card reads as
+     raised without a shadow. */
+  --background: oklch(0.985 0.004 265);
   --foreground: oklch(0.255 0.03 265);
   --card: #ffffff;
   --card-foreground: oklch(0.255 0.03 265);
@@ -156,73 +159,42 @@
   --popover-foreground: oklch(0.255 0.03 265);
   --primary: #3e6ae1;
   --primary-foreground: #ffffff;
-  --secondary: oklch(0.968 0.006 265);
+  --secondary: oklch(0.962 0.007 265);
   --secondary-foreground: oklch(0.255 0.03 265);
-  --muted: oklch(0.968 0.006 265);
+  --muted: oklch(0.962 0.007 265);
   --muted-foreground: oklch(0.515 0.025 265);
-  --accent: oklch(0.958 0.012 265);
+  --accent: oklch(0.954 0.012 265);
   --accent-foreground: oklch(0.255 0.03 265);
   --destructive: oklch(0.555 0.2 23);
   --border: oklch(0.922 0.01 265);
   --input: oklch(0.87 0.014 265);
   --ring: #3e6ae1;
-  --chart-1: oklch(0.555 0.18 264.5);
-  --chart-2: oklch(0.6 0.105 185);
-  --chart-3: oklch(0.66 0.15 62);
-  --chart-4: oklch(0.56 0.2 300);
-  --chart-5: oklch(0.6 0.19 18);
-  /* Report palette: Okabe–Ito's colour-blind-safe hues, tuned per theme for contrast. */
-  --report-1: oklch(0.55 0.14 255);
-  --report-2: oklch(0.64 0.15 68);
-  --report-3: oklch(0.58 0.12 160);
-  --report-4: oklch(0.58 0.17 32);
-  --report-5: oklch(0.54 0.16 300);
-  --report-6: oklch(0.6 0.16 352);
-  --report-7: oklch(0.6 0.1 205);
-  --report-8: oklch(0.55 0.012 265);
-  /* Report ramps: five tints of each hue, strongest first (`--report-<hue>-<1..5>`). A category
-     group takes a hue and its categories the tints, biggest first. Every tint is at least 3:1
-     against --background (the strongest is the darkest here, the lightest in dark mode);
-     --report-ink-strong and -soft are the label colours on tints 1-3 and 4-5. */
-  --report-1-1: oklch(0.43 0.14 255);
-  --report-1-2: oklch(0.49 0.14 255);
-  --report-1-3: oklch(0.55 0.14 255);
-  --report-1-4: oklch(0.605 0.14 255);
-  --report-1-5: oklch(0.66 0.14 255);
-  --report-2-1: oklch(0.43 0.095 68);
-  --report-2-2: oklch(0.49 0.105 68);
-  --report-2-3: oklch(0.55 0.12 68);
-  --report-2-4: oklch(0.605 0.13 68);
-  --report-2-5: oklch(0.66 0.145 68);
-  --report-3-1: oklch(0.43 0.095 160);
-  --report-3-2: oklch(0.49 0.11 160);
-  --report-3-3: oklch(0.55 0.12 160);
-  --report-3-4: oklch(0.605 0.12 160);
-  --report-3-5: oklch(0.65 0.12 160);
-  --report-4-1: oklch(0.43 0.16 32);
-  --report-4-2: oklch(0.49 0.17 32);
-  --report-4-3: oklch(0.55 0.17 32);
-  --report-4-4: oklch(0.605 0.17 32);
-  --report-4-5: oklch(0.66 0.17 32);
-  --report-5-1: oklch(0.43 0.16 300);
-  --report-5-2: oklch(0.49 0.16 300);
-  --report-5-3: oklch(0.55 0.16 300);
-  --report-5-4: oklch(0.605 0.16 300);
-  --report-5-5: oklch(0.66 0.16 300);
-  --report-6-1: oklch(0.43 0.16 352);
-  --report-6-2: oklch(0.49 0.16 352);
-  --report-6-3: oklch(0.55 0.16 352);
-  --report-6-4: oklch(0.605 0.16 352);
-  --report-6-5: oklch(0.66 0.16 352);
-  --report-7-1: oklch(0.43 0.07 205);
-  --report-7-2: oklch(0.49 0.08 205);
-  --report-7-3: oklch(0.55 0.09 205);
-  --report-7-4: oklch(0.605 0.1 205);
-  --report-7-5: oklch(0.65 0.1 205);
-  /* "Other": a neutral apart from Uncategorized's --report-8, still 3:1. */
-  --report-other: oklch(0.66 0.012 265);
-  --report-ink-strong: #ffffff;
-  --report-ink-soft: oklch(0.2 0 0);
+  /* Report palette: eight categorical colours in a fixed order, validated (both themes, against
+     --background and --card) so each neighbouring pair differs in hue and in lightness, stays
+     apart under protanopia and deuteranopia, and every colour is at least 3:1 against the
+     surface. Charts hand them out in the order their marks sit, never skipping one. */
+  --report-1: #1e4ab7;
+  --report-2: #ed6924;
+  --report-3: #007959;
+  --report-4: #db63bb;
+  --report-5: #a81124;
+  --report-6: #079cc6;
+  --report-7: #076502;
+  --report-8: #9f6fea;
+  /* Uncategorized and "Other": neutrals 15 apart in lightness, both still 3:1. */
+  --report-uncategorized: oklch(0.5 0.015 265);
+  --report-other: oklch(0.65 0.012 265);
+  /* Money in and out: blue and orange, apart for every kind of colour vision. */
+  --report-income: var(--report-1);
+  --report-spending: var(--report-2);
+  /* Labels on a report colour. */
+  --report-ink: #ffffff;
+  --report-uncategorized-ink: #ffffff;
+  --chart-1: var(--report-1);
+  --chart-2: var(--report-2);
+  --chart-3: var(--report-3);
+  --chart-4: var(--report-4);
+  --chart-5: var(--report-5);
   --radius: 0.625rem;
   /* strictbudget: the sidebar is an ink rail in both themes, the logo's tile set into it. Its
      contents are dark-themed (see the [data-sidebar="sidebar"] rule below). */
@@ -243,95 +215,59 @@
   /* strictbudget: primary as text. Dark mode lifts it toward white (as the library's own link and
      tick colours do): the dark --primary is 3.5:1 on --background, under WCAG AA's 4.5:1. */
   --primary-text: var(--primary);
+  /* Behind a dialog, sheet or the command palette: a plain dim, no blur. */
+  --scrim: oklch(0.2 0.03 265 / 0.42);
 }
 
 .dark {
-  --background: oklch(0.2 0.013 265);
+  /* Depth comes from lightness here: the rail (0.145), the page (0.19), cards (0.232), then menus,
+     dialogs and drawers (0.27), each step lighter the nearer it sits. */
+  --background: oklch(0.19 0.014 265);
   --foreground: oklch(0.945 0.006 265);
-  --card: oklch(0.2 0.013 265);
+  --card: oklch(0.232 0.016 265);
   --card-foreground: oklch(0.945 0.006 265);
-  /* A step lighter than the page, so menus, dialogs and drawers read as raised. */
-  --popover: oklch(0.232 0.015 265);
+  --popover: oklch(0.27 0.017 265);
   --popover-foreground: oklch(0.945 0.006 265);
   --primary: #3e6ae1;
   --primary-foreground: #ffffff;
-  --secondary: oklch(0.255 0.016 265);
+  --secondary: oklch(0.29 0.017 265);
   --secondary-foreground: oklch(0.945 0.006 265);
-  --muted: oklch(0.255 0.016 265);
-  --muted-foreground: oklch(0.715 0.02 265);
-  --accent: oklch(0.27 0.02 265);
+  --muted: oklch(0.29 0.017 265);
+  --muted-foreground: oklch(0.725 0.02 265);
+  --accent: oklch(0.31 0.021 265);
   --accent-foreground: oklch(0.945 0.006 265);
   --destructive: oklch(0.7 0.165 22);
-  --border: oklch(0.29 0.016 265);
-  --input: oklch(0.35 0.018 265);
+  --border: oklch(0.31 0.017 265);
+  --input: oklch(0.37 0.019 265);
   --ring: oklch(0.705 0.15 265.4);
-  --chart-1: oklch(0.62 0.17 264.5);
-  --chart-2: oklch(0.72 0.12 185);
-  --chart-3: oklch(0.78 0.14 75);
-  --chart-4: oklch(0.68 0.16 300);
-  --chart-5: oklch(0.7 0.16 18);
-  --report-1: oklch(0.7 0.13 255);
-  --report-2: oklch(0.78 0.14 68);
-  --report-3: oklch(0.74 0.12 160);
-  --report-4: oklch(0.7 0.16 32);
-  --report-5: oklch(0.7 0.14 300);
-  --report-6: oklch(0.74 0.14 352);
-  --report-7: oklch(0.76 0.1 205);
-  --report-8: oklch(0.7 0.012 265);
-  --report-1-1: oklch(0.82 0.09 255);
-  --report-1-2: oklch(0.745 0.13 255);
-  --report-1-3: oklch(0.67 0.14 255);
-  --report-1-4: oklch(0.595 0.14 255);
-  --report-1-5: oklch(0.53 0.14 255);
-  --report-2-1: oklch(0.82 0.135 68);
-  --report-2-2: oklch(0.745 0.15 68);
-  --report-2-3: oklch(0.67 0.145 68);
-  --report-2-4: oklch(0.595 0.13 68);
-  --report-2-5: oklch(0.535 0.115 68);
-  --report-3-1: oklch(0.82 0.12 160);
-  --report-3-2: oklch(0.745 0.12 160);
-  --report-3-3: oklch(0.67 0.12 160);
-  --report-3-4: oklch(0.595 0.12 160);
-  --report-3-5: oklch(0.52 0.115 160);
-  --report-4-1: oklch(0.82 0.1 32);
-  --report-4-2: oklch(0.745 0.155 32);
-  --report-4-3: oklch(0.67 0.17 32);
-  --report-4-4: oklch(0.595 0.17 32);
-  --report-4-5: oklch(0.545 0.17 32);
-  --report-5-1: oklch(0.82 0.105 300);
-  --report-5-2: oklch(0.745 0.155 300);
-  --report-5-3: oklch(0.67 0.16 300);
-  --report-5-4: oklch(0.595 0.16 300);
-  --report-5-5: oklch(0.545 0.16 300);
-  --report-6-1: oklch(0.82 0.115 352);
-  --report-6-2: oklch(0.745 0.16 352);
-  --report-6-3: oklch(0.67 0.16 352);
-  --report-6-4: oklch(0.595 0.16 352);
-  --report-6-5: oklch(0.55 0.16 352);
-  --report-7-1: oklch(0.82 0.1 205);
-  --report-7-2: oklch(0.745 0.1 205);
-  --report-7-3: oklch(0.67 0.1 205);
-  --report-7-4: oklch(0.595 0.1 205);
-  --report-7-5: oklch(0.52 0.085 205);
-  --report-other: oklch(0.56 0.012 265);
-  --report-ink-strong: oklch(0.17 0 0);
-  --report-ink-soft: #ffffff;
-  /* Darker than the page here, so the rail still frames it. */
-  --sidebar: oklch(0.165 0.02 266);
+  --report-1: #3463d3;
+  --report-2: #e9661f;
+  --report-3: #007959;
+  --report-4: #d65fb6;
+  --report-5: #c4343b;
+  --report-6: #0ba0cb;
+  --report-7: #0c8603;
+  --report-8: #a372ee;
+  --report-uncategorized: oklch(0.735 0.014 265);
+  --report-other: oklch(0.565 0.012 265);
+  --report-uncategorized-ink: oklch(0.17 0 0);
+  /* The deepest surface, so the rail frames the page. */
+  --sidebar: oklch(0.145 0.02 266);
   --sidebar-foreground: oklch(0.945 0.008 266);
   --sidebar-primary: #3e6ae1;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: oklch(0.225 0.026 266);
+  --sidebar-accent: oklch(0.21 0.026 266);
   --sidebar-accent-foreground: oklch(0.985 0.004 266);
-  --sidebar-border: oklch(0.245 0.022 266);
+  --sidebar-border: oklch(0.225 0.022 266);
   --sidebar-ring: oklch(0.705 0.15 265.4);
-  --sidebar-muted: oklch(0.21 0.024 266);
+  --sidebar-muted: oklch(0.19 0.024 266);
   --sidebar-muted-foreground: oklch(0.72 0.025 266);
-  --sidebar-input: oklch(0.3 0.026 266);
+  --sidebar-input: oklch(0.28 0.026 266);
   --sidebar-primary-text: oklch(0.8 0.1 265.4);
   --sidebar-destructive: oklch(0.74 0.15 20);
   --success: oklch(0.78 0.14 156);
   --primary-text: color-mix(in oklch, var(--primary), white 35%);
+  --scrim: oklch(0.08 0.01 265 / 0.5);
 }
 
 /* strictbudget: inside the rail the page tokens take the rail's values, so whatever sits in it

@@ -20,6 +20,7 @@ import type { TargetMark } from "@/lib/budget-view";
 import { useDifferentiateWithoutColor } from "@/lib/display-options";
 import { type MoneyOption, minAmount, monthLabel } from "@/lib/months";
 import { useOptionalQueryClient } from "@/lib/query-client";
+import { AutoAssignClose } from "./auto-assign";
 import { CategoryField, isInsidePopup } from "./register-fields";
 
 export interface MoveActions {
@@ -429,7 +430,7 @@ export function AssignButton({
             <TabsTrigger value="manual">Manually</TabsTrigger>
           </TabsList>
           <TabsContent value="auto" className="pt-2">
-            {auto}
+            <AutoAssignClose value={() => setOpen(false)}>{auto}</AutoAssignClose>
           </TabsContent>
           <TabsContent value="manual" className="pt-2">
             <MoveForm
@@ -503,6 +504,8 @@ function PickSourceForm({
           categories={options}
           describe={describer(options, format)}
           autoFocus
+          // The heading and the amount stay in view until the user types or opens the list.
+          openOnFocus={false}
         />
       </Field>
       {source && (

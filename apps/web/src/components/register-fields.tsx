@@ -11,7 +11,6 @@ import {
   Autocomplete,
   AutocompleteCollection,
   AutocompleteContent,
-  AutocompleteEmpty,
   AutocompleteGroup,
   AutocompleteGroupLabel,
   AutocompleteInput,
@@ -432,9 +431,6 @@ export function PayeeField({
                 <span className="truncate">Create “{create}” Payee</span>
               </button>
             )}
-            {create && (
-              <AutocompleteEmpty>“{create}” will be created as a payee.</AutocompleteEmpty>
-            )}
             <AutocompleteList>
               {(group: { value: string; items: PayeeItem[] }) => (
                 <AutocompleteGroup key={group.value} items={group.items}>
@@ -652,6 +648,7 @@ export function CategoryField({
   shortcuts = false,
   suggestedIds,
   chevron = false,
+  openOnFocus = true,
 }: {
   label?: string;
   value: string | null;
@@ -670,6 +667,8 @@ export function CategoryField({
   suggestedIds?: readonly string[];
   /** A dropdown chevron at the end (a standalone picker, not a register cell). */
   chevron?: boolean;
+  /** Open the list as soon as the field gets focus (a register cell); otherwise on typing. */
+  openOnFocus?: boolean;
 }) {
   const balances = useContext(CategoryBalancesContext);
   const describeOption = describe ?? balances ?? undefined;
@@ -693,7 +692,7 @@ export function CategoryField({
     () => (selected && shortcuts ? shortcut(selected) : selected),
     [selected, shortcuts],
   );
-  const [open, setOpen] = useState(Boolean(autoFocus));
+  const [open, setOpen] = useState(Boolean(autoFocus) && openOnFocus);
 
   return (
     <Combobox<CategoryOption>
@@ -723,7 +722,7 @@ export function CategoryField({
         showTrigger={chevron}
         showClear={selected !== null}
         autoFocus={autoFocus}
-        onFocus={() => setOpen(true)}
+        onFocus={() => openOnFocus && setOpen(true)}
         onKeyDown={(e) => {
           // Tab files the row under the highlighted match, as Enter would, then moves on.
           if (e.key !== "Tab" || e.shiftKey || !open || !typing) return;

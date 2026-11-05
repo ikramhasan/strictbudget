@@ -7,6 +7,7 @@ import {
 import { Button } from "@strictbudget/ui/components/button";
 import {
   Drawer,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerHeader,
@@ -19,10 +20,11 @@ import {
   useDefaultLayout,
 } from "@strictbudget/ui/components/resizable";
 import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { PanelRight, Pencil } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { PanelRight, Pencil, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { AssignedCell } from "@/components/assigned-cell";
@@ -131,7 +133,7 @@ const layoutStorage = {
 };
 
 /** The inspector's width, in percent of the list and inspector together. */
-const INSPECTOR_SHARE = { min: 25, max: 50, default: 33 };
+const INSPECTOR_SHARE = { max: 50, default: 33 };
 
 export const Route = createFileRoute("/_authed/budgets/$budgetId/")({
   validateSearch: z.object({
@@ -173,6 +175,17 @@ function BudgetPage() {
     storage: layoutStorage,
   });
   const [inspectorWidth, setInspectorWidth] = useState<number | null>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const [pageWidth, setPageWidth] = useState<number | null>(null);
+  useEffect(() => {
+    const page = pageRef.current;
+    if (!page || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setPageWidth(Math.round(entry.contentRect.width));
+    });
+    observer.observe(page);
+    return () => observer.disconnect();
+  }, []);
   const accountList = useQuery(accountsQueryOptions(budget.id));
   /** No open account yet: no money, so the inspector's summary panels have nothing to say. */
   const noAccounts = accountList.data?.accounts.every((a) => a.closed) ?? false;
@@ -673,6 +686,8 @@ function BudgetPage() {
             });
           } catch (error) {
             toast.error(apiErrorMessage(error, "Couldn't assign the money."));
+            // The panel confirms only what was applied.
+            throw error;
           } finally {
             void refresh();
           }
@@ -680,15 +695,20 @@ function BudgetPage() {
       />
     );
 
-  // Below lg the inspector is a drawer; from there it's beside the list, as wide as the user drags
-  // it (25–50% of the area, a third to start, kept in this browser).
-  const wide = viewportWidth >= 1200;
-  // On a phone, picking one category opens the inspector drawer for it. A tablet shows the
-  // Assigned column, so a tap there edits it in place, as on a desktop; Summary opens the drawer.
+  // When the page has room for both (the list at about 440px and the inspector at 280px, whatever
+  // the sidebar takes), the inspector sits beside the list, as wide as the user drags it (at most
+  // half, a third to start, kept in this browser); otherwise it's a drawer.
+  const wide = !phone && (pageWidth ?? viewportWidth - 300) >= 720;
+  // Below that, picking one category with a click or tap opens the drawer for it. Keyboard steps
+  // through the list don't (they'd cover the list), nor does a click on an Assigned amount, which
+  // edits it in place.
   const pickedOne = selection.size === 1 ? [...selection][0] : undefined;
+  const pointerPick = useRef<{ at: number; assigned: boolean }>({ at: 0, assigned: false });
   useEffect(() => {
-    if (phone && pickedOne !== undefined) setInspectorOpen(true);
-  }, [pickedOne, phone]);
+    if (wide || pickedOne === undefined) return;
+    const { at, assigned } = pointerPick.current;
+    if (phone || (Date.now() - at < 1000 && !assigned)) setInspectorOpen(true);
+  }, [pickedOne, phone, wide]);
   const listColumn = (
     <>
       {categories.isPending ? (
@@ -696,7 +716,16 @@ function BudgetPage() {
       ) : categories.isError ? (
         <p className="text-muted-foreground">Couldn't load categories.</p>
       ) : (
-        <div className={wide ? "flex h-full min-h-0 flex-col gap-3" : "grid gap-3"}>
+        <div
+          className={wide ? "flex h-full min-h-0 flex-col gap-3" : "grid gap-3"}
+          onPointerDownCapture={(e) => {
+            pointerPick.current = {
+              at: Date.now(),
+              assigned:
+                e.target instanceof Element && e.target.closest("[data-assigned-cell]") !== null,
+            };
+          }}
+        >
           {/* The divider is an inset shadow the selected tab's underline paints over. */}
           <div className="flex shrink-0 flex-wrap items-end gap-x-2 gap-y-1 shadow-[inset_0_-1px_0_var(--border)]">
             {listFigures && (
@@ -750,7 +779,7 @@ function BudgetPage() {
                   }
                 />
               )}
-              {!readOnly && <UndoRedoButtons />}
+              {!readOnly && <UndoRedoButtons labelled />}
               <BudgetOptionsMenu
                 onTemplates={readOnly ? undefined : () => setGalleryOpen(true)}
                 progressBars={progressBars}
@@ -790,11 +819,13 @@ function BudgetPage() {
   );
   const onlySelected = selection.size === 1 ? [...selection][0] : undefined;
   const inspectorTitle =
-    onlySelected === undefined
-      ? "Month summary"
-      : onlySelected === UNCATEGORIZED
-        ? "Uncategorized Transactions"
-        : (listed.get(onlySelected)?.name ?? "Category");
+    selection.size > 1
+      ? `${selection.size} categories`
+      : onlySelected === undefined
+        ? "Month summary"
+        : onlySelected === UNCATEGORIZED
+          ? "Uncategorized Transactions"
+          : (listed.get(onlySelected)?.name ?? "Category");
   // A phone's rows have no Assigned cell, so the drawer leads with one.
   const onlyFigures =
     onlySelected && listFigures?.month.categories.find((c) => c.categoryId === onlySelected);
@@ -848,7 +879,10 @@ function BudgetPage() {
   return (
     // On a wide screen the page is exactly the window's height: the month and Ready to Assign stay
     // put while the categories and the inspector each scroll on their own.
-    <div className={wide ? "flex h-[calc(100svh-6rem)] flex-col gap-4" : "grid gap-4"}>
+    <div
+      ref={pageRef}
+      className={wide ? "flex h-[calc(100svh-6rem)] flex-col gap-4" : "grid gap-4"}
+    >
       <TemplateGallery
         open={galleryOpen}
         onOpenChange={setGalleryOpen}
@@ -872,7 +906,15 @@ function BudgetPage() {
         }}
       />
       <div
-        className="flex shrink-0 flex-wrap items-center justify-between gap-4 lg:grid"
+        className={cn(
+          "flex shrink-0 flex-wrap items-center justify-between gap-4",
+          // Beside the inspector, Ready to Assign lines up with it.
+          wide && "grid",
+          // Without the side-by-side layout the page scrolls: the month and Ready to Assign stay
+          // pinned to the top of it.
+          !wide &&
+            "sticky top-0 z-20 -mx-4 -mt-4 border-b bg-background px-4 pt-4 pb-3 md:-mx-5 md:-mt-5 md:px-5 md:pt-5",
+        )}
         style={
           wide && inspectorWidth !== null
             ? { gridTemplateColumns: `minmax(0,1fr) ${inspectorWidth}px` }
@@ -967,7 +1009,7 @@ function BudgetPage() {
           <ResizablePanel
             id="inspector"
             defaultSize={String(INSPECTOR_SHARE.default)}
-            minSize={String(INSPECTOR_SHARE.min)}
+            minSize={280}
             maxSize={String(INSPECTOR_SHARE.max)}
             onResize={(size) => setInspectorWidth(size.inPixels)}
           >
@@ -995,8 +1037,13 @@ function BudgetPage() {
                 if (isInsidePopup(e.target)) e.preventDefault();
               }}
             >
-              <DrawerHeader className="text-left">
-                <DrawerTitle>{inspectorTitle}</DrawerTitle>
+              <DrawerHeader className="flex-row items-center justify-between gap-2 text-left">
+                <DrawerTitle className="truncate">{inspectorTitle}</DrawerTitle>
+                <DrawerClose asChild>
+                  <Button variant="ghost" size="icon-sm" aria-label="Close">
+                    <X />
+                  </Button>
+                </DrawerClose>
                 <DrawerDescription className="sr-only">
                   The category's numbers, target and note, or the month's summary.
                 </DrawerDescription>

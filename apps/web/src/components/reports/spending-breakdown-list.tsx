@@ -9,7 +9,7 @@ import {
 } from "@strictbudget/ui/components/table";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { useBudget } from "@/lib/budget-context";
-import { chartNumber } from "@/lib/reports";
+import { chartNumber, RANKED_COLOR } from "@/lib/reports";
 import { type Breakdown, type BreakdownRow, rowChange, shares } from "@/lib/spending-breakdown";
 
 /** A change as "+$15.00 (+50%)", or "−$5.00 (−10%)"; "new" when nothing was spent before. */
@@ -52,7 +52,7 @@ export function SpendingBreakdownList({
     ...[...(previous?.values() ?? [])].map((v) => chartNumber(v, currency)),
   );
   const width = (a: bigint) => `${Math.max(0, (chartNumber(a, currency) / max) * 100)}%`;
-  // Categories from several groups: name each one's group, which its colour's hue stands for.
+  // Categories from several groups: name each one's group.
   const groupsShown =
     new Set(breakdown.spending.flatMap((r) => (r.family ? [r.groupKey] : []))).size > 1;
   return (
@@ -68,7 +68,13 @@ export function SpendingBreakdownList({
                 onClick={() => onSelect(row)}
                 className="grid w-full gap-1 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
               >
-                <span className="flex items-baseline gap-2">
+                <span className="flex items-center gap-2">
+                  {/* The row's colour in the chart; the bar below is one colour for every row. */}
+                  <span
+                    aria-hidden
+                    className="size-2.5 shrink-0 rounded-[3px]"
+                    style={{ background: row.color }}
+                  />
                   <span className="min-w-0 flex-1 truncate font-medium">{row.name}</span>
                   <span className="font-medium tabular-nums">{format(-row.net)}</span>
                 </span>
@@ -83,7 +89,7 @@ export function SpendingBreakdownList({
                   <span
                     aria-hidden
                     className="absolute inset-y-0 left-0 rounded-full"
-                    style={{ width: width(-row.net), background: row.color }}
+                    style={{ width: width(-row.net), background: RANKED_COLOR }}
                   />
                 </span>
                 <span className="flex flex-wrap gap-x-3 text-muted-foreground text-xs tabular-nums">

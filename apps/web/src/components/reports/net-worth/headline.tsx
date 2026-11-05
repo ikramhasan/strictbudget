@@ -95,7 +95,7 @@ export function NetWorthHeadline({
         </div>
         <div>
           <dt className="flex items-center gap-1.5 text-muted-foreground text-xs">
-            <span aria-hidden className="size-2 rounded-xs bg-(--report-4)" />
+            <span aria-hidden className="size-2 rounded-xs bg-(--report-2)" />
             Debts
           </dt>
           <dd className="tabular-nums">{amount(h.debts)}</dd>

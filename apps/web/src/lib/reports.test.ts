@@ -5,9 +5,7 @@ import {
   distinctColors,
   monthLabel,
   OTHER_COLOR,
-  planHues,
-  REPORT_HUES,
-  REPORT_TINTS,
+  REPORT_COLORS,
   rangeLabel,
   reportFilters,
   reportInk,
@@ -58,90 +56,40 @@ describe("report search", () => {
   });
 });
 
-describe("planHues", () => {
-  it("gives each group its place in the plan and its categories the group's hue", () => {
-    const hues = planHues({
-      groups: [
-        { id: "g1", categories: [{ id: "a" }, { id: "b" }] },
-        { id: "g2", categories: [{ id: "c" }] },
-      ],
-    });
-    expect([...hues.categories]).toEqual([
-      ["a", { hue: 0, family: "g1" }],
-      ["b", { hue: 0, family: "g1" }],
-      ["c", { hue: 4, family: "g2" }],
-    ]);
-    expect(hues.groups.get("g2")).toBe(4);
-  });
-});
-
 describe("distinctColors", () => {
-  it("gives a family one hue and its series the hue's tints, biggest strongest", () => {
-    const colors = distinctColors([
-      { key: "rent", family: "bills", hue: 1 },
-      { key: "dining", family: "wants", hue: 2 },
-      { key: "phone", family: "bills", hue: 1 },
-    ]);
-    expect(colors.get("rent")).toBe("var(--report-2-1)");
-    expect(colors.get("phone")).toBe("var(--report-2-2)");
-    expect(colors.get("dining")).toBe("var(--report-3-1)");
+  it("hands out the palette in the order the chart draws its series", () => {
+    const colors = distinctColors([{ key: "rent" }, { key: "dining" }, { key: "phone" }]);
+    expect([...colors.values()]).toEqual(["var(--report-1)", "var(--report-2)", "var(--report-3)"]);
   });
 
-  it("never repeats a colour within a chart", () => {
-    // Two families wanting the same hue (a plan past seven groups): the bigger keeps it.
+  it("keeps own colours without spending a palette colour on them", () => {
     const colors = distinctColors([
-      { key: "rent", hue: 1 },
-      { key: "dining", hue: 1 },
-      { key: "phone", hue: 0 },
-    ]);
-    expect(colors.get("rent")).toBe("var(--report-2-1)");
-    expect(colors.get("dining")).toBe("var(--report-1-1)");
-    expect(colors.get("phone")).toBe("var(--report-3-1)");
-    expect(new Set(colors.values()).size).toBe(3);
-  });
-
-  it("keeps fixed colours and gives series past the palette the Other colour", () => {
-    const series = [
+      { key: "a" },
       { key: "uncat", color: UNCATEGORIZED_COLOR },
-      ...Array.from({ length: REPORT_HUES + 2 }, (_, i) => ({ key: `c${i}`, hue: i % 3 })),
-    ];
-    const colors = distinctColors(series);
+      { key: "b" },
+    ]);
     expect(colors.get("uncat")).toBe(UNCATEGORIZED_COLOR);
-    const hued = series.slice(1, REPORT_HUES + 1).map((s) => colors.get(s.key));
-    expect(new Set(hued).size).toBe(REPORT_HUES);
-    expect(colors.get(`c${REPORT_HUES}`)).toBe(OTHER_COLOR);
-    expect(colors.get(`c${REPORT_HUES + 1}`)).toBe(OTHER_COLOR);
+    expect(colors.get("b")).toBe("var(--report-2)");
   });
 
-  it("folds a family past its tints, and series past `max`, into Other", () => {
-    const one = Array.from({ length: REPORT_TINTS + 1 }, (_, i) => ({
-      key: `c${i}`,
-      family: "g",
-      hue: 0,
-    }));
-    expect(distinctColors(one).get(`c${REPORT_TINTS}`)).toBe(OTHER_COLOR);
-    const capped = distinctColors(one, 2);
-    expect([...capped.values()]).toEqual([
-      "var(--report-1-1)",
-      "var(--report-1-2)",
-      ...Array(REPORT_TINTS - 1).fill(OTHER_COLOR),
+  it("never repeats a colour, folding series past the palette or `max` into Other", () => {
+    const series = Array.from({ length: REPORT_COLORS + 2 }, (_, i) => ({ key: `c${i}` }));
+    const colors = distinctColors(series);
+    const named = series.slice(0, REPORT_COLORS).map((s) => colors.get(s.key));
+    expect(new Set(named).size).toBe(REPORT_COLORS);
+    expect(colors.get(`c${REPORT_COLORS}`)).toBe(OTHER_COLOR);
+    expect(colors.get(`c${REPORT_COLORS + 1}`)).toBe(OTHER_COLOR);
+    expect([...distinctColors(series.slice(0, 3), 2).values()]).toEqual([
+      "var(--report-1)",
+      "var(--report-2)",
+      OTHER_COLOR,
     ]);
-  });
-
-  it("doesn't hand out a hue a series owns", () => {
-    const colors = distinctColors([
-      { key: "a", hue: 0 },
-      { key: "own", color: "var(--report-2)" },
-      { key: "b", hue: 1 },
-    ]);
-    expect(colors.get("b")).toBe("var(--report-3-1)");
   });
 
   it("picks label ink that reads on each colour", () => {
-    expect(reportInk("var(--report-4-1)")).toBe("var(--report-ink-strong)");
-    expect(reportInk("var(--report-4-5)")).toBe("var(--report-ink-soft)");
-    expect(reportInk(UNCATEGORIZED_COLOR)).toBe("var(--report-ink-strong)");
-    expect(reportInk(OTHER_COLOR)).toBe("var(--report-ink-soft)");
+    expect(reportInk("var(--report-4)")).toBe("var(--report-ink)");
+    expect(reportInk(OTHER_COLOR)).toBe("var(--report-ink)");
+    expect(reportInk(UNCATEGORIZED_COLOR)).toBe("var(--report-uncategorized-ink)");
   });
 });
 

@@ -17,8 +17,10 @@ import {
 import { Button } from "@strictbudget/ui/components/button";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
+import { toast } from "sonner";
 import type { BudgetMonthData } from "@/lib/months";
+import { useOptionalUndo } from "@/lib/undo";
 
 type Format = (minorUnits: string) => string;
 type MonthCategory = BudgetMonthData["categories"][number];
@@ -132,6 +134,30 @@ export function autoAssignTotals(changes: readonly { delta: bigint }[], readyToA
   return { total, before: readyToAssign, after, short };
 }
 
+const count = (n: number) => `${n} ${n === 1 ? "category" : "categories"}`;
+
+/**
+ * What applying changes did, for the toast: "Assigned $20.00 to 1 category", or, when some
+ * categories went up and others down, what that did to Ready to Assign.
+ */
+export function autoAssignSummary(changes: readonly { delta: bigint }[], format: Format) {
+  const total = changes.reduce((sum, c) => sum + c.delta, 0n);
+  const n = count(changes.length);
+  const amount = format((total < 0n ? -total : total).toString());
+  if (changes.every((c) => c.delta > 0n)) return `Assigned ${amount} to ${n}`;
+  if (changes.every((c) => c.delta < 0n)) return `Moved ${amount} from ${n} to Ready to Assign`;
+  if (total > 0n) return `Updated ${n}, assigning ${amount} more`;
+  if (total < 0n) return `Updated ${n}, returning ${amount} to Ready to Assign`;
+  return `Updated ${n}`;
+}
+
+/**
+ * Closes whatever the panel sits in once an option is applied (the Ready to Assign banner's
+ * Assign pop-up); the inspector's panel has nothing to close.
+ */
+const CloseContext = createContext<(() => void) | null>(null);
+export const AutoAssignClose = CloseContext.Provider;
+
 /** Cards Underfunded lists apart: credit overspending, or uncategorized transactions this month. */
 const needsAttention = (c: MonthCategory) =>
   Boolean(c.payment && (c.payment.overspentCategories !== "0" || c.payment.hasUncategorized));
@@ -166,6 +192,8 @@ export function AutoAssignPanel({
   bare?: boolean;
 }) {
   const [preview, setPreview] = useState<AutoAssignOption | null>(null);
+  const history = useOptionalUndo();
+  const close = useContext(CloseContext);
   // Labels go singular whenever one category is covered (selected or the only one in view).
   const one = categories.length === 1;
   const payment = one && Boolean(categories[0]?.payment);
@@ -195,6 +223,19 @@ export function AutoAssignPanel({
   const amountText = (delta: bigint) => `${delta > 0n ? "+" : ""}${format(delta.toString())}`;
   const totals = autoAssignTotals(changes, readyToAssign);
   const overdraws = totals.short > 0n;
+  /** Applies an option, then says what changed, with Undo (a failure has its own toast). */
+  const apply = async (option: AutoAssignOption) => {
+    const applied = autoAssignChanges(option, categories, names, readyToAssign);
+    close?.();
+    try {
+      await onApply(option);
+    } catch {
+      return;
+    }
+    if (applied.length === 0) toast("Nothing to change. The assigned amounts already match.");
+    else if (history) history.announce(autoAssignSummary(applied, format));
+    else toast(autoAssignSummary(applied, format));
+  };
   // Selected categories apply at once, unless that would assign money that isn't there.
   const choose = (option: AutoAssignOption) => {
     if (!selection) return setPreview(option);
@@ -203,9 +244,8 @@ export function AutoAssignPanel({
       readyToAssign,
     ).short;
     if (short > 0n) setPreview(option);
-    else void onApply(option);
+    else void apply(option);
   };
-  const count = (n: number) => `${n} ${n === 1 ? "category" : "categories"}`;
 
   return (
     <section
@@ -333,11 +373,11 @@ export function AutoAssignPanel({
               variant={overdraws ? "destructive" : "default"}
               disabled={changes.length === 0}
               onClick={() => {
-                if (preview) void onApply(preview);
+                if (preview) void apply(preview);
                 setPreview(null);
               }}
             >
-              {underfunded ? "Assign Money" : "Update Assigned Amounts"}
+              Apply Changes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

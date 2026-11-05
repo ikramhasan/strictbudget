@@ -192,7 +192,7 @@ function Report() {
 
 function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="grid gap-1 rounded-lg border p-4">
+    <div className="grid gap-1 rounded-lg border bg-card p-4">
       <span className="text-muted-foreground text-sm">{label}</span>
       <span className="font-semibold text-2xl tabular-nums" style={color ? { color } : undefined}>
         {value}

@@ -16,13 +16,6 @@ import {
   AlertDialogTitle,
 } from "@strictbudget/ui/components/alert-dialog";
 import { Button } from "@strictbudget/ui/components/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@strictbudget/ui/components/dropdown-menu";
 import { FieldError } from "@strictbudget/ui/components/field";
 import { Input } from "@strictbudget/ui/components/input";
 import {
@@ -68,7 +61,6 @@ import {
   withRemainder,
   withSplitTotal,
 } from "@/lib/transactions";
-import { AccountLogo } from "./accounts-nav";
 import { FlagMenu } from "./flag-menu";
 import { NewAttachmentCell } from "./new-transaction-attachment";
 import {
@@ -123,7 +115,6 @@ export function TransactionEditor({
   focusSplit = false,
   focusAmount = false,
   recentPayees = [],
-  accountIcon = false,
   layout = "row",
   pending,
   error,
@@ -163,8 +154,6 @@ export function TransactionEditor({
   focusAmount?: boolean;
   /** Payees to offer as one tap each under the stacked editor's payee field. */
   recentPayees?: readonly string[];
-  /** The register's account column shows only logos: the account is picked from a menu. */
-  accountIcon?: boolean;
   layout?: "row" | "stacked";
   pending: boolean;
   error: string | null;
@@ -222,7 +211,11 @@ export function TransactionEditor({
   useEffect(() => {
     if (splitFocus === 0) return;
     // After the category list closes, which hands focus back to where it opened.
-    const frame = requestAnimationFrame(() => firstLineAmount.current?.focus());
+    // Selected, so typing replaces the whole amount it starts with.
+    const frame = requestAnimationFrame(() => {
+      firstLineAmount.current?.focus();
+      firstLineAmount.current?.select();
+    });
     return () => cancelAnimationFrame(frame);
   }, [splitFocus]);
   const direction = typedDirection(draft) === "in" ? "inflow" : "outflow";
@@ -378,39 +371,12 @@ export function TransactionEditor({
           />
         );
       case "account":
-        if (accountIcon && layout === "row") {
-          return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label={`Account: ${account?.name ?? ""}`}
-                  title={account?.name}
-                  autoFocus={!focusMemo && !focusSplit}
-                >
-                  <AccountLogo name={account?.name ?? ""} logo={account?.logo ?? null} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-48">
-                <DropdownMenuRadioGroup value={draft.accountId} onValueChange={chooseAccount}>
-                  {(accountChoices ?? accounts).map((a) => (
-                    <DropdownMenuRadioItem key={a.id} value={a.id} className="whitespace-nowrap">
-                      <AccountLogo name={a.name} logo={a.logo} />
-                      {a.name}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          );
-        }
         return (
           <NativeSelect
             aria-label="Account"
-            // First field of the row (the date is, without an account column).
-            autoFocus={!focusMemo && !focusSplit}
+            // First field of the row (the date is, without an account column). The stacked editor
+            // starts in the amount, or nowhere: focusing a select would open no keyboard.
+            autoFocus={!focusMemo && !focusSplit && layout === "row"}
             value={draft.accountId}
             onChange={(e) => chooseAccount(e.target.value)}
             className="h-8 w-full"
@@ -831,16 +797,30 @@ export function TransactionEditor({
       )}
     </>
   );
+  // On a new row Enter is "Save and add another", so that's the primary; Save, which closes the
+  // row, is the quieter one beside it.
   const footerActions = (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+      <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
         Cancel
       </Button>
-      <Button type="button" size="sm" onClick={() => save()} disabled={pending || filling}>
+      <Button
+        type="button"
+        variant={onSaveAndAddAnother ? "outline" : "default"}
+        size="sm"
+        onClick={() => save()}
+        disabled={pending || filling}
+      >
         Save
       </Button>
       {onSaveAndAddAnother && (
-        <Button type="button" size="sm" onClick={() => save(true)} disabled={pending || filling}>
+        <Button
+          type="button"
+          size="sm"
+          title="Enter"
+          onClick={() => save(true)}
+          disabled={pending || filling}
+        >
           Save and add another
         </Button>
       )}
@@ -899,7 +879,7 @@ export function TransactionEditor({
     return (
       <form
         aria-label={label}
-        className="grid gap-5 [&_[data-slot=input-group]]:h-11 [&_input]:h-11 [&_select]:h-11"
+        className="grid gap-5 [&_[data-slot=input-group]]:h-11 [&_[data-slot=native-select-wrapper]]:h-11 [&_input]:h-11 [&_select]:h-11"
         onKeyDown={handleKeyDown}
         onSubmit={(e) => {
           e.preventDefault();
@@ -1019,7 +999,6 @@ export function TransactionEditor({
               column === "date" && DATE_EDITOR_FIT,
               (column === "cleared" || column === "flag" || column === "attachment") &&
                 "px-1 text-center",
-              column === "account" && accountIcon && "px-1 text-center",
               pinned(columns, column) && [pinned(columns, column)?.className, PINNED_BG.editor],
             )}
           >
@@ -1075,11 +1054,12 @@ export function TransactionEditor({
            * pinned columns (Cleared, Actions), which keep their own cells in this row.
            */}
           <div
-            className="sticky left-1.5 flex max-w-full flex-wrap items-center justify-end gap-2 whitespace-normal"
+            className="sticky left-1.5 flex max-w-full items-center gap-x-4 whitespace-normal"
             style={{ width: `calc(100cqw - 0.75rem - ${pinnedWidth(columns)})` }}
           >
-            {footerExtras}
-            {footerActions}
+            {/* Totals, rates and errors wrap; the buttons stay on one line at the right. */}
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{footerExtras}</div>
+            <div className="flex shrink-0 items-center gap-2">{footerActions}</div>
           </div>
           {mismatchDialog}
         </RegisterCell>

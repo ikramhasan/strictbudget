@@ -238,12 +238,18 @@ export function emptyLine(patch: Partial<LineDraft> = {}): LineDraft {
   };
 }
 
-/** "Split": the current category moves to the first of two lines. */
+/**
+ * "Split": the current category and the whole amount move to the first of two lines. Changing the
+ * first line's amount then hands the rest to the empty second one (withRemainder).
+ */
 export function startSplit(draft: Draft): Draft {
   return {
     ...draft,
     categoryId: null,
-    lines: [emptyLine({ categoryId: draft.categoryId }), emptyLine()],
+    lines: [
+      emptyLine({ categoryId: draft.categoryId, outflow: draft.outflow, inflow: draft.inflow }),
+      emptyLine(),
+    ],
   };
 }
 

@@ -81,8 +81,8 @@ import { useBudget } from "@/lib/budget-context";
 import { apiErrorMessage } from "@/lib/budgets";
 import { categoriesQueryOptions } from "@/lib/categories";
 import { categoryNotNeeded } from "@/lib/category-cell";
-import { useCollapsedSplits } from "@/lib/collapsed-splits";
 import { todayIso } from "@/lib/dates";
+import { useExpandedSplits } from "@/lib/expanded-splits";
 import { exportSelected } from "@/lib/exports";
 import { FLAG_CLASS, type Flag, type FlagColor, flagLabel, flagsQueryOptions } from "@/lib/flags";
 import { inCurrency } from "@/lib/money-input";
@@ -155,7 +155,6 @@ import {
 } from "@/lib/transactions";
 import { type UndoCommand, useUndo } from "@/lib/undo";
 import { useViewportWidth } from "@/lib/use-viewport-width";
-import { AccountLogo } from "./accounts-nav";
 import { AddAccountDialog } from "./add-account-dialog";
 import { CellEditor, type CellExit } from "./cell-editor";
 import { ChangeHistoryDialog } from "./change-history-dialog";
@@ -178,6 +177,7 @@ import {
 import { CategoryBalancesContext } from "./register-fields";
 import { RegisterSearchBox } from "./register-search-box";
 import {
+  AccountMark,
   ClearedMark,
   DATE_EDITOR_FIT,
   EDITOR_CELL,
@@ -234,7 +234,15 @@ const NO_SUMMARY = {
   splitsWithTransfers: 0,
   deletable: 0,
 };
-const ROW_HEIGHT = 41;
+/** A transaction row's height: 36px, or 44px for a finger (see the row's classes). */
+const rowHeight = () =>
+  typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches ? 44 : 36;
+/**
+ * A cell edited in place inside a 36px row: its field a step shorter than the editors' usual
+ * 32px, so the row keeps its height. A finger's taller rows keep the usual height.
+ */
+const IN_ROW_EDITOR =
+  "pointer-fine:[&_[data-slot=input-group]]:h-7! pointer-fine:[&_[data-slot=input]]:h-7! pointer-fine:[&_[data-slot=native-select]]:h-7!";
 
 interface EditingCell {
   id: string;
@@ -513,6 +521,8 @@ export function Register({
   const columnIds = layout.columns;
   const accountList = accounts.data?.accounts ?? [];
   const accountById = useMemo(() => new Map(accountList.map((a) => [a.id, a])), [accountList]);
+  /** Logos in the account column, as in the sidebar: only once some account has one, and room. */
+  const showLogos = !layout.accountCompact && accountList.some((a) => a.logo);
   /** An amount in `currency` (a row's, or its account's): the budget's by default. */
   const show = (amount: bigint, currency?: string) =>
     formatAmount(money(amount, inCurrency(budget, currency).currency));
@@ -623,9 +633,9 @@ export function Register({
     getRowId: (t) => t.id,
   });
   const rows = table.getRowModel().rows;
-  // Split lines sit right under their transaction (read-only; the split is edited as a whole),
-  // unless it's folded away.
-  const [collapsedSplits, toggleSplit] = useCollapsedSplits();
+  // Split lines sit right under their transaction (read-only; the split is edited as a whole)
+  // once it's expanded; splits start folded, so more transactions fit.
+  const [expandedSplits, toggleSplit] = useExpandedSplits();
   const flat = useMemo(
     () =>
       rows.flatMap(({ original: t }): Item[] => [
@@ -634,12 +644,12 @@ export function Register({
         ...t.subtransactions
           .filter((line) =>
             t.matchingLineIds === null
-              ? !collapsedSplits[t.id]
+              ? Boolean(expandedSplits[t.id])
               : t.matchingLineIds.includes(line.id),
           )
           .map((line): Item => ({ kind: "line", key: `${t.id}:${line.id}`, t, line })),
       ]),
-    [rows, collapsedSplits],
+    [rows, expandedSplits],
   );
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -669,7 +679,7 @@ export function Register({
   const virtualizer = useVirtualizer({
     count: flat.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => ROW_HEIGHT,
+    estimateSize: rowHeight,
     getItemKey: (index) => flat[index]?.key ?? index,
     overscan: 12,
     scrollMargin: scheduledHeight,
@@ -1312,6 +1322,7 @@ export function Register({
     }
     if (id === "category") return categoryText(t) || undefined;
     if (id === "memo") return t.memo || undefined;
+    if (id === "account") return t.accountName;
     return undefined;
   }
 
@@ -2081,12 +2092,9 @@ export function Register({
         );
       case "account":
         return (
-          <span
-            className="flex min-w-0 items-center gap-2"
-            title={layout.accountIcon ? t.accountName : undefined}
-          >
-            <AccountLogo name={t.accountName} logo={accountById.get(t.accountId)?.logo ?? null} />
-            <span className={cn("truncate", layout.accountIcon && "sr-only")}>{t.accountName}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            {showLogos && <AccountMark logo={accountById.get(t.accountId)?.logo ?? null} />}
+            <span className="truncate">{t.accountName}</span>
           </span>
         );
       case "date":
@@ -2122,30 +2130,35 @@ export function Register({
         );
       case "category":
         if (t.subtransactions.length > 0) {
-          const folded = Boolean(collapsedSplits[t.id]);
+          const expanded = Boolean(expandedSplits[t.id]);
           return (
-            <span className="flex min-w-0 items-center gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                // Expanded is its resting state here, not an open menu's.
-                className="-ml-1 shrink-0 aria-expanded:bg-transparent hover:aria-expanded:bg-accent"
-                aria-expanded={!folded}
-                aria-label={folded ? "Show split lines" : "Hide split lines"}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleSplit(t.id);
-                }}
-              >
-                <ChevronRight className={cn("transition-transform", !folded && "rotate-90")} />
-              </Button>
+            // The cell opens the split to edit; this shows or hides its lines.
+            <button
+              type="button"
+              className="-mx-1.5 inline-flex h-6 max-w-[calc(100%+0.75rem)] items-center gap-1 rounded-md px-1.5 outline-none transition-colors hover:bg-foreground/[0.06] focus-visible:ring-2 focus-visible:ring-ring/50"
+              aria-expanded={expanded}
+              title={`${categoryText(t)}: ${expanded ? "hide" : "show"} its lines`}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleSplit(t.id);
+              }}
+            >
+              <Split className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
               {/* Short enough for a narrow column; the full wording is the tooltip's. */}
               <span className="truncate" aria-hidden>
                 Split · {splitCount(t)}
               </span>
-              <span className="sr-only">{categoryText(t)}</span>
-            </span>
+              <span className="sr-only">
+                {categoryText(t)}, {expanded ? "hide" : "show"} lines
+              </span>
+              <ChevronRight
+                className={cn(
+                  "size-3.5 shrink-0 text-muted-foreground transition-transform duration-150",
+                  expanded && "rotate-90",
+                )}
+                aria-hidden
+              />
+            </button>
           );
         }
         if (t.needsCategory) return <NeedsCategoryPill />;
@@ -2479,6 +2492,7 @@ export function Register({
           </Empty>
         ) : phone ? (
           <PhoneTransactions
+            allAccounts={allAccounts}
             rows={loaded}
             scheduled={scheduledRows}
             scheduledSelected={scheduledSelection}
@@ -2507,7 +2521,7 @@ export function Register({
             // A query container: the editor's footer sizes to its visible width. The scroll padding
             // keeps a focused field clear of the sticky header and the pinned columns, should the
             // table ever be wider than the register.
-            viewportClassName="@container max-h-[70vh] scroll-pt-10"
+            viewportClassName="@container max-h-[70vh] scroll-pt-9"
             viewportProps={{ style: { scrollPaddingRight: pinnedWidth(columnIds) } }}
             scrollbars="both"
             className={cn("rounded-xl ring-1 ring-border", REGISTER_TRAY)}
@@ -2547,9 +2561,7 @@ export function Register({
                             ? ImageIcon
                             : id === "cleared"
                               ? CircleCheck
-                              : id === "account" && layout.accountIcon
-                                ? Landmark
-                                : null;
+                              : null;
                       const resizable = RESIZABLE.includes(id) && HeaderIcon === null;
                       const pin = pinned(columnIds, id);
                       return (
@@ -2647,7 +2659,6 @@ export function Register({
                     openDatePicker={addingPicker}
                     repeat
                     columns={columnIds}
-                    accountIcon={layout.accountIcon}
                     accounts={openAccounts}
                     payees={payeeList}
                     categories={options}
@@ -2668,7 +2679,7 @@ export function Register({
                   selected={scheduledSelection}
                   onSelect={toggleScheduled}
                   columns={columnIds}
-                  accountIcon={layout.accountIcon}
+                  accountCompact={layout.accountCompact}
                   collapsed={view.scheduledCollapsed}
                   onToggle={() => setView({ scheduledCollapsed: !view.scheduledCollapsed })}
                   accounts={accountList}
@@ -2698,7 +2709,6 @@ export function Register({
                         focusSplit={editingSplit.splitting}
                         label="Edit transaction"
                         columns={columnIds}
-                        accountIcon={layout.accountIcon}
                         attachment={
                           <AttachmentCell
                             budgetId={budget.id}
@@ -2768,9 +2778,10 @@ export function Register({
                       data-transaction-id={t.id}
                       data-highlighted={highlight?.id === t.id ? highlight.kind : undefined}
                       data-state={isSelected(selection, t.id) ? "selected" : undefined}
-                      // One height for every row, so an icon or an open editor doesn't grow it.
-                      style={{ height: ROW_HEIGHT }}
                       className={cn(
+                        // One height for every row, so an icon or an open editor doesn't grow it;
+                        // taller for a finger.
+                        "h-9 pointer-coarse:h-11",
                         // A quick hover; a row jumped to glows, then fades out, and one just saved
                         // flashes.
                         "duration-100 data-[highlighted=jump]:animate-[row-highlight_2.5s_ease-out] data-[highlighted=saved]:animate-[row-highlight_0.9s_ease-out]",
@@ -2786,7 +2797,12 @@ export function Register({
                           return (
                             <RegisterCell
                               key={id}
-                              className={cn(EDITOR_CELL, "py-1", id === "date" && DATE_EDITOR_FIT)}
+                              className={cn(
+                                EDITOR_CELL,
+                                IN_ROW_EDITOR,
+                                "py-1",
+                                id === "date" && DATE_EDITOR_FIT,
+                              )}
                             >
                               <CellEditor
                                 transaction={t}
@@ -2822,10 +2838,11 @@ export function Register({
                             title={cellTitle(t, id)}
                             style={pin?.style}
                             className={cn(
-                              "truncate",
+                              // The row sets the height; cells only centre their content.
+                              "truncate py-0",
                               pin && [pin.className, PINNED_BG.row],
                               spec.align === "right" && "text-right tabular-nums",
-                              spec.align === "center" && "py-1 text-center",
+                              spec.align === "center" && "text-center",
                               ICON_CELL[id],
                               (id === "category" || id === "memo") && "text-muted-foreground",
                               canEdit && "cursor-text",
@@ -3095,7 +3112,10 @@ function PhoneTransactions({
   hasMore,
   loadingMore,
   onLoadMore,
+  allAccounts,
 }: {
+  /** All Accounts: each card names its account. */
+  allAccounts: boolean;
   rows: readonly Transaction[];
   scheduled: readonly ScheduledTransaction[];
   scheduledSelected: ReadonlySet<string>;
@@ -3150,6 +3170,7 @@ function PhoneTransactions({
                     <span className={meta}>
                       {[
                         formatDate(row.dateNext),
+                        allAccounts && row.accountName,
                         row.subtransactions.length > 0
                           ? `Split (${row.subtransactions.length})`
                           : row.categoryName,
@@ -3231,7 +3252,9 @@ function PhoneTransactions({
                   {signed(amount, t.currency)}
                 </span>
                 <span className={meta}>
-                  {[formatDate(t.date), category(t), t.memo].filter(Boolean).join(" · ")}
+                  {[formatDate(t.date), allAccounts && t.accountName, category(t), t.memo]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </span>
                 {!t.approved && (
                   <span className="col-span-2 text-primary-text text-xs">Needs approval</span>

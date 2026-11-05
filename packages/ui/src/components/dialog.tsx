@@ -29,8 +29,9 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
+      // strictbudget: a plain theme-aware scrim (--scrim in theme.css); no backdrop blur.
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] supports-backdrop-filter:backdrop-blur-xs data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 dark:bg-black/40",
+        "fixed inset-0 isolate z-50 bg-scrim duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
         className,
       )}
       {...props}

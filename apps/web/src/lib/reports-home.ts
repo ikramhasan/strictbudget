@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { categoriesQueryOptions } from "./categories";
 import { monthQueryOptions } from "./months";
 import { netWorthOptions } from "./net-worth";
-import { currentMonth, planHues, type ReportSum, reportActivityOptions } from "./reports";
+import { currentMonth, type ReportSum, reportActivityOptions } from "./reports";
 
 /** Spending per month, positive (Total Spending: minus the months' category nets). */
 export function spentByMonth(rows: readonly ReportSum[]): Map<BudgetMonth, bigint> {
@@ -225,10 +225,7 @@ export function useReportsHomeData(budgetId: string) {
     spent,
     earned,
     categoryNames: names,
-    /** Each category's group hue and group (its colour family), and its group's name. */
-    categoryHues: categories.data
-      ? planHues(categories.data).categories
-      : new Map<string, { hue: number; family: string }>(),
+    /** Each category's group's name. */
     groupNames: new Map(
       (categories.data?.groups ?? []).flatMap((g) =>
         g.categories.map((c) => [c.id, g.name] as const),

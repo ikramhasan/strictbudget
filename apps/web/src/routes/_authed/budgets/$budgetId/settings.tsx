@@ -131,6 +131,7 @@ function BudgetSettingsPage() {
                   // Reset the form to the saved values after each save.
                   key={budget.updatedAt}
                   currencyLocked
+                  requireChange
                   defaultValues={{
                     name: budget.name,
                     currency: budget.currency,

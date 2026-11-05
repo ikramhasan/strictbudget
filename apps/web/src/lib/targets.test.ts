@@ -208,7 +208,7 @@ describe("target wording", () => {
       suffix: " this month to stay on track",
     });
     expect(targetMessage(yearly, need("100000", "33334", "0"), format)).toEqual({
-      text: "You're on track to meet your target!",
+      text: "On track to meet this target.",
     });
     expect(targetMessage(target(), need("10000", "4000", "6000"), format)).toEqual({
       prompt: "$60.00 more",
@@ -247,14 +247,14 @@ describe("payment target wording", () => {
       suffix: " this month to stay on track",
     });
     expect(targetMessage(payoff, need("12500", "5000", "0"), format)).toEqual({
-      text: "You're on track to meet your target!",
+      text: "On track to meet this target.",
     });
   });
 
   it("cheers a met pay-off target and heads it with what's been put in plus To Go", () => {
     // Owes $14.00, $20.00 assigned and $6.00 paid, so $14.00 counts.
     expect(targetMessage(payoff, need("1400", "1400", "0"), format)).toEqual({
-      text: "Cheers to a debt-free future!",
+      text: "Enough is set aside to pay off this card.",
     });
     expect(payoffAmount(need("1400", "1400", "0"), "-600")).toBe("2000");
     // Paid off: nothing owed or counted, $20.00 paid.
@@ -263,7 +263,7 @@ describe("payment target wording", () => {
     expect(payoffAmount(need("12500", "5000", "2084"), "0")).toBe("12500");
     // A met Pay Specific Amount Monthly keeps the usual words.
     expect(targetMessage(monthly, need("500", "500", "0"), format)).toEqual({
-      text: "You've met your target!",
+      text: "This target is fully funded.",
     });
   });
 

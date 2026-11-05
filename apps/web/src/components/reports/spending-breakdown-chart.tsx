@@ -3,7 +3,7 @@ import { ChartContainer } from "@strictbudget/ui/components/chart";
 import { Pie, PieChart, Tooltip, Treemap, type TreemapNode } from "recharts";
 import { useBudget } from "@/lib/budget-context";
 import { chartNumber, OTHER_COLOR, reportInk } from "@/lib/reports";
-import type { Breakdown, BreakdownRow } from "@/lib/spending-breakdown";
+import { type Breakdown, type BreakdownRow, drawOrder } from "@/lib/spending-breakdown";
 
 export type BreakdownChartKind = "donut" | "treemap";
 
@@ -12,7 +12,7 @@ const OTHER_KEY = "__other";
 function RowTip({ row, breakdown }: { row: BreakdownRow; breakdown: Breakdown }) {
   const { budget, formatAmount } = useBudget();
   return (
-    <div className="grid gap-0.5 rounded-md border bg-background px-3 py-2 text-xs shadow-sm">
+    <div className="grid gap-0.5 rounded-md border bg-popover px-3 py-2 text-popover-foreground text-xs shadow-md">
       {row.groupName && row.groupName !== row.name && (
         <span className="text-muted-foreground">{row.groupName}</span>
       )}
@@ -83,8 +83,8 @@ export function SpendingBreakdownChart({
     );
   }
 
-  // Rows past the palette's tints share one "Other" slice, so no two slices share a colour (a lone
-  // one keeps its own).
+  // Rows past the palette share one "Other" slice, so no two slices share a colour (a lone one
+  // keeps its own).
   const folds = marks.filter((r) => r.color === OTHER_COLOR).length > 1;
   const named = folds ? marks.filter((r) => r.color !== OTHER_COLOR) : marks;
   const rest = folds ? marks.filter((r) => r.color === OTHER_COLOR) : [];
@@ -98,15 +98,13 @@ export function SpendingBreakdownChart({
       }
     : undefined;
   if (other) byKey.set(OTHER_KEY, other);
-  // A group's slices sit together (its hue's tints, biggest first), groups biggest first.
-  const data = [...nestByGroup(named).flatMap((g) => g.rows), ...(other ? [other] : [])].map(
-    (r) => ({
-      name: r.name,
-      value: value(r),
-      rowKey: r.key,
-      fill: r.color,
-    }),
-  );
+  // A group's slices sit together, biggest first, in the order their colours were handed out.
+  const data = [...drawOrder(named), ...(other ? [other] : [])].map((r) => ({
+    name: r.name,
+    value: value(r),
+    rowKey: r.key,
+    fill: r.color,
+  }));
   return (
     <div className="relative">
       <ChartContainer config={{}} className="mx-auto aspect-square h-64 max-w-full sm:h-72">
@@ -121,7 +119,7 @@ export function SpendingBreakdownChart({
             startAngle={90}
             endAngle={-270}
             paddingAngle={data.length > 1 ? 1 : 0}
-            stroke="var(--background)"
+            stroke="var(--card)"
             strokeWidth={1}
             isAnimationActive={false}
             className="cursor-pointer"
@@ -173,7 +171,7 @@ function TreemapCell({ node, onSelect }: { node: TreemapNode; onSelect: (key: st
         width={width}
         height={height}
         fill="none"
-        stroke="var(--background)"
+        stroke="var(--card)"
         strokeWidth={3}
       />
     ) : (
@@ -190,8 +188,8 @@ function TreemapCell({ node, onSelect }: { node: TreemapNode; onSelect: (key: st
         width={width}
         height={height}
         fill={node.fill as string}
-        stroke="var(--background)"
-        strokeWidth={1}
+        stroke="var(--card)"
+        strokeWidth={2}
       />
       {fits && (
         <text

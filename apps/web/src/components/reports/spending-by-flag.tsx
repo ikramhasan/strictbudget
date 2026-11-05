@@ -60,7 +60,7 @@ export function FlagMonthChart({
             const bar = active ? bars.find((b) => b.month === label) : undefined;
             if (!bar) return null;
             return (
-              <div className="grid min-w-40 gap-1 rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
+              <div className="grid min-w-40 gap-1 rounded-lg border bg-popover px-3 py-2 text-xs shadow-md text-popover-foreground">
                 <p className="font-medium">{monthLabel(bar.month, "long")}</p>
                 <p className="flex items-center gap-2">
                   <span aria-hidden className="size-2 rounded-xs" style={{ background: color }} />

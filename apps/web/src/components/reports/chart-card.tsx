@@ -63,7 +63,7 @@ export function ChartCard({
     if (!chartRef.current) return;
     setSaving(true);
     try {
-      const background = getComputedStyle(document.body).backgroundColor;
+      const background = getComputedStyle(chartRef.current).backgroundColor;
       const blob = await domToBlob(chartRef.current, { scale: 2, backgroundColor: background });
       saveBlob(blob, `${fileName}.png`);
     } catch {
@@ -77,7 +77,10 @@ export function ChartCard({
   const value = view === "table" ? "table" : (kind ?? shown[0]?.value ?? "chart");
   const ready = !loading && !empty;
   return (
-    <section aria-label={title} className={cn("grid gap-3 rounded-lg border p-4", className)}>
+    <section
+      aria-label={title}
+      className={cn("grid gap-3 rounded-lg border bg-card p-4", className)}
+    >
       <div className="flex min-h-8 flex-wrap items-center gap-2">
         <h2 className="font-semibold">{title}</h2>
         {ready && (
@@ -139,7 +142,7 @@ export function ChartCard({
       ) : view === "chart" ? (
         <>
           {options}
-          <div ref={chartRef} className="min-w-0 bg-background">
+          <div ref={chartRef} className="min-w-0 bg-card">
             {chart}
           </div>
         </>

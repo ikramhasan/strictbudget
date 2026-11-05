@@ -208,7 +208,7 @@ function Headline({
       : [{ label: "Safe to spend per day", value: format(BigInt(line.safePerDay)) }]),
   ];
   return (
-    <section aria-label="Pace" className="grid gap-3 rounded-lg border p-4">
+    <section aria-label="Pace" className="grid gap-3 rounded-lg border bg-card p-4">
       <p
         className={cn(
           "font-semibold text-lg",
@@ -275,7 +275,7 @@ function CategoryPace({
   const passed = (data.elapsed * 100) / data.days;
   if (sorted.length === 0) return null;
   return (
-    <section aria-labelledby="pace-categories" className="grid gap-3 rounded-lg border p-4">
+    <section aria-labelledby="pace-categories" className="grid gap-3 rounded-lg border bg-card p-4">
       <div className="grid gap-1">
         <h2 id="pace-categories" className="font-semibold">
           By category

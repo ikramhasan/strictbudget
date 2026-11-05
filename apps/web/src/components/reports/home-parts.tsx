@@ -65,7 +65,7 @@ export function Sparkline({
                     cy={props.cy}
                     r={2.5}
                     fill="var(--report-1)"
-                    stroke="var(--background)"
+                    stroke="var(--card)"
                     strokeWidth={1}
                   />
                 ) : (
@@ -103,7 +103,7 @@ function SparkPlaceholder({ text }: { text: string }) {
           aria-hidden
           className="absolute inset-x-1 top-1/2 border-border border-t border-dashed"
         />
-        <span className="relative bg-background px-1.5 text-[11px] text-muted-foreground transition-colors duration-150 group-hover:bg-muted">
+        <span className="relative bg-card px-1.5 text-[11px] text-muted-foreground transition-colors duration-150 group-hover:bg-muted">
           {text}
         </span>
       </div>
@@ -148,7 +148,7 @@ export function KeyTile({
       to={target.to}
       params={{ budgetId }}
       search={target.search ?? {}}
-      className="group grid min-w-0 grid-rows-[auto_auto_minmax(2rem,auto)_1fr] gap-1 rounded-lg border p-3 transition-colors @md:p-4 duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group grid min-w-0 grid-rows-[auto_auto_minmax(2rem,auto)_1fr] gap-1 rounded-lg border bg-card p-3 transition-colors @md:p-4 duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span className="truncate text-muted-foreground text-sm">{label}</span>
       <span className="truncate font-semibold text-xl tabular-nums tracking-tight @md:text-2xl">
@@ -199,7 +199,7 @@ export function PreviewCard({
   children: ReactNode;
 }) {
   return (
-    <section aria-label={title} className="grid content-start gap-3 rounded-lg border p-4">
+    <section aria-label={title} className="grid content-start gap-3 rounded-lg border bg-card p-4">
       <header className="flex items-baseline justify-between gap-3">
         <h2 className="min-w-0 truncate font-semibold">
           {title}

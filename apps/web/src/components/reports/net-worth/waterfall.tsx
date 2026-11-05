@@ -57,15 +57,15 @@ export function WhatChanged({
   const current = report.months[index];
   if (!current) return null;
   const steps = waterfall(previousNetWorth(report, index), current);
-  // Totals neutral, rises green and falls red; a part that didn't move has no colour to claim.
+  // Totals neutral, rises blue and falls orange; a part that didn't move has no colour to claim.
   const color = (key: string, amount: bigint) =>
     key === "start" || key === "end"
       ? "var(--muted-foreground)"
       : amount === 0n
         ? "var(--border)"
         : amount < 0n
-          ? "var(--report-4)"
-          : "var(--report-3)";
+          ? "var(--report-2)"
+          : "var(--report-1)";
   const scale = waterfallScale(steps);
   const domain: [number, number] = [
     chartNumber(scale.low, currency),
@@ -84,7 +84,10 @@ export function WhatChanged({
     };
   });
   return (
-    <section aria-label="What changed this month" className="grid gap-3 rounded-lg border p-4">
+    <section
+      aria-label="What changed this month"
+      className="grid gap-3 rounded-lg border bg-card p-4"
+    >
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="font-semibold">What changed this month</h2>
         <NativeSelect

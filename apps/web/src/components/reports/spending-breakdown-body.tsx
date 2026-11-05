@@ -180,7 +180,7 @@ export function SpendingBreakdownBody({
         </nav>
       )}
 
-      <dl className="grid grid-cols-2 gap-3 rounded-lg border p-4 sm:grid-cols-3 lg:grid-cols-5">
+      <dl className="grid grid-cols-2 gap-3 rounded-lg border bg-card p-4 sm:grid-cols-3 lg:grid-cols-5">
         <Stat label="Total Spending" big>
           {loading ? "…" : format(stats.total)}
         </Stat>
@@ -250,7 +250,7 @@ export function SpendingBreakdownBody({
         />
         <section
           aria-label={`${rowNoun.many} list`}
-          className="grid content-start gap-2 rounded-lg border p-4"
+          className="grid content-start gap-2 rounded-lg border bg-card p-4"
         >
           <h2 className="flex justify-between font-semibold">
             {rowNoun.many}
@@ -272,7 +272,10 @@ export function SpendingBreakdownBody({
         </section>
       </div>
 
-      <section aria-label="Largest transactions" className="grid gap-2 rounded-lg border p-4">
+      <section
+        aria-label="Largest transactions"
+        className="grid gap-2 rounded-lg border bg-card p-4"
+      >
         <h2 className="font-semibold">Largest transactions</h2>
         {largest.data?.transactions.some((t) => BigInt(t.amount) < 0n) ? (
           <ol className="divide-y">

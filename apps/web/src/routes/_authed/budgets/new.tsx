@@ -53,7 +53,8 @@ function NewBudgetPage() {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-2xl content-start gap-8 pb-10">
+    // As wide as setup's steps, so the step bar keeps its size from one page to the next.
+    <div className="mx-auto grid w-full max-w-3xl content-start gap-8 pb-10">
       <PageTitle name="New budget" />
       <PageHeader title="New budget" />
       {/* With a template the budget opens straight away, without setup. */}

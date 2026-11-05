@@ -19,8 +19,8 @@ import { COLOR_LABEL, FLAG_COLOR, type Flag, type FlagColor, flagName } from "./
 import {
   distinctColors,
   monthLabel,
-  planHues,
-  RAMP_FAMILY,
+  OTHER_COLOR,
+  REPORT_COLORS,
   type ReportSum,
   type ReportTransaction,
   reportSearchSchema,
@@ -59,9 +59,7 @@ export interface BreakdownRow {
   name: string;
   /** The row's colour in the chart (breakdownOf gives each row its own). */
   color: string;
-  /** The hue it keeps where it can (its group's place in the plan). */
-  hue?: number;
-  /** The rows sharing its hue (a category's group); none for a row of its own. */
+  /** A category's group, which the chart keeps its slices together under; none for other rows. */
   family?: string;
   /** A colour of its own (Uncategorized's grey, a flag's colour). */
   ownColor?: string;
@@ -90,11 +88,8 @@ export function planCategories(list: CategoryList | undefined) {
     groupName: string;
     index: number;
     groupIndex: number;
-    hue: number | undefined;
-    groupHue: number | undefined;
   }[] = [];
   if (!list) return out;
-  const hues = planHues(list);
   out.push({
     id: list.uncategorizedCategoryId,
     name: "Uncategorized",
@@ -102,8 +97,6 @@ export function planCategories(list: CategoryList | undefined) {
     groupName: "Uncategorized",
     index: 0,
     groupIndex: 0,
-    hue: undefined,
-    groupHue: undefined,
   });
   list.groups.forEach((g, gi) => {
     for (const c of g.categories) {
@@ -114,8 +107,6 @@ export function planCategories(list: CategoryList | undefined) {
         groupName: g.name,
         index: out.length,
         groupIndex: gi + 1,
-        hue: hues.categories.get(c.id)?.hue,
-        groupHue: hues.groups.get(g.id),
       });
     }
   });
@@ -155,15 +146,11 @@ export function breakdownRows(
       if (group !== undefined && groupKey !== group) continue;
       const groups = by === "group" && group === undefined;
       const key = groups ? groupKey : id;
-      // A group is a family of its own; a category shares its group's hue.
-      const hue = groups ? c?.groupHue : c?.hue;
       const row = rows.get(key) ?? {
         key,
         name: groups ? (c?.groupName ?? "") : (c?.name ?? ""),
         color: UNCATEGORIZED_COLOR,
-        ...(hue === undefined
-          ? { ownColor: UNCATEGORIZED_COLOR }
-          : { hue, ...(!groups && { family: groupKey }) }),
+        ...(c?.groupIndex ? !groups && { family: groupKey } : { ownColor: UNCATEGORIZED_COLOR }),
         ...(c && { groupKey: c.groupKey, groupName: c.groupName }),
         net: 0n,
         count: 0,
@@ -188,8 +175,7 @@ export function breakdownRows(
       key,
       name: label(key),
       color: own ?? UNCATEGORIZED_COLOR,
-      // Payees and accounts are one dimension: one ramp, the biggest strongest.
-      ...(own ? { ownColor: own } : { hue: 0, family: RAMP_FAMILY }),
+      ...(own && { ownColor: own }),
       net: BigInt(sum.net),
       count: sum.count,
     };
@@ -212,12 +198,26 @@ export interface Breakdown {
   total: bigint;
 }
 
-/** Rows the donut names before folding the rest into "Other". */
-export const BREAKDOWN_NAMED = 10;
+/** Rows the chart names before folding the rest into "Other": one per palette colour. */
+export const BREAKDOWN_NAMED = REPORT_COLORS;
 
 /**
- * The rows split into spending and positive inflows, each row coloured (distinctColors): a group
- * keeps its hue and its categories take its tints, biggest strongest, none repeated; the rest get
+ * Rows in the order the chart draws them: a group's rows together, biggest first, groups in order
+ * of their biggest row. Other rows (payees, accounts, groups) are each a group of their own.
+ */
+export function drawOrder<T extends { key: string; family?: string }>(rows: readonly T[]): T[] {
+  const groups = new Map<string, T[]>();
+  for (const r of rows) {
+    const key = r.family ?? r.key;
+    groups.set(key, [...(groups.get(key) ?? []), r]);
+  }
+  return [...groups.values()].flat();
+}
+
+/**
+ * The rows split into spending and positive inflows, each row coloured: the biggest spenders (up
+ * to BREAKDOWN_NAMED) take the palette's colours in the order the chart draws them (distinctColors),
+ * so neighbouring slices always differ; Uncategorized and flags keep their own, and the rest get
  * OTHER_COLOR, which the donut folds into "Other".
  */
 export function breakdownOf(rows: readonly BreakdownRow[]): Breakdown {
@@ -228,16 +228,23 @@ export function breakdownOf(rows: readonly BreakdownRow[]): Breakdown {
   const positive = split.positive
     .map((r) => r.key)
     .sort((a, b) => cmp(a.net, b.net) || byName(a, b));
-  const colors = distinctColors(
-    [...spending, ...positive].map((r) => ({
-      key: r.key,
-      hue: r.hue,
-      family: r.family,
-      color: r.ownColor,
-    })),
-    BREAKDOWN_NAMED,
+  const drawn = spending.filter((r) => r.net < 0n);
+  const named = new Set(
+    drawn
+      .filter((r) => !r.ownColor)
+      .slice(0, BREAKDOWN_NAMED)
+      .map((r) => r.key),
   );
-  const colored = (r: BreakdownRow) => ({ ...r, color: colors.get(r.key) ?? r.color });
+  const colors = distinctColors(
+    drawOrder(drawn).map((r) => ({
+      key: r.key,
+      color: r.ownColor ?? (named.has(r.key) ? undefined : OTHER_COLOR),
+    })),
+  );
+  const colored = (r: BreakdownRow) => ({
+    ...r,
+    color: colors.get(r.key) ?? r.ownColor ?? OTHER_COLOR,
+  });
   return {
     spending: spending.map(colored),
     positive: positive.map(colored),

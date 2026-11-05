@@ -208,7 +208,12 @@ describe("TransactionEditor", () => {
   it("offers Save and add another on a new row, and Enter does it", async () => {
     const { onSave, onSaveAndAddAnother } = renderEditor("checking", { another: true });
     const user = userEvent.setup();
-    expect(screen.getByRole("button", { name: "Save and add another" })).toBeInTheDocument();
+    // Enter's action is the primary button; Save, which closes the row, is the quieter one.
+    expect(screen.getByRole("button", { name: "Save and add another" })).toHaveAttribute(
+      "data-variant",
+      "default",
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toHaveAttribute("data-variant", "outline");
     await user.type(screen.getByLabelText("Outflow"), "5{Enter}");
     expect(onSaveAndAddAnother).toHaveBeenCalledWith(
       expect.objectContaining({ outflow: "5" }),
@@ -264,7 +269,8 @@ describe("TransactionEditor", () => {
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Payee"), "Bakery");
     expect(screen.getByRole("button", { name: "Create “Bakery” Payee" })).toBeInTheDocument();
-    expect(screen.getByText("“Bakery” will be created as a payee.")).toBeInTheDocument();
+    // Said once, by the button.
+    expect(screen.getAllByText(/Bakery/)).toHaveLength(1);
     await user.keyboard("{Enter}");
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ payeeName: "Bakery" }), null);
   });
@@ -415,13 +421,20 @@ describe("TransactionEditor", () => {
     await user.click(screen.getByLabelText("Category"));
     await user.click(screen.getByRole("option", { name: "Split" }));
     expect(screen.getByText("Split into 2 lines")).toBeInTheDocument();
-    // What's left is only a count while the lines are being typed, not an error.
-    expect(screen.getByText("$120.00 left to split")).not.toHaveClass("text-destructive");
     // The amount reads as the budget writes amounts once it's left.
     expect(screen.getByLabelText("Outflow")).toHaveValue("120.00");
+    // The first line starts with the whole amount, selected so typing replaces it.
+    const first = screen.getByLabelText("Outflow, line 1") as HTMLInputElement;
+    await waitFor(() => expect(first).toHaveFocus());
+    expect(first).toHaveValue("120.00");
+    expect([first.selectionStart, first.selectionEnd]).toEqual([0, 6]);
+    expect(screen.getByLabelText("Outflow, line 2")).toHaveValue("");
+    expect(screen.getByText("Fully split")).toBeInTheDocument();
 
-    // The last empty line takes the rest once the other has an amount.
-    await user.type(screen.getByLabelText("Outflow, line 1"), "80");
+    // The last empty line takes the rest once the other's amount changes.
+    await user.keyboard("80");
+    // What's left is only a count while the lines are being typed, not an error.
+    expect(screen.getByText("$40.00 left to split")).not.toHaveClass("text-destructive");
     await user.tab();
     expect(screen.getByLabelText("Outflow, line 1")).toHaveValue("80.00");
     expect(screen.getByLabelText("Outflow, line 2")).toHaveValue("40.00");
@@ -481,7 +494,8 @@ describe("TransactionEditor", () => {
     await user.click(screen.getByLabelText("Category"));
     await user.click(screen.getByRole("option", { name: "Split" }));
     await waitFor(() => expect(screen.getByLabelText("Outflow, line 1")).toHaveFocus());
-    await user.type(screen.getByLabelText("Outflow, line 1"), "80");
+    expect(screen.getByLabelText("Outflow, line 1")).toHaveValue("120.00");
+    await user.keyboard("80");
     await user.tab();
     expect(screen.getByLabelText("Outflow, line 2")).toHaveValue("40.00");
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -502,6 +516,7 @@ describe("TransactionEditor", () => {
     await user.type(screen.getByLabelText("Outflow"), "10");
     await user.click(screen.getByLabelText("Category"));
     await user.click(screen.getByRole("option", { name: "Split" }));
+    await user.clear(screen.getByLabelText("Outflow, line 1"));
     await user.type(screen.getByLabelText("Outflow, line 1"), "3");
     await user.clear(screen.getByLabelText("Outflow, line 2"));
     await user.type(screen.getByLabelText("Outflow, line 2"), "4");
@@ -533,6 +548,7 @@ describe("TransactionEditor", () => {
     await user.type(screen.getByLabelText("Outflow"), "10");
     await user.click(screen.getByLabelText("Category"));
     await user.click(screen.getByRole("option", { name: "Split" }));
+    await user.clear(screen.getByLabelText("Outflow, line 1"));
     await user.type(screen.getByLabelText("Outflow, line 1"), "3");
     await user.clear(screen.getByLabelText("Outflow, line 2"));
     await user.type(screen.getByLabelText("Outflow, line 2"), "4");
@@ -578,14 +594,17 @@ describe("TransactionEditor", () => {
 });
 
 describe("TransactionEditor, stacked for a phone's drawer", () => {
-  function renderStacked(props: { focusAmount?: boolean; recentPayees?: string[] } = {}) {
+  function renderStacked(
+    props: { focusAmount?: boolean; recentPayees?: string[]; allAccounts?: boolean } = {},
+  ) {
     const onSave = vi.fn();
+    const { allAccounts = false, ...rest } = props;
     render(
       <TransactionEditor
         layout="stacked"
         initial={emptyDraft("checking", "2026-10-01")}
-        columns={registerColumns(false)}
-        accounts={[account("checking", "checking")]}
+        columns={registerColumns(allAccounts)}
+        accounts={[account("checking", "checking"), account("savings", "savings")]}
         payees={[
           {
             id: "p1",
@@ -608,7 +627,7 @@ describe("TransactionEditor, stacked for a phone's drawer", () => {
         error={null}
         onSave={onSave}
         onCancel={vi.fn()}
-        {...props}
+        {...rest}
       />,
     );
     return { onSave, form: screen.getByRole("form", { name: "New transaction" }) };
@@ -650,6 +669,32 @@ describe("TransactionEditor, stacked for a phone's drawer", () => {
       }),
       null,
     );
+  });
+});
+
+describe("TransactionEditor, stacked in All Accounts", () => {
+  it("starts in the amount, not the account list", () => {
+    render(
+      <TransactionEditor
+        layout="stacked"
+        focusAmount
+        initial={emptyDraft("checking", "2026-10-01")}
+        columns={registerColumns(true)}
+        accounts={[account("checking", "checking"), account("savings", "savings")]}
+        payees={[]}
+        categories={[]}
+        dateFormat="MM/DD/YYYY"
+        settings={usd}
+        flags={[]}
+        onRenameFlags={async () => {}}
+        pending={false}
+        error={null}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("Account")).not.toHaveFocus();
+    expect(screen.getByLabelText("Outflow")).toHaveFocus();
   });
 });
 

@@ -13,14 +13,14 @@ import { chartNumber, monthLabel } from "@/lib/reports";
 import { useAmountFormat } from "./format";
 import { LegendItem } from "./net-worth-chart";
 
-/** Each kind keeps its colour whichever kinds are shown. */
+/** Each kind keeps its colour whichever kinds are shown, in stack order (neighbours apart). */
 const KIND_COLOR: Record<CompositionKind, string> = {
   cash: "var(--report-1)",
-  savings: "var(--report-5)",
+  savings: "var(--report-2)",
   investments: "var(--report-3)",
   credit: "var(--report-4)",
-  loans: "var(--report-6)",
-  liabilities: "var(--report-2)",
+  loans: "var(--report-5)",
+  liabilities: "var(--report-6)",
 };
 
 const config = Object.fromEntries(
@@ -71,7 +71,7 @@ export function CompositionChart({
               const row = typeof label === "string" ? byMonth.get(label) : undefined;
               if (!active || !row) return null;
               return (
-                <div className="grid gap-1 rounded-md border bg-background px-3 py-2 text-xs shadow-sm">
+                <div className="grid gap-1 rounded-md border bg-popover px-3 py-2 text-xs shadow-md text-popover-foreground">
                   <span className="font-medium">{monthLabel(row.month, "long")}</span>
                   {kinds.map((k) => (
                     <span key={k} className="flex items-center justify-between gap-4 tabular-nums">

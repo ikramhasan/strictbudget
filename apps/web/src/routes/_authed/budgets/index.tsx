@@ -71,7 +71,7 @@ function AllBudgetsPage() {
             </EmptyMedia>
             <EmptyTitle>No budgets yet</EmptyTitle>
             <EmptyDescription>
-              Create one to start giving every dollar a job, or import one you already keep.
+              Create one to start planning with the money you have, or import one you already keep.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent className="flex-row justify-center">

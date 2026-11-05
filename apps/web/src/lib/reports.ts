@@ -151,92 +151,54 @@ export function chartNumber(minorUnits: string | bigint, currency: CurrencyCode)
 }
 
 /**
- * The report palette: seven colour-blind-safe hues (`--report-1` to `--report-7`, defined for both
- * themes in packages/ui's theme.css), each with five tints strongest first
- * (`--report-<hue>-<1..5>`, all at least 3:1 against the background), and a grey (`--report-8`).
+ * The report palette (packages/ui's theme.css): eight categorical colours, `--report-1` to
+ * `--report-8`, in an order validated for neighbours: each pair next to each other differs in hue
+ * and lightness, for every kind of colour vision. A chart hands them out in the order its marks
+ * sit (distinctColors), so neighbouring marks always take neighbouring colours.
  */
-export const REPORT_HUES = 7;
-export const REPORT_TINTS = 5;
-const wrap = (hue: number) => ((hue % REPORT_HUES) + REPORT_HUES) % REPORT_HUES;
-/** A hue's mid tone, for charts whose series mean one thing each (income, debts…). */
-export const reportColor = (hue: number) => `var(--report-${wrap(hue) + 1})`;
-/** A hue's tint, 0 the strongest. */
-export const reportTint = (hue: number, tint: number) =>
-  `var(--report-${wrap(hue) + 1}-${Math.min(Math.max(tint, 0), REPORT_TINTS - 1) + 1})`;
+export const REPORT_COLORS = 8;
+/** One of the palette's colours, for charts whose series mean one thing each (debts, savings…). */
+export const reportColor = (slot: number) => `var(--report-${(slot % REPORT_COLORS) + 1})`;
 
-/** Uncategorized, "No payee" and the like: the palette's grey. */
-export const UNCATEGORIZED_COLOR = "var(--report-8)";
+/** Uncategorized, "No payee" and the like: a neutral. */
+export const UNCATEGORIZED_COLOR = "var(--report-uncategorized)";
 /** "Other" (the series a chart folds together): a lighter neutral, apart from Uncategorized. */
 export const OTHER_COLOR = "var(--report-other)";
+/** Money in and money out: blue and orange, never green and red. */
+export const INCOME_COLOR = "var(--report-income)";
+export const SPENDING_COLOR = "var(--report-spending)";
+/** One colour for a ranked list's bars, whose length already tells them apart. */
+export const RANKED_COLOR = "var(--report-1)";
 
-/** Text on a report colour (theme.css picks light or dark ink per theme for each band). */
-export function reportInk(color: string) {
-  const tint = /^var\(--report-\d-(\d)\)$/.exec(color)?.[1];
-  if (tint) return Number(tint) <= 3 ? "var(--report-ink-strong)" : "var(--report-ink-soft)";
-  if (color === UNCATEGORIZED_COLOR) return "var(--report-ink-strong)";
-  return "var(--report-ink-soft)";
-}
+/** Text on a report colour. */
+export const reportInk = (color: string) =>
+  color === UNCATEGORIZED_COLOR ? "var(--report-uncategorized-ink)" : "var(--report-ink)";
 
 export interface ColorRequest {
   key: string;
-  /**
-   * The family the series belongs to (a category's group): a family shares one hue, its series
-   * taking that hue's tints. Without one the series is a family of its own.
-   */
-  family?: string;
-  /** The hue the family keeps wherever it can (its group's place in the plan). */
-  hue?: number;
-  /** A colour of its own (Uncategorized's grey, a flag's colour), never handed to another series. */
+  /** A colour of its own (Uncategorized's neutral, a flag's colour), never handed to another series. */
   color?: string;
 }
 
 /**
- * One chart's colours, none repeated. `series` come biggest first. Each family takes its hue
- * unless a bigger family has it, else the first hue still free, and its series take the hue's
- * tints in turn, so the biggest is the strongest. Past a family's tints, past the free hues or
- * past `max` named series, the rest get OTHER_COLOR and the chart folds them into "Other".
+ * One chart's colours, none repeated. `series` come in the order the chart draws them (a donut's
+ * slices, a stack's segments), so neighbours take neighbouring palette colours. A series with a
+ * colour of its own keeps it; past `max` named series (at most the palette's eight) the rest get
+ * OTHER_COLOR and the chart folds them into "Other".
  */
 export function distinctColors(
   series: readonly ColorRequest[],
-  max = Number.POSITIVE_INFINITY,
+  max: number = REPORT_COLORS,
 ): Map<string, string> {
   const out = new Map<string, string>();
-  const taken = new Set<number>();
-  // A hue whose colour is some series' own (a flag that is also a palette hue) is never handed out.
-  for (const s of series) {
-    const own = s.color && /^var\(--report-(\d)(?:-\d)?\)$/.exec(s.color)?.[1];
-    if (own && Number(own) <= REPORT_HUES) taken.add(Number(own) - 1);
-  }
-  const families = new Map<string, { hue: number; used: number }>();
+  const limit = Math.min(max, REPORT_COLORS);
   let named = 0;
   for (const s of series) {
-    if (s.color) {
-      out.set(s.key, s.color);
-      continue;
-    }
-    const id = s.family ?? s.key;
-    let family = families.get(id);
-    if (!family) {
-      let hue = s.hue !== undefined && !taken.has(wrap(s.hue)) ? wrap(s.hue) : -1;
-      for (let h = 0; hue < 0 && h < REPORT_HUES; h++) if (!taken.has(h)) hue = h;
-      if (hue >= 0) {
-        taken.add(hue);
-        family = { hue, used: 0 };
-        families.set(id, family);
-      }
-    }
-    if (!family || family.used >= REPORT_TINTS || named >= max) {
-      out.set(s.key, OTHER_COLOR);
-      continue;
-    }
-    out.set(s.key, reportTint(family.hue, family.used++));
-    named++;
+    if (s.color) out.set(s.key, s.color);
+    else out.set(s.key, named < limit ? reportColor(named++) : OTHER_COLOR);
   }
   return out;
 }
-
-/** One ramp for a chart of one dimension (payees, accounts): its biggest series strongest. */
-export const RAMP_FAMILY = "ramp";
 
 /**
  * An axis tick's label: the tick (a chart position) rounded to the minor unit and formatted,
@@ -252,30 +214,6 @@ export function chartTick(
   const minor = BigInt(Math.round(units * Number(factor)));
   const text = format(minor);
   return minor % factor === 0n ? text.replace(new RegExp(`\\${decimalMark}\\d+`), "") : text;
-}
-
-/**
- * The order groups take the hues in: blue, purple, cyan, amber and pink first; green and
- * vermillion last, since they also mean income and spending (and good and bad) elsewhere.
- */
-const GROUP_HUES = [0, 4, 6, 1, 5, 2, 3];
-
-/**
- * Each group's hue (its place in the plan) and each category's group, so a group keeps one hue
- * across reports and its categories take that hue's tints (distinctColors). Uncategorized has
- * none: it's always grey.
- */
-export function planHues(list: {
-  groups: readonly { id: string; categories: readonly { id: string }[] }[];
-}) {
-  const groups = new Map<string, number>();
-  const categories = new Map<string, { hue: number; family: string }>();
-  list.groups.forEach((g, index) => {
-    const hue = GROUP_HUES[index % REPORT_HUES] ?? 0;
-    groups.set(g.id, hue);
-    for (const c of g.categories) categories.set(c.id, { hue, family: g.id });
-  });
-  return { categories, groups };
 }
 
 export interface ExportFile {

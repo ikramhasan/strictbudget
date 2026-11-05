@@ -70,7 +70,7 @@ function Report() {
             <Total label="Still to set aside" value={format(data.totals.unfunded)} />
           </dl>
           {data.cards.map((card) => (
-            <section key={card.accountId} className="grid gap-3 rounded-lg border p-4">
+            <section key={card.accountId} className="grid gap-3 rounded-lg border bg-card p-4">
               <CardSummary
                 card={card}
                 month={month}
@@ -90,7 +90,7 @@ function Report() {
               />
             </section>
           ))}
-          <section className="grid gap-2 rounded-lg border p-4">
+          <section className="grid gap-2 rounded-lg border bg-card p-4">
             <h2 className="font-semibold">Living on the float</h2>
             <p className="text-muted-foreground text-sm">
               What the cards' payment categories lacked at each month's end. It's paid with money
@@ -108,7 +108,7 @@ function Report() {
 
 function Total({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border p-4">
+    <div className="rounded-lg border bg-card p-4">
       <dt className="text-muted-foreground text-sm">{label}</dt>
       <dd className="font-semibold text-2xl tabular-nums">{value}</dd>
     </div>

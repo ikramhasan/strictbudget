@@ -533,8 +533,9 @@ function SidebarResizer({
 
 /**
  * A phone's main places within thumb reach:
- * Budget, All Accounts, Reports and Activity, and More for the rest of the sidebar (the accounts,
- * settings, the user menu). Hidden from tablet width up, where the sidebar shows.
+ * Budget, Accounts (the list of accounts, All Accounts at its top), Reports and Activity, and More
+ * for the rest of the sidebar (settings, the user menu). Hidden from tablet width up, where the
+ * sidebar shows.
  */
 function BottomNav({ budgetId }: { budgetId: string }) {
   const { setOpenMobile } = useSidebar();
@@ -543,7 +544,7 @@ function BottomNav({ budgetId }: { budgetId: string }) {
   return (
     <nav
       aria-label="Quick navigation"
-      className="fixed inset-x-0 bottom-0 z-30 flex border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 flex border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <Link
         to="/budgets/$budgetId"

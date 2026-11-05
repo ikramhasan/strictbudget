@@ -3,7 +3,7 @@ import { FieldLegend, FieldSet } from "@strictbudget/ui/components/field";
 import { Input } from "@strictbudget/ui/components/input";
 import { Spinner } from "@strictbudget/ui/components/spinner";
 import { cn } from "@strictbudget/ui/lib/utils";
-import { Check, Plus, X } from "lucide-react";
+import { ArrowLeft, Check, Plus, X } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import type { CategoryList } from "@/lib/categories";
 
@@ -38,10 +38,13 @@ export function picksFrom(
 export function CategoryPicker({
   data,
   pending,
+  onBack,
   onContinue,
 }: {
   data: CategoryList;
   pending: boolean;
+  /** Back to the step before. */
+  onBack?: () => void;
   onContinue: (picks: CategoryPicks) => void;
 }) {
   const [unticked, setUnticked] = useState<Set<string>>(new Set());
@@ -114,7 +117,12 @@ export function CategoryPicker({
           </div>
         ))}
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-5">
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t pt-5">
+        {onBack && (
+          <Button variant="ghost" className="mr-auto -ml-2.5" onClick={onBack}>
+            <ArrowLeft /> Back
+          </Button>
+        )}
         <p className="text-muted-foreground text-sm" aria-live="polite">
           {kept === 1 ? "1 category" : `${kept} categories`} · you can change them any time
         </p>

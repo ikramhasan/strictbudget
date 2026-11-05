@@ -41,7 +41,7 @@ describe("categories", () => {
     const { tree } = await setup();
     expect(names(await tree())).toEqual(STARTER_CATEGORIES.map((g) => [g.group, g.categories]));
     expect((await tree()).groups.map((g) => g.name)).toEqual(["Bills", "Needs", "Wants"]);
-    expect(STARTER_CATEGORIES.flatMap((g) => g.categories)).toHaveLength(12);
+    expect(STARTER_CATEGORIES.flatMap((g) => g.categories)).toHaveLength(11);
   });
 
   it("starts every starter category with an emoji", () => {

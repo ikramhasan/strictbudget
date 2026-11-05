@@ -145,11 +145,16 @@ const NO_GROUPS: ReadonlySet<string> = new Set();
 // On a phone a row is its name and Available, a thumb's height; Assigned and Activity are in the
 // category's drawer.
 const ROW =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-1 px-2 py-1.5 max-md:min-h-12 md:grid-cols-[minmax(10rem,1fr)_6.5rem_6.5rem_7.5rem]";
+  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-1 px-2 py-1.5 max-md:min-h-12 md:grid-cols-[minmax(8rem,1fr)_6.5rem_7.5rem] @min-[36rem]/list:md:grid-cols-[minmax(10rem,1fr)_6.5rem_6.5rem_7.5rem]";
 /** The plan's keys also work from a category's open Assigned input. */
 const inAssigned = (target: Element) => target.closest("[data-assigned-cell]") !== null;
 /** Cells left off a phone's narrow rows. */
 const WIDE_ONLY = "max-md:hidden";
+/**
+ * Activity gives way first when the table itself is narrow (a smaller window beside the
+ * inspector): names keep their room, and the inspector still shows each category's activity.
+ */
+const ACTIVITY_COL = "max-md:hidden @max-[36rem]/list:hidden";
 const NAME_CELL = "flex min-w-0 items-center gap-1";
 const FIGURE = "min-w-0 truncate text-right tabular-nums";
 /**
@@ -160,15 +165,15 @@ const FIGURE = "min-w-0 truncate text-right tabular-nums";
 const FIGURE_PAD = "px-2";
 /** Lets a name button shrink and truncate (shadcn's Button doesn't shrink by default). */
 const NAME_BUTTON = "min-w-0 shrink justify-start";
-// The shared Table's look (ui.ikramhasan.com's data table): a muted tray, the header on it, the
-// rows on a raised card. Group rows and the hidden-categories row take a tint a step deeper than
-// a hovered row's, so the two read apart in both themes.
+// One surface: the table is a single bordered card with a tinted header row (no tray around a
+// card). Group rows and the hidden-categories row take a tint a step deeper than a hovered row's,
+// so the two read apart in both themes.
 const TRAY =
-  "overflow-x-auto rounded-xl bg-muted px-[5px] pb-[5px] ring-1 ring-border dark:bg-[color-mix(in_oklch,var(--background),black_20%)]";
-/** The tray's own colour, for its pinned header (rows scroll under it). */
-const TRAY_FILL = "bg-muted dark:bg-[color-mix(in_oklch,var(--background),black_20%)]";
-const BODY =
-  "overflow-hidden rounded-[10px] border bg-background shadow-[0_1px_2px_rgb(0_0_0/0.04)] dark:shadow-[0_1px_2px_rgb(0_0_0/0.4)]";
+  "@container/list overflow-x-auto rounded-xl border bg-background shadow-[0_1px_2px_rgb(0_0_0/0.04)] dark:shadow-none";
+/** The header row: a tint over the table, opaque so rows scroll under it when it's pinned. */
+const TRAY_FILL =
+  "border-b bg-[color-mix(in_oklch,var(--muted),var(--background)_35%)] dark:bg-[color-mix(in_oklch,var(--muted),var(--background)_50%)]";
+const BODY = "";
 const GROUP_ROW =
   "bg-[color-mix(in_oklch,var(--muted),var(--background)_35%)] dark:bg-[color-mix(in_oklch,var(--muted),var(--background)_45%)]";
 const HOVER_ROW =
@@ -411,7 +416,8 @@ export function CategoryList({
             className={cn(
               ROW,
               "font-medium text-[13px] text-muted-foreground",
-              fill && cn("sticky top-0 z-10", TRAY_FILL),
+              TRAY_FILL,
+              fill && "sticky top-0 z-10",
             )}
           >
             <div className={NAME_CELL}>
@@ -449,13 +455,15 @@ export function CategoryList({
                   trigger={
                     <Button
                       variant="ghost"
-                      size="icon-xs"
+                      size="xs"
                       aria-label="Add a category group"
-                      title="Add a category group"
                       disabled={addGroupDisabled}
-                      className="-ml-1 text-muted-foreground"
+                      className="-ml-1 font-normal text-muted-foreground"
                     >
                       <Plus />
+                      <span aria-hidden className="max-md:hidden @max-[36rem]/list:hidden">
+                        Group
+                      </span>
                     </Button>
                   }
                 />
@@ -464,7 +472,7 @@ export function CategoryList({
             {figures && (
               <>
                 <span className={cn(FIGURE, FIGURE_PAD, WIDE_ONLY)}>Assigned</span>
-                <span className={cn(FIGURE, FIGURE_PAD, WIDE_ONLY)}>Activity</span>
+                <span className={cn(FIGURE, FIGURE_PAD, ACTIVITY_COL)}>Activity</span>
                 <span className={cn(FIGURE, FIGURE_PAD)}>Available</span>
               </>
             )}
@@ -502,7 +510,7 @@ export function CategoryList({
                 </div>
                 {/* A dash: money can't be assigned to Uncategorized. */}
                 <span className={cn(FIGURE, FIGURE_PAD, WIDE_ONLY)}>–</span>
-                <span className={cn(FIGURE, "text-sm", WIDE_ONLY)}>
+                <span className={cn(FIGURE, "text-sm", ACTIVITY_COL)}>
                   <Activity
                     figures={figures}
                     target={{ uncategorized: true }}
@@ -797,7 +805,7 @@ function GroupSection({
           <Button
             variant="ghost"
             size="icon-xs"
-            aria-label={`${collapsed ? "Expand" : "Collapse"} ${group.name}`}
+            aria-label={`${collapsed ? "Expand" : "Collapse"} ${spoken(group.name)}`}
             aria-expanded={!collapsed}
             onClick={onToggle}
           >
@@ -811,7 +819,7 @@ function GroupSection({
           {onToggleSelection && (
             <span className={cn(SLOT, WIDE_ONLY)}>
               <Checkbox
-                aria-label={`Select ${group.name}`}
+                aria-label={`Select ${spoken(group.name)}`}
                 checked={checked ?? false}
                 onCheckedChange={onToggleSelection}
               />
@@ -874,7 +882,7 @@ function GroupSection({
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Add a category to ${group.name}`}
+                      aria-label={`Add a category to ${spoken(group.name)}`}
                     >
                       <Plus />
                     </Button>
@@ -884,7 +892,7 @@ function GroupSection({
               {reorderable && (
                 <DragHandle
                   ref={handleRef}
-                  label={`Reorder ${group.name}`}
+                  label={`Reorder ${spoken(group.name)}`}
                   className={HOVER_REVEAL}
                 />
               )}
@@ -1014,81 +1022,88 @@ function CategoryRow({
     >
       <div className="grid min-w-0 gap-1">
         <div className={cn(NAME_CELL, "flex-wrap gap-y-0.5")}>
-          {/* The handle takes the slot a group's chevron uses, shown when the row is hovered. */}
-          {reorderable ? (
-            <DragHandle
-              ref={handleRef}
-              label={`Reorder ${category.name}`}
-              className={HOVER_REVEAL}
-            />
-          ) : (
-            <>
-              <Spacer />
-              {/* An empty handle keeps dnd-kit's button role off the row. */}
-              <span ref={handleRef} hidden />
-            </>
-          )}
-          {selection && <RowCheckbox id={category.id} name={category.name} selection={selection} />}
-          <NamePopover
-            title="Category name"
-            withEmoji
-            withNote
-            nameLockedReason={
-              isPayment ? "Named after its credit account. Rename the account instead." : undefined
-            }
-            initial={{ name: category.name, note: category.note }}
-            onSubmit={({ name, note }) => actions.updateCategory(category.id, { name, note })}
-            actions={(close) => (
+          {/* The controls and the name stay together; only the status caption wraps below. */}
+          <div className="flex min-w-0 max-w-full flex-[1_1_auto] items-center gap-1">
+            {/* The handle takes the slot a group's chevron uses, shown when the row is hovered. */}
+            {reorderable ? (
+              <DragHandle
+                ref={handleRef}
+                label={`Reorder ${spoken(category.name)}`}
+                className={HOVER_REVEAL}
+              />
+            ) : (
               <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    close();
-                    await actions.updateCategory(category.id, { hidden: true });
-                  }}
-                >
-                  Hide
-                </Button>
-                {!isPayment && (
+                <Spacer />
+                {/* An empty handle keeps dnd-kit's button role off the row. */}
+                <span ref={handleRef} hidden />
+              </>
+            )}
+            {selection && (
+              <RowCheckbox id={category.id} name={spoken(category.name)} selection={selection} />
+            )}
+            <NamePopover
+              title="Category name"
+              withEmoji
+              withNote
+              nameLockedReason={
+                isPayment
+                  ? "Named after its credit account. Rename the account instead."
+                  : undefined
+              }
+              initial={{ name: category.name, note: category.note }}
+              onSubmit={({ name, note }) => actions.updateCategory(category.id, { name, note })}
+              actions={(close) => (
+                <>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="text-destructive"
-                    onClick={() => {
+                    onClick={async () => {
                       close();
-                      onDelete();
+                      await actions.updateCategory(category.id, { hidden: true });
                     }}
                   >
-                    Delete
+                    Hide
                   </Button>
-                )}
-              </>
-            )}
-            trigger={
-              <Button
-                variant="ghost"
-                size="xs"
-                className={cn(NAME_BUTTON, "font-normal text-sm")}
-                onClick={(e) => {
-                  if (!selection || onlySelected) return;
-                  // Selecting comes first; Radix skips opening the editor on a prevented click.
-                  e.preventDefault();
-                  selectAndEdit();
-                }}
-              >
-                <CategoryName name={category.name} />
-              </Button>
-            }
-          />
-          {category.note && (
-            <StickyNote
-              className="size-3.5 shrink-0 text-muted-foreground"
-              aria-label="Has a note"
+                  {!isPayment && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => {
+                        close();
+                        onDelete();
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </>
+              )}
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className={cn(NAME_BUTTON, "font-normal text-sm")}
+                  onClick={(e) => {
+                    if (!selection || onlySelected) return;
+                    // Selecting comes first; Radix skips opening the editor on a prevented click.
+                    e.preventDefault();
+                    selectAndEdit();
+                  }}
+                >
+                  <CategoryName name={category.name} />
+                </Button>
+              }
             />
-          )}
+            {category.note && (
+              <StickyNote
+                className="size-3.5 shrink-0 text-muted-foreground"
+                aria-label="Has a note"
+              />
+            )}
+          </div>
           {/* The target's status, right-aligned on the name's line: the name gives way first. */}
           {showStatus &&
             totals &&
@@ -1118,7 +1133,7 @@ function CategoryRow({
             {assign ? (
               <AssignedCell
                 categoryId={category.id}
-                categoryName={category.name}
+                categoryName={spoken(category.name)}
                 amount={totals.assigned}
                 format={format}
                 actions={assign}
@@ -1139,7 +1154,7 @@ function CategoryRow({
               <span className="absolute top-1/2 left-full -translate-y-1/2">
                 <CategoryMovesButton
                   categoryId={category.id}
-                  categoryName={category.name}
+                  categoryName={spoken(category.name)}
                   context={figures.moves}
                   format={format}
                   visible={selected}
@@ -1147,12 +1162,12 @@ function CategoryRow({
               </span>
             )}
           </div>
-          <span className={cn(FIGURE, "text-sm", WIDE_ONLY)}>
+          <span className={cn(FIGURE, "text-sm", ACTIVITY_COL)}>
             {figures && (
               <Activity
                 figures={figures}
                 target={{ categoryId: category.id }}
-                name={category.name}
+                name={spoken(category.name)}
                 amount={totals.activity}
                 card={isPayment ? totals.payment : undefined}
               />
@@ -1162,7 +1177,7 @@ function CategoryRow({
             {move ? (
               <AvailableButton
                 categoryId={category.id}
-                categoryName={category.name}
+                categoryName={spoken(category.name)}
                 amount={totals.available}
                 format={format}
                 actions={move}
@@ -1201,6 +1216,9 @@ function RowNote({ note }: { note: { strong: string; rest: string } | null }) {
   );
 }
 
+/** A name as a screen reader should say it: without its leading emoji. */
+const spoken = (name: string) => splitEmoji(name).text;
+
 /**
  * A category's name with its leading emoji (if any) on a soft backdrop, so a dark emoji stays
  * visible on a dark row.
@@ -1213,7 +1231,6 @@ function CategoryName({ name }: { name: string }) {
       <span aria-hidden className="shrink-0 rounded-sm px-0.5 leading-none dark:bg-foreground/12">
         {emoji}
       </span>
-      <span className="sr-only">{emoji} </span>
       <span className="truncate">{text}</span>
     </span>
   );
@@ -1252,7 +1269,7 @@ function TotalCells({
       <span className={cn(FIGURE, FIGURE_PAD, "font-medium text-sm", WIDE_ONLY)}>
         {format(totals.assigned)}
       </span>
-      <span className={cn(FIGURE, "font-medium text-sm", WIDE_ONLY)}>
+      <span className={cn(FIGURE, "font-medium text-sm", ACTIVITY_COL)}>
         {activity ?? <span className={FIGURE_PAD}>{format(totals.activity)}</span>}
       </span>
       <span className={cn(FIGURE, FIGURE_PAD, "font-medium text-sm")}>

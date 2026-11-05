@@ -25,7 +25,15 @@ export function KeyboardShortcutsDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90svh] flex-col gap-0 p-0 sm:max-w-3xl">
+      <DialogContent
+        className="flex max-h-[90svh] flex-col gap-0 p-0 sm:max-w-3xl"
+        // The dialog itself takes focus on open: the list's focus ring would otherwise frame it
+        // straight away (it opens from a key, so the browser shows focus). Tab reaches the list.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          (event.currentTarget as HTMLElement | null)?.focus();
+        }}
+      >
         <DialogHeader className="border-b p-4">
           <DialogTitle>Keyboard Shortcuts</DialogTitle>
           <DialogDescription className="sr-only">

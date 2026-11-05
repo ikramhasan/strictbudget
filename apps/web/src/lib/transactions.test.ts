@@ -494,10 +494,21 @@ describe("splits", () => {
     expect(withSplitTotal({ ...receipt, outflow: "130" }, usd).outflow).toBe("120.00");
   });
 
-  it("moves the category to the first line when splitting", () => {
-    const split = startSplit({ ...emptyDraft("a1", "2026-10-01"), categoryId: "groceries" });
+  it("moves the category and the whole amount to the first line when splitting", () => {
+    const split = startSplit({
+      ...emptyDraft("a1", "2026-10-01"),
+      categoryId: "groceries",
+      outflow: "120.00",
+    });
     expect(split.categoryId).toBeNull();
     expect(split.lines?.map((l) => l.categoryId)).toEqual(["groceries", null]);
+    expect(split.lines?.map((l) => [l.outflow, l.inflow])).toEqual([
+      ["120.00", ""],
+      ["", ""],
+    ]);
+    // Without an amount, both lines start empty.
+    const empty = startSplit(emptyDraft("a1", "2026-10-01"));
+    expect(empty.lines?.every((l) => l.outflow === "" && l.inflow === "")).toBe(true);
   });
 
   it("counts what's left to split, for outflows and inflows", () => {

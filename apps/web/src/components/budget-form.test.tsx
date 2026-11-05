@@ -34,6 +34,21 @@ describe("BudgetForm", () => {
   });
   afterEach(() => vi.useRealTimers());
 
+  it("keeps Save off until a saved setting changes", async () => {
+    renderForm({
+      defaultValues: { ...defaults, name: "Home" },
+      requireChange: true,
+      submitLabel: "Save changes",
+    });
+    const save = screen.getByRole("button", { name: "Save changes" });
+    expect(save).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Budget name"), " ");
+    // Only spaces added: nothing to save.
+    expect(save).toBeDisabled();
+    await userEvent.selectOptions(screen.getByLabelText("Date format"), "DD/MM/YYYY");
+    expect(save).toBeEnabled();
+  });
+
   it("previews the default settings", () => {
     renderForm();
     expect(screen.getByLabelText("Preview")).toHaveTextContent("-$1,234,567.89 · 10/01/2026");

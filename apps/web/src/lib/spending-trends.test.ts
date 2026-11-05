@@ -117,39 +117,22 @@ describe("trend series", () => {
     expect(keys).toHaveLength(5);
   });
 
-  it("gives a group's categories its hue's tints and folds those past them into Other", () => {
-    const many = {
-      ...list,
-      groups: [
-        {
-          id: "g",
-          name: "G",
-          hidden: false,
-          kind: null,
-          categories: Array.from({ length: 7 }, (_, i) => category(`c${i}`, "g", `C${i}`)),
-        },
-      ],
-    } as CategoryList;
-    const big = catalogOf(many);
-    const byCategory = trendMonths(
-      cellsOf(
-        Array.from({ length: 7 }, (_, i) => row("2026-10", `c${i}`, String(-1000 * (i + 1)))),
-        big,
-        "category",
-      ),
-      months,
-    );
-    const info = (key: string) => seriesInfo(big, "category", key);
-    const { keys, months: folded } = withOther(byCategory, 7, info);
-    expect(keys).toEqual(["c6", "c5", "c4", "c3", "c2", OTHER_KEY]);
-    const colors = seriesColors(folded, keys, info);
+  it("hands out the palette in the order a chart draws its series, neutrals kept", () => {
+    const byCategory = trendMonths(cellsOf(rows, catalog, "category"), months);
+    const info = (key: string) => seriesInfo(catalog, "category", key);
+    const { keys } = withOther(byCategory, 2);
+    const colors = seriesColors(keys, info);
     expect(keys.map((k) => colors.get(k))).toEqual([
-      "var(--report-1-1)",
-      "var(--report-1-2)",
-      "var(--report-1-3)",
-      "var(--report-1-4)",
-      "var(--report-1-5)",
+      "var(--report-uncategorized)",
+      "var(--report-1)",
       "var(--report-other)",
+    ]);
+    // In stack order instead, the colours follow the stack.
+    const stacked = seriesColors(["rent", "phone", "food"], info);
+    expect([...stacked.values()]).toEqual([
+      "var(--report-1)",
+      "var(--report-2)",
+      "var(--report-3)",
     ]);
   });
 

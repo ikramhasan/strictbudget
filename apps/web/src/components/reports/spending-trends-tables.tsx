@@ -99,7 +99,7 @@ export function TrendSeriesTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="sticky left-0 bg-background">Name</TableHead>
+          <TableHead className="sticky left-0 bg-card">Name</TableHead>
           {data.months.map((m) => (
             <TableHead key={m.month} className="text-right">
               {monthLabel(m.month)}
@@ -114,7 +114,7 @@ export function TrendSeriesTable({
           const total = data.months.reduce((s, m) => s + spent(key, m), 0n);
           return (
             <TableRow key={key}>
-              <TableCell className="sticky left-0 bg-background font-medium">
+              <TableCell className="sticky left-0 bg-card font-medium">
                 <span className="flex items-center gap-1.5">
                   <span
                     aria-hidden
@@ -140,9 +140,7 @@ export function TrendSeriesTable({
           );
         })}
         <TableRow>
-          <TableCell className="sticky left-0 bg-background font-semibold">
-            Total Spending
-          </TableCell>
+          <TableCell className="sticky left-0 bg-card font-semibold">Total Spending</TableCell>
           {data.months.map((m) => (
             <TableCell key={m.month} className="text-right font-semibold tabular-nums">
               {format(m.total)}

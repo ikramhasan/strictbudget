@@ -1,6 +1,7 @@
 import { cn } from "@strictbudget/ui/lib/utils";
 import { Check, Lock } from "lucide-react";
 import type * as React from "react";
+import { AccountLogo } from "./accounts-nav";
 
 // The register's table parts, in the shared Table's look (a muted tray, its rows on a raised card)
 // but sized for the register: its fixed column widths are built for px-2 cells without a minimum
@@ -53,7 +54,7 @@ function RegisterHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+        "h-9 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}
@@ -83,8 +84,8 @@ const REVEAL_ON_ROW =
 
 /** The icon columns' buttons fill their narrow cells, so those cells keep little padding. */
 const ICON_CELL: Partial<Record<string, string>> = {
-  flag: "px-0.5",
-  attachment: "px-1",
+  flag: "px-0",
+  attachment: "px-0.5",
   cleared: "px-1",
   actions: "px-1 py-1",
 };
@@ -98,10 +99,11 @@ const EDITOR_CELL =
 
 /**
  * A date field (the date and its calendar button) slimmed to the register's date column, with the
- * calendar button tucked against its right edge. On top of EDITOR_CELL.
+ * calendar button tucked against its right edge, its figures proportional like the read row's so
+ * the date doesn't move as the row opens. On top of EDITOR_CELL.
  */
 const DATE_EDITOR_FIT =
-  "[&_[data-slot=input-group-control]]:pr-0.5! [&_[data-slot=input-group-addon]]:pr-px! [&_[data-slot=input-group-addon]>button]:size-5";
+  "[&_[data-slot=input-group-control]]:normal-nums! [&_[data-slot=input-group-control]]:pr-0.5! [&_[data-slot=input-group-addon]]:pr-px! [&_[data-slot=input-group-addon]>button]:size-5";
 
 /**
  * A transaction's cleared state at a glance: a solid green check once the bank has it, an empty
@@ -133,7 +135,20 @@ function ClearedMark({
   );
 }
 
+/**
+ * An account's logo in the register's account column, or an empty slot of its size, so every
+ * name starts in the same place (the sidebar's way, without the initials' tiles).
+ */
+function AccountMark({ logo }: { logo: string | null }) {
+  return logo ? (
+    <AccountLogo name="" logo={logo} />
+  ) : (
+    <span aria-hidden className="size-4 shrink-0" />
+  );
+}
+
 export {
+  AccountMark,
   ClearedMark,
   DATE_EDITOR_FIT,
   EDITOR_CELL,

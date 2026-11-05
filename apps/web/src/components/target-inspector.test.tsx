@@ -1,7 +1,11 @@
 import { type CurrencyCode, formatAmount, money } from "@strictbudget/engine";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { accountsQueryOptions } from "@/lib/accounts";
+import { BudgetProvider } from "@/lib/budget-context";
+import type { Budget } from "@/lib/budgets";
 import { inCurrency, type MoneySettings, parseMoneyInput, toMoneyInput } from "@/lib/money-input";
 import type { CategoryTarget, TargetNeed } from "@/lib/targets";
 import {
@@ -51,10 +55,29 @@ const need: TargetNeed = {
   beforeOpening: false,
 };
 
+const budget = { id: "b1", name: "Home", role: "owner", ...usd } as unknown as Budget;
+
+/** The plan's accounts, all in USD unless `otherCurrency` adds a EUR one. */
+function withAccounts(otherCurrency: boolean) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { staleTime: Number.POSITIVE_INFINITY, retry: false } },
+  });
+  const account = (currency: string) => ({ currency, closed: false });
+  queryClient.setQueryData(accountsQueryOptions(budget.id).queryKey, {
+    accounts: [account("USD"), ...(otherCurrency ? [account("EUR")] : [])],
+  } as never);
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <BudgetProvider budget={budget}>{children}</BudgetProvider>
+    </QueryClientProvider>
+  );
+}
+
 function renderSection(
   target: CategoryTarget | null,
   targetNeed: TargetNeed | null,
   currency: Partial<TargetCurrency> = {},
+  { otherCurrency = true } = {},
 ) {
   const onSave = vi.fn().mockResolvedValue(true);
   const usdIO = moneyIn("USD");
@@ -75,6 +98,7 @@ function renderSection(
         ...currency,
       }}
     />,
+    { wrapper: withAccounts(otherCurrency) },
   );
   return { onSave };
 }
@@ -105,6 +129,23 @@ describe("TargetSection with a target in its own currency", () => {
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({ amount: "10000", currency: "USD" }),
     );
+  });
+
+  it("doesn't ask for a currency when every account is in the budget's", async () => {
+    const { onSave } = renderSection(null, null, {}, { otherCurrency: false });
+    await userEvent.click(screen.getByRole("button", { name: "Create Target" }));
+    expect(screen.queryByLabelText("Currency")).not.toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("I need"), "100");
+    await userEvent.click(screen.getByRole("button", { name: "Save Target" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: "10000", currency: "USD" }),
+    );
+  });
+
+  it("still shows the currency of a target kept in another one", async () => {
+    renderSection(eurTarget, need, {}, { otherCurrency: false });
+    await userEvent.click(screen.getByRole("button", { name: "Edit Target" }));
+    expect(screen.getByLabelText("Currency")).toHaveTextContent("EUR");
   });
 
   it("reads the amount in the picked currency's minor units", async () => {

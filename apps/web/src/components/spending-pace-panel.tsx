@@ -21,7 +21,7 @@ export function SpendingPacePanel({ month }: { month: BudgetMonth }) {
   return (
     <section
       aria-labelledby="pace-panel-title"
-      className="grid grid-cols-[minmax(0,1fr)] gap-2 rounded-lg border p-4"
+      className="grid grid-cols-[minmax(0,1fr)] gap-2 rounded-lg border bg-card p-4"
     >
       <div className="flex items-baseline justify-between gap-2">
         <h2 id="pace-panel-title" className="font-semibold text-sm">

@@ -17,13 +17,7 @@ export const STARTER_CATEGORIES: ReadonlyArray<{ group: string; categories: read
   },
   {
     group: "Wants",
-    categories: [
-      "🍽️ Dining out",
-      "🍿 Entertainment",
-      "🏝️ Vacation",
-      "❗️ Stuff I forgot to plan for",
-      "🌳 strictbudget subscription",
-    ],
+    categories: ["🍽️ Dining out", "🍿 Entertainment", "🏝️ Vacation", "❗️ Unplanned expenses"],
   },
 ];
 

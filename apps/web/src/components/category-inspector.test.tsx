@@ -205,7 +205,7 @@ describe("PaymentInspector", () => {
       );
       return onRecordPayment;
     };
-    const message = /You have enough money to pay off your current balance!/;
+    const message = /The balance is covered./;
     // Covered ($10 for $6 owed) and exactly covered.
     const onRecordPayment = record(1000n, -600n);
     expect(screen.getByText(message)).toBeInTheDocument();
@@ -218,7 +218,7 @@ describe("PaymentInspector", () => {
     expect(screen.queryByRole("button", { name: "Record Payment" })).not.toBeInTheDocument();
     record(500n, 200n);
     expect(screen.queryByText(message)).not.toBeInTheDocument();
-    expect(screen.getByText(/is paid off!/)).toBeInTheDocument();
+    expect(screen.getByText(/is paid off\./)).toBeInTheDocument();
     record(1000n, -600n, false);
     expect(screen.queryByRole("button", { name: "Record Payment" })).not.toBeInTheDocument();
   });
@@ -260,7 +260,7 @@ describe("PaymentInspector", () => {
 
   it("celebrates a paid-off card and stays quiet in past months", () => {
     show({ balance: 200n, underfunded: 0n, overspentCategories: 0n });
-    expect(screen.getByText(/Your Card A is paid off!/)).toBeInTheDocument();
+    expect(screen.getByText(/Card A is paid off\./)).toBeInTheDocument();
     cleanup();
     show({ balance: -2900n, underfunded: 2900n, overspentCategories: 0n }, false);
     expect(screen.queryByText("Total Underfunded")).not.toBeInTheDocument();

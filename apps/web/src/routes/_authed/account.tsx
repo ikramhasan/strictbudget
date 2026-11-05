@@ -159,12 +159,21 @@ function ProfilePictureCard() {
   );
 }
 
+/** Every required field has something in it (what's in it is checked on submit). */
+function requiredFilled(form: HTMLFormElement) {
+  return [...form.querySelectorAll<HTMLInputElement>("input[required]")].every(
+    (input) => input.value !== "",
+  );
+}
+
 function EmailCard({ email }: { email: string }) {
   const queryClient = useQueryClient();
   const { email: sendsEmail } = useInstance();
   const change = $api.useMutation("post", "/v1/me/email");
   const [error, setError] = useState<string | null>(null);
   const [pendingTo, setPendingTo] = useState<string | null>(null);
+  // Change email waits until both fields are filled in.
+  const [ready, setReady] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -177,6 +186,7 @@ function EmailCard({ email }: { email: string }) {
         body: { newEmail, password: String(form.get("password") ?? "") },
       });
       formElement.reset();
+      setReady(false);
       if (result.status === "changed") {
         // A server that sends no email changes it at once.
         await refreshSession(queryClient);
@@ -215,7 +225,11 @@ function EmailCard({ email }: { email: string }) {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="grid gap-4">
+          <form
+            onSubmit={handleSubmit}
+            onInput={(e) => setReady(requiredFilled(e.currentTarget))}
+            className="grid gap-4"
+          >
             <Field>
               <FieldLabel htmlFor="newEmail">New email</FieldLabel>
               <Input id="newEmail" name="newEmail" type="email" autoComplete="email" required />
@@ -237,7 +251,7 @@ function EmailCard({ email }: { email: string }) {
             </Field>
             {error && <FieldError>{error}</FieldError>}
             <div>
-              <Button type="submit" disabled={change.isPending}>
+              <Button type="submit" disabled={change.isPending || !ready}>
                 {change.isPending && <Spinner />}
                 Change email
               </Button>
@@ -254,6 +268,8 @@ function PasswordCard() {
   const [signOutOthers, setSignOutOthers] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Change password waits until the fields are filled in.
+  const [ready, setReady] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -274,6 +290,7 @@ function PasswordCard() {
       return;
     }
     formElement.reset();
+    setReady(false);
     // Signing out the others replaces this device's session too.
     await refreshSession(queryClient);
     await queryClient.invalidateQueries({ queryKey: ["get", "/v1/me/sessions"] });
@@ -289,7 +306,11 @@ function PasswordCard() {
         <CardDescription>We'll email you when your password changes.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="grid gap-4">
+        <form
+          onSubmit={handleSubmit}
+          onInput={(e) => setReady(requiredFilled(e.currentTarget))}
+          className="grid gap-4"
+        >
           <Field>
             <FieldLabel htmlFor="currentPassword">Current password</FieldLabel>
             <Input
@@ -313,7 +334,7 @@ function PasswordCard() {
           </Field>
           {error && <FieldError>{error}</FieldError>}
           <div>
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={pending || !ready}>
               {pending && <Spinner />}
               Change password
             </Button>

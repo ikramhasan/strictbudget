@@ -1,4 +1,15 @@
 import { type CurrencyCode, currencyExponent, isOnBudget, money } from "@strictbudget/engine";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@strictbudget/ui/components/alert-dialog";
 import { Button } from "@strictbudget/ui/components/button";
 import {
   Card,
@@ -11,7 +22,7 @@ import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Landmark } from "lucide-react";
+import { ArrowLeft, ArrowRight, Landmark } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -24,7 +35,7 @@ import { ZeroBasedPrimer } from "@/components/zero-based-primer";
 import { accountsQueryOptions } from "@/lib/accounts";
 import { apiClient } from "@/lib/api";
 import { useBudget } from "@/lib/budget-context";
-import { categoriesQueryOptions } from "@/lib/categories";
+import { type CategoryList, categoriesQueryOptions } from "@/lib/categories";
 import { currentMonth, monthQueryOptions, toMoney } from "@/lib/months";
 import { useCreateAccount } from "@/lib/use-create-account";
 
@@ -52,7 +63,6 @@ function SetupPage() {
   const createAccount = useCreateAccount(budget.id);
   const [saving, setSaving] = useState(false);
   const example = useExampleAmount();
-  const budgetHome = { to: "/budgets/$budgetId", params: { budgetId: budget.id } } as const;
   const goTo = (next: Step) => void navigate({ search: { step: next } });
 
   async function applyPicks(picks: CategoryPicks) {
@@ -103,9 +113,11 @@ function SetupPage() {
       <PageHeader
         title={`Set up ${budget.name}`}
         actions={
-          <Button variant="ghost" size="sm" className="text-muted-foreground" asChild>
-            <Link {...budgetHome}>Skip setup</Link>
-          </Button>
+          <SkipSetup
+            budgetId={budget.id}
+            // Until the categories step is done, skipping keeps the starter categories.
+            starter={step === "intro" || step === "categories" ? categories.data : undefined}
+          />
         }
       />
       <OnboardingSteps
@@ -116,7 +128,7 @@ function SetupPage() {
       {step === "intro" ? (
         <StepCard
           title="How strictbudget works"
-          description="One rule: give every dollar a job. Here's the whole method in four moves."
+          description="One idea: plan with the money you have today. Here's the whole method in four moves."
           footer={
             <Button onClick={() => goTo("categories")}>
               Pick my categories <ArrowRight />
@@ -128,10 +140,15 @@ function SetupPage() {
       ) : step === "categories" ? (
         <StepCard
           title="Pick your categories"
-          description="These are the jobs your money can do. Keep the ones that fit your life, tap the rest to drop them, and add anything that's missing."
+          description="These are the jobs your money can do. Keep the ones that fit your life, untick the rest, and add anything that's missing."
         >
           {categories.data ? (
-            <CategoryPicker data={categories.data} pending={saving} onContinue={applyPicks} />
+            <CategoryPicker
+              data={categories.data}
+              pending={saving}
+              onBack={() => goTo("intro")}
+              onContinue={applyPicks}
+            />
           ) : (
             <Skeleton className="h-64" />
           )}
@@ -140,15 +157,16 @@ function SetupPage() {
         <StepCard
           title="Add your first account"
           description="Start with the account you spend from most, like checking. Enter today's balance: that's the money you'll give jobs to."
+          onBack={() => goTo("categories")}
           footer={
-            <div className="flex w-full flex-wrap items-center justify-between gap-3 border-t pt-5">
-              <p className="text-muted-foreground text-sm">
-                No numbers handy? You can add accounts any time from the sidebar.
+            <>
+              <p className="text-muted-foreground text-sm max-sm:basis-full max-sm:text-right">
+                No numbers handy? Add accounts any time from the sidebar.
               </p>
               <Button variant="outline" onClick={() => goTo("assign")}>
                 Skip for now
               </Button>
-            </div>
+            </>
           }
         >
           <AddAccountForm
@@ -163,9 +181,56 @@ function SetupPage() {
           />
         </StepCard>
       ) : (
-        <AssignStep onAddAccount={() => goTo("account")} />
+        <AssignStep onBack={() => goTo("account")} onAddAccount={() => goTo("account")} />
       )}
     </div>
+  );
+}
+
+/**
+ * "Skip setup", which says what skipping leaves behind first: before the categories step is done,
+ * the starter categories stay as they are.
+ */
+function SkipSetup({ budgetId, starter }: { budgetId: string; starter?: CategoryList }) {
+  const groups = (starter?.groups ?? []).filter((g) => !g.kind && !g.hidden);
+  const count = groups.reduce((n, g) => n + g.categories.length, 0);
+  const names = groups.map((g) => g.name);
+  const listed =
+    names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="ghost" size="sm" className="text-muted-foreground">
+          Skip setup
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Skip the rest of setup?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {starter && count > 0
+              ? `Your budget keeps the ${count} starter ${count === 1 ? "category" : "categories"} in ${listed}. You can rename, hide or delete any of them from the budget later.`
+              : "You can add accounts from the sidebar and assign money from the budget whenever you're ready."}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep setting up</AlertDialogCancel>
+          <AlertDialogAction asChild>
+            <Link to="/budgets/$budgetId" params={{ budgetId }}>
+              Go to my budget
+            </Link>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button variant="ghost" className="-ml-2.5" onClick={onClick}>
+      <ArrowLeft /> Back
+    </Button>
   );
 }
 
@@ -173,11 +238,14 @@ function StepCard({
   title,
   description,
   footer,
+  onBack,
   children,
 }: {
   title: string;
   description: string;
   footer?: ReactNode;
+  /** A Back button at the footer's start, to the step before. */
+  onBack?: () => void;
   children: ReactNode;
 }) {
   return (
@@ -187,7 +255,16 @@ function StepCard({
         <CardDescription className="max-w-prose text-pretty">{description}</CardDescription>
       </CardHeader>
       <CardContent>{children}</CardContent>
-      {footer && <div className="flex justify-end gap-2 px-(--card-spacing)">{footer}</div>}
+      {(footer || onBack) && (
+        <div className="mx-(--card-spacing) flex flex-wrap items-center justify-end gap-3 border-t pt-5">
+          {onBack && (
+            <div className="mr-auto">
+              <BackButton onClick={onBack} />
+            </div>
+          )}
+          {footer}
+        </div>
+      )}
     </Card>
   );
 }
@@ -204,7 +281,7 @@ function useExampleAmount() {
  * The last step: the budget's own Ready to Assign, and what to do with it. Without an account
  * there's no money yet, so it says that instead.
  */
-function AssignStep({ onAddAccount }: { onAddAccount: () => void }) {
+function AssignStep({ onBack, onAddAccount }: { onBack: () => void; onAddAccount: () => void }) {
   const { budget, formatAmount } = useBudget();
   const accounts = useQuery(accountsQueryOptions(budget.id));
   const month = useQuery(monthQueryOptions(budget.id, currentMonth()));
@@ -234,6 +311,7 @@ function AssignStep({ onAddAccount }: { onAddAccount: () => void }) {
       <StepCard
         title="Add money to start assigning"
         description="You skipped adding an account, so there's no money in this budget yet. Ready to Assign fills up from your accounts' balances."
+        onBack={onBack}
         footer={
           <>
             {homeButton("Go to my budget", "outline")}
@@ -251,12 +329,13 @@ function AssignStep({ onAddAccount }: { onAddAccount: () => void }) {
   const count = budgetAccounts.length;
   return (
     <StepCard
-      title="Give every dollar a job"
+      title="Assign your money"
       description={
         readyToAssign > 0n
           ? `This is the money in your ${count === 1 ? "account" : `${count} accounts`} right now. Assign it to categories until Ready to Assign reaches ${formatAmount(money(0n, currency))}.`
           : "There's no cash to assign yet. When money comes in, it lands here, ready for you to give it a job."
       }
+      onBack={onBack}
       footer={homeButton(
         <>
           {readyToAssign > 0n ? "Start assigning" : "Go to my budget"} <ArrowRight />

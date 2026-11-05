@@ -260,7 +260,7 @@ export function targetLines(
 }
 
 /**
- * The inspector's message: "You've met your target!", "You're on track to meet your target!",
+ * The inspector's message: "This target is fully funded.", "On track to meet this target.",
  * "Assign $333.34 this month to stay on track" (dated), "Assign $60.00 more to meet your target",
  * or nothing (a balance target without a date, a one-time target past its due month). `prompt` is
  * the amount the Assign button adds.
@@ -281,14 +281,14 @@ export function targetMessage(
     return {
       text:
         target.cadence === "payoff_by_date"
-          ? "Cheers to a debt-free future!"
-          : "You've met your target!",
+          ? "Enough is set aside to pay off this card."
+          : "This target is fully funded.",
     };
   }
   if (status === "onTrack") {
     return target.behavior === "balance" && !target.dueDate
       ? null
-      : { text: "You're on track to meet your target!" };
+      : { text: "On track to meet this target." };
   }
   const amount = format(need.underfunded);
   // In its own month a pay-off target asks to meet it ("Assign $1.00 to meet your target"); custom
@@ -393,7 +393,7 @@ export function useTargetActions(budgetId: string, record?: (command: UndoComman
             }),
           snoozed ? "Couldn't snooze the target." : "Couldn't wake the target.",
         ),
-      /** Sets the budget's expected monthly income (Cost to Be Me). */
+      /** Sets the budget's expected monthly income (Targets and Income). */
       setExpectedIncome: (amount: bigint) =>
         run(
           () =>

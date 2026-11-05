@@ -19,12 +19,11 @@ import {
   distinctColors,
   monthLabel,
   OTHER_COLOR,
-  planHues,
-  REPORT_HUES,
+  RANKED_COLOR,
+  REPORT_COLORS,
   type ReportSum,
   type ReportTransaction,
   reportSearchSchema,
-  reportTint,
   UNCATEGORIZED_COLOR,
 } from "./reports";
 
@@ -58,17 +57,17 @@ export type TrendsSearch = z.infer<typeof trendsSearchSchema>;
 export const OTHER_KEY = "other";
 /** Series shown by name in the lines and share modes; the rest are "Other". */
 export const TOP_SERIES = 5;
-/** Series shown by name in the stacked bars, one per hue; the rest are "Other". */
-export const BAR_SERIES = REPORT_HUES;
+/** Series shown by name in the stacked bars, one per palette colour; the rest are "Other". */
+export const BAR_SERIES = REPORT_COLORS;
 
 export interface SeriesInfo {
   key: string;
   label: string;
   /** The series' colour on its own; a chart picks its series' colours with seriesColors. */
   color: string;
-  /** The hue it keeps where it can (its group's place in the plan); none for Uncategorized and Other. */
-  hue?: number;
-  /** The series sharing its hue: a category's group; none for a group (a family of its own). */
+  /** Whether a chart hands it a palette colour; Uncategorized and Other keep their neutrals. */
+  palette?: true;
+  /** A category's group, which the legend lists it under; none for a group. */
   family?: string;
   /** Place in the plan (stack order). */
   order: number;
@@ -87,7 +86,6 @@ export interface Catalog {
 const UNCATEGORIZED_LABEL = "Uncategorized";
 
 export function catalogOf(list: CategoryList): Catalog {
-  const hues = planHues(list);
   const categories = new Map<string, SeriesInfo>();
   const groups = new Map<string, SeriesInfo>();
   // Uncategorized first, as the category filter lists it.
@@ -101,23 +99,21 @@ export function catalogOf(list: CategoryList): Catalog {
   });
   let index = 0;
   list.groups.forEach((g, groupIndex) => {
-    const groupHue = hues.groups.get(g.id) ?? 0;
     groups.set(g.id, {
       key: g.id,
       label: g.name,
-      color: reportTint(groupHue, 0),
-      hue: groupHue,
+      color: RANKED_COLOR,
+      palette: true,
       order: groupIndex,
       groupId: g.id,
       groupName: g.name,
     });
     for (const c of g.categories) {
-      const hue = hues.categories.get(c.id)?.hue ?? 0;
       categories.set(c.id, {
         key: c.id,
         label: c.name,
-        color: reportTint(hue, 0),
-        hue,
+        color: RANKED_COLOR,
+        palette: true,
         family: g.id,
         order: index,
         groupId: g.id,
@@ -211,19 +207,13 @@ export function seriesKeys(
 /**
  * The months with the top `n` spenders kept and everything else summed into "Other", so a plan
  * with dozens of categories still reads. A lone series left over keeps its name: an "Other" of one
- * hides it for nothing. With `info`, a top series its group has no tint left for (seriesColors)
- * goes to "Other" too, so no named series wears Other's colour.
+ * hides it for nothing.
  */
 export function withOther(
   months: readonly TrendMonth<string>[],
   n: number,
-  info?: (key: string) => SeriesInfo,
 ): { keys: string[]; months: TrendMonth<string>[] } {
-  let top = topSpenders(months, n);
-  if (info) {
-    const colors = seriesColors(months, top, info);
-    top = top.filter((k) => colors.get(k) !== OTHER_COLOR || info(k).hue === undefined);
-  }
+  const top = topSpenders(months, n);
   const rest = new Set<string>();
   for (const m of months) for (const key of m.nets.keys()) if (!top.includes(key)) rest.add(key);
   if (rest.size === 1) top.push(...rest);
@@ -242,21 +232,18 @@ export function withOther(
 }
 
 /**
- * Each series' colour in one chart, none repeated (distinctColors): a group keeps its hue and its
- * categories take its tints, the biggest spenders strongest; Uncategorized is grey and Other a
- * lighter neutral.
+ * Each series' colour in one chart, none repeated (distinctColors): `keys` in the order the chart
+ * draws them (a stack bottom to top), so neighbouring series take neighbouring palette colours;
+ * Uncategorized and Other keep their neutrals.
  */
 export function seriesColors(
-  months: readonly TrendMonth<string>[],
   keys: readonly string[],
   info: (key: string) => SeriesInfo,
 ): Map<string, string> {
-  const ranked = topSpenders(months, keys.length).filter((k) => keys.includes(k));
-  const order = [...ranked, ...keys.filter((k) => !ranked.includes(k))];
   return distinctColors(
-    order.map((key) => {
+    keys.map((key) => {
       const i = info(key);
-      return i.hue === undefined ? { key, color: i.color } : { key, hue: i.hue, family: i.family };
+      return i.palette ? { key } : { key, color: i.color };
     }),
   );
 }

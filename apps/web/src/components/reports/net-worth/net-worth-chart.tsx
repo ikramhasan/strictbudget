@@ -17,7 +17,7 @@ import { useAmountFormat } from "./format";
 
 const config = {
   assets: { label: "Assets", color: "var(--report-1)" },
-  debts: { label: "Debts", color: "var(--report-4)" },
+  debts: { label: "Debts", color: "var(--report-2)" },
   netWorth: { label: "Net Worth", color: "var(--foreground)" },
 } satisfies ChartConfig;
 
@@ -85,13 +85,13 @@ export function NetWorthChart({
               if (!active || !m) return null;
               const amount = (v: string) => (showAmounts ? format.exact(v) : format.masked);
               return (
-                <div className="grid gap-1 rounded-md border bg-background px-3 py-2 text-xs shadow-sm">
+                <div className="grid gap-1 rounded-md border bg-popover px-3 py-2 text-xs shadow-md text-popover-foreground">
                   <span className="font-medium">{monthLabel(m.month, "long")}</span>
                   {(
                     [
                       ["Net Worth", m.netWorth, "var(--foreground)"],
                       ["Assets", m.assets, "var(--report-1)"],
-                      ["Debts", m.debts, "var(--report-4)"],
+                      ["Debts", m.debts, "var(--report-2)"],
                     ] as const
                   ).map(([name, value, color]) => (
                     <span
@@ -140,7 +140,7 @@ export function NetWorthChart({
                   cx={props.cx}
                   cy={props.cy}
                   r={high ? 5 : 3}
-                  fill={high ? "var(--report-7)" : "var(--background)"}
+                  fill={high ? "var(--report-7)" : "var(--card)"}
                   stroke="var(--color-netWorth)"
                   strokeWidth={2}
                 />
@@ -151,7 +151,7 @@ export function NetWorthChart({
       </ChartContainer>
       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground text-xs">
         <LegendItem color="var(--report-1)" label="Assets" />
-        <LegendItem color="var(--report-4)" label="Debts" />
+        <LegendItem color="var(--report-2)" label="Debts" />
         <LegendItem color="var(--foreground)" label="Net Worth" line />
         <li className="flex items-center gap-1.5">
           <span

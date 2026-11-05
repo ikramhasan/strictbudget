@@ -66,7 +66,8 @@ export function SettingsLayout<Tab extends string>({
       <Tabs value={tab} onValueChange={(value) => onTabChange(value as Tab)} className="gap-6">
         {/* On a phone the tabs scroll sideways rather than wrap. */}
         <div className="-mx-1 overflow-x-auto px-1 pb-[3px] [scrollbar-width:none]">
-          <TabsList variant="line" aria-label={title}>
+          {/* As wide as the cards below, so the tabs and the settings share one column. */}
+          <TabsList variant="line" aria-label={title} className="w-full min-w-fit justify-start">
             {tabs.map((t) => (
               <TabsTrigger key={t.id} value={t.id} className="flex-none px-2">
                 {t.label}
@@ -83,7 +84,8 @@ export function SettingsLayout<Tab extends string>({
 /** One section of a settings tab: what the search scrolls to. */
 export function SettingsSection({ id, children }: { id: string; children: ReactNode }) {
   return (
-    <section id={sectionId(id)} className="scroll-mt-4">
+    // Cards here take the radius of the app's other panels.
+    <section id={sectionId(id)} className="scroll-mt-4 [&_[data-slot=card]]:rounded-lg">
       {children}
     </section>
   );

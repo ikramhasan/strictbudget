@@ -25,9 +25,10 @@ import { shortMonthName } from "@/lib/months";
 import {
   chartNumber,
   chartTick,
-  distinctColors,
+  INCOME_COLOR,
   monthLabel,
-  UNCATEGORIZED_COLOR,
+  RANKED_COLOR,
+  SPENDING_COLOR,
 } from "@/lib/reports";
 import { averageSpent, savingsRate, useReportsHomeData } from "@/lib/reports-home";
 import { paceCallout, spendingPaceOptions } from "@/lib/spending-pace";
@@ -88,15 +89,6 @@ function ReportsHome() {
   );
   const paceLine = pace?.line;
   const paceDays = pace?.days ?? 0;
-  // A group's hue, its categories its tints (biggest strongest), as in Spending Breakdown.
-  const topColors = distinctColors(
-    topCategories.map((r) => {
-      const plan = home.categoryHues.get(r.categoryId ?? "");
-      return plan
-        ? { key: r.categoryId ?? "", ...plan }
-        : { key: r.categoryId ?? "", color: UNCATEGORIZED_COLOR };
-    }),
-  );
   const tick = (units: number) =>
     chartTick(units, budget.currency, format, NUMBER_FORMAT_SPECS[budget.numberFormat].decimal);
   const flowMonths = home.months.slice(-6);
@@ -366,7 +358,7 @@ function ReportsHome() {
                             className="block h-full rounded-full"
                             style={{
                               width: `${largest ? Number((spent * 1000n) / largest) / 10 : 0}%`,
-                              background: topColors.get(r.categoryId ?? "") ?? UNCATEGORIZED_COLOR,
+                              background: RANKED_COLOR,
                             }}
                           />
                         </span>
@@ -431,7 +423,7 @@ function ReportsHome() {
                             if (!active || typeof label !== "string") return null;
                             const m = label as BudgetMonth;
                             return (
-                              <div className="grid min-w-40 gap-1 rounded-md border bg-background px-3 py-2 text-xs shadow-sm">
+                              <div className="grid min-w-40 gap-1 rounded-md border bg-popover px-3 py-2 text-popover-foreground text-xs shadow-md">
                                 <span className="font-medium">{monthLabel(m, "long")}</span>
                                 {(
                                   [
@@ -488,7 +480,7 @@ function ReportsHome() {
             </PreviewCard>
           </div>
 
-          <section aria-label="Observations" className="grid gap-2 rounded-lg border p-4">
+          <section aria-label="Observations" className="grid gap-2 rounded-lg border bg-card p-4">
             <h2 className="font-semibold">Observations</h2>
             {home.observations.length === 0 ? (
               <p className="text-muted-foreground text-sm">Nothing stands out this month.</p>
@@ -514,9 +506,6 @@ function ReportsHome() {
     </ReportPage>
   );
 }
-
-const INCOME_COLOR = "var(--report-3)";
-const SPENDING_COLOR = "var(--report-4)";
 
 function ObservationLink({ budgetId, target }: { budgetId: string; target: ReportTarget }) {
   return (

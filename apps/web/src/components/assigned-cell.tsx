@@ -62,6 +62,11 @@ export function AssignedCell({
   /** What's wrong with the typed amount, after Enter: the input stays open to fix it. */
   const [invalid, setInvalid] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  /** After Enter, the keyboard stays on this cell (Tab already moves on to the next one). */
+  const refocus = (via: "enter" | "blur") => {
+    if (via === "enter") requestAnimationFrame(() => buttonRef.current?.focus());
+  };
   // Enter commits and unmounts the input; the blur that follows must not commit again.
   const done = useRef(false);
   /** The amount the input opened with, to tell what the user actually typed. */
@@ -88,6 +93,7 @@ export function AssignedCell({
       // Opened and left without a change: nothing to save.
       done.current = true;
       setEditing(false);
+      refocus(via);
       return;
     }
     const parsed = actions.parse(withCurrent(typed, initial.current, BigInt(amount)));
@@ -99,6 +105,7 @@ export function AssignedCell({
     }
     done.current = true;
     setEditing(false);
+    refocus(via);
     if (typeof parsed === "string") {
       toast.error(parsed);
       return;
@@ -208,11 +215,12 @@ export function AssignedCell({
   }
   return (
     <button
+      ref={buttonRef}
       type="button"
       aria-label={`Assigned to ${categoryName}: ${format(amount)}`}
       onClick={start}
       className={cn(
-        "h-7 w-full truncate rounded-md px-2 text-right text-sm tabular-nums hover:ring-1 hover:ring-input",
+        "h-7 w-full truncate rounded-md px-2 text-right text-sm tabular-nums outline-none hover:ring-1 hover:ring-input focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}
     >

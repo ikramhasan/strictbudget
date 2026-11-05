@@ -66,7 +66,7 @@ const spentOf = (net: bigint | undefined) => (net === undefined ? 0n : -net);
 
 function TooltipBox({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="grid min-w-48 max-w-72 gap-1 rounded-md border bg-background px-3 py-2 text-xs shadow-sm">
+    <div className="grid min-w-48 max-w-72 gap-1 rounded-md border bg-popover px-3 py-2 text-xs shadow-md text-popover-foreground">
       <span className="font-medium">{title}</span>
       {children}
     </div>
@@ -303,7 +303,7 @@ export function TrendBarsChart({
             name={data.info(key).label}
             stackId="spending"
             fill={data.info(key).color}
-            // A hairline between stacked segments, so a group's neighbouring tints stay apart.
+            // A surface hairline between stacked segments.
             stroke="var(--card)"
             strokeWidth={1}
             cursor="pointer"
@@ -335,7 +335,7 @@ export function TrendBarsChart({
           type="linear"
           stroke="var(--muted-foreground)"
           strokeWidth={1}
-          dot={{ r: 4, fill: "var(--background)", stroke: "var(--foreground)", strokeWidth: 1.5 }}
+          dot={{ r: 4, fill: "var(--card)", stroke: "var(--foreground)", strokeWidth: 1.5 }}
           activeDot={{
             r: 5,
             cursor: "pointer",
@@ -507,7 +507,7 @@ export function TrendShareChart({ data, onPick }: { data: TrendChartData; onPick
             name={data.info(key).label}
             stackId="share"
             fill={data.info(key).color}
-            // A hairline between stacked segments, so a group's neighbouring tints stay apart.
+            // A surface hairline between stacked segments.
             stroke="var(--card)"
             strokeWidth={1}
             cursor="pointer"
@@ -622,8 +622,8 @@ export function TrendMultiples({ data, onPick }: { data: TrendChartData; onPick:
 const MULTIPLES_COLOR = "var(--report-1)";
 
 /**
- * The series' swatches. Categories from several groups are listed under their group's name, the
- * hue their tints share; groups, Uncategorized and Other stand alone.
+ * The series' swatches. Categories from several groups are listed under their group's name;
+ * groups, Uncategorized and Other stand alone.
  */
 export function TrendLegend({
   data,

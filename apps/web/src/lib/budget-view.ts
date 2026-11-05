@@ -49,11 +49,11 @@ export function matchesFilter(
 }
 
 export const EMPTY_VIEW: Record<Exclude<BudgetFilter, "all">, string> = {
-  overspent: "That's a win! You've knocked out all overspent categories.",
-  underfunded: "Cheers! You don't currently have any underfunded categories.",
-  overfunded: "You don't currently have any overfunded targets.",
-  available: "You don't currently have categories with money available.",
-  snoozed: "You don't currently have categories with snoozed targets in this month.",
+  overspent: "Nothing is overspent. Every category covers what was spent from it.",
+  underfunded: "Every target has what it needs this month.",
+  overfunded: "No category holds more than its target asks for.",
+  available: "No category has money available right now.",
+  snoozed: "No targets are snoozed this month.",
 };
 
 /**

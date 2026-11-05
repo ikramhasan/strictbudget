@@ -17,4 +17,10 @@ describe("KeyboardShortcutsDialog", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "OK" }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it("focuses the dialog on open, not the scrolling list", () => {
+    render(<KeyboardShortcutsDialog open onOpenChange={vi.fn()} />);
+    expect(screen.getByRole("dialog", { name: "Keyboard Shortcuts" })).toHaveFocus();
+    expect(screen.getByRole("region", { name: "Shortcuts" })).not.toHaveFocus();
+  });
 });
