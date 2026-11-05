@@ -250,6 +250,7 @@ export async function syncLines(
     } else if (transferTo) {
       const side = spec.transferSide;
       await insertTransaction(tx, {
+        id: ctx.restore ? side?.id : undefined,
         budgetId,
         accountId: transferTo.id,
         date,

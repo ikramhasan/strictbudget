@@ -178,18 +178,55 @@ function dateWidth(format: string) {
   return (format.includes("-") ? 7.25 : 7) * REM_PX;
 }
 
+/** The columns that hold money, sized to their widest figure. */
+export type MoneyColumn = "outflow" | "inflow" | "amount" | "balance";
+export const MONEY_COLUMNS: readonly MoneyColumn[] = ["outflow", "inflow", "amount", "balance"];
+
+/**
+ * What the rows need (px, the content alone): each money column's widest figure, and the widest
+ * payee and category (with a transfer's icon), which the spare room goes to first.
+ */
+export type ContentWidths = Partial<Record<MoneyColumn | "payee" | "category", number>>;
+
+/** Past this a payee or category truncates rather than take more room (a long imported name). */
+const READ_WHOLE_PX = 280;
+
+/**
+ * The least a money column narrows to: its header, and a short amount in its row editor. Amount
+ * keeps room for its editor's direction toggle.
+ */
+const MONEY_MIN_PX: Record<MoneyColumn, number> = {
+  outflow: 4.5 * REM_PX,
+  inflow: 4.5 * REM_PX,
+  amount: 6.5 * REM_PX,
+  balance: 4.75 * REM_PX,
+};
+/** A cell's padding (px-2 on each side), and a little air so tabular figures never clip. */
+const MONEY_PADDING_PX = 2 * 8 + 4;
+
 interface Sizing {
   dragged: ColumnWidths;
   dateFormat: string;
   /** The account column shows each account's name without its logo, in less room. */
   accountCompact?: boolean;
+  /**
+   * The widest figure in each money column: the column fits it (with a floor), rather than a fixed
+   * width for "$10,000.00", so Payee and Category get the room it doesn't need.
+   */
+  content?: ContentWidths;
 }
 
 /** Room for "Checking" or "Visa Card" with the cell's padding; longer names truncate. */
 const ACCOUNT_COMPACT_PX = 84;
 
-function fixedWidth(id: ColumnId, { dragged, dateFormat, accountCompact }: Sizing) {
+const isMoney = (id: ColumnId): id is MoneyColumn => MONEY_COLUMNS.includes(id as MoneyColumn);
+
+function fixedWidth(id: ColumnId, { dragged, dateFormat, accountCompact, content }: Sizing) {
   if (id === "date") return Math.max(dragged.date ?? 0, dateWidth(dateFormat));
+  const fits = isMoney(id) ? content?.[id] : undefined;
+  if (dragged[id] === undefined && isMoney(id) && fits !== undefined) {
+    return Math.max(MONEY_MIN_PX[id], Math.ceil(fits + MONEY_PADDING_PX));
+  }
   const width = dragged[id] ?? Number.parseFloat(COLUMN_SPECS[id].width ?? "0") * REM_PX;
   return id === "account" && accountCompact ? Math.min(width, ACCOUNT_COMPACT_PX) : width;
 }
@@ -237,7 +274,14 @@ export function layoutColumns(
     dragged,
     available,
     dateFormat,
-  }: { dragged: ColumnWidths; available: number | null; dateFormat: string },
+    content,
+  }: {
+    dragged: ColumnWidths;
+    available: number | null;
+    dateFormat: string;
+    /** The widest figure in each money column (`measureMoney`); fixed widths without it. */
+    content?: ContentWidths;
+  },
 ): ColumnLayout {
   const folded = shown.flatMap((id): ColumnId[] =>
     id === "outflow" ? ["amount"] : id === "inflow" ? [] : [id],
@@ -248,7 +292,7 @@ export function layoutColumns(
       columns.filter((id) => id !== drop);
   const noMemo = without("memo");
   const noBalance = without("balance");
-  const base = { dragged, dateFormat };
+  const base = { dragged, dateFormat, content };
   const compact = { ...base, accountCompact: shown.includes("account") };
   const tiers: { columns: readonly ColumnId[]; sizing: Sizing }[] = [
     { columns: shown, sizing: base },
@@ -277,25 +321,32 @@ export function layoutColumns(
   for (const id of columns) {
     if (!isFlex(id, dragged)) widths[id] = fixedWidth(id, sizing);
   }
-  // Each flexible column's share of what's free, those that would fall below their floor held at
-  // it and the rest shared again among the others.
-  let open = flexible;
-  let left = free;
-  for (;;) {
-    const total = open.reduce((sum, id) => sum + (FLEX[id]?.share ?? 0), 0);
-    const short = open.filter(
-      (id) => (left * (FLEX[id]?.share ?? 0)) / total < (FLEX[id]?.[fit] ?? 0),
-    );
-    if (short.length === 0) {
-      for (const id of open) widths[id] = Math.floor((left * (FLEX[id]?.share ?? 0)) / total);
-      break;
+  // Each flexible column starts at its floor (all of them, where there's room for that). What's
+  // left goes first to Payee, then Category, until they read their entries whole (Memo giving up
+  // its comfortable room for them, down to its least), then to each by its share.
+  const floor = (id: ColumnId) => FLEX[id]?.[fit] ?? 0;
+  for (const id of flexible) widths[id] = floor(id);
+  let left = free - flexible.reduce((sum, id) => sum + floor(id), 0);
+  const memo = FLEX.memo;
+  const lent = flexible.includes("memo") && memo ? Math.max(0, floor("memo") - memo.min) : 0;
+  let pool = Math.max(left, 0) + lent;
+  for (const id of ["payee", "category"] as const) {
+    const whole = flexible.includes(id) ? content?.[id] : undefined;
+    if (whole === undefined) continue;
+    const need = Math.max(0, Math.min(READ_WHOLE_PX, Math.ceil(whole + 16)) - (widths[id] ?? 0));
+    const given = Math.min(pool, need);
+    widths[id] = (widths[id] ?? 0) + given;
+    pool -= given;
+  }
+  // What Memo lent and wasn't needed goes back to it.
+  const kept = Math.min(pool, lent);
+  if (widths.memo !== undefined) widths.memo -= lent - kept;
+  left = pool - kept;
+  if (left > 0) {
+    const shares = flexible.reduce((sum, id) => sum + (FLEX[id]?.share ?? 0), 0);
+    for (const id of flexible) {
+      widths[id] = (widths[id] ?? 0) + Math.floor((left * (FLEX[id]?.share ?? 0)) / shares);
     }
-    for (const id of short) {
-      widths[id] = FLEX[id]?.[fit] ?? 0;
-      left -= widths[id] ?? 0;
-    }
-    open = open.filter((id) => !short.includes(id));
-    if (open.length === 0) break;
   }
   // Memo takes what's left (Category, or Payee, without it), so rounding never leaves a gap.
   const remainder = (["memo", "category", "payee"] as const).find((id) => flexible.includes(id));
@@ -347,4 +398,38 @@ function readWidths(key: string): ColumnWidths {
   } catch {
     return {};
   }
+}
+
+let canvas: HTMLCanvasElement | null = null;
+
+/** A cell's text, and any room beside it (a transfer's icon). */
+export type CellText = string | { text: string; extra: number };
+
+/**
+ * Each column's widest cell, in px, as `font` draws its text. Without a canvas (tests), an
+ * estimate from the characters, about 0.6em each.
+ */
+export function measureContent(
+  texts: Partial<Record<keyof ContentWidths, readonly CellText[]>>,
+  font: string,
+): ContentWidths {
+  // jsdom has no canvas (and says so on every call).
+  const drawable = typeof document !== "undefined" && !navigator.userAgent.includes("jsdom");
+  if (!canvas && drawable) canvas = document.createElement("canvas");
+  const context = canvas?.getContext("2d") ?? null;
+  if (context) context.font = font;
+  const size = Number.parseFloat(/(\d+(?:\.\d+)?)px/.exec(font)?.[1] ?? "14");
+  const width = (cell: CellText) => {
+    const text = typeof cell === "string" ? cell : cell.text;
+    const extra = typeof cell === "string" ? 0 : cell.extra;
+    return (context?.measureText(text).width ?? text.length * size * 0.6) + extra;
+  };
+  const widths: ContentWidths = {};
+  for (const [id, list] of Object.entries(texts) as [keyof ContentWidths, readonly CellText[]][]) {
+    // The table sets figures in tabular digits, all as wide as a 0; a canvas can't.
+    const tabular = (cell: CellText) =>
+      isMoney(id) && typeof cell === "string" ? cell.replace(/\d/g, "0") : cell;
+    widths[id] = list.reduce((widest, cell) => Math.max(widest, width(tabular(cell))), 0);
+  }
+  return widths;
 }

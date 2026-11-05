@@ -9,7 +9,7 @@ import {
 } from "@strictbudget/ui/components/table";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { useBudget } from "@/lib/budget-context";
-import { chartNumber, RANKED_COLOR } from "@/lib/reports";
+import { chartNumber } from "@/lib/reports";
 import { type Breakdown, type BreakdownRow, rowChange, shares } from "@/lib/spending-breakdown";
 
 /** A change as "+$15.00 (+50%)", or "−$5.00 (−10%)"; "new" when nothing was spent before. */
@@ -69,7 +69,7 @@ export function SpendingBreakdownList({
                 className="grid w-full gap-1 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
               >
                 <span className="flex items-center gap-2">
-                  {/* The row's colour in the chart; the bar below is one colour for every row. */}
+                  {/* The row's colour in the chart, on its swatch and its bar alike. */}
                   <span
                     aria-hidden
                     className="size-2.5 shrink-0 rounded-[3px]"
@@ -89,7 +89,7 @@ export function SpendingBreakdownList({
                   <span
                     aria-hidden
                     className="absolute inset-y-0 left-0 rounded-full"
-                    style={{ width: width(-row.net), background: RANKED_COLOR }}
+                    style={{ width: width(-row.net), background: row.color }}
                   />
                 </span>
                 <span className="flex flex-wrap gap-x-3 text-muted-foreground text-xs tabular-nums">
@@ -194,7 +194,7 @@ export function SpendingBreakdownTable({
       <TableHeader>
         <TableRow>
           <TableHead>{rowTitle}</TableHead>
-          <TableHead className="text-right">Total Spending</TableHead>
+          <TableHead className="text-right">Total spending</TableHead>
           <TableHead className="text-right">% of spending</TableHead>
           {income !== undefined && <TableHead className="text-right">% of income</TableHead>}
           {previous && (
@@ -208,7 +208,7 @@ export function SpendingBreakdownTable({
       <TableBody>
         {breakdown.spending.map((r) => line(r, false))}
         <TableRow className="font-medium">
-          <TableCell>Total Spending</TableCell>
+          <TableCell>Total spending</TableCell>
           <TableCell className="text-right tabular-nums">{format(breakdown.total)}</TableCell>
           <TableCell colSpan={1 + (income !== undefined ? 1 : 0) + (previous ? 2 : 0)} />
         </TableRow>

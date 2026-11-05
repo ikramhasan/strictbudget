@@ -57,7 +57,7 @@ import {
   Unlink,
   X,
 } from "lucide-react";
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { FLAG_CLASS, type Flag, type FlagColor, flagLabel } from "@/lib/flags";
 import { menuKeyDown } from "@/lib/menu-keys";
 import { useShortcut } from "@/lib/shortcuts";
@@ -208,28 +208,80 @@ export function SelectionBar({
   const unsplitLabel = unsplitName ? categoryLabel(unsplitName) : "";
 
   const ready = !pending && s !== undefined;
-  const canCategorize = s !== undefined && (s.categorizable > 0 || scheduledCount > 0);
-  const transactions = s !== undefined && s.count > 0 && scheduledCount === 0;
-  useShortcut("approve", () => onAction({ type: "approve" }), { enabled: ready && reviewing });
-  useShortcut("reject", () => onAction({ type: "reject" }), { enabled: ready && reviewing });
-  useShortcut("categorize", () => (onCategorizeKey ? onCategorizeKey() : setCategorizeOpen(true)), {
-    enabled: ready && canCategorize,
-  });
-  // C toggles: anything uncleared makes them all cleared, all cleared makes them uncleared.
-  useShortcut(
-    "toggleCleared",
-    () => onAction({ type: "cleared", cleared: (s?.uncleared ?? 0) > 0 ? "cleared" : "uncleared" }),
-    { enabled: ready && transactions },
+  /**
+   * A key pressed right after ticking a row comes while the selection's figures still load: it
+   * waits for them, then runs if it still applies, rather than doing nothing.
+   */
+  const queued = useRef<((summary: Summary) => void) | null>(null);
+  const latest = useRef({ onAction, onCategorizeKey });
+  latest.current = { onAction, onCategorizeKey };
+  useEffect(() => {
+    if (pending || !s) return;
+    const run = queued.current;
+    queued.current = null;
+    run?.(s);
+  }, [s, pending]);
+  /** Binds a selection shortcut: on while the figures load, then only when `applies`. */
+  function useSelectionShortcut(
+    id: Parameters<typeof useShortcut>[0],
+    applies: (summary: Summary) => boolean,
+    run: (summary: Summary) => void,
+  ) {
+    useShortcut(
+      id,
+      () => {
+        const act = (summary: Summary) => {
+          if (applies(summary)) run(summary);
+        };
+        if (ready && s) act(s);
+        else queued.current = act;
+      },
+      { enabled: !pending && (s === undefined || applies(s)) },
+    );
+  }
+  const reviews = (summary: Summary) => summary.unapproved > 0;
+  useSelectionShortcut("approve", reviews, () => latest.current.onAction({ type: "approve" }));
+  useSelectionShortcut("reject", reviews, () => latest.current.onAction({ type: "reject" }));
+  useSelectionShortcut(
+    "categorize",
+    (summary) => summary.categorizable > 0 || scheduledCount > 0,
+    () => {
+      const key = latest.current.onCategorizeKey;
+      if (key) key();
+      else setCategorizeOpen(true);
+    },
   );
-  useShortcut("flag", () => setFlagOpen(true), { enabled: ready });
-  useShortcut("duplicate", () => onAction({ type: "duplicate" }), { enabled: ready });
+  // C toggles: anything uncleared makes them all cleared, all cleared makes them uncleared.
+  useSelectionShortcut(
+    "toggleCleared",
+    (summary) => summary.count > 0 && scheduledCount === 0,
+    (summary) =>
+      latest.current.onAction({
+        type: "cleared",
+        cleared: summary.uncleared > 0 ? "cleared" : "uncleared",
+      }),
+  );
+  useSelectionShortcut(
+    "flag",
+    () => true,
+    () => setFlagOpen(true),
+  );
+  useSelectionShortcut(
+    "duplicate",
+    () => true,
+    () => latest.current.onAction({ type: "duplicate" }),
+  );
   useShortcut("makeRepeating", () => onMakeRepeating?.(), { enabled: ready && !!onMakeRepeating });
-  useShortcut("delete", () => onAction({ type: "delete" }), {
-    enabled: ready && (s.deletable > 0 || scheduledCount > 0),
-  });
-  useShortcut("enterNow", () => onAction({ type: "enterNow" }), {
-    enabled: ready && onlyScheduled,
-  });
+  useSelectionShortcut(
+    "delete",
+    (summary) => summary.deletable > 0 || scheduledCount > 0,
+    () => latest.current.onAction({ type: "delete" }),
+  );
+  useSelectionShortcut(
+    "enterNow",
+    (summary) => summary.count === 0 && scheduledCount > 0,
+    () => latest.current.onAction({ type: "enterNow" }),
+  );
   useShortcut("match", () => onMatch?.(), { enabled: ready && !!onMatch });
   useShortcut("unmatch", () => onUnmatch?.(), { enabled: ready && !!onUnmatch });
 

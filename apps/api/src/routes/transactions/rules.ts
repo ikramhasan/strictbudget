@@ -127,6 +127,8 @@ export function clearedOnEntry(account: Pick<AccountRow, "type">): ClearedState 
 
 /** How the other side of a new transfer starts out (by default by its account, and approved). */
 export interface OtherSideOptions {
+  /** A restored transfer's other side's own id. */
+  id?: string;
   /** The other side's category, when the transfer's category belongs on that side. */
   categoryId?: string | null;
   cleared?: ClearedState;
@@ -147,6 +149,8 @@ export interface OtherSideOptions {
  * their own cleared state and flag).
  */
 export interface TransferSideInput {
+  /** Its own id as it was (with `restore`). */
+  id?: string;
   memo: string;
   cleared: ClearedState;
   flag: FlagColor | null;
@@ -200,6 +204,7 @@ export async function insertOtherSide(
   options: OtherSideOptions = {},
 ) {
   const otherId = await insertTransaction(tx, {
+    id: options.id,
     budgetId: side.budgetId,
     accountId: transferTo.id,
     date: side.date,

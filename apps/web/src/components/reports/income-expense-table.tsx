@@ -180,12 +180,12 @@ export function IncomeExpenseTable({
           {section("income", "Income", "text-emerald-700 dark:text-emerald-400")}
           {incomeOpen && (
             <>
-              {row("sources", "All Income Sources", sourcesOpen ? null : table.totalIncome, {
+              {row("sources", "All income sources", sourcesOpen ? null : table.totalIncome, {
                 kind: "header",
                 foldKey: "income-sources",
                 pick: sourcesOpen
                   ? undefined
-                  : { title: "All Income Sources", target: { kind: "income" } },
+                  : { title: "All income sources", target: { kind: "income" } },
               })}
               {sourcesOpen &&
                 table.income.map((r) =>
@@ -194,11 +194,11 @@ export function IncomeExpenseTable({
                   }),
                 )}
               {sourcesOpen &&
-                row("sources-total", "Total All Income Sources", table.totalIncome, {
+                row("sources-total", "Total, all income sources", table.totalIncome, {
                   kind: "subtotal",
-                  pick: { title: "All Income Sources", target: { kind: "income" } },
+                  pick: { title: "All income sources", target: { kind: "income" } },
                 })}
-              {row("income-total", "Total Income", table.totalIncome, {
+              {row("income-total", "Total income", table.totalIncome, {
                 kind: "total",
                 pick: { title: "Income", target: { kind: "income" } },
               })}
@@ -247,7 +247,7 @@ export function IncomeExpenseTable({
                     : []),
                 ];
               })}
-              {row("expense-total", "Total Expenses", table.totalExpenses, {
+              {row("expense-total", "Total expenses", table.totalExpenses, {
                 kind: "total",
                 pick: { title: "Expenses", target: { kind: "spending" } },
               })}
@@ -258,7 +258,7 @@ export function IncomeExpenseTable({
               scope="row"
               className={cn(STICKY, "px-2 pt-5 pb-1.5 text-left font-semibold text-lg")}
             >
-              Net Income
+              Net income
             </th>
             {cells(table.netIncome, undefined, {
               className: (a) =>

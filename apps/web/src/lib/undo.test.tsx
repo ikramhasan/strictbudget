@@ -120,4 +120,71 @@ describe("UndoProvider", () => {
       expect(command.undo).toHaveBeenCalledTimes(keyboardShortcuts ? 1 : 0);
     }
   });
+
+  it("undoes two commands on two quick presses, never one twice", async () => {
+    let finish: () => void = () => {};
+    const slow = {
+      label: "slow",
+      undo: vi.fn(() => new Promise<void>((resolve) => (finish = resolve))),
+      redo: vi.fn(),
+    };
+    const first = { label: "first", undo: vi.fn(), redo: vi.fn() };
+    const { result } = renderHook(useUndo, { wrapper });
+    act(() => {
+      result.current.record(first);
+      result.current.record(slow);
+    });
+    let both: Promise<unknown> = Promise.resolve();
+    act(() => {
+      // The second press comes while the first is still running.
+      both = Promise.all([result.current.undo(), result.current.undo()]);
+    });
+    expect(result.current.busy).toBe(true);
+    await act(async () => {
+      await Promise.resolve();
+      finish();
+      await both;
+    });
+    expect(slow.undo).toHaveBeenCalledOnce();
+    expect(first.undo).toHaveBeenCalledOnce();
+    expect(result.current.undoLabel).toBeNull();
+    expect(result.current.redoLabel).toBe("first");
+    expect(result.current.busy).toBe(false);
+  });
+
+  it("answers Cmd/Ctrl+Z with a row's checkbox focused, not in a text field", async () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(preferencesQueryOptions().queryKey, {
+      openLastBudget: true,
+      keyboardShortcuts: true,
+    });
+    const command = { label: "delete 2 transactions", undo: vi.fn(), redo: vi.fn() };
+    const { result } = renderHook(
+      () => {
+        useUndoShortcuts(() => {});
+        return useUndo();
+      },
+      {
+        wrapper: ({ children }) => (
+          <QueryClientProvider client={queryClient}>
+            <UndoProvider>{children}</UndoProvider>
+          </QueryClientProvider>
+        ),
+      },
+    );
+    act(() => result.current.record(command));
+    const text = document.body.appendChild(document.createElement("input"));
+    const checkbox = document.body.appendChild(document.createElement("input"));
+    checkbox.type = "checkbox";
+    await act(async () => {
+      fireEvent.keyDown(text, { key: "z", metaKey: true });
+    });
+    expect(command.undo).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.keyDown(checkbox, { key: "z", metaKey: true });
+    });
+    expect(command.undo).toHaveBeenCalledOnce();
+    text.remove();
+    checkbox.remove();
+  });
 });

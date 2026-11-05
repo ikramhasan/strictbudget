@@ -1,4 +1,5 @@
 import { type CurrencyCode, money } from "@strictbudget/engine";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ChartPie, ChevronRight, Flag, LayoutDashboard } from "lucide-react";
@@ -126,8 +127,8 @@ export function SpendingBreakdownBody({
   const rowNoun = BREAKDOWN_LABELS[group !== undefined ? "category" : by];
   const positiveTitle =
     byCategory && (by === "category" || group !== undefined)
-      ? "Positive Inflow Categories"
-      : `Positive Inflow ${rowNoun.many}`;
+      ? "Positive inflow categories"
+      : `Positive inflow ${rowNoun.many.toLowerCase()}`;
   const outflow = largest.data?.transactions.find((t) => BigInt(t.amount) < 0n);
 
   const select = (row: BreakdownRow) => {
@@ -163,6 +164,7 @@ export function SpendingBreakdownBody({
     </ReportEmpty>
   );
   const chartKind: BreakdownChartKind = search.chart ?? "donut";
+  const oneMonth = state.range.from === state.range.to;
 
   return (
     <>
@@ -180,13 +182,23 @@ export function SpendingBreakdownBody({
         </nav>
       )}
 
-      <dl className="grid grid-cols-2 gap-3 rounded-lg border bg-card p-4 sm:grid-cols-3 lg:grid-cols-5">
-        <Stat label="Total Spending" big>
+      <dl
+        className={cn(
+          "grid grid-cols-2 gap-3 rounded-lg border bg-card p-4 sm:grid-cols-3",
+          oneMonth ? "lg:grid-cols-4" : "lg:grid-cols-5",
+        )}
+      >
+        <Stat label="Total spending" big>
           {loading ? "…" : format(stats.total)}
         </Stat>
-        <Stat label="Average Monthly Spending">{loading ? "…" : format(stats.averageMonthly)}</Stat>
-        <Stat label="Average Daily Spending">{loading ? "…" : format(stats.averageDaily)}</Stat>
-        <Stat label={`Most Frequent ${rowNoun.one}`}>
+        {/* Over one month the monthly average is the total again. */}
+        {!oneMonth && (
+          <Stat label="Average monthly spending">
+            {loading ? "…" : format(stats.averageMonthly)}
+          </Stat>
+        )}
+        <Stat label="Average daily spending">{loading ? "…" : format(stats.averageDaily)}</Stat>
+        <Stat label={`Most frequent ${rowNoun.one.toLowerCase()}`}>
           {stats.mostFrequent ? (
             <>
               <span className="block truncate">{stats.mostFrequent.name}</span>
@@ -199,7 +211,7 @@ export function SpendingBreakdownBody({
             "—"
           )}
         </Stat>
-        <Stat label="Largest Outflow">
+        <Stat label="Largest outflow">
           {outflow ? (
             <>
               <span className="block truncate">{outflow.payeeName ?? "No payee"}</span>
@@ -215,7 +227,7 @@ export function SpendingBreakdownBody({
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <ChartCard
-          title="Total Spending"
+          title="Total spending"
           view={state.view}
           kinds={CHART_KINDS}
           kind={chartKind}
@@ -254,7 +266,7 @@ export function SpendingBreakdownBody({
         >
           <h2 className="flex justify-between font-semibold">
             {rowNoun.many}
-            <span className="font-normal text-muted-foreground text-sm">Total Spending</span>
+            <span className="font-normal text-muted-foreground text-sm">Total spending</span>
           </h2>
           {loading ? null : rows.length === 0 ? (
             <p className="py-2 text-muted-foreground text-sm">

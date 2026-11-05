@@ -14,10 +14,16 @@ import {
   type NumberFormat,
 } from "@strictbudget/engine";
 import { Button } from "@strictbudget/ui/components/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@strictbudget/ui/components/collapsible";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@strictbudget/ui/components/field";
 import { Input } from "@strictbudget/ui/components/input";
 import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
 import { Spinner } from "@strictbudget/ui/components/spinner";
+import { ChevronDown } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { todayIso } from "@/lib/dates";
 import { CurrencyPicker, currencyName } from "./currency-picker";
@@ -42,6 +48,7 @@ export function BudgetForm({
   defaultValues,
   currencyLocked = false,
   requireChange = false,
+  collapseFormatting = false,
   submitLabel,
   pendingLabel,
   onSubmit,
@@ -51,6 +58,8 @@ export function BudgetForm({
   currencyLocked?: boolean;
   /** Editing saved settings: Save waits until something differs from `defaultValues`. */
   requireChange?: boolean;
+  /** A new budget: number, symbol and date formats (from the browser's language) folded away. */
+  collapseFormatting?: boolean;
   submitLabel: string;
   pendingLabel: string;
   onSubmit: (values: BudgetFormValues) => Promise<string | null>;
@@ -58,6 +67,7 @@ export function BudgetForm({
   const [values, setValues] = useState(defaultValues);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [formattingOpen, setFormattingOpen] = useState(false);
   const set = <K extends keyof BudgetFormValues>(key: K, value: BudgetFormValues[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
 
@@ -66,6 +76,7 @@ export function BudgetForm({
   );
   const today = todayIso();
   const sample = previewAmount(values.currency);
+  const preview = `${formatAmount(sample, values)} · ${formatDate(today, values.dateFormat)}`;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,6 +86,57 @@ export function BudgetForm({
     setPending(false);
     setError(message);
   }
+
+  const formatFields = (
+    <div className="grid gap-4 sm:grid-cols-3">
+      <Field>
+        <FieldLabel htmlFor="budget-number-format">Number format</FieldLabel>
+        <NativeSelect
+          id="budget-number-format"
+          value={values.numberFormat}
+          onChange={(e) => set("numberFormat", e.target.value as NumberFormat)}
+        >
+          {NUMBER_FORMATS.map((f) => (
+            <NativeSelectOption key={f} value={f}>
+              {formatAmount(money(123456789n, "USD"), {
+                numberFormat: f,
+                currencySymbolPosition: "none",
+                dateFormat: values.dateFormat,
+              })}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="budget-symbol-position">Currency symbol</FieldLabel>
+        <NativeSelect
+          id="budget-symbol-position"
+          value={values.currencySymbolPosition}
+          onChange={(e) => set("currencySymbolPosition", e.target.value as CurrencySymbolPosition)}
+        >
+          {CURRENCY_SYMBOL_POSITIONS.map((p) => (
+            <NativeSelectOption key={p} value={p}>
+              {SYMBOL_POSITION_LABELS[p]}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="budget-date-format">Date format</FieldLabel>
+        <NativeSelect
+          id="budget-date-format"
+          value={values.dateFormat}
+          onChange={(e) => set("dateFormat", e.target.value as DateFormat)}
+        >
+          {DATE_FORMATS.map((f) => (
+            <NativeSelectOption key={f} value={f}>
+              {formatDate(today, f)}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      </Field>
+    </div>
+  );
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-5">
@@ -110,63 +172,43 @@ export function BudgetForm({
         )}
       </Field>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field>
-          <FieldLabel htmlFor="budget-number-format">Number format</FieldLabel>
-          <NativeSelect
-            id="budget-number-format"
-            value={values.numberFormat}
-            onChange={(e) => set("numberFormat", e.target.value as NumberFormat)}
-          >
-            {NUMBER_FORMATS.map((f) => (
-              <NativeSelectOption key={f} value={f}>
-                {formatAmount(money(123456789n, "USD"), {
-                  numberFormat: f,
-                  currencySymbolPosition: "none",
-                  dateFormat: values.dateFormat,
-                })}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="budget-symbol-position">Currency symbol</FieldLabel>
-          <NativeSelect
-            id="budget-symbol-position"
-            value={values.currencySymbolPosition}
-            onChange={(e) =>
-              set("currencySymbolPosition", e.target.value as CurrencySymbolPosition)
-            }
-          >
-            {CURRENCY_SYMBOL_POSITIONS.map((p) => (
-              <NativeSelectOption key={p} value={p}>
-                {SYMBOL_POSITION_LABELS[p]}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="budget-date-format">Date format</FieldLabel>
-          <NativeSelect
-            id="budget-date-format"
-            value={values.dateFormat}
-            onChange={(e) => set("dateFormat", e.target.value as DateFormat)}
-          >
-            {DATE_FORMATS.map((f) => (
-              <NativeSelectOption key={f} value={f}>
-                {formatDate(today, f)}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </Field>
-      </div>
-
-      <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
-        <span className="text-muted-foreground">Preview: </span>
-        <output aria-label="Preview" className="font-medium tabular-nums">
-          {formatAmount(sample, values)} · {formatDate(today, values.dateFormat)}
-        </output>
-      </div>
+      {collapseFormatting ? (
+        <Collapsible
+          open={formattingOpen}
+          onOpenChange={setFormattingOpen}
+          className="rounded-lg border"
+        >
+          <CollapsibleTrigger className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm outline-none transition-colors duration-150 hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring">
+            <span className="font-medium">Formatting</span>
+            <span className="ml-auto min-w-0 truncate text-muted-foreground tabular-nums">
+              {preview}
+            </span>
+            <ChevronDown
+              aria-hidden
+              className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 data-[open]:rotate-180"
+              data-open={formattingOpen || undefined}
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="grid gap-3 border-t px-3 pt-3 pb-3.5">
+              <p className="text-muted-foreground text-sm">
+                Set from your browser's language. You can change these any time in budget settings.
+              </p>
+              {formatFields}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      ) : (
+        <>
+          {formatFields}
+          <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+            <span className="text-muted-foreground">Preview: </span>
+            <output aria-label="Preview" className="font-medium tabular-nums">
+              {preview}
+            </output>
+          </div>
+        </>
+      )}
 
       {error && <FieldError>{error}</FieldError>}
       <Button

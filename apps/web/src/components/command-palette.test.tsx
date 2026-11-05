@@ -221,4 +221,33 @@ describe("filterGroups", () => {
     expect(result.map((g) => g.items.map((i) => i.id))).toEqual([["budget"], ["c1"]]);
     expect(filterGroups(groups, "fees").map((g) => g.items.map((i) => i.id))).toEqual([["c2"]]);
   });
+
+  it("ranks a name's start first and finds commands and settings only by how words start", () => {
+    const search: PaletteGroup[] = [
+      {
+        heading: "Settings",
+        items: [
+          item("members", "Members", { keywords: ["sharing", "invite", "partner", "roles"] }),
+          item("rates", "Exchange rates", { keywords: ["currency"] }),
+        ],
+      },
+      {
+        heading: "Categories",
+        loose: true,
+        items: [
+          item("groc", "🛒 Groceries", { searchOnly: true }),
+          item("ingro", "Big grocery run", { searchOnly: true }),
+          item("gas", "Gas & Repairs Overall", { searchOnly: true }),
+        ],
+      },
+    ];
+    const ids = (q: string) => filterGroups(search, q).map((g) => g.items.map((i) => i.id));
+    // "gro" is the start of Groceries, after its emoji, then of a word; Members isn't found by
+    // letters scattered across its keywords, while a category still is.
+    expect(ids("gro")).toEqual([["groc", "ingro", "gas"]]);
+    expect(ids("rates")).toEqual([["rates"]]);
+    // A keyword's start finds a setting.
+    expect(ids("invi")).toEqual([["members"]]);
+    expect(ids("mbrs")).toEqual([]);
+  });
 });

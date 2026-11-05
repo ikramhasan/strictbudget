@@ -25,14 +25,15 @@ describe("DisplayOptionsDialog", () => {
 
   it("applies Differentiate Without Color and progress bars only on Apply", async () => {
     const { user, onOpenChange } = setup();
-    expect(pill("negative").className).toContain("bg-red-100");
+    expect(pill("negative").className).not.toContain("border-black");
     await user.click(screen.getByRole("radio", { name: "Differentiate Without Color" }));
     await user.click(screen.getByRole("radio", { name: "Off" }));
-    expect(pill("negative").className).toContain("bg-red-100");
+    expect(pill("negative").className).not.toContain("border-black");
     await user.click(screen.getByRole("button", { name: "Apply" }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(pill("negative").className).toContain("bg-(--bar-overspent)");
-    expect(pill("caution").className).toContain("border-black");
+    // Overspent stays solid and gains an edge; underfunded turns striped.
+    expect(pill("negative").className).toContain("border-black");
+    expect(pill("caution").className).toContain("repeating-linear-gradient");
     expect(pill("positive").className).toContain("bg-green-100");
     expect(localStorage.getItem("strictbudget:differentiate-without-color")).toBe("true");
     expect(localStorage.getItem("strictbudget:progress-bars")).toBe("off");
@@ -43,7 +44,7 @@ describe("DisplayOptionsDialog", () => {
     await user.click(screen.getByRole("radio", { name: "Dark" }));
     await user.click(screen.getByRole("radio", { name: "Differentiate Without Color" }));
     await user.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(pill("negative").className).toContain("bg-red-100");
+    expect(pill("negative").className).not.toContain("border-black");
     expect(localStorage.getItem("theme")).not.toBe("dark");
   });
 });

@@ -11,11 +11,19 @@ import { toast } from "sonner";
 import { useShortcutsEnabled } from "./preferences";
 
 export interface UndoCommand {
-  /** Short description shown in the Undo/Redo button tooltip. */
+  /**
+   * What it did, as a verb phrase ("delete 2 transactions"), for the Undo/Redo tooltip ("Undo
+   * delete 2 transactions") and the toast after it ("Undone · Delete 2 transactions").
+   */
   label: string;
+  /** It removes something (a delete): its toasts stay up longer, so Undo is easy to reach. */
+  destructive?: boolean;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
 }
+
+/** How long a toast offering the way back stays up after something was removed. */
+export const DESTRUCTIVE_TOAST_MS = 8000;
 
 interface UndoState {
   /**
@@ -32,13 +40,22 @@ interface UndoState {
   redoLabel: string | null;
   busy: boolean;
   record: (command: UndoCommand) => void;
-  /** Says what was just done ("Assigned $20.00 to 1 category"), with Undo. */
-  announce: (message: string) => void;
+  /**
+   * Says what was just done ("Assigned $20.00 to 1 category", "Deleted 2 transactions"), with
+   * Undo. A destructive one stays up longer.
+   */
+  announce: (message: string, options?: { destructive?: boolean }) => void;
   undo: () => Promise<void>;
   redo: () => Promise<void>;
 }
 
 const UndoContext = createContext<UndoState | null>(null);
+
+/** A failed undo or redo started from a toast's button: the API's message, as a toast. */
+function reportError(error: unknown) {
+  const message = (error as { error?: { message?: unknown } } | null)?.error?.message;
+  toast.error(typeof message === "string" ? message : "Couldn't undo or redo that.");
+}
 
 /**
  * The API refused an undo or redo because a partner changed the row since. The command can never
@@ -61,11 +78,27 @@ export function isStaleVersion(error: unknown): boolean {
  * on the server once undo or redo completes.
  */
 export function UndoProvider({ children }: { children: ReactNode }) {
-  const [past, setPast] = useState<UndoCommand[]>([]);
-  const [future, setFuture] = useState<UndoCommand[]>([]);
+  // The history lives in refs, read when an undo or redo actually runs: two quick presses of
+  // Cmd+Z undo two commands, never the same one twice. State mirrors it for rendering.
+  const past = useRef<UndoCommand[]>([]);
+  const future = useRef<UndoCommand[]>([]);
+  const [labels, setLabels] = useState<{ undo: string | null; redo: string | null }>({
+    undo: null,
+    redo: null,
+  });
   const [busy, setBusy] = useState(false);
+  /** The undo or redo running now; the next one waits for it. */
+  const running = useRef<Promise<unknown>>(Promise.resolve());
+  const pending = useRef(0);
   /** Per transaction: version → the version this tab's own save took it to. */
   const steps = useRef(new Map<string, Map<number, number>>());
+
+  const sync = useCallback(() => {
+    setLabels({
+      undo: past.current.at(-1)?.label ?? null,
+      redo: future.current.at(-1)?.label ?? null,
+    });
+  }, []);
 
   const noteSave = useCallback((before: Record<string, number>, after: Record<string, number>) => {
     for (const [id, to] of Object.entries(after)) {
@@ -87,65 +120,96 @@ export function UndoProvider({ children }: { children: ReactNode }) {
     return version;
   }, []);
 
-  const record = useCallback((command: UndoCommand) => {
-    setPast((commands) => [...commands, command]);
-    setFuture([]);
-  }, []);
+  const record = useCallback(
+    (command: UndoCommand) => {
+      past.current = [...past.current, command];
+      future.current = [];
+      sync();
+    },
+    [sync],
+  );
 
   // The toast's button runs the latest undo or redo, whatever the history is by then.
   const latest = useRef<{ undo: () => Promise<void>; redo: () => Promise<void> } | null>(null);
-  /** Says what just happened, with the way back. */
-  const announce = useCallback((done: "Undone" | "Redone", label: string) => {
-    const back = done === "Undone" ? "Redo" : "Undo";
-    toast(`${done} · ${label.charAt(0).toUpperCase()}${label.slice(1)}`, {
-      id: "undo",
-      action: {
-        label: back,
-        onClick: () => void (back === "Redo" ? latest.current?.redo() : latest.current?.undo()),
+  /**
+   * A toast's Undo or Redo button: it runs once, and the toast stays up to say what it did
+   * ("Undone · …", with the way back) rather than closing under the pointer.
+   */
+  const toastAction = useCallback((label: "Undo" | "Redo") => {
+    let used = false;
+    return {
+      label,
+      onClick: (event: { preventDefault: () => void }) => {
+        event.preventDefault();
+        if (used) return;
+        used = true;
+        const run = label === "Undo" ? latest.current?.undo() : latest.current?.redo();
+        void run?.catch((error: unknown) => {
+          toast.dismiss("undo");
+          reportError(error);
+        });
       },
-    });
+    };
   }, []);
+  /** Says what just happened, with the way back. */
+  const announceStep = useCallback(
+    (done: "Undone" | "Redone", command: UndoCommand) => {
+      const label = command.label;
+      // Redoing a delete removes it again; undoing a delete brings it back.
+      const removed = Boolean(command.destructive) && done === "Redone";
+      toast(`${done} · ${label.charAt(0).toUpperCase()}${label.slice(1)}`, {
+        id: "undo",
+        ...(removed ? { duration: DESTRUCTIVE_TOAST_MS } : {}),
+        action: toastAction(done === "Undone" ? "Redo" : "Undo"),
+      });
+    },
+    [toastAction],
+  );
 
-  const announceDone = useCallback((message: string) => {
-    toast(message, {
-      id: "undo",
-      action: { label: "Undo", onClick: () => void latest.current?.undo() },
-    });
-  }, []);
+  const announce = useCallback(
+    (message: string, options?: { destructive?: boolean }) => {
+      toast(message, {
+        id: "undo",
+        ...(options?.destructive ? { duration: DESTRUCTIVE_TOAST_MS } : {}),
+        action: toastAction("Undo"),
+      });
+    },
+    [toastAction],
+  );
 
-  const undo = useCallback(async () => {
-    const command = past.at(-1);
-    if (!command || busy) return;
-    setBusy(true);
-    try {
-      await command.undo();
-      setPast((commands) => commands.slice(0, -1));
-      setFuture((commands) => [...commands, command]);
-      announce("Undone", command.label);
-    } catch (error) {
-      if (isStaleVersion(error)) setPast((commands) => commands.slice(0, -1));
-      throw error;
-    } finally {
-      setBusy(false);
-    }
-  }, [past, busy, announce]);
-
-  const redo = useCallback(async () => {
-    const command = future.at(-1);
-    if (!command || busy) return;
-    setBusy(true);
-    try {
-      await command.redo();
-      setFuture((commands) => commands.slice(0, -1));
-      setPast((commands) => [...commands, command]);
-      announce("Redone", command.label);
-    } catch (error) {
-      if (isStaleVersion(error)) setFuture((commands) => commands.slice(0, -1));
-      throw error;
-    } finally {
-      setBusy(false);
-    }
-  }, [future, busy, announce]);
+  /** Runs one step after any still running, on the command at the top of its stack by then. */
+  const step = useCallback(
+    (direction: "undo" | "redo") => {
+      const from = direction === "undo" ? past : future;
+      const to = direction === "undo" ? future : past;
+      pending.current += 1;
+      setBusy(true);
+      const run = running.current.then(async () => {
+        const command = from.current.at(-1);
+        if (!command) return;
+        try {
+          await command[direction]();
+          from.current = from.current.filter((c) => c !== command);
+          to.current = [...to.current, command];
+          announceStep(direction === "undo" ? "Undone" : "Redone", command);
+        } catch (error) {
+          // A partner changed the row since: the command can never apply again.
+          if (isStaleVersion(error)) from.current = from.current.filter((c) => c !== command);
+          throw error;
+        } finally {
+          sync();
+        }
+      });
+      running.current = run.catch(() => {});
+      return run.finally(() => {
+        pending.current -= 1;
+        if (pending.current === 0) setBusy(false);
+      });
+    },
+    [announceStep, sync],
+  );
+  const undo = useCallback(() => step("undo"), [step]);
+  const redo = useCallback(() => step("redo"), [step]);
   latest.current = { undo, redo };
 
   return (
@@ -153,11 +217,11 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       value={{
         noteSave,
         expectedVersion,
-        undoLabel: past.at(-1)?.label ?? null,
-        redoLabel: future.at(-1)?.label ?? null,
+        undoLabel: labels.undo,
+        redoLabel: labels.redo,
         busy,
         record,
-        announce: announceDone,
+        announce,
         undo,
         redo,
       }}
@@ -178,10 +242,22 @@ export function useUndo() {
   return value;
 }
 
+/** Inputs that hold no text: Cmd+Z in one has nothing of its own to undo. */
+const NOT_TEXT = new Set([
+  "checkbox",
+  "radio",
+  "button",
+  "submit",
+  "reset",
+  "range",
+  "color",
+  "file",
+]);
+
 /** Browser-native undo keeps priority while the user is typing in an editable control. */
 function isEditing(target: EventTarget | null) {
   return (
-    target instanceof HTMLInputElement ||
+    (target instanceof HTMLInputElement && !NOT_TEXT.has(target.type)) ||
     target instanceof HTMLTextAreaElement ||
     (target instanceof HTMLElement && target.isContentEditable)
   );

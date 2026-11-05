@@ -60,7 +60,7 @@ export function MonthNav({
         }}
       >
         <PopoverTrigger asChild>
-          <Button variant="ghost" className="px-2 font-semibold text-xl tracking-tight">
+          <Button variant="ghost" className="px-2 text-title tabular-nums">
             {monthLabel(month)}
             <ChevronDown />
           </Button>
@@ -124,7 +124,8 @@ export function MonthNav({
       <Button
         variant="secondary"
         size="sm"
-        className={cn("ml-1", month === current && "invisible")}
+        // On a phone's crowded bar it takes no room on the current month.
+        className={cn("ml-1", month === current && "invisible max-md:hidden")}
         aria-hidden={month === current || undefined}
         tabIndex={month === current ? -1 : undefined}
         onClick={() => onChange(current)}

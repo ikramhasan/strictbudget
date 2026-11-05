@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-/* strictbudget: Inter with its optical-size axis, so large text uses the Display cut. */
-@import "@fontsource-variable/inter/opsz.css";
+/* strictbudget: Geist, the marketing site's face, so the app and the site read as one. */
+@import "@fontsource-variable/geist";
 @import "./theme.css";
 
 @source "../../../../apps/**/*.{ts,tsx}";

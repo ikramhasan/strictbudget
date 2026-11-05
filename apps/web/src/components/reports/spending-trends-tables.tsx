@@ -26,29 +26,33 @@ function useFormat() {
 export function TrendMonthsTable({ data }: { data: TrendChartData }) {
   const format = useFormat();
   const comparison = data.comparison;
+  // One month is its own average: nothing to compare.
+  const averaged = data.months.length > 1;
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Month</TableHead>
-          <TableHead className="text-right">Total Spending</TableHead>
-          <TableHead className="text-right">
-            <span className="inline-flex items-center gap-1">
-              Compared to Average
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="About Compared to Average"
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <Info className="size-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-64">{COMPARED_TO_AVERAGE_HINT}</TooltipContent>
-              </Tooltip>
-            </span>
-          </TableHead>
+          <TableHead className="text-right">Total spending</TableHead>
+          {averaged && (
+            <TableHead className="text-right">
+              <span className="inline-flex items-center gap-1">
+                Compared to average
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="About compared to average"
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Info className="size-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-64">{COMPARED_TO_AVERAGE_HINT}</TooltipContent>
+                </Tooltip>
+              </span>
+            </TableHead>
+          )}
           {comparison && <TableHead className="text-right">{comparison.label}</TableHead>}
         </TableRow>
       </TableHeader>
@@ -61,18 +65,22 @@ export function TrendMonthsTable({ data }: { data: TrendChartData }) {
             <TableRow key={m.month}>
               <TableCell className="font-medium">
                 {monthLabel(m.month, "long")}
-                {m.total > data.average && <span className="sr-only"> (above average)</span>}
+                {averaged && m.total > data.average && (
+                  <span className="sr-only"> (above average)</span>
+                )}
               </TableCell>
               <TableCell className="text-right tabular-nums">{format(m.total)}</TableCell>
-              <TableCell
-                className={cn(
-                  "text-right",
-                  vsAverage.difference > 0n && "text-foreground",
-                  vsAverage.difference <= 0n && "text-muted-foreground",
-                )}
-              >
-                <DifferenceText {...vsAverage} format={format} />
-              </TableCell>
+              {averaged && (
+                <TableCell
+                  className={cn(
+                    "text-right",
+                    vsAverage.difference > 0n && "text-foreground",
+                    vsAverage.difference <= 0n && "text-muted-foreground",
+                  )}
+                >
+                  <DifferenceText {...vsAverage} format={format} />
+                </TableCell>
+              )}
               {comparison && (
                 <TableCell className="text-right text-muted-foreground tabular-nums">
                   {other === undefined ? "–" : format(other)}
@@ -140,7 +148,7 @@ export function TrendSeriesTable({
           );
         })}
         <TableRow>
-          <TableCell className="sticky left-0 bg-card font-semibold">Total Spending</TableCell>
+          <TableCell className="sticky left-0 bg-card font-semibold">Total spending</TableCell>
           {data.months.map((m) => (
             <TableCell key={m.month} className="text-right font-semibold tabular-nums">
               {format(m.total)}

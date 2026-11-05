@@ -6,11 +6,10 @@
 @source "../**/*.{astro,mdx,ts,tsx}";
 @source "../../../../packages/ui/src/components/{accordion,badge,button}.tsx";
 
-/* The site sets in Geist; the app keeps Inter. Colours below are the site's own, on top of the
-   app's tokens: headings, the dark section, blog cover tints and the progress bar's palette
+/* Geist, as in the app (theme.css). Colours below are the site's own, on top of the app's tokens:
+   headings, the dark section, blog cover tints and the progress bar's palette
    (apps/web/src/styles.css). */
 @theme inline {
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --ease-site: cubic-bezier(0.22, 1, 0.36, 1);
   --color-heading: #1a1a1a;
   --color-primary-ink: color-mix(in oklch, var(--primary), black 12%);
@@ -23,8 +22,8 @@
   --color-cover-blue: #eef2fc;
   --color-cover-beige: #f3eee2;
   --color-cover-green: #e9f6ec;
-  --color-bar-track: oklch(0.955 0.008 265);
-  --color-bar-border: oklch(0.915 0.012 265);
+  --color-bar-track: oklch(0.952 0.005 95);
+  --color-bar-border: oklch(0.91 0.006 95);
   --color-bar-funded: oklch(0.615 0.145 156);
   --color-bar-underfunded: oklch(0.8 0.16 79);
 }

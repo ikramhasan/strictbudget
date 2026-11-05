@@ -11,6 +11,7 @@ import {
   NativeSelectOption,
 } from "@strictbudget/ui/components/native-select";
 import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -21,7 +22,7 @@ import {
 import { ChartCard } from "@/components/reports/chart-card";
 import { type DrillDown, DrillDownSheet } from "@/components/reports/drill-down-sheet";
 import { ExportButton } from "@/components/reports/export-button";
-import { ReportFilterBar } from "@/components/reports/report-filter-bar";
+import { ReportFilterBar, toolbarSelectClass } from "@/components/reports/report-filter-bar";
 import { ReportPage } from "@/components/reports/report-page";
 import { useBudget } from "@/lib/budget-context";
 import { type CategoryList, categoriesQueryOptions } from "@/lib/categories";
@@ -226,7 +227,7 @@ function SubjectPicker({
       aria-label="Category or group"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="max-w-full"
+      className={cn("max-w-full", toolbarSelectClass())}
     >
       <NativeSelectOptGroup label="Groups">
         {groups.map((g) => (

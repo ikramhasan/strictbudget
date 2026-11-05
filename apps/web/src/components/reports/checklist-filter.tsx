@@ -31,7 +31,7 @@ export function ChecklistFilter({
 }: {
   /** The button's text with everything selected ("Categories"). */
   allLabel: string;
-  /** Singular and plural for a partial selection ("1 Category", "3 Categories"). */
+  /** Singular and plural for a partial selection ("1 category", "3 categories"). */
   noun: [string, string];
   searchPlaceholder: string;
   sections: ChecklistSection[];
@@ -45,8 +45,8 @@ export function ChecklistFilter({
     count === all.length
       ? allLabel
       : count === 0
-        ? `No ${noun[1]} Selected`
-        : `${count} ${count === 1 ? noun[0] : noun[1]}`;
+        ? `No ${noun[1].toLowerCase()} selected`
+        : `${count} ${(count === 1 ? noun[0] : noun[1]).toLowerCase()}`;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -170,10 +170,10 @@ function ChecklistBody({
       </div>
       <div className="flex items-center gap-1 border-t p-2">
         <Button variant="link" size="sm" onClick={() => set(all, true)}>
-          Select All
+          Select all
         </Button>
         <Button variant="link" size="sm" onClick={() => set(all, false)}>
-          Select None
+          Select none
         </Button>
         <Button variant="outline" size="sm" className="ml-auto" onClick={onCancel}>
           Cancel

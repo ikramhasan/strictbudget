@@ -33,10 +33,10 @@ import {
 import { chartNumber, chartTick, monthLabel } from "@/lib/reports";
 
 const config = {
-  assigned: { label: "Assigned", color: "var(--report-3)" },
+  assigned: { label: "Assigned", color: "var(--report-7)" },
   spent: { label: "Spent", color: "var(--report-2)" },
   available: { label: "Available", color: "var(--foreground)" },
-  target: { label: "Target", color: "var(--report-6)" },
+  target: { label: "Target", color: "var(--report-8)" },
 } satisfies ChartConfig;
 
 /** The plan's overspending colours: red for cash, yellow for credit (as the plan's pills). */

@@ -78,12 +78,17 @@ export interface PaletteGroup {
   items: readonly PaletteItem[];
   /** The most rows it shows for a search. */
   limit?: number;
+  /**
+   * Names the user made up (accounts, categories): found by letters scattered across the words
+   * too ("chk" for Checking). Commands, places and settings are found only by how a word starts.
+   */
+  loose?: boolean;
 }
 
 /**
- * The groups a query leaves, best first: rows scored by cmdk's ranking on their label and keywords,
- * each group sorted and cut to its limit, and the groups ordered by their best row. Without a
- * query, every row that isn't search-only, in the groups' own order.
+ * The groups a query leaves, best first: rows ranked by how they match (`matchScore`), each group
+ * sorted and cut to its limit, and the groups ordered by their best row. Without a query, every
+ * row that isn't search-only, in the groups' own order.
  */
 export function filterGroups(groups: readonly PaletteGroup[], query: string) {
   const q = query.trim();
@@ -95,8 +100,8 @@ export function filterGroups(groups: readonly PaletteGroup[], query: string) {
   return groups
     .map((group) => {
       const scored = group.items
-        .map((item) => ({ item, score: defaultFilter(item.label, q, [...(item.keywords ?? [])]) }))
-        .filter(({ score }) => score >= MIN_SCORE)
+        .map((item) => ({ item, score: matchScore(item, q, group.loose ?? false) }))
+        .filter(({ score }) => score > 0)
         .sort((a, b) => b.score - a.score);
       return {
         ...group,
@@ -113,6 +118,37 @@ export function filterGroups(groups: readonly PaletteGroup[], query: string) {
  * only crowds the list; abbreviations ("chk" for Checking) score well above it.
  */
 const MIN_SCORE = 0.05;
+
+/** Leading emoji and punctuation, which a name's first word comes after ("🛒 Groceries"). */
+const LEADING = /^[^\p{L}\p{N}]+/u;
+
+/** Whether a word of `text` (or a run of its words) starts with `query`. */
+function startsAWord(text: string, query: string) {
+  for (let at = text.indexOf(query); at !== -1; at = text.indexOf(query, at + 1)) {
+    if (at === 0 || /[^\p{L}\p{N}]/u.test(text.charAt(at - 1))) return true;
+  }
+  return false;
+}
+
+/**
+ * How well `query` finds an item, 0 for not at all: the label's start first, then the start of
+ * one of its words, then of a keyword, with cmdk's score ordering rows within each. Letters
+ * scattered across the words count only in a `loose` group, below every other match.
+ */
+export function matchScore(
+  item: Pick<PaletteItem, "label" | "keywords">,
+  query: string,
+  loose: boolean,
+) {
+  const q = query.trim().toLowerCase();
+  const label = item.label.toLowerCase();
+  const keywords = (item.keywords ?? []).map((k) => k.toLowerCase());
+  const score = defaultFilter(item.label, query, [...(item.keywords ?? [])]);
+  if (label.replace(LEADING, "").startsWith(q)) return 3 + score;
+  if (startsAWord(label, q)) return 2 + score;
+  if (keywords.some((k) => startsAWord(k, q))) return 1 + score;
+  return loose && score >= MIN_SCORE ? score : 0;
+}
 
 const REPORTS = [
   { to: "/budgets/$budgetId/reports", label: "Reports home" },
@@ -330,6 +366,7 @@ function PaletteBody({
       const list = accounts.data?.accounts ?? [];
       all.push({
         heading: "Accounts",
+        loose: true,
         limit: 8,
         items: list.map((account) => ({
           id: `account:${account.id}`,
@@ -383,6 +420,7 @@ function PaletteBody({
       named.sort((a, b) => away(a) - away(b));
       all.push({
         heading: "Months",
+        loose: true,
         limit: 4,
         items: [
           ...nearby.map(({ id, label, month }) => ({
@@ -406,6 +444,7 @@ function PaletteBody({
 
       all.push({
         heading: "Categories",
+        loose: true,
         limit: 8,
         items: (categories.data?.groups ?? [])
           .filter((group) => !group.hidden)
@@ -495,6 +534,7 @@ function PaletteBody({
 
     all.push({
       heading: "Budgets",
+      loose: true,
       limit: 5,
       items: budgets
         .filter((b) => b.id !== budgetId)

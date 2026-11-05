@@ -115,7 +115,13 @@ function Report() {
 
   const mode = search.mode ?? "bars";
   const level: TrendLevel = search.group ? "category" : (search.by ?? "category");
-  const [overlays, setOverlays] = useState<TrendOverlays>({ average: true, rolling: false });
+  const [chosenOverlays, setOverlays] = useState<TrendOverlays>({
+    average: true,
+    rolling: false,
+  });
+  // One month is its own average: no average line.
+  const oneMonth = state.range.from === state.range.to;
+  const overlays = { ...chosenOverlays, average: chosenOverlays.average && !oneMonth };
   const [drill, setDrill] = useState<DrillDown | null>(null);
 
   const categories = useQuery(categoriesQueryOptions(budget.id));
@@ -218,7 +224,7 @@ function Report() {
     if (!catalog) return;
     const range = month ? { from: month, to: month } : state.range;
     if (key === null) {
-      setDrill({ title: "Total Spending", request: request(range) });
+      setDrill({ title: "Total spending", request: request(range) });
       return;
     }
     if (level === "group" && key !== catalog.uncategorizedId && key !== OTHER_KEY) {
@@ -230,7 +236,7 @@ function Report() {
       key === OTHER_KEY ? otherCategories(catalog, level, data) : categoryIdsOf(catalog, level, key)
     ).filter((id) => !chosen || chosen.includes(id));
     setDrill({
-      title: key === catalog.uncategorizedId ? "Uncategorized Transactions" : data.info(key).label,
+      title: key === catalog.uncategorizedId ? "Uncategorized transactions" : data.info(key).label,
       request: request(range, { filters: { ...filters, categoryIds: categoryIds.join(",") } }),
     });
   };
@@ -413,15 +419,24 @@ function Report() {
       }
     >
       <section aria-label="Summary" className="flex flex-wrap items-end gap-x-8 gap-y-2">
+        {/* Over one month the monthly average is the total again: show the total alone. */}
+        {!oneMonth && (
+          <div>
+            <p className="text-muted-foreground text-sm">Average monthly spending</p>
+            <p className="font-semibold text-3xl tabular-nums">
+              {derived ? format(derived.average) : "–"}
+            </p>
+          </div>
+        )}
         <div>
-          <p className="text-muted-foreground text-sm">Average Monthly Spending</p>
-          <p className="font-semibold text-3xl tabular-nums">
-            {derived ? format(derived.average) : "–"}
-          </p>
-        </div>
-        <div>
-          <p className="text-muted-foreground text-sm">Total Spending</p>
-          <p className="font-semibold text-lg tabular-nums">
+          <p className="text-muted-foreground text-sm">Total spending</p>
+          <p
+            className={
+              oneMonth
+                ? "font-semibold text-3xl tabular-nums"
+                : "font-semibold text-lg tabular-nums"
+            }
+          >
             {derived ? format(derived.total) : "–"}
           </p>
         </div>
@@ -460,14 +475,16 @@ function Report() {
           mode === "bars" && (
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="mr-1 text-muted-foreground text-xs">Show</span>
-              <Toggle
-                size="sm"
-                variant="outline"
-                pressed={overlays.average}
-                onPressedChange={(average) => setOverlays((o) => ({ ...o, average }))}
-              >
-                Average
-              </Toggle>
+              {!oneMonth && (
+                <Toggle
+                  size="sm"
+                  variant="outline"
+                  pressed={overlays.average}
+                  onPressedChange={(average) => setOverlays((o) => ({ ...o, average }))}
+                >
+                  Average
+                </Toggle>
+              )}
               <Toggle
                 size="sm"
                 variant="outline"

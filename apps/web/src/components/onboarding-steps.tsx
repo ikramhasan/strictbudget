@@ -1,39 +1,51 @@
 import { cn } from "@strictbudget/ui/lib/utils";
-import { Check } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import { Fragment } from "react";
 
 /** A new budget's way in: the create form, then setup's four steps. */
 export const ONBOARDING_STEPS = ["Budget", "How it works", "Categories", "Account", "Assign"];
 
 /**
- * Where the user is in onboarding. Finished steps can be revisited through `onSelect` (the budget
- * itself, step 0, can't). On a phone only the current step's name shows.
+ * Where the user is in onboarding. Steps before `current` are done, or `skipped` (a hollow
+ * marker with a dash, labelled so); both can be revisited through `onSelect`. On a phone only the
+ * current step's name shows.
  */
 export function OnboardingSteps({
   current,
+  skipped = [],
   onSelect,
 }: {
   current: number;
+  skipped?: readonly number[];
   onSelect?: (index: number) => void;
 }) {
   return (
     <nav aria-label="Setup progress">
       <ol className="flex items-center gap-2">
         {ONBOARDING_STEPS.map((label, i) => {
-          const done = i < current;
+          const past = i < current;
+          const wasSkipped = past && skipped.includes(i);
+          const done = past && !wasSkipped;
           const active = i === current;
-          const canSelect = done && i > 0 && onSelect !== undefined;
+          const canSelect = past && onSelect !== undefined;
           const content = (
             <>
               <span
                 className={cn(
                   "grid size-6 shrink-0 place-items-center rounded-full font-semibold text-xs tabular-nums transition-colors duration-200",
                   done && "bg-primary text-primary-foreground",
+                  wasSkipped && "border border-primary border-dashed text-primary-text",
                   active && "bg-primary/10 text-primary-text ring-1 ring-primary",
-                  !done && !active && "bg-muted text-muted-foreground ring-1 ring-border",
+                  !past && !active && "bg-muted text-muted-foreground ring-1 ring-border",
                 )}
               >
-                {done ? <Check className="size-3.5" strokeWidth={3} aria-hidden /> : i + 1}
+                {done ? (
+                  <Check className="size-3.5" strokeWidth={3} aria-hidden />
+                ) : wasSkipped ? (
+                  <Minus className="size-3.5" strokeWidth={3} aria-hidden />
+                ) : (
+                  i + 1
+                )}
               </span>
               <span
                 className={cn(
@@ -43,6 +55,7 @@ export function OnboardingSteps({
               >
                 {label}
                 {done && <span className="sr-only"> (done)</span>}
+                {wasSkipped && <span className="text-muted-foreground/80"> · skipped</span>}
               </span>
             </>
           );

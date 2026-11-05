@@ -139,7 +139,7 @@ export function SpendingBreakdownChart({
         </PieChart>
       </ChartContainer>
       <div className="pointer-events-none absolute inset-0 grid place-content-center text-center">
-        <span className="text-muted-foreground text-xs">Total Spending</span>
+        <span className="text-muted-foreground text-xs">Total spending</span>
         <span className="font-semibold text-lg tabular-nums">
           {formatAmount(money(breakdown.total, currency))}
         </span>

@@ -18,7 +18,7 @@ import { useAmountFormat } from "./format";
 const config = {
   assets: { label: "Assets", color: "var(--report-1)" },
   debts: { label: "Debts", color: "var(--report-2)" },
-  netWorth: { label: "Net Worth", color: "var(--foreground)" },
+  netWorth: { label: "Net worth", color: "var(--foreground)" },
 } satisfies ChartConfig;
 
 /** Assets above zero, debts below, net worth as a line; a ringed point marks a new all-time high. */
@@ -89,7 +89,7 @@ export function NetWorthChart({
                   <span className="font-medium">{monthLabel(m.month, "long")}</span>
                   {(
                     [
-                      ["Net Worth", m.netWorth, "var(--foreground)"],
+                      ["Net worth", m.netWorth, "var(--foreground)"],
                       ["Assets", m.assets, "var(--report-1)"],
                       ["Debts", m.debts, "var(--report-2)"],
                     ] as const
@@ -140,7 +140,7 @@ export function NetWorthChart({
                   cx={props.cx}
                   cy={props.cy}
                   r={high ? 5 : 3}
-                  fill={high ? "var(--report-7)" : "var(--card)"}
+                  fill={high ? "var(--report-4)" : "var(--card)"}
                   stroke="var(--color-netWorth)"
                   strokeWidth={2}
                 />
@@ -152,12 +152,12 @@ export function NetWorthChart({
       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground text-xs">
         <LegendItem color="var(--report-1)" label="Assets" />
         <LegendItem color="var(--report-2)" label="Debts" />
-        <LegendItem color="var(--foreground)" label="Net Worth" line />
+        <LegendItem color="var(--foreground)" label="Net worth" line />
         <li className="flex items-center gap-1.5">
           <span
             aria-hidden
             className="size-2.5 rounded-full border-2 border-foreground"
-            style={{ background: "var(--report-7)" }}
+            style={{ background: "var(--report-4)" }}
           />
           New all-time high
         </li>

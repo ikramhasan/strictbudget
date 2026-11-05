@@ -45,7 +45,7 @@ export function ExportButton({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Export Report</DialogTitle>
+            <DialogTitle>Export report</DialogTitle>
             <DialogDescription>
               Your data is just that—yours! All the requested data will be exported in CSV format so
               it's easy to open in other applications.

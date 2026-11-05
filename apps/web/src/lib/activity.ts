@@ -300,13 +300,36 @@ export function changesOf(event: ActivityEvent, l: ActivityLookups): ActivityCha
 }
 
 /**
+ * Inserts that bring a deleted row back: undoing a delete restores the row with its own id, so an
+ * insert after a delete of the same row is a restore. Returns those inserts' event ids.
+ */
+export function restoredEvents(events: readonly ActivityEvent[]): ReadonlySet<string> {
+  const key = (e: ActivityEvent) => `${e.entity}:${e.rowId}`;
+  // Event ids are UUIDv7, so they sort in the order the changes were made.
+  const firstDelete = new Map<string, string>();
+  for (const e of events) {
+    if (e.op !== "delete") continue;
+    const seen = firstDelete.get(key(e));
+    if (seen === undefined || e.id < seen) firstDelete.set(key(e), e.id);
+  }
+  const restored = new Set<string>();
+  for (const e of events) {
+    const deleted = e.op === "insert" ? firstDelete.get(key(e)) : undefined;
+    if (deleted !== undefined && deleted < e.id) restored.add(e.id);
+  }
+  return restored;
+}
+
+/**
  * `related`: the other changes saved with it (groupEvents), so a transaction whose category was
- * cleared as it was split reads "Split" rather than a blank.
+ * cleared as it was split reads "Split" rather than a blank. `restored`: an insert that brought a
+ * deleted row back (`restoredEvents`), which reads "restored", without its fields again.
  */
 export function describeEvent(
   event: ActivityEvent,
   l: ActivityLookups,
   related: readonly ActivityEvent[] = [],
+  restored = false,
 ): ActivityLine {
   const noun = NOUNS[event.entity] ?? humanize(event.entity).toLowerCase();
   const row = event.after ?? event.before ?? {};
@@ -333,20 +356,57 @@ export function describeEvent(
       changes: changes.filter((c) => c.label === "Amount"),
     };
   }
-  const verb = event.op === "insert" ? "added" : event.op === "delete" ? "deleted" : "changed";
   const article = /^[aeiou]/.test(noun) ? "an" : "a";
+  if (restored) return { action: `restored ${article} ${noun}`, subject, changes: [] };
+  const verb = event.op === "insert" ? "added" : event.op === "delete" ? "deleted" : "changed";
   return { action: `${verb} ${article} ${noun}`, subject, changes };
+}
+
+const LEADS = ["transaction", "scheduled_transaction"];
+
+/**
+ * Whether `event` was saved with `group`: one save doesn't change a row twice (beyond filling in a
+ * row it adds, which a restore never needs), and never both adds and deletes transactions, so a
+ * delete and its undo a second later are two entries.
+ */
+function savedWith(
+  group: readonly ActivityEvent[],
+  event: ActivityEvent,
+  restored: ReadonlySet<string>,
+) {
+  // `later` updates the row `earlier` added, as a save does while it writes it.
+  const fillIn = (earlier: ActivityEvent, later: ActivityEvent) =>
+    earlier.op === "insert" &&
+    !restored.has(earlier.id) &&
+    later.op === "update" &&
+    earlier.id < later.id;
+  const sameRow = (a: ActivityEvent, b: ActivityEvent) =>
+    a.entity === b.entity && a.rowId === b.rowId && !fillIn(a, b) && !fillIn(b, a);
+  return group.every(
+    (other) =>
+      !sameRow(other, event) &&
+      !(
+        LEADS.includes(other.entity) &&
+        LEADS.includes(event.entity) &&
+        other.op !== "update" &&
+        event.op !== "update" &&
+        other.op !== event.op
+      ),
+  );
 }
 
 /**
  * Changes saved together (one transaction with its split lines and new payee, one Auto-Assign)
  * as one entry: the same person or job within a couple of seconds, in list order. The lead is the
- * transaction when there is one; changes with nothing to show (bookkeeping only) are left out.
+ * transaction when there is one; changes with nothing to show (bookkeeping only) are left out, as
+ * are a restored transaction's split lines, which come back with it. `restored` says which events
+ * brought a deleted row back (`restoredEvents`).
  */
 export function groupEvents(
   events: readonly ActivityEvent[],
   l: ActivityLookups,
-): { lead: ActivityEvent; rest: ActivityEvent[] }[] {
+): { lead: ActivityEvent; rest: ActivityEvent[]; restored: ReadonlySet<string> }[] {
+  const restored = restoredEvents(events);
   const shown = events.filter((e) => e.op !== "update" || changesOf(e, l).length > 0);
   const actorKey = (e: ActivityEvent) =>
     `${e.source}:${e.actor?.userId ?? ""}:${e.actor?.agent?.name ?? ""}`;
@@ -358,17 +418,22 @@ export function groupEvents(
       group &&
       first &&
       actorKey(first) === actorKey(event) &&
-      Math.abs(Date.parse(first.at) - Date.parse(event.at)) <= 2000
+      Math.abs(Date.parse(first.at) - Date.parse(event.at)) <= 2000 &&
+      savedWith(group, event, restored)
     ) {
       group.push(event);
     } else {
       groups.push([event]);
     }
   }
-  const LEADS = ["transaction", "scheduled_transaction"];
   return groups.map((group) => {
-    const lead = group.find((e) => LEADS.includes(e.entity)) ?? group[0];
-    return { lead: lead as ActivityEvent, rest: group.filter((e) => e !== lead) };
+    const lead = group.find((e) => LEADS.includes(e.entity)) ?? (group[0] as ActivityEvent);
+    const rest = group.filter(
+      (e) =>
+        e !== lead &&
+        !(restored.has(lead.id) && e.entity === "sub_transaction" && e.op === "insert"),
+    );
+    return { lead, rest, restored };
   });
 }
 

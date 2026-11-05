@@ -92,6 +92,20 @@ export function averageSpent(
 export const homeRange = (month: BudgetMonth) => ({ from: addMonths(month, -11), to: month });
 
 /**
+ * `months` from the first with data, so a young budget's charts don't start on a run of empty
+ * months; at least `minimum` of them (the last ones), enough to draw a line.
+ */
+export function monthsWithData(
+  months: readonly BudgetMonth[],
+  hasData: (month: BudgetMonth) => boolean,
+  minimum = 3,
+): BudgetMonth[] {
+  const first = months.findIndex(hasData);
+  const latestStart = Math.max(0, months.length - minimum);
+  return months.slice(first < 0 ? latestStart : Math.min(first, latestStart));
+}
+
+/**
  * Everything the Reports home reads that the reports endpoints already give: monthly spending and
  * income, categories' spending, this month's payees and overspending.
  */
@@ -214,6 +228,16 @@ export function useReportsHomeData(budgetId: string) {
       cashAccounts.reduce((s, a) => s + BigInt(a.balances[i]?.base ?? "0"), 0n),
     ]),
   );
+  const worthByMonth = new Map(
+    (worth.data?.months ?? []).map((m) => [m.month as BudgetMonth, BigInt(m.netWorth)]),
+  );
+  const months = monthsWithData(
+    monthsIn(range),
+    (m) =>
+      (spent.get(m) ?? 0n) !== 0n ||
+      (earned.get(m) ?? 0n) !== 0n ||
+      (worthByMonth.get(m) ?? 0n) !== 0n,
+  );
   return {
     month,
     loading: !ready && !failed,
@@ -221,7 +245,8 @@ export function useReportsHomeData(budgetId: string) {
     netWorth: worth.data,
     cash,
     cashByMonth,
-    months: monthsIn(range),
+    /** The last 12 months, from the first with any money in or out or any balance. */
+    months,
     spent,
     earned,
     categoryNames: names,

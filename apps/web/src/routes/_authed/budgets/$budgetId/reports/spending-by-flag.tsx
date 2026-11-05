@@ -190,7 +190,7 @@ function Overview({
             breakdown={breakdown}
             income={undefined}
             previous={undefined}
-            positiveTitle="Positive Inflow Flags"
+            positiveTitle="Positive inflow flags"
             onSelect={open}
           />
         }
@@ -200,7 +200,7 @@ function Overview({
             income={undefined}
             previous={undefined}
             rowTitle="Flag"
-            positiveTitle="Positive Inflow Flags"
+            positiveTitle="Positive inflow flags"
             onSelect={open}
           />
         }
@@ -313,7 +313,7 @@ function OneFlag({
             breakdown={breakdown}
             income={undefined}
             previous={undefined}
-            positiveTitle="Positive Inflow Categories"
+            positiveTitle="Positive inflow categories"
             onSelect={drillCategory}
           />
         }
@@ -323,7 +323,7 @@ function OneFlag({
             income={undefined}
             previous={undefined}
             rowTitle="Category"
-            positiveTitle="Positive Inflow Categories"
+            positiveTitle="Positive inflow categories"
             onSelect={drillCategory}
           />
         }

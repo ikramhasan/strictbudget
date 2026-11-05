@@ -60,9 +60,9 @@ export function dueDayIn(dueDay: number | null, month: BudgetMonth) {
   return dueDay === null || dueDay > last ? last : dueDay;
 }
 
-/** The days the "By" list offers, in order: Last Day of Month, then 31st down to 1st. */
+/** The days the "By" list offers, in order: Last day of month, then 31st down to 1st. */
 export const DUE_DAY_OPTIONS: { value: string; label: string }[] = [
-  { value: "last", label: "Last Day of Month" },
+  { value: "last", label: "Last day of month" },
   ...Array.from({ length: 31 }, (_, i) => 31 - i).map((d) => ({
     value: String(d),
     label: ordinal(d),
@@ -89,68 +89,68 @@ export const isPaymentTarget = (target: Pick<CategoryTarget, "cadence">) =>
 
 /** The payment targets' names, in the form's order (Pay Off Balance by Date first). */
 export const PAYMENT_TARGET_OPTIONS = [
-  { value: "payoff_by_date", label: "Pay Off Balance by Date" },
-  { value: "payment_monthly", label: "Pay Specific Amount Monthly" },
+  { value: "payoff_by_date", label: "Pay off balance by date" },
+  { value: "payment_monthly", label: "Pay specific amount monthly" },
 ] as const;
 
 /** Whether a target is a loan's Monthly Debt Payment (only on a category paired with a loan). */
 export const isDebtTarget = (target: Pick<CategoryTarget, "cadence">) =>
   target.cadence === "debt_monthly";
 
-/** A payment or debt target's kind, shown above the inspector's heading ("Monthly Debt Payment"). */
+/** A payment or debt target's kind, shown above the inspector's heading ("Monthly debt payment"). */
 export function paymentTargetKind(target: CategoryTarget) {
-  if (isDebtTarget(target)) return "Monthly Debt Payment";
+  if (isDebtTarget(target)) return "Monthly debt payment";
   return PAYMENT_TARGET_OPTIONS.find((o) => o.value === target.cadence)?.label ?? null;
 }
 
-/** "Each Month", "Every 2 Months", "Each Year", "Every 2 Years", or "" for a one-time target. */
+/** " each month", " every 2 months", " each year", " every 2 years", or "" for a one-time target. */
 function repeatPhrase(target: Pick<CategoryTarget, "repeatEvery" | "repeatUnit">) {
   if (!target.repeatEvery || !target.repeatUnit) return "";
-  const unit = target.repeatUnit === "year" ? "Year" : "Month";
-  return target.repeatEvery === 1 ? ` Each ${unit}` : ` Every ${target.repeatEvery} ${unit}s`;
+  const unit = target.repeatUnit === "year" ? "year" : "month";
+  return target.repeatEvery === 1 ? ` each ${unit}` : ` every ${target.repeatEvery} ${unit}s`;
 }
 
 /**
- * The inspector heading: "Set Aside Another $100.00 Each Month", "Refill Up to $10.00 Each Week",
- * "Set Aside Another $300.00 Every 2 Months", "Have a Balance of $300.00". Payment targets: "$30.00"
+ * The inspector heading: "Set aside another $100.00 each month", "Refill up to $10.00 each week",
+ * "Set aside another $300.00 every 2 months", "Have a balance of $300.00". Payment targets: "$30.00"
  * (Pay Specific Amount Monthly) and "Pay off $125.00" (Pay Off Balance by Date, `amount` being
  * what's still to pay off: what the target needs).
  */
 export function targetHeading(target: CategoryTarget, amount: string) {
   if (target.cadence === "payment_monthly") return amount;
-  if (target.cadence === "debt_monthly") return `${amount} Needed Each Month`;
+  if (target.cadence === "debt_monthly") return `${amount} needed each month`;
   if (target.cadence === "payoff_by_date") return `Pay off ${amount}`;
-  if (target.behavior === "balance") return `Have a Balance of ${amount}`;
+  if (target.behavior === "balance") return `Have a balance of ${amount}`;
   const suffix =
     target.cadence === "weekly"
-      ? " Each Week"
+      ? " each week"
       : target.cadence === "monthly"
-        ? " Each Month"
+        ? " each month"
         : target.cadence === "yearly"
-          ? " Each Year"
+          ? " each year"
           : repeatPhrase(target);
-  if (target.behavior === "set_aside") return `Set Aside Another ${amount}${suffix}`;
-  // "Fill Up to $200.00", then "By Sep 8 2026".
+  if (target.behavior === "set_aside") return `Set aside another ${amount}${suffix}`;
+  // "Fill up to $200.00", then "By Sep 8 2026".
   return target.cadence === "custom"
-    ? `Fill Up to ${amount}${suffix}`
-    : `Refill Up to ${amount}${suffix}`;
+    ? `Fill up to ${amount}${suffix}`
+    : `Refill up to ${amount}${suffix}`;
 }
 
 /**
- * The line under the heading: "By the End of the Month", "By the 15th of the Month", "By Saturday",
+ * The line under the heading: "By the end of the month", "By the 15th of the month", "By Saturday",
  * "By Dec 30 2026" (the current period's due date), "By Dec 2026", "Eventually"; for payment targets
- * "Each Month" and "By Mar 2027".
+ * "Each month" and "By Mar 2027".
  */
 export function targetDueLine(target: CategoryTarget, need: Pick<TargetNeed, "dueDate"> | null) {
-  if (target.cadence === "payment_monthly") return "Each Month";
+  if (target.cadence === "payment_monthly") return "Each month";
   if (target.cadence === "payoff_by_date") {
     return target.dueDate ? `By ${shortMonth(target.dueDate)}` : "";
   }
   if (target.cadence === "weekly") return `By ${WEEKDAYS[target.dueDay ?? 0]}`;
   if (target.cadence === "monthly" || target.cadence === "debt_monthly") {
     return target.dueDay === null
-      ? "By the End of the Month"
-      : `By the ${ordinal(target.dueDay)} of the Month`;
+      ? "By the end of the month"
+      : `By the ${ordinal(target.dueDay)} of the month`;
   }
   if (target.behavior === "balance") {
     return target.dueDate ? `By ${shortMonth(target.dueDate)}` : "Eventually";
@@ -167,7 +167,7 @@ export function targetStatus(need: TargetNeed) {
 
 /**
  * The note under a category's name: "Funded" when met or past a one-time target's due month; "On
- * Track" when this month's share of a dated target is in; otherwise "$60.00 more needed by the
+ * track" when this month's share of a dated target is in; otherwise "$60.00 more needed by the
  * 31st", "… this month" (weekly, and dated targets before their due month), "… by December 30th" (a
  * dated target's due month), "$300.00 needed eventually" (a balance target without a date). Set
  * aside always says "more"; other targets only once something counts toward them.
@@ -192,7 +192,7 @@ export function targetRowNote(
       const toGo = BigInt(need.needed) - BigInt(need.funded);
       return { met: false, text: `${format(toGo.toString())}${more} needed eventually` };
     }
-    return { met: false, text: "On Track" };
+    return { met: false, text: "On track" };
   }
   const when =
     target.cadence === "monthly" || target.cadence === "debt_monthly"
@@ -215,7 +215,7 @@ export function payoffAmount(need: Pick<TargetNeed, "needed" | "funded">, paymen
 }
 
 /**
- * The inspector's lines: what's needed, what counts, and To Go (what's left of the total). Pay Off
+ * The inspector's lines: what's needed, what counts, and To go (what's left of the total). Pay Off
  * Balance by Date shows the card's whole debt and Available ("Needed for Payoff", "Available for
  * Payment"), which include this month's `fundedSpending`; the target leaves it out of both, so To Go
  * is the same.
@@ -228,12 +228,12 @@ export function targetLines(
 ) {
   // Before its card was opened a payment target has nothing to go.
   const toGo = need.beforeOpening ? 0n : BigInt(need.needed) - BigInt(need.funded);
-  const toGoLine = { label: "To Go", value: format((toGo > 0n ? toGo : 0n).toString()) };
+  const toGoLine = { label: "To go", value: format((toGo > 0n ? toGo : 0n).toString()) };
   if (target.cadence === "payoff_by_date") {
     const extra = BigInt(fundedSpending);
     return [
-      { label: "Needed for Payoff", value: format((BigInt(need.needed) + extra).toString()) },
-      { label: "Available for Payment", value: format((BigInt(need.funded) + extra).toString()) },
+      { label: "Needed for payoff", value: format((BigInt(need.needed) + extra).toString()) },
+      { label: "Available for payment", value: format((BigInt(need.funded) + extra).toString()) },
       toGoLine,
     ];
   }
@@ -242,15 +242,15 @@ export function targetLines(
   const [neededLabel, fundedLabel] =
     target.behavior === "balance"
       ? [
-          target.dueDate ? `Balance Needed by ${shortMonth(target.dueDate)}` : "Balance Needed",
-          "Current Balance",
+          target.dueDate ? `Balance needed by ${shortMonth(target.dueDate)}` : "Balance needed",
+          "Current balance",
         ]
       : !isDated(target)
         ? setAside
-          ? ["Amount to Assign This Month", "Assigned So Far"]
-          : ["Needed This Month", "Funded"]
+          ? ["Amount to assign this month", "Assigned so far"]
+          : ["Needed this month", "Funded"]
         : setAside
-          ? [`Total to Assign by ${due}`, "Assigned So Far"]
+          ? [`Total to assign by ${due}`, "Assigned so far"]
           : [`Needed by ${due}`, "Funded"];
   return [
     { label: neededLabel, value: format(need.needed) },
@@ -413,8 +413,8 @@ type MonthBar = NonNullable<components["schemas"]["ProgressBar"]>;
 /**
  * The note under a category that isn't overspent. With a target that's working this month: its
  * note ("Funded", "$60.00 more needed by the 31st", …), a met one adding what was spent of its money
- * ("Funded. Spent $30.00 of $100.00"), or "Fully Spent" once all of it is. Without one (or
- * snoozed): "Fully Spent" when spending used all the money, "Spent $7.00 of $20.00" while some is
+ * ("Funded. Spent $30.00 of $100.00"), or "Fully spent" once all of it is. Without one (or
+ * snoozed): "Fully spent" when spending used all the money, "Spent $7.00 of $20.00" while some is
  * left, nothing otherwise. `strong` is the part set in bold.
  */
 export function categoryRowNote(
@@ -439,11 +439,11 @@ export function categoryRowNote(
     const note = targetRowNote(target, need, month, format);
     if (!note.met) return { strong: "", rest: note.text };
     // A target past its due month with nothing in it has no note; a met one whose money is all spent
-    // reads "Fully Spent".
+    // reads "Fully spent".
     if (need.pastDue && money === 0n) return null;
-    if (spent > 0n && left === 0n) return { strong: "", rest: "Fully Spent" };
+    if (spent > 0n && left === 0n) return { strong: "", rest: "Fully spent" };
     return { strong: note.text, rest: spent > 0n ? `. ${spentOf}` : "" };
   }
   if (spent === 0n) return null;
-  return left === 0n ? { strong: "", rest: "Fully Spent" } : { strong: "", rest: spentOf };
+  return left === 0n ? { strong: "", rest: "Fully spent" } : { strong: "", rest: spentOf };
 }

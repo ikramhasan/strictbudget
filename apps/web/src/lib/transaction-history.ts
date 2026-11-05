@@ -6,12 +6,14 @@ export type UpdateTransactionBody = components["schemas"]["UpdateTransaction"];
 
 /**
  * A complete transaction representation accepted by the create endpoint, to bring a deleted one
- * back (undo) or create it again (redo). A transfer's other side comes back with its own memo,
- * cleared state, flag and approval, and a transfer to an account closed since still comes back
- * (`restore`).
+ * back (undo) or create it again (redo). It comes back as the same record: its own id and its
+ * transfers' other sides' ids, so it keeps its place in its day and later commands in the undo
+ * history still find it. A transfer's other side comes back with its own memo, cleared state,
+ * flag and approval, and a transfer to an account closed since still comes back (`restore`).
  */
 export function createBodyFromTransaction(transaction: Transaction): CreateTransactionBody {
   return {
+    id: transaction.id,
     accountId: transaction.accountId,
     date: transaction.date,
     amount: transaction.amount,
@@ -54,11 +56,34 @@ export function createBodyFromTransaction(transaction: Transaction): CreateTrans
   };
 }
 
+/**
+ * The API refused to bring a transaction back with its ids (its change log doesn't show it
+ * deleted); it can still come back as a new record.
+ */
+export function isIdUnavailable(error: unknown): boolean {
+  return (error as { error?: { code?: unknown } } | null)?.error?.code === "ID_UNAVAILABLE";
+}
+
+/** `createBodyFromTransaction`'s body without its ids: the transaction comes back as a new one. */
+export function withoutIds(body: CreateTransactionBody): CreateTransactionBody {
+  const { id: _, ...rest } = body;
+  return {
+    ...sideWithoutId(rest),
+    ...(rest.subtransactions ? { subtransactions: rest.subtransactions.map(sideWithoutId) } : {}),
+  };
+}
+
+function sideWithoutId<T extends { transferSide?: CreateTransactionBody["transferSide"] }>(row: T) {
+  if (!row.transferSide) return row;
+  const { id: _, ...side } = row.transferSide;
+  return { ...row, transferSide: side };
+}
+
 type Side = NonNullable<Transaction["transferSide"]>;
 
 /** A transfer's other side as the create endpoint takes it back, its own amount included. */
 function sideInput(side: Side): NonNullable<CreateTransactionBody["transferSide"]> {
-  const { currency: _, ...input } = side;
+  const { currency: _, version: __, ...input } = side;
   return input;
 }
 

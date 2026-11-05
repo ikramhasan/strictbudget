@@ -97,7 +97,7 @@ describe("AutoAssignPanel", () => {
         </AutoAssignClose>
       </UndoProvider>,
     );
-    await user.click(screen.getByRole("button", { name: "Assigned Last Month A3000" }));
+    await user.click(screen.getByRole("button", { name: "Assigned last month A3000" }));
     expect(close).not.toHaveBeenCalled();
     await user.click(
       within(screen.getByRole("alertdialog")).getByRole("button", { name: "Apply Changes" }),
@@ -122,7 +122,7 @@ describe("AutoAssignPanel", () => {
         />
       </UndoProvider>,
     );
-    await user.click(screen.getByRole("button", { name: "Assigned Last Month A3000" }));
+    await user.click(screen.getByRole("button", { name: "Assigned last month A3000" }));
     await user.click(
       within(screen.getByRole("alertdialog")).getByRole("button", { name: "Apply Changes" }),
     );
@@ -142,7 +142,7 @@ describe("AutoAssignPanel", () => {
         onApply={onApply}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Assigned Last Month A3000" }));
+    await user.click(screen.getByRole("button", { name: "Assigned last month A3000" }));
     const dialog = screen.getByRole("alertdialog");
     expect(within(dialog).getByText(/for 1 category/)).toBeInTheDocument();
     expect(within(dialog).getByText("Rent")).toBeInTheDocument();
@@ -164,7 +164,7 @@ describe("AutoAssignPanel", () => {
         onApply={vi.fn()}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Assigned Last Month A3000" }));
+    await user.click(screen.getByRole("button", { name: "Assigned last month A3000" }));
     let dialog = screen.getByRole("alertdialog");
     expect(within(dialog).getByText("Total change").nextSibling).toHaveTextContent("+A2000");
     expect(within(dialog).getByText("Ready to Assign").nextSibling).toHaveTextContent(
@@ -208,7 +208,7 @@ describe("AutoAssignPanel", () => {
         onApply={onApply}
       />,
     );
-    await user.click(screen.getByRole("button", { name: /Assigned Last Month/ }));
+    await user.click(screen.getByRole("button", { name: /Assigned last month/ }));
     expect(onApply).not.toHaveBeenCalled();
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   });
@@ -226,8 +226,8 @@ describe("AutoAssignPanel", () => {
         onApply={onApply}
       />,
     );
-    expect(screen.getByRole("button", { name: "Reset Available Amount A0" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Reset Assigned Amount/ }));
+    expect(screen.getByRole("button", { name: "Reset available amount A0" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Reset assigned amount/ }));
     expect(onApply).toHaveBeenCalledWith("resetAssigned");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
@@ -247,7 +247,7 @@ describe("AutoAssignPanel", () => {
       />,
     );
     expect(screen.getByText("This view has no categories.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Average Spent/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Average spent/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "View All Categories" }));
     expect(onViewAll).toHaveBeenCalled();
   });
@@ -263,7 +263,7 @@ describe("AutoAssignPanel", () => {
         onApply={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: /^Reset Assigned Amount A/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Reset assigned amount A/ })).toBeInTheDocument();
   });
 
   describe("Underfunded and Reduce Overfunding", () => {

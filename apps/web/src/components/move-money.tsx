@@ -52,22 +52,30 @@ export interface MoveActions {
 
 type Format = (minorUnits: string) => string;
 
+/**
+ * The Available pill's tones, louder the more a category needs you: money in it is a soft jade
+ * tint, nothing in it an empty dashed outline, and a shortfall a solid fill (saffron to top up,
+ * crimson when overspent). A bordered tone gives the border's pixel back from its padding, so every
+ * pill is the same size.
+ */
 export const PILL = {
-  caution: "bg-yellow-100 text-yellow-900 dark:bg-yellow-900/50 dark:text-yellow-100",
-  positive: "bg-green-100 text-green-900 dark:bg-green-900/50 dark:text-green-100",
-  negative: "bg-red-100 text-red-900 dark:bg-red-900/50 dark:text-red-100",
-  zero: "bg-muted text-muted-foreground",
+  caution: "rounded-md bg-yellow-400 text-yellow-950",
+  positive:
+    "rounded-md bg-green-100 text-green-900 shadow-[inset_0_0_0_1px_oklch(62.7%_0.14_156/0.22)] dark:bg-green-900/45 dark:text-green-100 dark:shadow-[inset_0_0_0_1px_oklch(79.2%_0.15_156/0.2)]",
+  negative: "rounded-md bg-red-600 text-white",
+  zero: "rounded-md border border-muted-foreground/45 border-dashed px-[7px] py-px text-muted-foreground",
 };
 
 /**
- * Display Options → Differentiate Without Color: stronger fills with a 1px border, black in light
- * and white in dark. The padding gives up the border's pixel so the pill keeps its size. Positive
- * and zero pills don't change.
+ * Display Options → Differentiate Without Color: the shortfalls also differ in texture, so they
+ * part without their hue. Underfunded is striped, overspent solid, both edged in black in light
+ * and white in dark. Positive and zero pills already differ by shape.
  */
 export const STRONG_PILL = {
   caution:
-    "border border-black bg-(--bar-underfunded) px-[7px] py-px text-black dark:border-white dark:text-black",
-  negative: "border border-black bg-(--bar-overspent) px-[7px] py-px text-white dark:border-white",
+    "rounded-md border border-black bg-[repeating-linear-gradient(-45deg,var(--color-yellow-300)_0_3px,var(--color-yellow-400)_3px_6px)] px-[7px] py-px text-black dark:border-white",
+  negative:
+    "rounded-md border border-black bg-red-600 px-[7px] py-px font-semibold text-white dark:border-white",
 };
 
 /**
@@ -280,11 +288,11 @@ export function AvailableButton({
             format={format}
             needed={-BigInt(amount)}
             verb="Cover"
+            parse={actions.parse}
+            toInput={actions.toInput}
             onCancel={() => setOpen(false)}
-            onPick={async (source) => {
+            onPick={async (source, amountToCover) => {
               setOpen(false);
-              // Covers as much as the source has, up to the overspending.
-              const amountToCover = minAmount(BigInt(source.available), -BigInt(amount));
               if (later && actions.moveFrom) {
                 await actions.moveFrom(month, source.id, categoryId, amountToCover);
               } else {
@@ -457,6 +465,8 @@ function PickSourceForm({
   format,
   needed,
   verb,
+  parse,
+  toInput,
   onCancel,
   onPick,
 }: {
@@ -465,27 +475,45 @@ function PickSourceForm({
   aside?: ReactNode;
   options: readonly MoneyOption[];
   format: Format;
-  /** The shortfall to make up: a source with enough is used as soon as it's picked. */
+  /** The shortfall to make up: the amount field starts with it. */
   needed: bigint;
   /** What the button does, e.g. "Cover". */
   verb: string;
+  parse: MoveActions["parse"];
+  toInput: MoveActions["toInput"];
   onCancel: () => void;
-  onPick: (source: MoneyOption) => Promise<void>;
+  /** Takes `amount` (at most what the source has) from `source`. */
+  onPick: (source: MoneyOption, amount: bigint) => Promise<void>;
 }) {
   const [from, setFrom] = useState<string | null>(null);
+  const [text, setText] = useState(() => toInput(needed.toString()));
   const submitRef = useRef<HTMLButtonElement>(null);
   const source = options.find((o) => o.id === from);
-  const taken = source ? minAmount(BigInt(source.available), needed) : 0n;
-  const short = needed - taken;
+  const parsed = parse(text);
+  const wanted = typeof parsed === "string" ? null : parsed;
+  const taken = source && wanted !== null ? minAmount(BigInt(source.available), wanted) : 0n;
   const show = (amount: bigint) => format(amount.toString());
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        if (source) void onPick(source);
+        if (source && taken > 0n) void onPick(source, taken);
       }}
       className="grid gap-3"
     >
+      <Field>
+        <FieldLabel htmlFor="cover-amount">Amount</FieldLabel>
+        <Input
+          id="cover-amount"
+          inputMode="decimal"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onFocus={(e) => e.currentTarget.select()}
+          aria-invalid={wanted === null || undefined}
+          className="h-8 text-right tabular-nums"
+        />
+        {wanted === null && <FieldError>{parsed as string}</FieldError>}
+      </Field>
       <Field>
         <div className="flex items-center justify-between gap-2">
           <FieldLabel>{label}</FieldLabel>
@@ -512,14 +540,14 @@ function PickSourceForm({
         <p
           className={cn(
             "rounded-md px-2.5 py-2 text-xs leading-relaxed",
-            short > 0n
+            needed > taken
               ? "bg-amber-500/10 text-amber-800 dark:text-amber-300"
               : "bg-muted text-muted-foreground",
           )}
           aria-live="polite"
         >
-          {short > 0n
-            ? `${source.name} has ${show(taken)}, so ${show(short)} of the ${show(needed)} stays short.`
+          {needed > taken
+            ? `Moves ${show(taken)} from ${source.name}; ${show(needed - taken)} stays short.`
             : `Moves ${show(taken)} from ${source.name}.`}
         </p>
       )}
@@ -527,7 +555,7 @@ function PickSourceForm({
         <Button type="button" variant="outline" size="sm" onClick={onCancel}>
           Cancel
         </Button>
-        <Button ref={submitRef} type="submit" size="sm" disabled={!source}>
+        <Button ref={submitRef} type="submit" size="sm" disabled={!source || taken <= 0n}>
           {source ? `${verb} ${show(taken)}` : verb}
         </Button>
       </div>
@@ -605,10 +633,11 @@ export function FixThisButton({
           format={format}
           needed={-BigInt(readyToAssign)}
           verb="Un-assign"
+          parse={actions.parse}
+          toInput={actions.toInput}
           onCancel={() => setOpen(false)}
-          onPick={async (source) => {
+          onPick={async (source, amount) => {
             setOpen(false);
-            const amount = minAmount(BigInt(source.available), -BigInt(readyToAssign));
             if (months && month) await months.unassign(month, source.id, amount);
             else await actions.move(source.id, actions.readyToAssignId, amount);
           }}

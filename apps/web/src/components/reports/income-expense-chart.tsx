@@ -18,7 +18,7 @@ import { chartNumber, chartTick, INCOME_COLOR, monthLabel, SPENDING_COLOR } from
 const config = {
   income: { label: "Income", color: INCOME_COLOR },
   expenses: { label: "Expenses", color: SPENDING_COLOR },
-  net: { label: "Net Income", color: "var(--foreground)" },
+  net: { label: "Net income", color: "var(--foreground)" },
 } satisfies ChartConfig;
 
 export type ChartSeries = "income" | "expenses";

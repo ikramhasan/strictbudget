@@ -125,13 +125,13 @@ export function comparisonFor(range: MonthRange, compare: ReportComparison | und
 }
 
 export const PRESET_LABELS: Record<ReportPreset, string> = {
-  this_month: "This Month",
-  last_3_months: "Last 3 Months",
-  last_6_months: "Last 6 Months",
-  last_12_months: "Last 12 Months",
-  year_to_date: "Year To Date",
-  last_year: "Last Year",
-  all_dates: "All Dates",
+  this_month: "This month",
+  last_3_months: "Last 3 months",
+  last_6_months: "Last 6 months",
+  last_12_months: "Last 12 months",
+  year_to_date: "Year to date",
+  last_year: "Last year",
+  all_dates: "All dates",
 };
 
 export const COMPARISON_LABELS: Record<ReportComparison, string> = {

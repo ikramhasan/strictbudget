@@ -163,7 +163,7 @@ export function ScheduledSection({
       let entered = after.enteredTransactionId;
       let current = after.scheduledTransaction ? before.id : null;
       history.record({
-        label: "scheduled transaction edit",
+        label: "edit scheduled transaction",
         undo: async () => {
           // The schedule first: if it can't come back, the entered transaction stays.
           current = await restore(before, current);
@@ -228,7 +228,8 @@ export function ScheduledSection({
       await remove.mutateAsync(path(before.id));
       let current: string | null = null;
       history.record({
-        label: "deleted scheduled transaction",
+        label: "delete scheduled transaction",
+        destructive: true,
         undo: async () => {
           current = await restore(before, null);
           await onChanged();
@@ -241,7 +242,7 @@ export function ScheduledSection({
         },
       });
       await onChanged();
-      toast.success("Scheduled transaction deleted");
+      history.announce("Scheduled transaction deleted", { destructive: true });
     } catch (e) {
       toast.error(apiErrorMessage(e, "Couldn't delete the scheduled transaction."));
     }
@@ -254,7 +255,7 @@ export function ScheduledSection({
     try {
       await send(flag);
       history.record({
-        label: "scheduled transaction flag",
+        label: "flag scheduled transaction",
         undo: async () => {
           await send(old);
           await onChanged();

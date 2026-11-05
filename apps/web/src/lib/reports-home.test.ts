@@ -4,6 +4,7 @@ import {
   averageSpent,
   categorySpending,
   incomeByMonth,
+  monthsWithData,
   savingsRate,
   spentByMonth,
 } from "./reports-home";
@@ -93,5 +94,25 @@ describe("Reports home figures", () => {
         format,
       ).target.search,
     ).toEqual({ from: "2026-04", to: "2026-10", categories: "g" });
+  });
+});
+
+describe("monthsWithData", () => {
+  const months = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"] as const;
+  it("starts at the first month with data", () => {
+    expect(monthsWithData(months, (m) => m >= "2026-03")).toEqual([
+      "2026-03",
+      "2026-04",
+      "2026-05",
+      "2026-06",
+    ]);
+  });
+  it("keeps the last three months when data starts later or never", () => {
+    expect(monthsWithData(months, (m) => m === "2026-06")).toEqual([
+      "2026-04",
+      "2026-05",
+      "2026-06",
+    ]);
+    expect(monthsWithData(months, () => false)).toEqual(["2026-04", "2026-05", "2026-06"]);
   });
 });

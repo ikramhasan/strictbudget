@@ -96,7 +96,7 @@ describe("Recent Moves", () => {
     ]);
     expect(screen.getByText("ihni7 auto-assigned")).toBeInTheDocument();
     expect(screen.getByText("$5.00")).toBeInTheDocument();
-    expect(screen.getByText("Method: Average Assigned")).toBeInTheDocument();
+    expect(screen.getByText("Method: Average assigned")).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Details" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Details" }));
     const details = within(screen.getByRole("list", { name: "Details" }));
@@ -114,7 +114,7 @@ describe("Recent Moves", () => {
     ]);
     expect(screen.getByText("ihni7 removed")).toBeInTheDocument();
     expect(screen.getByText("$50.00")).toBeInTheDocument();
-    expect(screen.getByText("Method: Reset Assigned Amounts")).toBeInTheDocument();
+    expect(screen.getByText("Method: Reset assigned amounts")).toBeInTheDocument();
     // One category: named, no method or details.
     expect(screen.getByText("ihni7 auto-assigned")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /x-142 A\s*Oct 2026/ })).toBeInTheDocument();
@@ -219,7 +219,7 @@ describe("Category moves history", () => {
       .map((r) => r.textContent);
     expect(rows).toEqual([
       "2026-10-14Moved from x-142 C$5.00i",
-      "2026-10-14Auto-AssignedAssigned Last Month$10.00i",
+      "2026-10-14Auto-AssignedAssigned last month$10.00i",
     ]);
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
     await userEvent.click(

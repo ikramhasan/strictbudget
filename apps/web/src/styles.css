@@ -19,11 +19,11 @@
 /*
  * Progress bar colours: the empty track and its border, then the available (funded, underfunded)
  * and spent (stripes of two shades) parts, and overspending. The brand's money colours
- * (theme.css): jade, saffron and crimson on a cool track.
+ * (theme.css): jade, saffron and crimson on a paper track (an ink one in dark mode).
  */
 :root {
-  --bar-track: oklch(0.955 0.008 265);
-  --bar-border: oklch(0.915 0.012 265);
+  --bar-track: oklch(0.952 0.005 95);
+  --bar-border: oklch(0.91 0.006 95);
   --bar-funded: oklch(0.615 0.145 156);
   --bar-funded-spent: oklch(0.84 0.1 156);
   --bar-funded-spent-stripe: oklch(0.96 0.03 156);
@@ -35,8 +35,8 @@
 }
 
 .dark {
-  --bar-track: oklch(0.27 0.016 265);
-  --bar-border: oklch(0.31 0.018 265);
+  --bar-track: oklch(0.275 0.022 266);
+  --bar-border: oklch(0.315 0.024 266);
   --bar-funded: oklch(0.7 0.15 156);
   --bar-funded-spent: oklch(0.45 0.09 156);
   --bar-funded-spent-stripe: oklch(0.33 0.05 156);

@@ -356,7 +356,11 @@ export function AppShell({
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4 data-vertical:self-center" />
             {budgetId && currentBudget.data && <BudgetCrumb name={currentBudget.data.name} />}
-            <div ref={setHeaderSlot} className="flex min-w-0 flex-1 items-center gap-2" />
+            {/* The page's title (PageHeader's h1) in the type scale's title step. */}
+            <div
+              ref={setHeaderSlot}
+              className="flex min-w-0 flex-1 items-center gap-2 [&_h1]:text-title"
+            />
           </header>
           <ScrollArea
             className="min-h-0 flex-1"

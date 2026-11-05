@@ -60,7 +60,7 @@ Leave the user's own tabs alone, and keep one open only if the user asked to see
   CI (`.github/workflows/check.yml`) runs `pnpm check` and the image check on each
   push to main, not on PRs; Railway deploys only once it passes. Run `pnpm check` locally before a PR.
 - shadcn components: `pnpm dlx shadcn@latest add <name> -c apps/web` (lands in `packages/ui`).
-  The design follows ui.ikramhasan.com (a shadcn-compatible library: tokens and Inter in
+  The design follows ui.ikramhasan.com (a shadcn-compatible library: tokens and Geist in
   `globals.css`, component styling in `packages/ui`). That library is built on Base UI and ours
   on Radix, so a new component is the stock Radix one restyled to match the library's version
   (`https://ui.ikramhasan.com/r/<name>.json`), its Base UI state selectors translated to Radix's

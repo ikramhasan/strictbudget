@@ -24,7 +24,7 @@ import { monthLabel } from "@/lib/reports";
 /** Under, on and over plan: blue, teal and orange from the report palette (both themes). */
 export const STATUS_COLOR: Record<PlanStatus, string> = {
   under: "var(--report-1)",
-  on: "var(--report-3)",
+  on: "var(--report-7)",
   over: "var(--report-2)",
 };
 

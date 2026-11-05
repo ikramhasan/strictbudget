@@ -20,7 +20,6 @@ import {
   useDefaultLayout,
 } from "@strictbudget/ui/components/resizable";
 import { Skeleton } from "@strictbudget/ui/components/skeleton";
-import { cn } from "@strictbudget/ui/lib/utils";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PanelRight, Pencil, X } from "lucide-react";
@@ -174,7 +173,6 @@ function BudgetPage() {
     id: "strictbudget:budget-inspector",
     storage: layoutStorage,
   });
-  const [inspectorWidth, setInspectorWidth] = useState<number | null>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const [pageWidth, setPageWidth] = useState<number | null>(null);
   useEffect(() => {
@@ -704,6 +702,12 @@ function BudgetPage() {
   // edits it in place.
   const pickedOne = selection.size === 1 ? [...selection][0] : undefined;
   const pointerPick = useRef<{ at: number; assigned: boolean }>({ at: 0, assigned: false });
+  /** The inspector opens at its top whenever what it shows changes. */
+  const inspectorScroll = useRef<HTMLDivElement>(null);
+  const inspectorSubject = `${month}|${filter}|${[...selection].sort().join(",")}`;
+  useEffect(() => {
+    if (inspectorSubject) inspectorScroll.current?.scrollTo({ top: 0 });
+  }, [inspectorSubject]);
   useEffect(() => {
     if (wide || pickedOne === undefined) return;
     const { at, assigned } = pointerPick.current;
@@ -817,6 +821,38 @@ function BudgetPage() {
       )}
     </>
   );
+  const readyToAssign = listFigures && (
+    <ReadyToAssignBanner
+      compact
+      amount={listFigures.month.readyToAssign}
+      overdraft={listFigures.month.overdraft}
+      format={listFigures.format}
+      breakdown={{
+        lines: listFigures.month.readyToAssignBreakdown,
+        month: listFigures.month.month,
+      }}
+      assign={
+        listFigures.move && (
+          <AssignButton
+            readyToAssign={listFigures.month.readyToAssign}
+            format={listFigures.format}
+            actions={listFigures.move}
+            auto={autoAssignPanel(new Set(), true)}
+          />
+        )
+      }
+      action={
+        listFigures.move && (
+          <FixThisButton
+            readyToAssign={listFigures.month.readyToAssign}
+            format={listFigures.format}
+            actions={listFigures.move}
+            months={fixThisMonths}
+          />
+        )
+      }
+    />
+  );
   const onlySelected = selection.size === 1 ? [...selection][0] : undefined;
   const inspectorTitle =
     selection.size > 1
@@ -905,87 +941,62 @@ function BudgetPage() {
           if (await templates.importTemplate(importing.id, categoryIds)) setTemplate(undefined);
         }}
       />
-      <div
-        className={cn(
-          "flex shrink-0 flex-wrap items-center justify-between gap-4",
-          // Beside the inspector, Ready to Assign lines up with it.
-          wide && "grid",
-          // Without the side-by-side layout the page scrolls: the month and Ready to Assign stay
-          // pinned to the top of it.
-          !wide &&
-            "sticky top-0 z-20 -mx-4 -mt-4 border-b bg-background px-4 pt-4 pb-3 md:-mx-5 md:-mt-5 md:px-5 md:pt-5",
-        )}
-        style={
-          wide && inspectorWidth !== null
-            ? { gridTemplateColumns: `minmax(0,1fr) ${inspectorWidth}px` }
-            : undefined
-        }
-      >
-        <div className="grid gap-1">
-          <PageTitle name={budget.name} />
-          <PageHeader
-            title="Budget"
-            actions={
-              !wide &&
-              listFigures && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="max-md:min-h-11"
-                  onClick={() => setInspectorOpen(true)}
-                >
-                  <PanelRight /> Summary
-                </Button>
-              )
-            }
-          />
-          <MonthNav
-            month={month}
-            current={today}
-            first={range?.first ?? month}
-            last={range?.last ?? month}
-            onChange={goTo}
-          />
-          {figures.data && (
-            <MonthNote
-              key={month}
-              note={figures.data.note}
-              onSave={(note) => saveMonthNote(month, figures.data?.note ?? "", note)}
+      <PageTitle name={budget.name} />
+      {/* The month and Ready to Assign live in the top bar, so the categories start right away. */}
+      <PageHeader
+        title={<span className="sr-only">Budget</span>}
+        meta={
+          <div className="flex min-w-0 items-center gap-2">
+            <MonthNav
+              month={month}
+              current={today}
+              first={range?.first ?? month}
+              last={range?.last ?? month}
+              onChange={goTo}
             />
-          )}
+            {figures.data && (
+              <div className="min-w-0 max-md:hidden">
+                <MonthNote
+                  key={month}
+                  note={figures.data.note}
+                  onSave={(note) => saveMonthNote(month, figures.data?.note ?? "", note)}
+                />
+              </div>
+            )}
+          </div>
+        }
+        actions={
+          <>
+            {!phone && readyToAssign}
+            {!wide && listFigures && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="max-md:min-h-11"
+                aria-label="Summary"
+                onClick={() => setInspectorOpen(true)}
+              >
+                <PanelRight /> <span className="max-md:hidden">Summary</span>
+              </Button>
+            )}
+          </>
+        }
+      />
+      {phone && readyToAssign && (
+        // A phone's bar has room for the month only: Ready to Assign pins just under it.
+        <div className="sticky top-0 z-20 -mx-4 -mt-4 border-b bg-background px-4 py-2 [&>output]:w-full">
+          {readyToAssign}
         </div>
-        {listFigures && (
-          <ReadyToAssignBanner
-            amount={listFigures.month.readyToAssign}
-            overdraft={listFigures.month.overdraft}
-            format={listFigures.format}
-            breakdown={{
-              lines: listFigures.month.readyToAssignBreakdown,
-              month: listFigures.month.month,
-            }}
-            assign={
-              listFigures.move && (
-                <AssignButton
-                  readyToAssign={listFigures.month.readyToAssign}
-                  format={listFigures.format}
-                  actions={listFigures.move}
-                  auto={autoAssignPanel(new Set(), true)}
-                />
-              )
-            }
-            action={
-              listFigures.move && (
-                <FixThisButton
-                  readyToAssign={listFigures.month.readyToAssign}
-                  format={listFigures.format}
-                  actions={listFigures.move}
-                  months={fixThisMonths}
-                />
-              )
-            }
+      )}
+      {phone && figures.data && (
+        <div className="-mt-2">
+          <MonthNote
+            key={month}
+            note={figures.data.note}
+            onSave={(note) => saveMonthNote(month, figures.data?.note ?? "", note)}
           />
-        )}
-      </div>
+        </div>
+      )}
       {budget.archivedAt && (
         <p className="shrink-0 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
           This budget was archived by a fresh start on {formatDate(budget.archivedAt.slice(0, 10))}.
@@ -1011,9 +1022,11 @@ function BudgetPage() {
             defaultSize={String(INSPECTOR_SHARE.default)}
             minSize={280}
             maxSize={String(INSPECTOR_SHARE.max)}
-            onResize={(size) => setInspectorWidth(size.inPixels)}
           >
-            <div className="h-full overflow-y-auto overscroll-contain pb-4 scrollbar-thin">
+            <div
+              ref={inspectorScroll}
+              className="h-full overflow-y-auto overscroll-contain pb-4 scrollbar-thin"
+            >
               {inspectorColumn}
             </div>
           </ResizablePanel>

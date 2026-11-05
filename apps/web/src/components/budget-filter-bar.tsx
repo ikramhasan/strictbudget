@@ -61,7 +61,11 @@ export function BudgetFilterBar({
   const keys = [...FIXED, ...order].filter((key) => isPresetFilter(key) || names.has(key));
   const label = (key: string) => (isPresetFilter(key) ? labels[key] : (names.get(key) ?? key));
   const onBar = keys.filter(
-    (key, i) => key === filter || (i < BAR_VIEWS && fitsViewsBar(i, viewportWidth)),
+    (key, i) =>
+      key === filter ||
+      // Something overspent always shows its tab, however narrow the window.
+      (key === "overspent" && overspent > 0) ||
+      (i < BAR_VIEWS && fitsViewsBar(i, viewportWidth)),
   );
   const overflow = keys
     .filter((key) => !onBar.includes(key))

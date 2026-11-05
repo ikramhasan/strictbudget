@@ -59,9 +59,11 @@ function ReportsHome() {
     home.earned.get(addMonths(month, -2)) ?? 0n,
     home.spent.get(addMonths(month, -2)) ?? 0n,
   );
-  const worthMonths = home.netWorth?.months ?? [];
-  const worthNow = worthMonths.at(-1);
-  const worthBefore = worthMonths.at(-2) ?? home.netWorth?.opening;
+  const allWorthMonths = home.netWorth?.months ?? [];
+  const worthNow = allWorthMonths.at(-1);
+  const worthBefore = allWorthMonths.at(-2) ?? home.netWorth?.opening;
+  // The sparkline starts where the other charts do, at the first month with data.
+  const worthMonths = allWorthMonths.filter((m) => m.month >= (home.months[0] ?? month));
   const worthChange =
     worthNow && worthBefore ? BigInt(worthNow.netWorth) - BigInt(worthBefore.netWorth) : null;
   // Nothing to report yet: no account has had a balance, nothing earned or spent.
@@ -371,7 +373,7 @@ function ReportsHome() {
             <PreviewCard
               budgetId={budget.id}
               title="Income and spending"
-              note="Last 6 months"
+              note={`Last ${flowMonths.length} months`}
               target={{
                 to: "/budgets/$budgetId/reports/income-expense",
                 search: { range: "last_6_months" },

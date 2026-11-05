@@ -158,11 +158,11 @@ function MonthTooltip({
     .filter(([, net]) => net !== 0n);
   return (
     <TooltipBox title={monthLabel(month.month)}>
-      <TooltipRow label="Total Spending" value={format(month.total)} strong />
+      <TooltipRow label="Total spending" value={format(month.total)} strong />
       {month.netInflows > 0n && (
         <>
           <TooltipRow label="Spending" value={format(month.spending)} muted />
-          <TooltipRow label="Net Inflows" value={format(-month.netInflows)} muted />
+          <TooltipRow label="Net inflows" value={format(-month.netInflows)} muted />
         </>
       )}
       {change && (
@@ -171,10 +171,12 @@ function MonthTooltip({
           value={<DifferenceText {...change} format={format} />}
         />
       )}
-      <TooltipRow
-        label="Compared to average"
-        value={<DifferenceText {...vsAverage} format={format} />}
-      />
+      {data.months.length > 1 && (
+        <TooltipRow
+          label="Compared to average"
+          value={<DifferenceText {...vsAverage} format={format} />}
+        />
+      )}
       {rolling !== undefined && rolling !== null && (
         <TooltipRow label="3-month average" value={format(rolling)} />
       )}
@@ -194,7 +196,7 @@ function MonthTooltip({
               <>
                 {format(-net)}
                 <span className="ml-1 text-muted-foreground">
-                  {net > 0n ? "Net Inflows" : share !== null && `${share}%`}
+                  {net > 0n ? "Net inflows" : share !== null && `${share}%`}
                 </span>
               </>
             }
@@ -331,7 +333,7 @@ export function TrendBarsChart({
         )}
         <Line
           dataKey="total"
-          name="Total Spending"
+          name="Total spending"
           type="linear"
           stroke="var(--muted-foreground)"
           strokeWidth={1}
@@ -401,7 +403,7 @@ export function TrendLinesChart({ data, onPick }: { data: TrendChartData; onPick
             if (!m) return null;
             return (
               <TooltipBox title={monthLabel(m.month)}>
-                <TooltipRow label="Total Spending" value={format(m.total)} strong />
+                <TooltipRow label="Total spending" value={format(m.total)} strong />
                 {data.keys.map((key) => (
                   <TooltipRow
                     key={key}
@@ -704,7 +706,7 @@ export function TrendBarsKey({
     <ul className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground text-xs">
       <li className="flex items-center gap-1.5">
         <span aria-hidden className="size-2.5 rounded-full border-[1.5px] border-foreground" />
-        Total Spending
+        Total spending
       </li>
       {hasAbove && (
         <li className="flex items-center gap-1.5">

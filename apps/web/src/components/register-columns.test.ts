@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layoutColumns, registerColumns } from "./register-columns";
+import { layoutColumns, measureContent, registerColumns } from "./register-columns";
 
 const account = registerColumns(false).filter((c) => c !== "enteredBy" && c !== "review");
 const all = registerColumns(true).filter((c) => c !== "enteredBy" && c !== "review");
@@ -103,5 +103,54 @@ describe("layoutColumns", () => {
     });
     expect(layout.columns).toEqual(account);
     expect(layout.widths.payee).toBe(240);
+  });
+
+  it("fits the money columns to their widest figure and gives Payee the room first", () => {
+    const fixed = fit(account, 1006);
+    const content = { outflow: 50, inflow: 66, balance: 70, payee: 160, category: 120 };
+    const sized = layoutColumns(account, {
+      dragged: {},
+      available: 1006,
+      dateFormat: "MM/DD/YYYY",
+      content,
+    });
+    // Each fits its widest figure with the cell's padding, but not below its header.
+    expect(sized.widths.outflow).toBe(72);
+    expect(sized.widths.inflow).toBe(86);
+    expect(sized.widths.balance).toBe(90);
+    expect(sized.widths.outflow).toBeLessThan(fixed.widths.outflow ?? 0);
+    // The room they don't need goes to Payee and Category: the longest payee reads whole.
+    expect(sized.widths.payee).toBeGreaterThanOrEqual(176);
+    expect(sized.widths.payee).toBeGreaterThan(fixed.widths.payee ?? 0);
+    // A larger figure widens its column rather than truncating.
+    const big = layoutColumns(account, {
+      dragged: {},
+      available: 1006,
+      dateFormat: "MM/DD/YYYY",
+      content: { ...content, outflow: 110 },
+    });
+    expect(big.widths.outflow).toBe(130);
+  });
+
+  it("lends Memo's comfortable room to a transfer payee short of reading whole", () => {
+    const tight = layoutColumns(account, {
+      dragged: {},
+      available: 910,
+      dateFormat: "MM/DD/YYYY",
+      content: { outflow: 66, inflow: 66, balance: 70, payee: 150, category: 120 },
+    });
+    expect(tight.columns).toContain("memo");
+    expect(tight.widths.payee).toBe(166);
+    // Memo keeps at least its least width (it takes what's left).
+    expect(910 - sum(tight.widths)).toBeGreaterThanOrEqual(72);
+  });
+
+  it("estimates text widths without a canvas, figures in tabular digits", () => {
+    const widths = measureContent(
+      { outflow: ["$1.00", "$1,400.00"], payee: ["Shop", { text: "Payment: Visa", extra: 24 }] },
+      "500 10px Inter",
+    );
+    expect(widths.outflow).toBe(54);
+    expect(widths.payee).toBe(13 * 6 + 24);
   });
 });

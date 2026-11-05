@@ -1,7 +1,6 @@
 /* The design tokens (colours, radii, fonts) and base styles, shared by the web app (through
    globals.css) and the marketing site. */
-/* strictbudget: the sidebar is dark in both themes, so `dark:` applies inside it too. */
-@custom-variant dark (&:is(.dark *, [data-sidebar="sidebar"] *));
+@custom-variant dark (&:is(.dark *));
 /* strictbudget: the vendored components style orientation with `data-horizontal:`/`data-vertical:`,
    but Radix marks it as `data-orientation="…"`, which those names don't match on their own. */
 @custom-variant data-horizontal (&[data-orientation="horizontal"]);
@@ -22,6 +21,7 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+  --color-sidebar-active: var(--sidebar-active);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -52,7 +52,7 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  --font-sans: "Inter Variable", sans-serif;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
 /*
@@ -123,21 +123,22 @@
   --color-red-950: oklch(25.8% 0.083 22);
 
   /*
-   * The type scale (Inter with optical sizes: the large steps get its Display cut). display: a
-   * page's headline figure; title: a page title; heading: a section or card title; body: the UI's
-   * running text; caption: labels and secondary lines. Money also takes `tabular-nums`.
+   * The type scale, in Geist (the marketing site's face too). display: a page's headline figure;
+   * title: a page title; heading: a section or card title; body: the UI's running text; caption:
+   * labels and secondary lines. The large steps tighten their tracking as they grow. Money also
+   * takes `tabular-nums`, so figures line up and a changing amount doesn't shift.
    */
   --text-display: 2rem;
-  --text-display--line-height: 2.5rem;
-  --text-display--letter-spacing: -0.022em;
-  --text-display--font-weight: 650;
-  --text-title: 1.375rem;
+  --text-display--line-height: 2.25rem;
+  --text-display--letter-spacing: -0.032em;
+  --text-display--font-weight: 620;
+  --text-title: 1.25rem;
   --text-title--line-height: 1.75rem;
-  --text-title--letter-spacing: -0.017em;
+  --text-title--letter-spacing: -0.022em;
   --text-title--font-weight: 600;
   --text-heading: 1rem;
   --text-heading--line-height: 1.5rem;
-  --text-heading--letter-spacing: -0.006em;
+  --text-heading--letter-spacing: -0.012em;
   --text-heading--font-weight: 600;
   --text-body: 0.875rem;
   --text-body--line-height: 1.25rem;
@@ -147,40 +148,46 @@
 }
 
 :root {
-  /* strictbudget: cobalt ink. Neutrals carry a trace of the brand's hue (265) instead of pure grey;
-     text is ink, not black. */
-  /* Three surfaces: the page a cool off-white, cards and popovers white on it, so a card reads as
-     raised without a shadow. */
-  --background: oklch(0.985 0.004 265);
-  --foreground: oklch(0.255 0.03 265);
+  /*
+   * strictbudget: cobalt ink on paper. Text is ink: the logo's cobalt taken nearly to black, and
+   * diluted for secondary text. Surfaces and rules are paper: a grey with the faintest warmth, so
+   * the cobalt and the money colours read clean against it rather than sinking into blue-grey.
+   * Whatever responds to the pointer (hover, the rail) is tinted cobalt. Dark mode inverts it:
+   * paper-white text on ink surfaces.
+   */
+  /* Three surfaces: the page off-white, cards and popovers white on it, so a card reads as raised
+     without a shadow. */
+  --background: oklch(0.984 0.003 95);
+  --foreground: oklch(0.24 0.04 266);
   --card: #ffffff;
-  --card-foreground: oklch(0.255 0.03 265);
+  --card-foreground: oklch(0.24 0.04 266);
   --popover: #ffffff;
-  --popover-foreground: oklch(0.255 0.03 265);
+  --popover-foreground: oklch(0.24 0.04 266);
   --primary: #3e6ae1;
   --primary-foreground: #ffffff;
-  --secondary: oklch(0.962 0.007 265);
-  --secondary-foreground: oklch(0.255 0.03 265);
-  --muted: oklch(0.962 0.007 265);
-  --muted-foreground: oklch(0.515 0.025 265);
-  --accent: oklch(0.954 0.012 265);
-  --accent-foreground: oklch(0.255 0.03 265);
+  --secondary: oklch(0.963 0.004 95);
+  --secondary-foreground: oklch(0.24 0.04 266);
+  --muted: oklch(0.963 0.004 95);
+  --muted-foreground: oklch(0.5 0.03 266);
+  --accent: oklch(0.955 0.013 266);
+  --accent-foreground: oklch(0.24 0.04 266);
   --destructive: oklch(0.555 0.2 23);
-  --border: oklch(0.922 0.01 265);
-  --input: oklch(0.87 0.014 265);
+  --border: oklch(0.917 0.005 95);
+  --input: oklch(0.862 0.007 95);
   --ring: #3e6ae1;
   /* Report palette: eight categorical colours in a fixed order, validated (both themes, against
      --background and --card) so each neighbouring pair differs in hue and in lightness, stays
      apart under protanopia and deuteranopia, and every colour is at least 3:1 against the
-     surface. Charts hand them out in the order their marks sit, never skipping one. */
+     surface. No red or green: those mean overspent and available. Charts hand them out in the
+     order their marks sit, never skipping one. */
   --report-1: #1e4ab7;
   --report-2: #ed6924;
-  --report-3: #007959;
-  --report-4: #db63bb;
-  --report-5: #a81124;
-  --report-6: #079cc6;
-  --report-7: #076502;
-  --report-8: #9f6fea;
+  --report-3: #930975;
+  --report-4: #916a0b;
+  --report-5: #0398cd;
+  --report-6: #824103;
+  --report-7: #13808a;
+  --report-8: #8475f9;
   /* Uncategorized and "Other": neutrals 15 apart in lightness, both still 3:1. */
   --report-uncategorized: oklch(0.5 0.015 265);
   --report-other: oklch(0.65 0.012 265);
@@ -196,21 +203,22 @@
   --chart-4: var(--report-4);
   --chart-5: var(--report-5);
   --radius: 0.625rem;
-  /* strictbudget: the sidebar is an ink rail in both themes, the logo's tile set into it. Its
-     contents are dark-themed (see the [data-sidebar="sidebar"] rule below). */
-  --sidebar: oklch(0.218 0.034 266);
-  --sidebar-foreground: oklch(0.95 0.01 266);
+  /* strictbudget: the rail is washed in cobalt, the logo's tile at its head. The open page's item
+     takes the page's own surface (--sidebar-active), as if pulled out of the rail onto it. */
+  --sidebar: oklch(0.952 0.017 266);
+  --sidebar-foreground: oklch(0.24 0.04 266);
   --sidebar-primary: #3e6ae1;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: oklch(0.275 0.036 266);
-  --sidebar-accent-foreground: oklch(0.985 0.004 266);
-  --sidebar-border: oklch(0.3 0.034 266);
-  --sidebar-ring: oklch(0.705 0.15 265.4);
-  --sidebar-muted: oklch(0.262 0.034 266);
-  --sidebar-muted-foreground: oklch(0.76 0.035 266);
-  --sidebar-input: oklch(0.35 0.034 266);
-  --sidebar-primary-text: oklch(0.8 0.1 265.4);
-  --sidebar-destructive: oklch(0.75 0.15 20);
+  --sidebar-accent: oklch(0.918 0.03 266);
+  --sidebar-accent-foreground: oklch(0.24 0.04 266);
+  --sidebar-active: #ffffff;
+  --sidebar-border: oklch(0.9 0.026 266);
+  --sidebar-ring: #3e6ae1;
+  --sidebar-muted: oklch(0.925 0.025 266);
+  --sidebar-muted-foreground: oklch(0.46 0.05 266);
+  --sidebar-input: oklch(0.86 0.034 266);
+  --sidebar-primary-text: oklch(0.49 0.19 265.4);
+  --sidebar-destructive: oklch(0.52 0.2 23);
   --success: oklch(0.505 0.115 156);
   /* strictbudget: primary as text. Dark mode lifts it toward white (as the library's own link and
      tick colours do): the dark --primary is 3.5:1 on --background, under WCAG AA's 4.5:1. */
@@ -220,50 +228,52 @@
 }
 
 .dark {
-  /* Depth comes from lightness here: the rail (0.145), the page (0.19), cards (0.232), then menus,
-     dialogs and drawers (0.27), each step lighter the nearer it sits. */
-  --background: oklch(0.19 0.014 265);
-  --foreground: oklch(0.945 0.006 265);
-  --card: oklch(0.232 0.016 265);
-  --card-foreground: oklch(0.945 0.006 265);
-  --popover: oklch(0.27 0.017 265);
-  --popover-foreground: oklch(0.945 0.006 265);
+  /* Depth comes from lightness here: the rail (0.15), the page (0.192), cards (0.233), then menus,
+     dialogs and drawers (0.272), each step lighter the nearer it sits. The surfaces are ink, the
+     text paper. */
+  --background: oklch(0.192 0.02 266);
+  --foreground: oklch(0.948 0.006 95);
+  --card: oklch(0.233 0.022 266);
+  --card-foreground: oklch(0.948 0.006 95);
+  --popover: oklch(0.272 0.023 266);
+  --popover-foreground: oklch(0.948 0.006 95);
   --primary: #3e6ae1;
   --primary-foreground: #ffffff;
-  --secondary: oklch(0.29 0.017 265);
-  --secondary-foreground: oklch(0.945 0.006 265);
-  --muted: oklch(0.29 0.017 265);
-  --muted-foreground: oklch(0.725 0.02 265);
-  --accent: oklch(0.31 0.021 265);
-  --accent-foreground: oklch(0.945 0.006 265);
+  --secondary: oklch(0.29 0.022 266);
+  --secondary-foreground: oklch(0.948 0.006 95);
+  --muted: oklch(0.29 0.022 266);
+  --muted-foreground: oklch(0.735 0.012 266);
+  --accent: oklch(0.312 0.028 266);
+  --accent-foreground: oklch(0.948 0.006 95);
   --destructive: oklch(0.7 0.165 22);
-  --border: oklch(0.31 0.017 265);
-  --input: oklch(0.37 0.019 265);
+  --border: oklch(0.312 0.022 266);
+  --input: oklch(0.375 0.024 266);
   --ring: oklch(0.705 0.15 265.4);
   --report-1: #3463d3;
   --report-2: #e9661f;
-  --report-3: #007959;
-  --report-4: #d65fb6;
-  --report-5: #c4343b;
-  --report-6: #0ba0cb;
-  --report-7: #0c8603;
-  --report-8: #a372ee;
+  --report-3: #ef6dc9;
+  --report-4: #d0af07;
+  --report-5: #63cbfe;
+  --report-6: #fea668;
+  --report-7: #199eaa;
+  --report-8: #9c95fe;
   --report-uncategorized: oklch(0.735 0.014 265);
   --report-other: oklch(0.565 0.012 265);
   --report-uncategorized-ink: oklch(0.17 0 0);
-  /* The deepest surface, so the rail frames the page. */
-  --sidebar: oklch(0.145 0.02 266);
-  --sidebar-foreground: oklch(0.945 0.008 266);
+  /* The deepest surface, so the rail frames the page; the open page's item is lifted to a card. */
+  --sidebar: oklch(0.15 0.024 266);
+  --sidebar-foreground: oklch(0.948 0.006 95);
   --sidebar-primary: #3e6ae1;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: oklch(0.21 0.026 266);
-  --sidebar-accent-foreground: oklch(0.985 0.004 266);
-  --sidebar-border: oklch(0.225 0.022 266);
+  --sidebar-accent: oklch(0.205 0.028 266);
+  --sidebar-accent-foreground: oklch(0.985 0.004 95);
+  --sidebar-active: oklch(0.255 0.032 266);
+  --sidebar-border: oklch(0.215 0.024 266);
   --sidebar-ring: oklch(0.705 0.15 265.4);
-  --sidebar-muted: oklch(0.19 0.024 266);
-  --sidebar-muted-foreground: oklch(0.72 0.025 266);
-  --sidebar-input: oklch(0.28 0.026 266);
-  --sidebar-primary-text: oklch(0.8 0.1 265.4);
+  --sidebar-muted: oklch(0.195 0.026 266);
+  --sidebar-muted-foreground: oklch(0.725 0.018 266);
+  --sidebar-input: oklch(0.285 0.03 266);
+  --sidebar-primary-text: oklch(0.78 0.11 265.4);
   --sidebar-destructive: oklch(0.74 0.15 20);
   --success: oklch(0.78 0.14 156);
   --primary-text: color-mix(in oklch, var(--primary), white 35%);
@@ -271,10 +281,9 @@
 }
 
 /* strictbudget: inside the rail the page tokens take the rail's values, so whatever sits in it
-   (menus, the account list, avatars, Kbd) is dark-themed without knowing it; the `dark:` variant
-   matches here too. Menus and tooltips it opens are portaled out and keep the page's theme. */
+   (the account list, avatars, Kbd) matches it without knowing it. Menus and tooltips it opens
+   are portaled out and keep the page's. */
 [data-sidebar="sidebar"] {
-  color-scheme: dark;
   --background: var(--sidebar);
   --foreground: var(--sidebar-foreground);
   --card: var(--sidebar);

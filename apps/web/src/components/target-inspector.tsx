@@ -150,7 +150,7 @@ export function TargetSection({
     fundedSpending: string;
     paymentsMade: string;
     overpaid: boolean;
-    /** A month before the current one: no Payment alert there, only "Create Target". */
+    /** A month before the current one: no Payment alert there, only "Create target". */
     past: boolean;
     alert: (createTarget: () => void) => ReactNode;
   };
@@ -168,7 +168,7 @@ export function TargetSection({
     target && currency && target.currency !== currency.budgetCurrency
       ? currency.moneyIn(target.currency).format
       : format;
-  const title = debt ? "Debt Payment Target" : "Target";
+  const title = debt ? "Debt payment target" : "Target";
   if (editing && debt) {
     return (
       <DebtTargetEditor
@@ -248,7 +248,7 @@ export function TargetSection({
           target can't say what it needs. It's left out of Underfunded until there is one.
         </p>
         <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
-          Edit Target
+          Edit target
         </Button>
       </Section>
     );
@@ -271,7 +271,7 @@ export function TargetSection({
             </p>
           </div>
           <Button size="sm" onClick={() => setEditing(true)}>
-            <Plus /> Create Target
+            <Plus /> Create target
           </Button>
         </div>
       </Section>
@@ -381,13 +381,13 @@ function TargetSummary({
             key={line.label}
             label={line.label}
             value={line.value}
-            className={line.label === "To Go" ? "border-t pt-2" : undefined}
+            className={line.label === "To go" ? "border-t pt-2" : undefined}
           />
         ))}
       </dl>
       {onEdit && (
         <Button size="sm" variant="secondary" onClick={onEdit}>
-          Edit Target
+          Edit target
         </Button>
       )}
       {onEdit && (onSnooze || (snoozeLocked && !payment)) && (
@@ -434,7 +434,7 @@ export function ReadOnlyTarget({
   payment?: { month: string; fundedSpending: string; paymentsMade: string };
 }) {
   if (!target) return null;
-  const title = debt ? "Debt Payment Target" : "Target";
+  const title = debt ? "Debt payment target" : "Target";
   const targetFormat =
     currency && target.currency !== currency.budgetCurrency
       ? currency.moneyIn(target.currency).format
@@ -478,7 +478,7 @@ function SnoozeHelp() {
         </Button>
       </PopoverTrigger>
       <PopoverContent arrow className="w-64 text-sm">
-        <p className="font-medium">Snooze Target</p>
+        <p className="font-medium">Snooze target</p>
         <p className="text-muted-foreground">
           A snoozed target asks for nothing this month, so the category doesn't count as
           underfunded. It wakes up again on the first of next month.
@@ -900,7 +900,7 @@ function TargetEditor({
             Cancel
           </Button>
           <Button type="submit" size="sm" disabled={busy}>
-            Save Target
+            Save target
           </Button>
         </div>
       </form>
@@ -912,8 +912,8 @@ function TargetEditor({
 const nextMonthValue = () => firstOfNextMonth().slice(0, 7);
 
 /**
- * The target form on a credit card's payment category: "Pay Off Balance by Date" (the default) with
- * a month and a year, or "Pay Specific Amount Monthly" with one amount field.
+ * The target form on a credit card's payment category: "Pay off balance by date" (the default) with
+ * a month and a year, or "Pay specific amount monthly" with one amount field.
  */
 function PaymentTargetEditor({
   target,
@@ -1056,7 +1056,7 @@ function PaymentTargetEditor({
             Cancel
           </Button>
           <Button type="submit" size="sm" disabled={busy}>
-            Save Target
+            Save target
           </Button>
         </div>
       </form>

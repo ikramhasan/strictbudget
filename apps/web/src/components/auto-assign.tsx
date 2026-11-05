@@ -25,7 +25,7 @@ import { useOptionalUndo } from "@/lib/undo";
 type Format = (minorUnits: string) => string;
 type MonthCategory = BudgetMonthData["categories"][number];
 
-/** An Auto-Assign as Recent Moves names its method ("Method: Reset Assigned Amounts"). */
+/** An Auto-Assign as Recent Moves names its method ("Method: Reset assigned amounts"). */
 export const autoAssignMethodLabel = (option: AutoAssignOption) => label(option, false);
 
 function label(option: AutoAssignOption, one: boolean, payment = false) {
@@ -35,17 +35,17 @@ function label(option: AutoAssignOption, one: boolean, payment = false) {
     case "reduceOverfunding":
       return "Reduce Overfunding";
     case "assignedLastMonth":
-      return "Assigned Last Month";
+      return "Assigned last month";
     case "spentLastMonth":
-      return payment ? "Paid Last Month" : "Spent Last Month";
+      return payment ? "Paid last month" : "Spent last month";
     case "averageAssigned":
-      return "Average Assigned";
+      return "Average assigned";
     case "averageSpent":
-      return payment ? "Average Paid" : "Average Spent";
+      return payment ? "Average paid" : "Average spent";
     case "resetAvailable":
-      return one ? "Reset Available Amount" : "Reset Available Amounts";
+      return one ? "Reset available amount" : "Reset available amounts";
     case "resetAssigned":
-      return one ? "Reset Assigned Amount" : "Reset Assigned Amounts";
+      return one ? "Reset assigned amount" : "Reset assigned amounts";
   }
 }
 

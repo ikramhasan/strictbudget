@@ -20,6 +20,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ChartCard } from "@/components/reports/chart-card";
 import { MonthStepper } from "@/components/reports/range-picker";
+import { toolbarSelectClass } from "@/components/reports/report-filter-bar";
 import { ReportPage } from "@/components/reports/report-page";
 import {
   SpendingPaceChart,
@@ -164,7 +165,7 @@ function LinePicker({
       aria-label="Show the pace of"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="max-w-full"
+      className={cn("max-w-full", toolbarSelectClass())}
     >
       <NativeSelectOption value="">Whole plan</NativeSelectOption>
       <NativeSelectOptGroup label="Groups">

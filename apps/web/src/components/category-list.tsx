@@ -145,7 +145,7 @@ const NO_GROUPS: ReadonlySet<string> = new Set();
 // On a phone a row is its name and Available, a thumb's height; Assigned and Activity are in the
 // category's drawer.
 const ROW =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-1 px-2 py-1.5 max-md:min-h-12 md:grid-cols-[minmax(8rem,1fr)_6.5rem_7.5rem] @min-[36rem]/list:md:grid-cols-[minmax(10rem,1fr)_6.5rem_6.5rem_7.5rem]";
+  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-1 px-2 py-1.5 max-md:min-h-12 md:grid-cols-[minmax(9rem,1fr)_6rem_6.5rem] @min-[44rem]/list:md:grid-cols-[minmax(12rem,1fr)_6rem_6rem_6.5rem]";
 /** The plan's keys also work from a category's open Assigned input. */
 const inAssigned = (target: Element) => target.closest("[data-assigned-cell]") !== null;
 /** Cells left off a phone's narrow rows. */
@@ -154,7 +154,7 @@ const WIDE_ONLY = "max-md:hidden";
  * Activity gives way first when the table itself is narrow (a smaller window beside the
  * inspector): names keep their room, and the inspector still shows each category's activity.
  */
-const ACTIVITY_COL = "max-md:hidden @max-[36rem]/list:hidden";
+const ACTIVITY_COL = "max-md:hidden @max-[44rem]/list:hidden";
 const NAME_CELL = "flex min-w-0 items-center gap-1";
 const FIGURE = "min-w-0 truncate text-right tabular-nums";
 /**
@@ -1021,9 +1021,9 @@ function CategoryRow({
       onClick={onRowClick}
     >
       <div className="grid min-w-0 gap-1">
-        <div className={cn(NAME_CELL, "flex-wrap gap-y-0.5")}>
+        <div className={NAME_CELL}>
           {/* The controls and the name stay together; only the status caption wraps below. */}
-          <div className="flex min-w-0 max-w-full flex-[1_1_auto] items-center gap-1">
+          <div className="flex min-w-0 shrink items-center gap-1">
             {/* The handle takes the slot a group's chevron uses, shown when the row is hovered. */}
             {reorderable ? (
               <DragHandle
@@ -1122,10 +1122,14 @@ function CategoryRow({
               />
             ))}
         </div>
-        {showStatus && totals?.bar && (
-          // Lined up with the name, past the two slots and the name button's padding.
-          <ProgressBar bar={totals.bar} className="mr-1 ml-16" />
-        )}
+        {showStatus &&
+          (totals?.bar ? (
+            // Lined up with the name, past the two slots and the name button's padding.
+            <ProgressBar bar={totals.bar} className="mr-1 ml-16" />
+          ) : (
+            // Rows without a bar keep the same height, so the list keeps one rhythm.
+            <span aria-hidden className="h-1" />
+          ))}
       </div>
       {totals && format && (
         <>
@@ -1200,10 +1204,11 @@ function CategoryRow({
 }
 
 /**
- * The status caption: right-aligned beside the name, or on its own line under it when both don't
- * fit (the name cell wraps), so neither has to be cut short.
+ * The status caption, right-aligned on the name's line, in whatever room the name leaves: the
+ * name always shows first, the caption gives way (its full text is in the tooltip), and every row
+ * keeps the same height.
  */
-const NOTE = "ml-auto max-w-full truncate whitespace-nowrap pl-2 text-right text-xs leading-4";
+const NOTE = "min-w-0 flex-1 basis-0 truncate whitespace-nowrap pl-2 text-right text-xs leading-4";
 
 /** The note under a category's name: its target's status, or what was spent. */
 function RowNote({ note }: { note: { strong: string; rest: string } | null }) {
@@ -1247,7 +1252,10 @@ function OverspentNote({
   const over = -BigInt(totals.available);
   if (over <= 0n) return null;
   return (
-    <span className={cn(NOTE, "font-medium text-destructive")}>
+    <span
+      className={cn(NOTE, "font-medium text-destructive")}
+      title={`Overspent by ${format(over.toString())}`}
+    >
       Overspent by {format(over.toString())}
     </span>
   );

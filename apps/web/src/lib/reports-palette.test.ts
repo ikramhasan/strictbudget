@@ -112,6 +112,15 @@ describe.each(Object.entries(themes))("the %s report palette", (_, theme) => {
     }
   });
 
+  it("has no red or green, which mean overspent and available", () => {
+    for (const [i, color] of colors.entries()) {
+      const [, a, b] = oklab(color);
+      const hue = ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
+      expect(hue < 5 || hue > 40, `${i + 1} is red (${hue})`).toBe(true);
+      expect(hue < 115 || hue > 195, `${i + 1} is green (${hue})`).toBe(true);
+    }
+  });
+
   it("stands 3:1 against the page and the card, neutrals included", () => {
     const marks = [
       ...colors,

@@ -74,7 +74,7 @@ function Report() {
         <>
           <Button variant="default" disabled={!report || noData} onClick={() => setSharing(true)}>
             <ImageIcon />
-            <span className="hidden sm:inline">Share Your Progress</span>
+            <span className="hidden sm:inline">Share your progress</span>
             <span className="sm:hidden">Share</span>
           </Button>
           <ExportButton

@@ -69,7 +69,7 @@ export function NetWorthHeadline({
   return (
     <div className={cn("grid content-start gap-3", className)}>
       <div>
-        <p className="text-muted-foreground text-xs">Net Worth</p>
+        <p className="text-muted-foreground text-xs">Net worth</p>
         <p
           className={cn(
             "font-semibold tabular-nums tracking-tight",
@@ -101,7 +101,7 @@ export function NetWorthHeadline({
           <dd className="tabular-nums">{amount(h.debts)}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground text-xs">Change in Net Worth</dt>
+          <dt className="text-muted-foreground text-xs">Change in net worth</dt>
           <dd>
             <Change
               amount={h.rangeChange}
@@ -135,13 +135,13 @@ export function NetWorthMonthTable({
       <TableHeader>
         <TableRow>
           <TableHead>Month</TableHead>
-          <TableHead className="text-right">Net Worth</TableHead>
+          <TableHead className="text-right">Net worth</TableHead>
           <TableHead className="text-right">
             <span
               className="inline-flex items-center gap-1"
               title="This column highlights how much your net worth has changed month over month."
             >
-              Monthly Change
+              Monthly change
               <Info aria-hidden className="size-3.5" />
             </span>
           </TableHead>
@@ -155,7 +155,7 @@ export function NetWorthMonthTable({
                 {monthLabel(r.month, "long")}
                 {r.allTimeHigh && (
                   <Star
-                    className="size-3.5 fill-(--report-7) text-foreground"
+                    className="size-3.5 fill-(--report-4) text-foreground"
                     aria-label="New all-time high"
                   />
                 )}

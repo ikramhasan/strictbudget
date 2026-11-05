@@ -269,7 +269,8 @@ function AccountItem({
                 aria-label={`${account.toReview} to approve or categorize`}
                 className={cn(
                   "size-1.5 rounded-full bg-primary",
-                  account.logo && "absolute -top-0.5 -right-0.5 size-2 ring-2 ring-sidebar",
+                  account.logo &&
+                    "absolute -top-0.5 -right-0.5 size-2 ring-2 ring-sidebar group-data-active/menu-button:ring-sidebar-active",
                 )}
               />
             )}

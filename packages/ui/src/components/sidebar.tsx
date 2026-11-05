@@ -35,10 +35,10 @@ type SidebarContextProps = {
   toggleSidebar: () => void;
 };
 
-// strictbudget: on the ink rail the active item is a cobalt key: a brand-tinted gradient with a
-// cobalt hairline and an inner highlight, its icon in light cobalt.
+// strictbudget: on the cobalt rail the active item takes the page's surface, raised by a hairline
+// and a soft shadow, its icon in cobalt.
 const sidebarRaised =
-  "data-active:bg-linear-to-b data-active:from-[color-mix(in_oklch,var(--sidebar-primary)_34%,var(--sidebar))] data-active:to-[color-mix(in_oklch,var(--sidebar-primary)_24%,var(--sidebar))] data-active:font-medium data-active:text-sidebar-accent-foreground data-active:shadow-[0_1px_2px_rgb(0_0_0/0.3),0_0_0_1px_color-mix(in_oklch,var(--sidebar-primary)_45%,transparent),inset_0_1px_0_rgb(255_255_255/0.08)] data-active:[&_svg:not([class*='text-'])]:text-(--sidebar-primary-text)";
+  "data-active:bg-sidebar-active data-active:hover:bg-sidebar-active data-active:font-medium data-active:text-sidebar-foreground data-active:shadow-[0_1px_2px_rgb(22_31_50/0.1),0_0_0_1px_var(--sidebar-border)] dark:data-active:shadow-[0_1px_2px_rgb(0_0_0/0.45),inset_0_1px_0_rgb(255_255_255/0.06)] data-active:[&_svg:not([class*='text-'])]:text-(--sidebar-primary-text) data-active:hover:[&_svg:not([class*='text-'])]:text-(--sidebar-primary-text)";
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
 

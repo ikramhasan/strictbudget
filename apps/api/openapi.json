@@ -5851,6 +5851,10 @@
       "CreateTransaction": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "description": "With `restore`: the deleted transaction's own id, so it comes back as the same record, in its place among its day's transactions. Only an id this budget's history shows deleted and not restored since (ID_UNAVAILABLE otherwise)"
+          },
           "accountId": {
             "type": "string"
           },
@@ -6040,6 +6044,10 @@
       "TransferSideInput": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "description": "With `restore`: the other side's own id, so it comes back as the same record"
+          },
           "memo": {
             "type": "string",
             "maxLength": 500
@@ -17964,6 +17972,16 @@
           },
           "404": {
             "description": "No such budget, account or transaction, or the caller isn't a member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`id` (or a `transferSide` id) isn't a deleted transaction of this budget (ID_UNAVAILABLE)",
             "content": {
               "application/json": {
                 "schema": {

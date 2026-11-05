@@ -7,6 +7,7 @@ import {
   type ReportPreset,
 } from "@strictbudget/engine";
 import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Flag } from "lucide-react";
 import type { ReactNode } from "react";
@@ -23,11 +24,23 @@ export type ReportFilterName = "categories" | "accounts" | "payees" | "flags" | 
 
 export type UpdateSearch = (patch: Partial<ReportSearch>) => void;
 
+/**
+ * A toolbar select in the filter buttons' skin: outlined, tinted like a narrowed filter while
+ * `active` (a comparison on). Classes on NativeSelect's wrapper, aimed at its select.
+ */
+export function toolbarSelectClass(active?: boolean) {
+  return cn(
+    "[&>select]:bg-background [&>select]:bg-none [&>select]:text-foreground [&>select]:shadow-xs [&>select:hover]:bg-accent dark:[&>select]:shadow-[0_1px_2px_rgb(0_0_0/0.4)]",
+    active &&
+      "[&>select]:border-primary/40 [&>select]:bg-primary/5 [&>select]:text-primary-text [&>select:hover]:bg-primary/10",
+  );
+}
+
 const ACCOUNT_SECTIONS = [
-  ["cash", "Cash Accounts"],
-  ["credit", "Credit Accounts"],
+  ["cash", "Cash accounts"],
+  ["credit", "Credit accounts"],
   ["loan", "Loans"],
-  ["tracking", "Tracking Accounts"],
+  ["tracking", "Tracking accounts"],
 ] as const;
 
 /**
@@ -81,7 +94,7 @@ export function ReportFilterBar({
         {
           id: "uncategorized",
           items: [
-            { id: categories.data.uncategorizedCategoryId, label: "Uncategorized Transactions" },
+            { id: categories.data.uncategorizedCategoryId, label: "Uncategorized transactions" },
           ],
         },
         ...categories.data.groups
@@ -111,7 +124,7 @@ export function ReportFilterBar({
     })),
     {
       id: "closed",
-      title: "Closed Accounts",
+      title: "Closed accounts",
       items: shownAccounts.filter((a) => a.closed).map((a) => ({ id: a.id, label: a.name })),
     },
   ].filter((s) => s.items.length);
@@ -129,7 +142,7 @@ export function ReportFilterBar({
         <ChecklistFilter
           allLabel="Categories"
           noun={["Category", "Categories"]}
-          searchPlaceholder="Search All Categories"
+          searchPlaceholder="Search all categories"
           sections={categorySections}
           selected={splitIds(search.categories)}
           onChange={(v) => update({ categories: ids(v) })}
@@ -139,7 +152,7 @@ export function ReportFilterBar({
         <ChecklistFilter
           allLabel="Accounts"
           noun={["Account", "Accounts"]}
-          searchPlaceholder="Search All Accounts"
+          searchPlaceholder="Search all accounts"
           sections={accountSections}
           selected={splitIds(search.accounts)}
           onChange={(v) => update({ accounts: ids(v) })}
@@ -149,7 +162,7 @@ export function ReportFilterBar({
         <ChecklistFilter
           allLabel="Payees"
           noun={["Payee", "Payees"]}
-          searchPlaceholder="Search All Payees"
+          searchPlaceholder="Search all payees"
           sections={[
             {
               id: "payees",
@@ -167,7 +180,7 @@ export function ReportFilterBar({
         <ChecklistFilter
           allLabel="Flags"
           noun={["Flag", "Flags"]}
-          searchPlaceholder="Search Flags"
+          searchPlaceholder="Search flags"
           sections={[
             {
               id: "flags",
@@ -188,6 +201,7 @@ export function ReportFilterBar({
       {show.includes("compare") && (
         <NativeSelect
           aria-label="Compare with"
+          className={toolbarSelectClass(search.compare !== undefined)}
           // As wide as the chosen option, like the filter buttons beside it, not the longest one.
           style={{ fieldSizing: "content" }}
           value={search.compare ?? ""}
@@ -221,6 +235,7 @@ export function GroupBySelect<T extends string>({
   return (
     <NativeSelect
       aria-label="Group by"
+      className={toolbarSelectClass()}
       style={{ fieldSizing: "content" }}
       value={value}
       onChange={(e) => onChange(e.target.value as T)}

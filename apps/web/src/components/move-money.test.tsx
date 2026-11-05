@@ -96,6 +96,28 @@ describe("AvailableButton", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cover $50" }));
     expect(actions.move).toHaveBeenCalledWith("rent", "phone", 5000n);
   });
+
+  it("covers a typed amount, starting from the whole shortfall", async () => {
+    const actions = makeActions();
+    render(
+      <AvailableButton
+        categoryId="phone"
+        categoryName="Phone"
+        amount="-1500"
+        format={format}
+        actions={actions}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Cover Phone: $-15, overspent" }));
+    const amount = screen.getByLabelText("Amount");
+    expect(amount).toHaveValue("15");
+    await userEvent.clear(amount);
+    await userEvent.type(amount, "10");
+    await userEvent.click(screen.getByRole("combobox", { name: "Cover overspending from" }));
+    await userEvent.click(await screen.findByRole("option", { name: /Rent/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Cover $10" }));
+    expect(actions.move).toHaveBeenCalledWith("rent", "phone", 1000n);
+  });
 });
 
 describe("FixThisButton", () => {

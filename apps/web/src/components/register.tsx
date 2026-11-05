@@ -95,6 +95,7 @@ import {
   rowDeleteScope,
 } from "@/lib/reconciled-warnings";
 import { type RegisterSearch, registerQuery, searchText } from "@/lib/register-filters";
+import { useRemainingHeight } from "@/lib/register-height";
 import {
   DEFAULT_SORT,
   enteredOrder,
@@ -102,6 +103,7 @@ import {
   type SortColumn,
   type SortField,
 } from "@/lib/register-sort";
+import { bulkDoneMessage, bulkLabel, bulkRemoves } from "@/lib/register-undo";
 import {
   addMonths,
   rangeDates,
@@ -131,7 +133,13 @@ import {
 } from "@/lib/selection";
 import { sessionQueryOptions } from "@/lib/session";
 import { useShortcut } from "@/lib/shortcuts";
-import { createBodyFromTransaction, updateBodyFromTransaction } from "@/lib/transaction-history";
+import {
+  type CreateTransactionBody,
+  createBodyFromTransaction,
+  isIdUnavailable,
+  updateBodyFromTransaction,
+  withoutIds,
+} from "@/lib/transaction-history";
 import {
   type CategoryOption,
   type CellColumn,
@@ -162,11 +170,14 @@ import { FileImportButton } from "./file-import";
 import { FlagMenu } from "./flag-menu";
 import { MemberAvatar } from "./member-avatar";
 import {
+  type CellText,
   COLUMN_SPECS,
   type ColumnId,
   isEditable,
   layoutColumns,
   MIN_COLUMN_PX,
+  type MoneyColumn,
+  measureContent,
   PINNED_BG,
   pinned,
   pinnedWidth,
@@ -508,21 +519,10 @@ export function Register({
   );
   /** The register's width (px), measured once it's on screen; null before (and in tests). */
   const [registerWidth, setRegisterWidth] = useState<number | null>(null);
-  // The row editors share the read rows' layout, so nothing moves as a row opens or closes.
-  const layout = useMemo(
-    () =>
-      layoutColumns(shownColumns, {
-        dragged: widths,
-        available: registerWidth,
-        dateFormat: budget.dateFormat,
-      }),
-    [shownColumns, widths, registerWidth, budget.dateFormat],
-  );
-  const columnIds = layout.columns;
+  /** The rows' scroll area, once it's on screen. */
+  const [viewport, setViewport] = useState<HTMLDivElement | null>(null);
   const accountList = accounts.data?.accounts ?? [];
   const accountById = useMemo(() => new Map(accountList.map((a) => [a.id, a])), [accountList]);
-  /** Logos in the account column, as in the sidebar: only once some account has one, and room. */
-  const showLogos = !layout.accountCompact && accountList.some((a) => a.logo);
   /** An amount in `currency` (a row's, or its account's): the budget's by default. */
   const show = (amount: bigint, currency?: string) =>
     formatAmount(money(amount, inCurrency(budget, currency).currency));
@@ -563,6 +563,73 @@ export function Register({
       </span>
     );
   };
+  /**
+   * Each money column's figures as the rows show them, for the columns to fit the widest: a
+   * foreign amount names its currency in All Accounts.
+   */
+  const cellTexts = useMemo(() => {
+    const texts: Record<MoneyColumn | "payee" | "category", CellText[]> = {
+      outflow: [],
+      inflow: [],
+      amount: [],
+      balance: [],
+      payee: [],
+      category: [],
+    };
+    for (const t of loaded) {
+      // A transfer's payee has its Go to button before it; a split or income its icon.
+      texts.payee.push(
+        t.transferAccountId
+          ? {
+              text: rowPayee(t.accountId, t.transferAccountId, BigInt(t.amount), t.payeeName) ?? "",
+              extra: 24,
+            }
+          : (t.payeeName ?? ""),
+      );
+      const iconed =
+        t.subtransactions.length > 0 || t.categoryId === categories.data?.readyToAssignCategoryId;
+      const category = categoryText(t, true);
+      texts.category.push(iconed ? { text: category, extra: 20 } : category);
+      const amount = BigInt(t.amount);
+      const code = !accountId && t.currency !== budget.currency ? ` ${t.currency}` : "";
+      const sign = amount === 0n ? BigInt(t.baseAmount) : amount;
+      const figure = formatAmount(
+        money(amount < 0n ? -amount : amount, inCurrency(budget, t.currency).currency),
+      );
+      (sign < 0n ? texts.outflow : texts.inflow).push(figure + code);
+      texts.amount.push(
+        signedAmount(amount, (m) =>
+          formatAmount(money(m, inCurrency(budget, t.currency).currency)),
+        ) + code,
+      );
+      texts.balance.push(
+        formatAmount(money(BigInt(t.runningBalance), inCurrency(budget, t.currency).currency)),
+      );
+    }
+    return texts;
+  }, [loaded, accountId, budget, formatAmount, accountById, categories.data]);
+  // Measured in the table's own font once it's on screen.
+  const font = useMemo(() => {
+    const table = viewport?.querySelector("table");
+    if (!table) return "500 14px Inter, sans-serif";
+    const style = getComputedStyle(table);
+    return `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  }, [viewport]);
+  const content = useMemo(() => measureContent(cellTexts, font), [cellTexts, font]);
+  // The row editors share the read rows' layout, so nothing moves as a row opens or closes.
+  const layout = useMemo(
+    () =>
+      layoutColumns(shownColumns, {
+        dragged: widths,
+        available: registerWidth,
+        dateFormat: budget.dateFormat,
+        content,
+      }),
+    [shownColumns, widths, registerWidth, budget.dateFormat, content],
+  );
+  const columnIds = layout.columns;
+  /** Logos in the account column, as in the sidebar: only once some account has one, and room. */
+  const showLogos = !layout.accountCompact && accountList.some((a) => a.logo);
   /** The currency of the register's own account (the budget's for all accounts). */
   const registerSettings = settingsOf(accountId);
   /** A new transaction in `id`, starting cleared in a cash account. */
@@ -657,8 +724,11 @@ export function Register({
    * The scroll area, measured for the width the columns share: its own width less the table
    * frame's padding (the frame itself grows with a table wider than the register).
    */
+  // The rows fill the window below the toolbar: one scroll area, which ends at the page's foot.
+  const fillHeight = useRemainingHeight(viewport);
   const viewportRef = useCallback((viewport: HTMLDivElement | null) => {
     scrollRef.current = viewport;
+    setViewport(viewport);
     if (!viewport || typeof ResizeObserver === "undefined") return;
     const measure = () => {
       const frame = viewport.querySelector("[data-slot=table-container]");
@@ -874,7 +944,7 @@ export function Register({
     try {
       await run();
       history.record({
-        label: "Don't Rename",
+        label: "don't rename",
         undo: async () => {
           const done = await undoDontRenameTx.mutateAsync({
             params: { path, query: { expectedVersion: history.expectedVersion(t.id, left) } },
@@ -903,7 +973,7 @@ export function Register({
     try {
       await runMatch(importedId, enteredId);
       history.record({
-        label: "matched transactions",
+        label: "match transactions",
         undo: async () => {
           importedId = await runUnmatch(enteredId);
           await refresh();
@@ -925,7 +995,7 @@ export function Register({
     try {
       for (const id of ids) pairs.push({ enteredId: id, importedId: await runUnmatch(id) });
       history.record({
-        label: ids.length === 1 ? "unmatched transaction" : "unmatched transactions",
+        label: ids.length === 1 ? "unmatch transaction" : `unmatch ${ids.length} transactions`,
         undo: async () => {
           for (const p of pairs) await runMatch(p.importedId, p.enteredId);
           await refresh();
@@ -1004,7 +1074,8 @@ export function Register({
       }
       if (commands.length > 0) {
         history.record({
-          label: `${action.type} ${count} transaction${count === 1 ? "" : "s"}`,
+          label: bulkLabel(action, count),
+          destructive: bulkRemoves(action),
           // The ticked rows may be gone (copies, entered transactions), so the selection clears.
           undo: async () => {
             for (const command of [...commands].reverse()) await command.undo();
@@ -1026,22 +1097,10 @@ export function Register({
         ["flag", "cleared", "approve", "categorize", "memo"].includes(action.type);
       setSelection(keep ? sel : nextSelection);
       setScheduledSelection(keep ? sched : nextScheduled);
-      const n = `${count} transaction${count === 1 ? "" : "s"}`;
-      toast.success(
-        action.type === "delete"
-          ? `Deleted ${n}`
-          : action.type === "approve"
-            ? `Approved ${n}`
-            : action.type === "reject"
-              ? `Rejected ${n}`
-              : action.type === "move"
-                ? `Moved ${n}`
-                : action.type === "duplicate"
-                  ? `Duplicated ${n}`
-                  : action.type === "enterNow"
-                    ? `Entered ${n}`
-                    : `Updated ${n}`,
-      );
+      // With Undo; a delete's stays up longer, as there's no confirmation before it.
+      const message = bulkDoneMessage(action, count);
+      if (commands.length > 0) history.announce(message, { destructive: bulkRemoves(action) });
+      else toast.success(message);
     } catch (e) {
       toast.error(apiErrorMessage(e, "Couldn't update the selected transactions."));
     }
@@ -1144,6 +1203,32 @@ export function Register({
     await refreshTransactions(queryClient, budget.id);
   }
 
+  /**
+   * Brings a deleted transaction back (an undo): as the same record, so it keeps its place in its
+   * day and later commands still find it, going on from the version it was deleted at. Should the
+   * API not know it as deleted, it comes back as a new one.
+   */
+  async function restoreTransaction(t: Transaction, extra: Partial<CreateTransactionBody> = {}) {
+    const run = (body: CreateTransactionBody) =>
+      create.mutateAsync({
+        params: { path: { budgetId: budget.id }, query: { today: todayIso() } },
+        body: { ...body, ...extra },
+      });
+    const body = createBodyFromTransaction(t);
+    try {
+      const restored = await run(body);
+      const after = versionsOf(restored);
+      history.noteSave(
+        Object.fromEntries(Object.entries(after).map(([id, version]) => [id, version - 1])),
+        after,
+      );
+      return restored;
+    } catch (error) {
+      if (!isIdUnavailable(error)) throw error;
+      return run(withoutIds(body));
+    }
+  }
+
   /** Undo for a bulk action on transactions, from their state before it. */
   function bulkCommand(
     action: Exclude<BulkAction, { type: "enterNow" }>,
@@ -1159,14 +1244,7 @@ export function Register({
       undo: async () => {
         if (deletes) {
           const restored: Transaction[] = [];
-          for (const transaction of before) {
-            restored.push(
-              await create.mutateAsync({
-                params: { path: { budgetId: budget.id }, query: { today: todayIso() } },
-                body: createBodyFromTransaction(transaction),
-              }),
-            );
-          }
+          for (const transaction of before) restored.push(await restoreTransaction(transaction));
           current = restored;
         } else {
           const undone: Record<string, number> = {};
@@ -1195,7 +1273,9 @@ export function Register({
             await remove.mutateAsync({
               params: {
                 path: { budgetId: budget.id, transactionId: transaction.id },
-                query: { expectedVersion: transaction.version },
+                query: {
+                  expectedVersion: history.expectedVersion(transaction.id, transaction.version),
+                },
               },
             });
           }
@@ -1431,7 +1511,7 @@ export function Register({
           },
           body: result.body,
         });
-        recordUpdate("transaction edit", t, after);
+        recordUpdate("edit transaction", t, after);
         await refresh();
         setReveal({ id: t.id, scroll: true });
       }
@@ -1508,7 +1588,7 @@ export function Register({
       });
       let current = created;
       history.record({
-        label: "new transaction",
+        label: "add transaction",
         undo: async () => {
           await remove.mutateAsync({
             params: {
@@ -1526,10 +1606,7 @@ export function Register({
           await refresh();
         },
         redo: async () => {
-          current = await create.mutateAsync({
-            params: { path: { budgetId: budget.id }, query: { today: todayIso() } },
-            body: { ...createBodyFromTransaction(created), ...(fee ? { fee } : {}) },
-          });
+          current = await restoreTransaction(created, fee ? { fee } : {});
           await refresh();
         },
       });
@@ -1583,7 +1660,7 @@ export function Register({
         body,
       });
       history.record({
-        label: "new scheduled transaction",
+        label: "add scheduled transaction",
         undo: async () => {
           if (written.scheduledTransaction) {
             await removeScheduled.mutateAsync({
@@ -1642,13 +1719,10 @@ export function Register({
       });
       let restored: Transaction | null = null;
       history.record({
-        label: "scheduled transaction",
+        label: "schedule transaction",
         undo: async () => {
           // The transaction first: if it can't come back, the schedule stays.
-          restored = await create.mutateAsync({
-            params: { path: { budgetId: budget.id }, query: { today: todayIso() } },
-            body: createBodyFromTransaction(t),
-          });
+          restored = await restoreTransaction(t);
           const id = written.scheduledTransaction?.id;
           if (id) {
             await removeScheduled.mutateAsync({
@@ -1735,7 +1809,7 @@ export function Register({
           },
           body: result.body,
         });
-        recordUpdate("transaction edit", t, after);
+        recordUpdate("edit transaction", t, after);
         await refresh();
         // A new date moves the row: follow it.
         if (result.body.date) setReveal({ id: t.id, scroll: true });
@@ -1767,7 +1841,7 @@ export function Register({
         },
         body: { flag },
       });
-      recordUpdate("transaction flag", t, after);
+      recordUpdate(after.flag ? "flag transaction" : "remove flag", t, after);
       await refresh();
     } catch (e) {
       toast.error(apiErrorMessage(e, "Couldn't change the flag."));
@@ -1800,7 +1874,7 @@ export function Register({
         },
         body: { cleared: t.cleared === "uncleared" ? "cleared" : "uncleared" },
       });
-      recordUpdate("transaction cleared state", t, after);
+      recordUpdate(`mark transaction ${after.cleared}`, t, after);
       await refresh();
     } catch (e) {
       toast.error(apiErrorMessage(e, "Couldn't update the transaction."));
@@ -1817,7 +1891,7 @@ export function Register({
         },
         body: { approved: true },
       });
-      recordUpdate("approved transaction", t, after);
+      recordUpdate("approve transaction", t, after);
       await refresh();
     } catch (e) {
       toast.error(apiErrorMessage(e, "Couldn't approve the transaction."));
@@ -1838,12 +1912,10 @@ export function Register({
       });
       let current: Transaction | null = null;
       history.record({
-        label: reject ? "rejected transaction" : "deleted transaction",
+        label: reject ? "reject transaction" : "delete transaction",
+        destructive: true,
         undo: async () => {
-          current = await create.mutateAsync({
-            params: { path: { budgetId: budget.id }, query: { today: todayIso() } },
-            body: createBodyFromTransaction(t),
-          });
+          current = await restoreTransaction(t);
           await refresh();
         },
         redo: async () => {
@@ -1859,12 +1931,13 @@ export function Register({
       });
       await refresh();
       const transfers = t.transferAccountId || t.subtransactions.some((l) => l.transferAccountId);
-      toast.success(
+      history.announce(
         reject
           ? "Transaction rejected"
           : transfers
             ? "Deleted, with its transfers"
             : "Transaction deleted",
+        { destructive: true },
       );
     } catch (e) {
       toast.error(apiErrorMessage(e, "Couldn't delete the transaction."));
@@ -2521,8 +2594,15 @@ export function Register({
             // A query container: the editor's footer sizes to its visible width. The scroll padding
             // keeps a focused field clear of the sticky header and the pinned columns, should the
             // table ever be wider than the register.
-            viewportClassName="@container max-h-[70vh] scroll-pt-9"
-            viewportProps={{ style: { scrollPaddingRight: pinnedWidth(columnIds) } }}
+            viewportClassName="@container scroll-pt-9"
+            viewportProps={{
+              style: {
+                maxHeight: fillHeight ?? "70vh",
+                scrollPaddingRight: pinnedWidth(columnIds),
+              },
+            }}
+            // The scrollbar shows whenever the rows overflow, not only on hover.
+            type="auto"
             scrollbars="both"
             className={cn("rounded-xl ring-1 ring-border", REGISTER_TRAY)}
           >

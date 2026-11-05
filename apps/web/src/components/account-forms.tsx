@@ -241,11 +241,14 @@ export function allowsOtherCurrency(type: AccountType) {
 export function AddAccountForm({
   settings,
   categories,
+  withLogo = true,
   onSubmit,
 }: {
   settings: MoneySettings;
   /** The plan's categories, for a loan's pairing step (skipped while they load). */
   categories?: CategoryList;
+  /** The optional logo field (setup leaves it to the account's settings). */
+  withLogo?: boolean;
   onSubmit: (values: NewAccountValues) => Promise<string | null>;
 }) {
   const [type, setType] = useState<AccountType>("checking");
@@ -374,12 +377,14 @@ export function AddAccountForm({
           required
         />
       </Field>
-      <AccountLogoField
-        name={name}
-        src={logoPreview}
-        onPick={setLogo}
-        onRemove={() => setLogo(null)}
-      />
+      {withLogo && (
+        <AccountLogoField
+          name={name}
+          src={logoPreview}
+          onPick={setLogo}
+          onRemove={() => setLogo(null)}
+        />
+      )}
       {allowsOtherCurrency(type) && (
         <Field>
           <FieldLabel htmlFor="account-currency">Currency</FieldLabel>

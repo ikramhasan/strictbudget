@@ -1,4 +1,5 @@
 import type { components } from "@strictbudget/api-client";
+import { Checkbox } from "@strictbudget/ui/components/checkbox";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -287,5 +288,55 @@ describe("SelectionBar keys", () => {
     bar(summary({ count: 1 }), { onMakeRepeating });
     await userEvent.keyboard("{Shift>}T{/Shift}");
     expect(onMakeRepeating).toHaveBeenCalledOnce();
+  });
+
+  it("deletes on a Delete pressed while the selection's figures load, from a row's checkbox", async () => {
+    const props = {
+      total: null,
+      allMatching: false,
+      canSelectAll: false,
+      onSelectAll: vi.fn(),
+      onClear: vi.fn(),
+      flags: [],
+      categories,
+      moveTargets: [],
+      pending: false,
+      onAction: vi.fn(),
+    };
+    const { rerender } = render(
+      <>
+        <Checkbox checked aria-label="Select Shell" />
+        <SelectionBar summary={undefined} {...props} />
+      </>,
+    );
+    screen.getByRole("checkbox", { name: "Select Shell" }).focus();
+    await userEvent.keyboard("{Delete}");
+    expect(props.onAction).not.toHaveBeenCalled();
+    rerender(
+      <>
+        <Checkbox checked aria-label="Select Shell" />
+        <SelectionBar summary={summary({})} {...props} />
+      </>,
+    );
+    expect(props.onAction).toHaveBeenCalledExactlyOnceWith({ type: "delete" });
+  });
+
+  it("drops a key pressed while loading when it turns out not to apply", async () => {
+    const props = {
+      total: null,
+      allMatching: false,
+      canSelectAll: false,
+      onSelectAll: vi.fn(),
+      onClear: vi.fn(),
+      flags: [],
+      categories,
+      moveTargets: [],
+      pending: false,
+      onAction: vi.fn(),
+    };
+    const { rerender } = render(<SelectionBar summary={undefined} {...props} />);
+    await userEvent.keyboard("a");
+    rerender(<SelectionBar summary={summary({ unapproved: 0 })} {...props} />);
+    expect(props.onAction).not.toHaveBeenCalled();
   });
 });

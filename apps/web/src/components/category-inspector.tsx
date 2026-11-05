@@ -99,7 +99,7 @@ export function MonthSummary({
   reportCategories?: string[];
   selectedNames?: string[];
   /**
-   * What the plan's targets ask of this month and the next ("Targets and Income"), with the budget's
+   * What the plan's targets ask of this month and the next ("Targets and income"), with the budget's
    * expected income; shown in the current month only.
    */
   targets?: {
@@ -115,17 +115,17 @@ export function MonthSummary({
   const previous = monthName(addMonths(month, -1));
   const name = monthName(month);
   return (
-    <Panel label={selectedNames ? "Selected categories" : `${name}'s Summary`}>
+    <Panel label={selectedNames ? "Selected categories" : `${name}'s summary`}>
       {selectedNames && (
         <div className="grid gap-1">
-          <h2 className="font-semibold">{selectedNames.length} Categories Selected</h2>
+          <h2 className="font-semibold">{selectedNames.length} categories selected</h2>
           <p className="text-muted-foreground text-xs">{selectedNames.join(", ")}</p>
         </div>
       )}
-      <h2 className="font-semibold text-sm">{name}'s Summary</h2>
+      <h2 className="font-semibold text-sm">{name}'s summary</h2>
       <dl className="grid gap-2">
         <Line
-          label="Left Over from Last Month"
+          label="Left over from last month"
           value={totals.carried}
           format={format}
           hint={`The total amount of money you have left over from ${previous}.`}
@@ -152,7 +152,7 @@ export function MonthSummary({
       </dl>
       {targets && (
         <>
-          <h3 className="font-semibold text-sm">Targets and Income</h3>
+          <h3 className="font-semibold text-sm">Targets and income</h3>
           <TargetsAndIncome name={name} targets={targets} format={format} />
           {targets.nextMonth > targets.month && (
             <p className="rounded-md bg-muted p-2 text-center text-muted-foreground text-xs">
@@ -210,7 +210,7 @@ function TargetsAndIncome({
   return (
     <div className="grid gap-2">
       <dl className="grid gap-1">
-        <Line label={`${name}’s Targets`} value={targets.month} format={format} />
+        <Line label={`${name}’s targets`} value={targets.month} format={format} />
         {income !== null && (
           <div
             role="img"
@@ -226,7 +226,7 @@ function TargetsAndIncome({
       {editing ? (
         <form onSubmit={save} className="grid gap-2">
           <label htmlFor="expected-income" className="font-semibold text-sm">
-            Expected Income
+            Expected income
           </label>
           <Input
             id="expected-income"
@@ -248,7 +248,7 @@ function TargetsAndIncome({
       ) : income !== null ? (
         <div className="grid gap-1">
           <div className="flex items-center justify-between gap-2 text-sm">
-            <span className="text-muted-foreground">Expected Income</span>
+            <span className="text-muted-foreground">Expected income</span>
             <span className="flex items-center gap-1 tabular-nums">
               {format(income.toString())}
               {onSetIncome && (
@@ -333,7 +333,7 @@ export function CategoryInspector({
       </div>
       {loan}
       <div className="flex items-center justify-between gap-2">
-        <span className="font-medium text-sm">Available Balance</span>
+        <span className="font-medium text-sm">Available balance</span>
         {available}
       </div>
       {overspent && !loan && (
@@ -346,17 +346,17 @@ export function CategoryInspector({
       )}
       <dl className="grid gap-2">
         <Line
-          label="Cash Left Over From Last Month"
+          label="Cash left over from last month"
           value={uncategorized ? null : totals.carried}
           format={format}
         />
         <Line
-          label="Assigned This Month"
+          label="Assigned this month"
           value={uncategorized ? null : totals.assigned}
           format={format}
         />
-        <Line label="Cash Spending" value={totals.cashActivity} format={format} />
-        <Line label="Credit Spending" value={totals.creditActivity} format={format} />
+        <Line label="Cash spending" value={totals.cashActivity} format={format} />
+        <Line label="Credit spending" value={totals.creditActivity} format={format} />
       </dl>
       {upcoming}
       {history}
@@ -438,25 +438,25 @@ export function PaymentInspector({
       {!past && (
         <FoldingSection
           storageKey="current-balance"
-          title="Current Balance"
+          title="Current balance"
           value={<span className="tabular-nums">{format(payment.balance.toString())}</span>}
         >
-          <Line label="Prior Balance" value={payment.priorBalance} format={format} />
+          <Line label="Prior balance" value={payment.priorBalance} format={format} />
           <ActivityHeading />
-          <Line label="Spending and Outflows" value={payment.spendingAndOutflows} format={format} />
-          <Line label="Payments and Inflows" value={payment.paymentsAndInflows} format={format} />
+          <Line label="Spending and outflows" value={payment.spendingAndOutflows} format={format} />
+          <Line label="Payments and inflows" value={payment.paymentsAndInflows} format={format} />
         </FoldingSection>
       )}
       <FoldingSection
         storageKey="available-for-payment"
-        title="Available for Payment"
+        title="Available for payment"
         value={available}
       >
-        <Line label="Cash Left Over From Last Month" value={totals.carried} format={format} />
+        <Line label="Cash left over from last month" value={totals.carried} format={format} />
         <ActivityHeading />
         <Line label="Assigned" value={totals.assigned} format={format} />
-        <Line label="Funded Spending" value={payment.fundedSpending} format={format} />
-        <Line label="Payments Made" value={payment.paymentsMade} format={format} />
+        <Line label="Funded spending" value={payment.fundedSpending} format={format} />
+        <Line label="Payments made" value={payment.paymentsMade} format={format} />
         {upcoming}
       </FoldingSection>
       <NoteField key={name} note={note} onChange={onNoteChange} />
@@ -465,7 +465,7 @@ export function PaymentInspector({
 }
 
 function ActivityHeading() {
-  return <dt className="pt-1 font-medium text-sm">Activity This Month</dt>;
+  return <dt className="pt-1 font-medium text-sm">Activity this month</dt>;
 }
 
 /** The payment inspector's folded sections are kept in the browser, for every plan. */
@@ -563,7 +563,7 @@ export function PaymentAlert({
           </p>
         ) : warn && payment.overspentCategories > 0n ? (
           <p>
-            <span className="font-medium">Overspent Categories.</span> Cover{" "}
+            <span className="font-medium">Overspent categories.</span> Cover{" "}
             {f(payment.overspentCategories)} in overspent categories in order to pay off your
             current balance.
           </p>
@@ -580,7 +580,7 @@ export function PaymentAlert({
             </p>
             {onRecordPayment && (
               <Button size="sm" onClick={onRecordPayment}>
-                Record Payment
+                Record payment
               </Button>
             )}
           </>
@@ -590,7 +590,7 @@ export function PaymentAlert({
         {!overpaid && warn && payment.overspentCategories > 0n && onCoverOverspent && (
           // One click, no money moves; it shows the Overspent view.
           <Button size="sm" onClick={onCoverOverspent}>
-            Cover Overspent Categories
+            Cover overspent categories
           </Button>
         )}
         {!overpaid && warn && payment.underfunded > 0n && onCreateTarget && (
@@ -601,17 +601,17 @@ export function PaymentAlert({
                 : "Paying it off over time?"}
             </p>
             <Button size="sm" variant="secondary" onClick={onCreateTarget}>
-              Create a Debt Payoff Target
+              Create a debt payoff target
             </Button>
           </>
         )}
       </section>
       {warn && payment.underfunded > 0n && (
         <dl className="grid gap-2">
-          <Line label="Total Underfunded" value={payment.underfunded} format={format} />
+          <Line label="Total underfunded" value={payment.underfunded} format={format} />
           {payment.overspentCategories > 0n && (
             <Line
-              label="Overspent Categories"
+              label="Overspent categories"
               value={payment.overspentCategories}
               format={format}
             />
@@ -649,7 +649,7 @@ function OverspentMessage({
   const message = uncategorized
     ? `Uncategorized cash spending still counts. Categorize it, or ${cashShortfall} comes out of next month's Ready to Assign.`
     : cash && credit
-      ? `Overspent by ${shortfall} with cash and credit. Move in at least ${cashShortfall} to keep your available balances accurate.`
+      ? `Overspent by ${shortfall}. Cover it from another category.`
       : creditOnly
         ? `Overspent by ${shortfall} on credit. Cover it so the card balance doesn't grow into new debt.`
         : `Overspent by ${shortfall}. Move money in from another category to keep your plan accurate.`;
@@ -663,7 +663,14 @@ function OverspentMessage({
           : "border-destructive/25 bg-destructive/6 text-destructive",
       )}
     >
-      <p className="leading-relaxed">{message}</p>
+      <div className="grid gap-0.5">
+        <p className="leading-relaxed">{message}</p>
+        {!uncategorized && cash && credit && (
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            {cashShortfall} of it is cash spending; the rest went on credit.
+          </p>
+        )}
+      </div>
       {cover}
     </div>
   );

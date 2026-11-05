@@ -4052,6 +4052,8 @@ export interface components {
             feeTransactionId: string | null;
         };
         CreateTransaction: {
+            /** @description With `restore`: the deleted transaction's own id, so it comes back as the same record, in its place among its day's transactions. Only an id this budget's history shows deleted and not restored since (ID_UNAVAILABLE otherwise) */
+            id?: string;
             accountId: string;
             /**
              * Format: date
@@ -4121,6 +4123,8 @@ export interface components {
         };
         /** @description Restoring a deleted transfer (an undo): its other side's own state, from the deleted transaction's `transferSide`. Left out, the other side starts uncleared, approved, unflagged and with this side's memo */
         TransferSideInput: {
+            /** @description With `restore`: the other side's own id, so it comes back as the same record */
+            id?: string;
             memo: string;
             /** @enum {string} */
             cleared: "uncleared" | "cleared" | "reconciled";
@@ -10403,6 +10407,15 @@ export interface operations {
             };
             /** @description No such budget, account or transaction, or the caller isn't a member */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description `id` (or a `transferSide` id) isn't a deleted transaction of this budget (ID_UNAVAILABLE) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

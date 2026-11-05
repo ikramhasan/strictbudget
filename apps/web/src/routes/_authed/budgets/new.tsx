@@ -65,13 +65,14 @@ function NewBudgetPage() {
             {isFirst ? "Create your first budget" : "Create a budget"}
           </CardTitle>
           <CardDescription className="text-pretty">
-            Name it and choose the currency you budget in. You can change how amounts and dates look
-            later, but not the currency.
+            Name it and choose the currency you budget in. The currency is set for good; everything
+            else can change later.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <BudgetForm
             defaultValues={defaults}
+            collapseFormatting
             submitLabel="Create budget"
             pendingLabel="Creating…"
             onSubmit={handleSubmit}

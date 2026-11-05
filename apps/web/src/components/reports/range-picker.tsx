@@ -136,8 +136,8 @@ function RangeDialog({
         <div className="grid grid-cols-2 gap-3">
           {(
             [
-              ["Start Date", from, setFrom],
-              ["End Date", to, setTo],
+              ["Start date", from, setFrom],
+              ["End date", to, setTo],
             ] as const
           ).map(([label, value, set]) => (
             <Label key={label} className="grid gap-1 font-normal">

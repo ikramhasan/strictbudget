@@ -71,8 +71,8 @@ export function ActivityList({
   return (
     // One bordered list with dividers, like the register and category list, not a stack of cards.
     <ol className="divide-y rounded-lg border">
-      {groupEvents(events, lookups).map(({ lead: event, rest }) => {
-        const line = describeEvent(event, lookups, rest);
+      {groupEvents(events, lookups).map(({ lead: event, rest, restored }) => {
+        const line = describeEvent(event, lookups, rest, restored.has(event.id));
         return (
           <li key={event.id} className="flex gap-3 px-4 py-3 text-sm">
             <MemberAvatar
@@ -112,7 +112,7 @@ export function ActivityList({
                 // What else the same save did, one line each.
                 <ul className="grid gap-0.5 border-l-2 pl-2.5 text-muted-foreground text-xs">
                   {rest.slice(0, MAX_RELATED).map((other) => {
-                    const related = describeEvent(other, lookups);
+                    const related = describeEvent(other, lookups, [], restored.has(other.id));
                     return (
                       <li key={other.id} className="truncate">
                         {related.action.charAt(0).toUpperCase() + related.action.slice(1)}

@@ -39,15 +39,18 @@ describe("CategoryInspector", () => {
     );
     expect(screen.getByRole("heading", { name: "Power" })).toBeInTheDocument();
     for (const [label, amount] of [
-      ["Cash Left Over From Last Month", "A500"],
-      ["Assigned This Month", "A1000"],
-      ["Cash Spending", "A-1000"],
-      ["Credit Spending", "A-3000"],
+      ["Cash left over from last month", "A500"],
+      ["Assigned this month", "A1000"],
+      ["Cash spending", "A-1000"],
+      ["Credit spending", "A-3000"],
     ]) {
       expect(screen.getByText(label as string).nextSibling).toHaveTextContent(amount as string);
     }
     expect(
-      screen.getByText(/Overspent by A2500 with cash and credit\. Move in at least A1000/),
+      screen.getByText("Overspent by A2500. Cover it from another category."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("A1000 of it is cash spending; the rest went on credit."),
     ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Notes"), "Quarterly");
@@ -77,8 +80,8 @@ describe("CategoryInspector", () => {
         onNoteChange={vi.fn()}
       />,
     );
-    expect(screen.getByText("Assigned This Month").nextSibling).toHaveTextContent("–");
-    expect(screen.getByText("Credit Spending").nextSibling).toHaveTextContent("A-100");
+    expect(screen.getByText("Assigned this month").nextSibling).toHaveTextContent("–");
+    expect(screen.getByText("Credit spending").nextSibling).toHaveTextContent("A-100");
     // Only the cash part comes out of next month's Ready to Assign.
     expect(screen.getByText(/A200 comes out of next month/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Notes")).not.toBeInTheDocument();
@@ -117,10 +120,13 @@ describe("CategoryInspector overspending", () => {
     ).toBeInTheDocument();
   });
 
-  it("asks for the cash part of a mixed shortfall", () => {
+  it("gives one shortfall to cover, and its cash part as a detail", () => {
     show(breakdown(-300n, -100n, -200n));
     expect(
-      screen.getByText(/by A300 with cash and credit\. Move in at least A100/),
+      screen.getByText("Overspent by A300. Cover it from another category."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("A100 of it is cash spending; the rest went on credit."),
     ).toBeInTheDocument();
   });
 });
@@ -173,14 +179,14 @@ describe("PaymentInspector", () => {
     });
     expect(screen.getByText(/Cover A200 in overspent categories/)).toBeInTheDocument();
     for (const [label, amount] of [
-      ["Total Underfunded", "A9200"],
-      ["Overspent Categories", "A200"],
+      ["Total underfunded", "A9200"],
+      ["Overspent categories", "A200"],
       ["Underfunded", "A9000"],
-      ["Current Balance", "A-10400"],
-      ["Prior Balance", "A-10000"],
-      ["Spending and Outflows", "A-400"],
+      ["Current balance", "A-10400"],
+      ["Prior balance", "A-10000"],
+      ["Spending and outflows", "A-400"],
       ["Assigned", "A1000"],
-      ["Funded Spending", "A200"],
+      ["Funded spending", "A200"],
     ]) {
       expect(screen.getByText(label as string).nextSibling).toHaveTextContent(amount as string);
     }
@@ -209,36 +215,36 @@ describe("PaymentInspector", () => {
     // Covered ($10 for $6 owed) and exactly covered.
     const onRecordPayment = record(1000n, -600n);
     expect(screen.getByText(message)).toBeInTheDocument();
-    await userEvent.setup().click(screen.getByRole("button", { name: "Record Payment" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "Record payment" }));
     expect(onRecordPayment).toHaveBeenCalled();
     record(600n, -600n);
-    expect(screen.getByRole("button", { name: "Record Payment" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Record payment" })).toBeInTheDocument();
     // Partly covered, paid off, or a past month: no Record Payment.
     record(300n, -600n);
-    expect(screen.queryByRole("button", { name: "Record Payment" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Record payment" })).not.toBeInTheDocument();
     record(500n, 200n);
     expect(screen.queryByText(message)).not.toBeInTheDocument();
     expect(screen.getByText(/is paid off\./)).toBeInTheDocument();
     record(1000n, -600n, false);
-    expect(screen.queryByRole("button", { name: "Record Payment" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Record payment" })).not.toBeInTheDocument();
   });
 
   it("folds Current Balance and Available for Payment, and remembers it", async () => {
     const user = userEvent.setup();
     localStorage.clear();
     show({ balance: -2900n, underfunded: 2900n, overspentCategories: 0n, priorBalance: -100n });
-    expect(screen.getByText("Prior Balance")).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Current Balance" }));
-    expect(screen.queryByText("Prior Balance")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Current Balance" }).nextSibling).toHaveTextContent(
+    expect(screen.getByText("Prior balance")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Current balance" }));
+    expect(screen.queryByText("Prior balance")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Current balance" }).nextSibling).toHaveTextContent(
       "A-2900",
     );
     cleanup();
     show({ balance: -2900n, underfunded: 2900n, overspentCategories: 0n });
-    expect(screen.queryByText("Prior Balance")).not.toBeInTheDocument();
-    expect(screen.getByText("Funded Spending")).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Current Balance" }));
-    expect(screen.getByText("Prior Balance")).toBeVisible();
+    expect(screen.queryByText("Prior balance")).not.toBeInTheDocument();
+    expect(screen.getByText("Funded spending")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Current balance" }));
+    expect(screen.getByText("Prior balance")).toBeVisible();
   });
 
   it("asks for the rest of the balance without overspending", () => {
@@ -255,7 +261,7 @@ describe("PaymentInspector", () => {
     expect(
       screen.getByText("You sent more to Card A than you had set aside for the payment."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Payments Made").nextSibling).toHaveTextContent("A-1600");
+    expect(screen.getByText("Payments made").nextSibling).toHaveTextContent("A-1600");
   });
 
   it("celebrates a paid-off card and stays quiet in past months", () => {
@@ -263,7 +269,7 @@ describe("PaymentInspector", () => {
     expect(screen.getByText(/Card A is paid off\./)).toBeInTheDocument();
     cleanup();
     show({ balance: -2900n, underfunded: 2900n, overspentCategories: 0n }, false);
-    expect(screen.queryByText("Total Underfunded")).not.toBeInTheDocument();
+    expect(screen.queryByText("Total underfunded")).not.toBeInTheDocument();
   });
 });
 
@@ -286,7 +292,7 @@ describe("MonthSummary", () => {
         selectedNames={["Power", "Food"]}
       />,
     );
-    expect(screen.getByRole("heading", { name: "2 Categories Selected" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "2 categories selected" })).toBeInTheDocument();
     expect(screen.getByText("Power, Food")).toBeInTheDocument();
     expect(screen.getByText("Assigned in October").nextSibling).toHaveTextContent("A0");
     expect(screen.getByText("Activity").nextSibling).toHaveTextContent("A-3000");

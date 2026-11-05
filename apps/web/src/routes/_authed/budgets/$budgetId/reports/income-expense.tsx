@@ -192,7 +192,7 @@ function Report() {
                     Expenses
                   </th>
                   <th scope="col" className="px-2 py-1.5 text-right font-medium">
-                    Net Income
+                    Net income
                   </th>
                 </tr>
               </thead>

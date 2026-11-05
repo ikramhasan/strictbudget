@@ -27,20 +27,22 @@ import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { AddAccountForm } from "@/components/account-forms";
+import { BudgetForm, type BudgetFormValues } from "@/components/budget-form";
 import { CategoryPicker, type CategoryPicks } from "@/components/category-picker";
 import { OnboardingSteps } from "@/components/onboarding-steps";
 import { PageHeader } from "@/components/page-header";
 import { PageTitle } from "@/components/page-title";
 import { ZeroBasedPrimer } from "@/components/zero-based-primer";
 import { accountsQueryOptions } from "@/lib/accounts";
-import { apiClient } from "@/lib/api";
+import { $api, apiClient } from "@/lib/api";
 import { useBudget } from "@/lib/budget-context";
+import { apiErrorMessage, invalidateBudgets } from "@/lib/budgets";
 import { type CategoryList, categoriesQueryOptions } from "@/lib/categories";
 import { currentMonth, monthQueryOptions, toMoney } from "@/lib/months";
 import { useCreateAccount } from "@/lib/use-create-account";
 
-/** Setup's steps, after creating the budget (onboarding's step 0). */
-const STEPS = ["intro", "categories", "account", "assign"] as const;
+/** Onboarding's steps: the budget itself (created already; here to rename or reformat), then setup. */
+const STEPS = ["budget", "intro", "categories", "account", "assign"] as const;
 type Step = (typeof STEPS)[number];
 
 export const Route = createFileRoute("/_authed/budgets/$budgetId/setup")({
@@ -63,7 +65,34 @@ function SetupPage() {
   const createAccount = useCreateAccount(budget.id);
   const [saving, setSaving] = useState(false);
   const example = useExampleAmount();
+  const accounts = useQuery(accountsQueryOptions(budget.id));
+  const updateBudget = $api.useMutation("patch", "/v1/budgets/{budgetId}");
   const goTo = (next: Step) => void navigate({ search: { step: next } });
+  const index = STEPS.indexOf(step);
+  // Past the account step without a budget account: it was skipped.
+  const accountSkipped =
+    index > STEPS.indexOf("account") &&
+    accounts.data !== undefined &&
+    !accounts.data.accounts.some((a) => !a.closed && isOnBudget(a.type));
+
+  async function saveBudget({
+    name,
+    numberFormat,
+    currencySymbolPosition,
+    dateFormat,
+  }: BudgetFormValues) {
+    try {
+      await updateBudget.mutateAsync({
+        params: { path: { budgetId: budget.id } },
+        body: { name, numberFormat, currencySymbolPosition, dateFormat },
+      });
+      await invalidateBudgets(queryClient);
+      goTo("intro");
+      return null;
+    } catch (error) {
+      return apiErrorMessage(error, "Couldn't save the budget. Try again.");
+    }
+  }
 
   async function applyPicks(picks: CategoryPicks) {
     setSaving(true);
@@ -116,19 +145,38 @@ function SetupPage() {
           <SkipSetup
             budgetId={budget.id}
             // Until the categories step is done, skipping keeps the starter categories.
-            starter={step === "intro" || step === "categories" ? categories.data : undefined}
+            starter={index <= STEPS.indexOf("categories") ? categories.data : undefined}
           />
         }
       />
       <OnboardingSteps
-        current={STEPS.indexOf(step) + 1}
-        onSelect={(index) => goTo(STEPS[index - 1] ?? "intro")}
+        current={index}
+        skipped={accountSkipped ? [STEPS.indexOf("account")] : []}
+        onSelect={(i) => goTo(STEPS[i] ?? "intro")}
       />
 
-      {step === "intro" ? (
+      {step === "budget" ? (
+        <StepCard title="Your budget" description="Rename it or change how amounts and dates look.">
+          <BudgetForm
+            currencyLocked
+            collapseFormatting
+            defaultValues={{
+              name: budget.name,
+              currency: budget.currency,
+              numberFormat: budget.numberFormat,
+              currencySymbolPosition: budget.currencySymbolPosition,
+              dateFormat: budget.dateFormat,
+            }}
+            submitLabel="Continue"
+            pendingLabel="Saving…"
+            onSubmit={saveBudget}
+          />
+        </StepCard>
+      ) : step === "intro" ? (
         <StepCard
           title="How strictbudget works"
           description="One idea: plan with the money you have today. Here's the whole method in four moves."
+          onBack={() => goTo("budget")}
           footer={
             <Button onClick={() => goTo("categories")}>
               Pick my categories <ArrowRight />
@@ -140,7 +188,7 @@ function SetupPage() {
       ) : step === "categories" ? (
         <StepCard
           title="Pick your categories"
-          description="These are the jobs your money can do. Keep the ones that fit your life, untick the rest, and add anything that's missing."
+          description="These are the jobs your money can do. A few quick questions fit the starter list to you; then keep what fits, untick the rest and add anything that's missing."
         >
           {categories.data ? (
             <CategoryPicker
@@ -171,6 +219,7 @@ function SetupPage() {
         >
           <AddAccountForm
             settings={budget}
+            withLogo={false}
             categories={categories.data}
             onSubmit={async (values) => {
               const result = await createAccount(values);

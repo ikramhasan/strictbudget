@@ -125,7 +125,10 @@ export function ReadyToAssignBanner({
   action,
   assign,
   breakdown,
+  compact = false,
 }: {
+  /** One line, for the top bar: the amount and label side by side. */
+  compact?: boolean;
   amount: string;
   overdraft: boolean;
   format: (minorUnits: string) => string;
@@ -138,14 +141,21 @@ export function ReadyToAssignBanner({
 }) {
   const sign = amount === "0" ? 0 : amount.startsWith("-") ? -1 : 1;
   const noAccounts = useNoBudgetAccounts();
-  if (sign === 0 && noAccounts) return <AddAccountPrompt />;
+  if (sign === 0 && noAccounts) return <AddAccountPrompt compact={compact} />;
   const negativeLabel = overdraft
     ? "Overdraft? We can help with that!"
     : "You assigned more than you have";
   const summary = (
     <>
-      <span className="font-semibold text-2xl tabular-nums">{format(amount)}</span>
-      <span className="text-sm">
+      <span
+        className={cn(
+          "tabular-nums",
+          compact ? "font-semibold text-lg leading-tight tracking-tight" : "text-display",
+        )}
+      >
+        {format(amount)}
+      </span>
+      <span className={cn("font-medium", compact ? "text-xs leading-tight" : "text-sm")}>
         {sign > 0 ? "Ready to Assign" : sign === 0 ? "All Money Assigned" : negativeLabel}
       </span>
     </>
@@ -154,9 +164,16 @@ export function ReadyToAssignBanner({
     <output
       aria-live="polite"
       className={cn(
-        "flex min-w-56 flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-2 max-md:w-full transition-colors duration-200 ease-out-quint",
+        "flex items-center justify-between rounded-lg transition-colors duration-200 ease-out-quint",
+        compact
+          ? "h-11 shrink-0 flex-nowrap gap-3 py-0 pr-1.5 pl-3"
+          : "min-w-56 flex-wrap gap-3 px-4 py-2 max-md:w-full",
         sign > 0 && "bg-green-200 text-green-950 dark:bg-green-900/60 dark:text-green-50",
-        sign === 0 && "bg-muted text-muted-foreground",
+        sign === 0 &&
+          cn(
+            "border border-muted-foreground/45 border-dashed text-muted-foreground",
+            !compact && "px-[15px] py-[7px]",
+          ),
         sign < 0 && "bg-red-200 text-red-950 dark:bg-red-900/60 dark:text-red-50",
       )}
     >
@@ -201,36 +218,55 @@ function useNoBudgetAccounts() {
 }
 
 /** In place of "All Money Assigned" while there's no account for money to come from. */
-function AddAccountPrompt() {
+function AddAccountPrompt({ compact = false }: { compact?: boolean }) {
   const context = useOptionalBudget();
   const [adding, setAdding] = useState(false);
   // Mounted on first use, so the banner needs no router until then.
   const [dialogMounted, setDialogMounted] = useState(false);
   return (
+    // A set width (narrower in a tight column), never its content's, so the container query can drop
+    // the button under the text when the two don't fit side by side.
     <output
       aria-live="polite"
-      className="flex min-w-56 flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-input border-dashed bg-muted/40 px-4 py-2 max-md:w-full sm:flex-nowrap"
-    >
-      <span className="grid sm:whitespace-nowrap">
-        <span className="font-semibold text-base">No money yet</span>
-        <span className="text-muted-foreground text-sm">Add an account to start</span>
-      </span>
-      {context && !context.readOnly && (
-        <>
-          <Button
-            size="sm"
-            onClick={() => {
-              setDialogMounted(true);
-              setAdding(true);
-            }}
-          >
-            <Plus /> Add account
-          </Button>
-          {dialogMounted && (
-            <AddAccountDialog budget={context.budget} open={adding} onOpenChange={setAdding} />
-          )}
-        </>
+      className={cn(
+        "@container rounded-lg border border-input border-dashed bg-muted/40",
+        // In the top bar: one compact line, like the amount it stands in for.
+        compact
+          ? "flex h-11 shrink-0 items-center py-0 pr-1.5 pl-3"
+          : "w-[21rem] min-w-56 max-w-full shrink px-4 py-2 max-md:w-full",
       )}
+    >
+      <span
+        className={cn(
+          "flex items-center justify-between gap-x-4 gap-y-2",
+          compact ? "flex-nowrap" : "flex-wrap @[18rem]:flex-nowrap",
+        )}
+      >
+        <span className={cn("grid", compact ? "whitespace-nowrap" : "@[18rem]:whitespace-nowrap")}>
+          <span className={cn("font-semibold", compact ? "text-sm leading-tight" : "text-base")}>
+            No money yet
+          </span>
+          <span className={cn("text-muted-foreground", compact ? "text-xs" : "text-sm")}>
+            Add an account to start
+          </span>
+        </span>
+        {context && !context.readOnly && (
+          <>
+            <Button
+              size="sm"
+              onClick={() => {
+                setDialogMounted(true);
+                setAdding(true);
+              }}
+            >
+              <Plus /> Add account
+            </Button>
+            {dialogMounted && (
+              <AddAccountDialog budget={context.budget} open={adding} onOpenChange={setAdding} />
+            )}
+          </>
+        )}
+      </span>
     </output>
   );
 }

@@ -6,6 +6,7 @@ import {
   actorName,
   describeEvent,
   groupEvents,
+  restoredEvents,
 } from "./activity";
 
 const lookups: ActivityLookups = {
@@ -256,6 +257,88 @@ describe("groupEvents", () => {
     expect(groups.map((g) => [g.lead.id, g.rest.map((e) => e.id)])).toEqual([
       ["txn", ["line"]],
       ["later", []],
+    ]);
+  });
+
+  it("reads an undone delete as a restore, apart from the delete it undid", () => {
+    const at = "2026-10-16T12:00:00.000Z";
+    const soon = "2026-10-16T12:00:01.000Z";
+    // Newest first: two deleted at once, then both brought back a second later.
+    const events = [
+      event({ id: "e5", entity: "transaction", rowId: "b", op: "insert", at: soon, after: txn }),
+      event({
+        id: "e4",
+        entity: "sub_transaction",
+        rowId: "line",
+        op: "insert",
+        at: soon,
+        after: { amount: "-7000" },
+      }),
+      event({ id: "e3", entity: "transaction", rowId: "a", op: "insert", at: soon, after: txn }),
+      event({ id: "e2", entity: "transaction", rowId: "b", op: "delete", at, before: txn }),
+      event({ id: "e1", entity: "transaction", rowId: "a", op: "delete", at, before: txn }),
+    ];
+    expect([...restoredEvents(events)].sort()).toEqual(["e3", "e5"]);
+    const groups = groupEvents(events, lookups);
+    // The restored split's lines come back with it; the delete is an entry of its own.
+    expect(groups.map((g) => [g.lead.id, g.rest.map((e) => e.id)])).toEqual([
+      ["e5", ["e3"]],
+      ["e2", ["e1"]],
+    ]);
+    const [restore] = groups;
+    if (!restore) throw new Error("missing");
+    expect(describeEvent(restore.lead, lookups, restore.rest, true)).toEqual({
+      action: "restored a transaction",
+      subject: "Shop · -$1,234.56",
+      changes: [],
+    });
+    expect(describeEvent(events[3] as ActivityEvent, lookups).action).toBe("deleted a transaction");
+  });
+
+  it("keeps two changes to one row apart, but not a new row and its fill-in", () => {
+    const at = "2026-10-16T12:00:00.000Z";
+    const events = [
+      event({
+        id: "e3",
+        op: "update",
+        at,
+        before: { ...txn, memo: "b" },
+        after: { ...txn, memo: "c" },
+      }),
+      event({
+        id: "e2",
+        op: "update",
+        at,
+        before: { ...txn, memo: "a" },
+        after: { ...txn, memo: "b" },
+      }),
+      event({ id: "e1", op: "insert", at, after: txn, rowId: "t" }),
+    ];
+    const groups = groupEvents(events, lookups);
+    expect(groups.map((g) => [g.lead.id, g.rest.map((e) => e.id)])).toEqual([
+      ["e3", []],
+      ["e2", ["e1"]],
+    ]);
+    expect(restoredEvents(events).size).toBe(0);
+  });
+
+  it("keeps a change made just after a restore apart from it", () => {
+    const at = "2026-10-16T12:00:00.000Z";
+    const events = [
+      event({
+        id: "e3",
+        op: "update",
+        at,
+        before: { ...txn, memo: "a" },
+        after: { ...txn, memo: "b" },
+      }),
+      event({ id: "e2", op: "insert", at, after: { ...txn, memo: "a" } }),
+      event({ id: "e1", op: "delete", at: "2026-10-16T11:00:00.000Z", before: txn }),
+    ];
+    expect(groupEvents(events, lookups).map((g) => [g.lead.id, g.rest.map((e) => e.id)])).toEqual([
+      ["e3", []],
+      ["e2", []],
+      ["e1", []],
     ]);
   });
 });
