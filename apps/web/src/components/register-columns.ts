@@ -218,6 +218,18 @@ const MONEY_MIN_PX: Record<MoneyColumn, number> = {
   amount: 6.5 * REM_PX,
   balance: 4.75 * REM_PX,
 };
+/**
+ * What the date and the amounts are typed into get this much before Payee, Category and Memo take
+ * the spare room past their comfortable widths: a full date with its calendar button, and a
+ * six-figure amount. A row's date and amount are what it's entered for, so their fields shouldn't
+ * be the cramped ones.
+ */
+function editorComfort(id: ColumnId, dateFormat: string) {
+  if (id === "date") return dateWidth(dateFormat);
+  if (id === "outflow" || id === "inflow") return 6.5 * REM_PX;
+  if (id === "amount") return 7 * REM_PX;
+  return undefined;
+}
 /** A cell's padding (px-2 on each side), and a little air so tabular figures never clip. */
 const MONEY_PADDING_PX = 2 * 8 + 4;
 
@@ -345,11 +357,19 @@ export function layoutColumns(
     if (!isFlex(id, dragged)) widths[id] = fixedWidth(id, sizing);
   }
   // Each flexible column starts at its floor (all of them, where there's room for that). What's
-  // left goes to Category and Memo (ROOMY), then to Category and Payee until they read their
-  // entries whole, then to each by its share.
+  // left goes first to the date and amount fields (editorComfort), then to Category and Memo
+  // (ROOMY), then to Category and Payee until they read their entries whole, then to each by its
+  // share.
   const floor = (id: ColumnId) => FLEX[id]?.[fit] ?? 0;
   for (const id of flexible) widths[id] = floor(id);
   let left = Math.max(free - flexible.reduce((sum, id) => sum + floor(id), 0), 0);
+  for (const id of columns) {
+    const comfort = editorComfort(id, dateFormat);
+    if (comfort === undefined || dragged[id] !== undefined) continue;
+    const given = Math.min(left, Math.max(0, comfort - (widths[id] ?? 0)));
+    widths[id] = (widths[id] ?? 0) + given;
+    left -= given;
+  }
   const grow = (id: ColumnId, to: number) => {
     if (!flexible.includes(id)) return;
     const given = Math.min(left, Math.max(0, to - (widths[id] ?? 0)));

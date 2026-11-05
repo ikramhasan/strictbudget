@@ -66,7 +66,8 @@ describe("layoutColumns", () => {
     expect(folded.columns).not.toContain("outflow");
     expect(folded.columns).not.toContain("inflow");
     expect(folded.columns).toContain("balance");
-    expect(folded.widths.amount).toBe(104);
+    // Room to type an amount beside its direction toggle.
+    expect(folded.widths.amount).toBe(112);
 
     const narrower = fit(account, 700);
     expect(narrower.columns).toContain("amount");
@@ -105,8 +106,7 @@ describe("layoutColumns", () => {
     expect(layout.widths.payee).toBe(240);
   });
 
-  it("fits the money columns to their widest figure and gives Payee the room first", () => {
-    const fixed = fit(account, 1006);
+  it("gives the date and amounts room to type in, then fits them to their figures", () => {
     const content = { outflow: 50, inflow: 66, balance: 70, payee: 160, category: 120 };
     const sized = layoutColumns(account, {
       dragged: {},
@@ -114,14 +114,13 @@ describe("layoutColumns", () => {
       dateFormat: "MM/DD/YYYY",
       content,
     });
-    // Each fits its widest figure with the cell's padding, but not below its header.
-    expect(sized.widths.outflow).toBe(72);
-    expect(sized.widths.inflow).toBe(86);
+    // A full date with its calendar, and a six-figure amount, however short the rows' figures.
+    expect(sized.widths.date).toBe(112);
+    expect(sized.widths.outflow).toBe(104);
+    expect(sized.widths.inflow).toBe(104);
+    // The balance isn't typed into: it fits its widest figure.
     expect(sized.widths.balance).toBe(90);
-    expect(sized.widths.outflow).toBeLessThan(fixed.widths.outflow ?? 0);
-    // The room they don't need goes to Payee and Category: the longest payee reads whole.
-    expect(sized.widths.payee).toBeGreaterThanOrEqual(176);
-    expect(sized.widths.payee).toBeGreaterThan(fixed.widths.payee ?? 0);
+    expect(sized.widths.payee).toBeGreaterThanOrEqual(132);
     // A larger figure widens its column rather than truncating.
     const big = layoutColumns(account, {
       dragged: {},
@@ -130,26 +129,46 @@ describe("layoutColumns", () => {
       content: { ...content, outflow: 110 },
     });
     expect(big.widths.outflow).toBe(130);
+    // Short of room, they give it back down to their figures (with the cell's padding) before
+    // Payee, Category or Memo are squeezed.
+    const tight = layoutColumns(account, {
+      dragged: {},
+      available: 880,
+      dateFormat: "MM/DD/YYYY",
+      content: { date: 36, outflow: 66, inflow: 66, balance: 70, payee: 150, category: 210 },
+    });
+    expect(tight.columns).toEqual(account);
+    expect(tight.widths.date).toBeLessThan(112);
+    expect(tight.widths.date).toBeGreaterThanOrEqual(72);
+    expect(tight.widths.outflow).toBe(86);
+    expect(tight.widths.payee).toBe(132);
+    expect(tight.widths.category).toBe(140);
   });
 
   it("gives Category and Memo room to read before Payee, and this year's dates no year", () => {
-    // A 1272px window with the sidebar open; a card payment's long category.
+    // A 1400px window with the sidebar open; a card payment's long category.
     const layout = layoutColumns(account, {
       dragged: {},
-      available: 998,
+      available: 1126,
       dateFormat: "MM/DD/YYYY",
       content: { date: 36, outflow: 66, inflow: 66, balance: 70, payee: 150, category: 210 },
     });
     expect(layout.columns).toEqual(account);
-    // "11/05" with room for its editor's calendar button.
-    expect(layout.widths.date).toBe(72);
     expect(layout.widths.category).toBeGreaterThanOrEqual(200);
-    expect(998 - sum(layout.widths)).toBeGreaterThanOrEqual(160);
+    expect(1126 - sum(layout.widths)).toBeGreaterThanOrEqual(160);
     expect(layout.widths.payee).toBeGreaterThanOrEqual(132);
+    // "11/05" with room for its editor's calendar button, where room is short.
+    const short = layoutColumns(account, {
+      dragged: {},
+      available: 500,
+      dateFormat: "MM/DD/YYYY",
+      content: { date: 36 },
+    });
+    expect(short.widths.date).toBe(72);
     // A last year's date widens the column to fit it whole.
     const older = layoutColumns(account, {
       dragged: {},
-      available: 998,
+      available: 500,
       dateFormat: "MM/DD/YYYY",
       content: { date: 70 },
     });
