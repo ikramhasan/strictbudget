@@ -1,18 +1,21 @@
 import { formatDate } from "@strictbudget/engine";
 import { Alert, AlertTitle } from "@strictbudget/ui/components/alert";
 import { Button } from "@strictbudget/ui/components/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@strictbudget/ui/components/card";
+import { Card, CardDescription, CardTitle } from "@strictbudget/ui/components/card";
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
+  EmptyMedia,
   EmptyTitle,
 } from "@strictbudget/ui/components/empty";
 import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus, Users, Wallet } from "lucide-react";
 import { z } from "zod";
+import { membersLabel, useMemberCount } from "@/components/budget-switcher";
 import { currencyName } from "@/components/currency-picker";
 import { ImportBudgetMenu } from "@/components/import-budget";
 import { PageHeader } from "@/components/page-header";
@@ -53,17 +56,32 @@ function AllBudgetsPage() {
         </p>
       )}
       {budgets.isPending ? (
-        <Skeleton className="h-24" />
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] gap-3">
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+        </div>
       ) : budgets.isError ? (
         <Alert variant="destructive">
           <AlertTitle>Couldn't load your budgets.</AlertTitle>
         </Alert>
       ) : budgets.data.budgets.length === 0 ? (
-        <Empty className="border">
+        <Empty className="border py-16">
           <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Wallet />
+            </EmptyMedia>
             <EmptyTitle>No budgets yet</EmptyTitle>
-            <EmptyDescription>Create one to start giving every dollar a job.</EmptyDescription>
+            <EmptyDescription>
+              Create one to start planning with the money you have, or import one you already keep.
+            </EmptyDescription>
           </EmptyHeader>
+          <EmptyContent className="flex-row justify-center">
+            <Button asChild>
+              <Link to="/budgets/new" search={{ template }}>
+                <Plus /> New budget
+              </Link>
+            </Button>
+          </EmptyContent>
         </Empty>
       ) : (
         <>
@@ -72,22 +90,24 @@ function AllBudgetsPage() {
            * Archived budgets are among them, their names stamped "(Archived on …)".
            */}
           <section className="grid gap-3">
-            <h2 className="font-medium text-muted-foreground text-sm">Your budgets</h2>
+            <h2 className="font-semibold text-sm">Your budgets</h2>
             <BudgetGrid
               budgets={budgets.data.budgets.filter((b) => b.role === "owner")}
               template={template}
+              newBudget
             />
           </section>
           <section className="grid gap-3">
-            <h2 className="font-medium text-muted-foreground text-sm">Budgets shared with you</h2>
+            <h2 className="font-semibold text-sm">Shared with you</h2>
             {budgets.data.budgets.some((b) => b.role !== "owner") ? (
               <BudgetGrid
                 budgets={budgets.data.budgets.filter((b) => b.role !== "owner")}
                 template={template}
               />
             ) : (
-              <p className="text-muted-foreground text-sm">
-                No budgets have been shared with you yet.
+              <p className="flex items-center gap-3 rounded-2xl border border-input border-dashed px-5 py-4 text-muted-foreground text-sm">
+                <Users className="size-4 shrink-0" aria-hidden />
+                When someone invites you to their budget, it shows up here.
               </p>
             )}
           </section>
@@ -97,34 +117,82 @@ function AllBudgetsPage() {
   );
 }
 
-function BudgetGrid({ budgets, template }: { budgets: Budget[]; template?: string }) {
+function BudgetGrid({
+  budgets,
+  template,
+  newBudget = false,
+}: {
+  budgets: Budget[];
+  template?: string;
+  /** End with a tile that creates a budget. */
+  newBudget?: boolean;
+}) {
   return (
     // As many cards per row as fit, at least 18rem each.
     <div className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] gap-3">
       {budgets.map((b) => (
-        <Link
-          key={b.id}
-          to="/budgets/$budgetId"
-          params={{ budgetId: b.id }}
-          search={{ template }}
-          preload={false}
-          className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <Card className="h-full transition-colors duration-150 hover:bg-muted/50">
-            <CardHeader>
-              <CardTitle className="truncate">{b.name}</CardTitle>
-              <CardDescription>
-                {b.currency} · {currencyName(b.currency)}
-              </CardDescription>
-              <CardDescription>
-                {b.role === "owner" ? "Owner" : "Shared with you"} · Created{" "}
-                {formatDate(b.createdAt.slice(0, 10), b.dateFormat)}
-              </CardDescription>
-              {b.lastUsedAt && <CardDescription>{lastUsedLabel(b.lastUsedAt)}</CardDescription>}
-            </CardHeader>
-          </Card>
-        </Link>
+        <BudgetCard key={b.id} budget={b} template={template} />
       ))}
+      {newBudget && (
+        <Link
+          to="/budgets/new"
+          search={{ template }}
+          className="flex min-h-32 items-center justify-center gap-2 rounded-2xl border border-input border-dashed text-muted-foreground text-sm outline-none transition-colors duration-150 hover:bg-muted/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Plus className="size-4" aria-hidden /> New budget
+        </Link>
+      )}
     </div>
   );
+}
+
+function BudgetCard({ budget: b, template }: { budget: Budget; template?: string }) {
+  const members = membersLabel(useMemberCount(b.id));
+  return (
+    <Link
+      to="/budgets/$budgetId"
+      params={{ budgetId: b.id }}
+      search={{ template }}
+      preload={false}
+      className="group rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Card className="h-full gap-4 transition-colors duration-150 group-hover:bg-muted/40">
+        <div className="flex items-center gap-3 px-(--card-spacing)">
+          <span
+            aria-hidden
+            className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 font-semibold text-base text-primary-text"
+          >
+            {initial(b.name)}
+          </span>
+          <div className="grid min-w-0 flex-1 gap-0.5">
+            <CardTitle className="truncate font-semibold">{b.name}</CardTitle>
+            <CardDescription className="truncate">
+              {currencyName(b.currency)} · Created{" "}
+              {formatDate(b.createdAt.slice(0, 10), b.dateFormat)}
+            </CardDescription>
+          </div>
+          <ChevronRight
+            className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5"
+            aria-hidden
+          />
+        </div>
+        <div className="flex items-center justify-between gap-3 border-t px-(--card-spacing) pt-3 text-muted-foreground text-xs">
+          <span className="flex min-w-0 items-center gap-1.5 truncate">
+            {members && <Users className="size-3.5 shrink-0" aria-hidden />}
+            {[b.role === "owner" ? "Owner" : "Shared with you", members]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+          <span className="shrink-0">
+            {b.lastUsedAt ? lastUsedLabel(b.lastUsedAt) : "Not opened yet"}
+          </span>
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
+/** The budget's first letter or symbol, for its tile. */
+function initial(name: string) {
+  return Array.from(name.trim())[0]?.toUpperCase() ?? "?";
 }

@@ -13,7 +13,8 @@ import { Input } from "@strictbudget/ui/components/input";
 import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
 import { RadioGroup, RadioGroupItem } from "@strictbudget/ui/components/radio-group";
 import { Textarea } from "@strictbudget/ui/components/textarea";
-import { Landmark } from "lucide-react";
+import { cn } from "@strictbudget/ui/lib/utils";
+import { ArrowLeft, ChevronDown, Landmark } from "lucide-react";
 import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import { editBalanceLabel } from "@/lib/accounts";
 import type { CategoryList } from "@/lib/categories";
@@ -164,24 +165,47 @@ function FormShell({
   error,
   pending,
   submitLabel,
+  onBack,
+  secondaryAction,
   children,
 }: {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   error: string | null;
   pending: boolean;
-  submitLabel: string;
+  submitLabel: ReactNode;
+  /** A Back button at the start of a divided footer (a step in a flow, like setup). */
+  onBack?: () => void;
+  /** A quieter way out, before the submit button. */
+  secondaryAction?: ReactNode;
   children: ReactNode;
 }) {
+  const stepped = onBack !== undefined;
   return (
-    <form onSubmit={onSubmit} className="grid gap-4">
+    // Fields check themselves and say what's wrong under them, not in the browser's bubble.
+    <form onSubmit={onSubmit} noValidate className="grid gap-4">
       {children}
       {error && <FieldError>{error}</FieldError>}
-      <Button type="submit" disabled={pending} className="justify-self-end">
-        {submitLabel}
-      </Button>
+      <div
+        className={cn(
+          "flex flex-wrap items-center justify-end gap-2",
+          stepped && "mt-2 gap-3 border-t pt-5",
+        )}
+      >
+        {onBack && (
+          <Button type="button" variant="ghost" className="mr-auto -ml-2.5" onClick={onBack}>
+            <ArrowLeft /> Back
+          </Button>
+        )}
+        {secondaryAction}
+        <Button type="submit" disabled={pending}>
+          {submitLabel}
+        </Button>
+      </div>
     </form>
   );
 }
+
+const NAME_REQUIRED = "Give the account a nickname, like “Checking”.";
 
 export interface NewAccountValues {
   name: string;
@@ -241,17 +265,30 @@ export function allowsOtherCurrency(type: AccountType) {
 export function AddAccountForm({
   settings,
   categories,
+  withLogo = true,
+  submitLabel = "Add account",
+  onBack,
+  secondaryAction,
   onSubmit,
 }: {
   settings: MoneySettings;
   /** The plan's categories, for a loan's pairing step (skipped while they load). */
   categories?: CategoryList;
+  /** The optional logo field (setup leaves it to the account's settings). */
+  withLogo?: boolean;
+  submitLabel?: ReactNode;
+  /** In a flow (setup): Back, at the start of a divided footer. */
+  onBack?: () => void;
+  /** A quieter way on, before the submit button (setup's "Skip for now"). */
+  secondaryAction?: ReactNode;
   onSubmit: (values: NewAccountValues) => Promise<string | null>;
 }) {
   const [type, setType] = useState<AccountType>("checking");
+  // Most accounts are in the budget's currency, so picking another waits behind a disclosure.
+  const [otherCurrency, setOtherCurrency] = useState(false);
   const [picked, setPicked] = useState<CurrencyCode>(settings.currency);
-  // Other types use the budget's currency (and the picker hides).
-  const currency = allowsOtherCurrency(type) ? picked : settings.currency;
+  // Loans use the budget's currency (and the picker hides).
+  const currency = allowsOtherCurrency(type) && otherCurrency ? picked : settings.currency;
   const money = inCurrency(settings, currency);
   const [name, setName] = useState("");
   const [logo, setLogo] = useState<Blob | null>(null);
@@ -267,6 +304,8 @@ export function AddAccountForm({
     escrowAmount: "",
   });
   const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [pairStep, setPairStep] = useState(false);
   const [pairing, setPairing] = useState<PairChoice>(null);
@@ -276,7 +315,14 @@ export function AddAccountForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>, skipPairing = false) {
     event.preventDefault();
     const parsed = parseMoneyInput(balance || "0", money);
-    if (typeof parsed === "string") return setError(parsed);
+    const missingName = name.trim() === "";
+    setNameError(missingName ? NAME_REQUIRED : null);
+    setBalanceError(typeof parsed === "string" ? parsed : null);
+    if (missingName || typeof parsed === "string") {
+      // Straight to the first field that needs fixing.
+      document.getElementById(missingName ? "account-name" : "account-balance")?.focus();
+      return setError(null);
+    }
     const loanValues = isLoan ? parseLoan(loan, settings, type) : null;
     if (loanValues && !loanValues.ok) return setError(loanValues.error);
     if (isLoan && categories && !pairStep) {
@@ -344,7 +390,9 @@ export function AddAccountForm({
       onSubmit={handleSubmit}
       error={error}
       pending={pending}
-      submitLabel={isLoan && categories ? "Next" : "Add account"}
+      submitLabel={isLoan && categories ? "Next" : submitLabel}
+      onBack={onBack}
+      secondaryAction={secondaryAction}
     >
       <Field>
         <FieldLabel htmlFor="account-type">Account type</FieldLabel>
@@ -364,45 +412,81 @@ export function AddAccountForm({
           ))}
         </NativeSelect>
       </Field>
-      <Field>
+      <Field data-invalid={nameError !== null || undefined}>
         <FieldLabel htmlFor="account-name">Nickname</FieldLabel>
         <Input
           id="account-name"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            setName(e.target.value);
+            if (e.target.value.trim()) setNameError(null);
+          }}
           maxLength={100}
-          required
+          aria-invalid={nameError !== null || undefined}
+          aria-describedby={nameError ? "account-name-error" : undefined}
         />
+        {nameError && <FieldError id="account-name-error">{nameError}</FieldError>}
       </Field>
-      <AccountLogoField
-        name={name}
-        src={logoPreview}
-        onPick={setLogo}
-        onRemove={() => setLogo(null)}
-      />
-      {allowsOtherCurrency(type) && (
-        <Field>
-          <FieldLabel htmlFor="account-currency">Currency</FieldLabel>
-          <CurrencyPicker id="account-currency" value={picked} onChange={setPicked} />
-          <FieldDescription>
-            {isOnBudget(type)
-              ? `Amounts are in this currency; the plan counts them in ${settings.currency} at each transaction's rate.`
-              : "Amounts in this account are in its own currency."}
-          </FieldDescription>
-        </Field>
+      {withLogo && (
+        <AccountLogoField
+          name={name}
+          src={logoPreview}
+          onPick={setLogo}
+          onRemove={() => setLogo(null)}
+        />
       )}
-      <Field>
-        <FieldLabel htmlFor="account-balance">
-          {debt ? "How much do you owe today?" : "What's the balance today?"}
-        </FieldLabel>
+      <Field data-invalid={balanceError !== null || undefined}>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <FieldLabel htmlFor="account-balance">
+            {debt ? "How much do you owe today?" : "What's the balance today?"}
+          </FieldLabel>
+          {allowsOtherCurrency(type) && (
+            <button
+              type="button"
+              aria-expanded={otherCurrency}
+              aria-controls={otherCurrency ? "account-currency-field" : undefined}
+              onClick={() => {
+                setOtherCurrency((open) => !open);
+                setPicked(settings.currency);
+              }}
+              className="inline-flex items-center gap-1 rounded-sm text-muted-foreground text-xs outline-none transition-colors duration-150 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {otherCurrency ? `Use ${settings.currency}` : "Different currency?"}
+              <ChevronDown
+                aria-hidden
+                className={cn(
+                  "size-3.5 transition-transform duration-150",
+                  otherCurrency && "rotate-180",
+                )}
+              />
+            </button>
+          )}
+        </div>
         <Input
           id="account-balance"
           inputMode="decimal"
           value={balance}
-          onChange={(e) => setBalance(e.target.value)}
+          onChange={(e) => {
+            setBalance(e.target.value);
+            setBalanceError(null);
+          }}
           placeholder={toMoneyInput("0", money)}
+          aria-invalid={balanceError !== null || undefined}
+          aria-describedby={balanceError ? "account-balance-error" : undefined}
         />
+        {balanceError && <FieldError id="account-balance-error">{balanceError}</FieldError>}
       </Field>
+      {allowsOtherCurrency(type) && otherCurrency && (
+        <Field id="account-currency-field">
+          <FieldLabel htmlFor="account-currency">Currency</FieldLabel>
+          <CurrencyPicker id="account-currency" value={picked} onChange={setPicked} />
+          <FieldDescription>
+            {isOnBudget(type)
+              ? `Transactions stay in this currency; your plan converts them to ${settings.currency}.`
+              : "Amounts in this account are in its own currency."}
+          </FieldDescription>
+        </Field>
+      )}
       {isLoan && <LoanFields values={loan} onChange={setLoan} type={type} adding />}
     </FormShell>
   );
@@ -444,12 +528,18 @@ export function EditAccountForm({
     escrowAmount: toMoneyInput(initial.escrowAmount, settings),
   });
   const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const family = accountFamily(initial.type);
   const isLoan = family === "loan";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (name.trim() === "") {
+      setNameError(NAME_REQUIRED);
+      document.getElementById("edit-account-name")?.focus();
+      return;
+    }
     const loanValues = isLoan
       ? parseLoan(loan, settings, type)
       : ({ ok: true, interestRate: null, minimumPayment: null, escrowAmount: null } as const);
@@ -477,15 +567,20 @@ export function EditAccountForm({
   return (
     <FormShell onSubmit={handleSubmit} error={error} pending={pending} submitLabel="Save">
       {logo}
-      <Field>
+      <Field data-invalid={nameError !== null || undefined}>
         <FieldLabel htmlFor="edit-account-name">Nickname</FieldLabel>
         <Input
           id="edit-account-name"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            setName(e.target.value);
+            if (e.target.value.trim()) setNameError(null);
+          }}
           maxLength={100}
-          required
+          aria-invalid={nameError !== null || undefined}
+          aria-describedby={nameError ? "edit-account-name-error" : undefined}
         />
+        {nameError && <FieldError id="edit-account-name-error">{nameError}</FieldError>}
       </Field>
       <Field>
         <FieldLabel htmlFor="edit-account-type">{isLoan ? "Loan Type" : "Account type"}</FieldLabel>

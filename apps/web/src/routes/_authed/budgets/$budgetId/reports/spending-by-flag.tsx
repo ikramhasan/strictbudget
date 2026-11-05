@@ -26,7 +26,7 @@ import { useBudget } from "@/lib/budget-context";
 import { categoriesQueryOptions } from "@/lib/categories";
 import { todayIso } from "@/lib/dates";
 import { FLAG_CLASS, FLAG_COLOR, flagName, flagsQueryOptions } from "@/lib/flags";
-import { monthLabel, rangeLabel, reportActivityOptions, UNCATEGORIZED_COLOR } from "@/lib/reports";
+import { monthLabel, reportActivityOptions, UNCATEGORIZED_COLOR } from "@/lib/reports";
 import { breakdownOf, breakdownRows } from "@/lib/spending-breakdown";
 import {
   exportName,
@@ -179,7 +179,7 @@ function Overview({
         )}
       </section>
       <ChartCard
-        title={`Spending by flag · ${rangeLabel(state.range)}`}
+        title="Spending by flag"
         view={search.view ?? "chart"}
         onViewChange={(view) => update({ view })}
         loading={loading}
@@ -190,7 +190,7 @@ function Overview({
             breakdown={breakdown}
             income={undefined}
             previous={undefined}
-            positiveTitle="Positive Inflow Flags"
+            positiveTitle="Positive inflow flags"
             onSelect={open}
           />
         }
@@ -200,7 +200,7 @@ function Overview({
             income={undefined}
             previous={undefined}
             rowTitle="Flag"
-            positiveTitle="Positive Inflow Flags"
+            positiveTitle="Positive inflow flags"
             onSelect={open}
           />
         }
@@ -270,10 +270,10 @@ function OneFlag({
 
   return (
     <>
-      <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-sm">
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1 font-medium text-lg">
         <button
           type="button"
-          className="text-muted-foreground hover:text-foreground hover:underline"
+          className="rounded-sm text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={() => update({ flag: undefined, view: undefined, months: undefined })}
         >
           All flags
@@ -302,7 +302,7 @@ function OneFlag({
         )}
       </section>
       <ChartCard
-        title={`Categories · ${rangeLabel(state.range)}`}
+        title="Categories"
         view={search.view ?? "chart"}
         onViewChange={(view) => update({ view })}
         loading={loading}
@@ -313,7 +313,7 @@ function OneFlag({
             breakdown={breakdown}
             income={undefined}
             previous={undefined}
-            positiveTitle="Positive Inflow Categories"
+            positiveTitle="Positive inflow categories"
             onSelect={drillCategory}
           />
         }
@@ -323,13 +323,13 @@ function OneFlag({
             income={undefined}
             previous={undefined}
             rowTitle="Category"
-            positiveTitle="Positive Inflow Categories"
+            positiveTitle="Positive inflow categories"
             onSelect={drillCategory}
           />
         }
       />
       <ChartCard
-        title={`By month · ${rangeLabel(state.range)}`}
+        title="By month"
         view={search.months ?? "chart"}
         onViewChange={(months) => update({ months })}
         loading={byMonth.isPending}
@@ -366,11 +366,11 @@ function Stat({
     <button
       type="button"
       onClick={onClick}
-      className="grid content-start gap-1 rounded-lg border p-4 text-left transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="grid content-start gap-1 rounded-lg border bg-card p-4 text-left transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {body}
     </button>
   ) : (
-    <div className="grid content-start gap-1 rounded-lg border p-4">{body}</div>
+    <div className="grid content-start gap-1 rounded-lg border bg-card p-4">{body}</div>
   );
 }

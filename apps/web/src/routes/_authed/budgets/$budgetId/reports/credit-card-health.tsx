@@ -1,21 +1,19 @@
-import { addMonths, type BudgetMonth, money, monthOf } from "@strictbudget/engine";
-import { Button } from "@strictbudget/ui/components/button";
+import { type BudgetMonth, money, monthOf } from "@strictbudget/engine";
 import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ChartCard } from "@/components/reports/chart-card";
+import { ChartCard, ReportEmpty } from "@/components/reports/chart-card";
 import {
   CardChart,
   CardSummary,
   CardTable,
   FloatTable,
 } from "@/components/reports/credit-card-health";
+import { MonthStepper } from "@/components/reports/range-picker";
 import { ReportPage } from "@/components/reports/report-page";
 import { useBudget } from "@/lib/budget-context";
 import { creditCardHealthOptions, creditCardHealthSearchSchema } from "@/lib/credit-card-health";
 import { todayIso } from "@/lib/dates";
-import { monthLabel } from "@/lib/reports";
 
 export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/credit-card-health")({
   validateSearch: creditCardHealthSearchSchema,
@@ -47,42 +45,23 @@ function Report() {
     <ReportPage
       title="Credit Card Health"
       filters={
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Previous month"
-            disabled={data !== undefined && month <= data.firstMonth}
-            onClick={() => setSearch({ month: addMonths(month, -1) })}
-          >
-            <ChevronLeft />
-          </Button>
-          <span className="min-w-28 text-center font-medium text-sm tabular-nums">
-            {monthLabel(month, "long")}
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Next month"
-            disabled={month >= current}
-            onClick={() => {
-              const next = addMonths(month, 1);
-              setSearch({ month: next >= current ? undefined : next });
-            }}
-          >
-            <ChevronRight />
-          </Button>
-        </div>
+        <MonthStepper
+          month={month}
+          first={data?.firstMonth as BudgetMonth | undefined}
+          current={current}
+          onChange={(next) => setSearch({ month: next >= current ? undefined : next })}
+        />
       }
     >
       {query.isError ? (
-        <p className="text-muted-foreground text-sm">Couldn't load the credit card health.</p>
+        <ReportEmpty>Couldn't load the credit card health. Try again in a moment.</ReportEmpty>
       ) : !data ? (
         <Skeleton className="h-32 w-full" />
       ) : data.cards.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          No open credit cards or lines of credit in this plan.
-        </p>
+        <ReportEmpty title="No credit cards to check">
+          Add a credit card or line of credit, and how each balance compares with what you've set
+          aside for it will show here.
+        </ReportEmpty>
       ) : (
         <>
           <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -91,7 +70,7 @@ function Report() {
             <Total label="Still to set aside" value={format(data.totals.unfunded)} />
           </dl>
           {data.cards.map((card) => (
-            <section key={card.accountId} className="grid gap-3 rounded-lg border p-4">
+            <section key={card.accountId} className="grid gap-3 rounded-lg border bg-card p-4">
               <CardSummary
                 card={card}
                 month={month}
@@ -111,7 +90,7 @@ function Report() {
               />
             </section>
           ))}
-          <section className="grid gap-2 rounded-lg border p-4">
+          <section className="grid gap-2 rounded-lg border bg-card p-4">
             <h2 className="font-semibold">Living on the float</h2>
             <p className="text-muted-foreground text-sm">
               What the cards' payment categories lacked at each month's end. It's paid with money
@@ -129,9 +108,9 @@ function Report() {
 
 function Total({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border p-4">
+    <div className="rounded-lg border bg-card p-4">
       <dt className="text-muted-foreground text-sm">{label}</dt>
-      <dd className="font-semibold text-xl tabular-nums">{value}</dd>
+      <dd className="font-semibold text-2xl tabular-nums">{value}</dd>
     </div>
   );
 }

@@ -55,9 +55,9 @@ describe("Spending Trends table", () => {
     ).toEqual([
       ["October 2026 (above average)", "$3,601.00", "↑+$1,549.00 (75.5%)"],
       ["September 2026 (above average)", "$2,552.00", "↑+$500.00 (24.4%)"],
-      ["August 2026", "$3.00", "↓-$2,049.00 (99.9%)"],
+      ["August 2026", "$3.00", "↓−$2,049.00 (99.9%)"],
     ]);
-    expect(screen.getByRole("button", { name: "About Compared to Average" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "About compared to average" })).toBeVisible();
   });
 
   it("adds the comparison's column", () => {

@@ -18,9 +18,9 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
     <CommandPrimitive
       data-slot="command"
       className={cn(
-        // The Dropdown Menu's muted shell: 14px radius, 6px padding, so the
+        // The Dropdown Menu's shell (strictbudget: popover): 14px radius, 6px padding, so the
         // field and the rows inside it are 8px (14 − 6).
-        "flex size-full flex-col overflow-hidden rounded-xl bg-muted p-1.5 text-sm text-popover-foreground dark:bg-[color-mix(in_oklch,var(--popover),black_20%)]",
+        "flex size-full flex-col overflow-hidden rounded-xl bg-popover p-1.5 text-sm text-popover-foreground",
         className,
       )}
       {...props}
@@ -60,8 +60,12 @@ function CommandDialog({
 
 function CommandInput({
   className,
+  chip,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & {
+  /** strictbudget: names the step the search is in ("Move money"), in front of the query. */
+  chip?: React.ReactNode;
+}) {
   return (
     <div data-slot="command-input-wrapper" className="pb-1.5">
       {/* The query is typed into the surface: the Kbd's recessed well. It
@@ -78,6 +82,15 @@ function CommandInput({
         />
         <InputGroupAddon>
           <SearchIcon className="size-4 shrink-0" />
+          {chip && (
+            // A raised key on the recessed well, like the highlighted row.
+            <span
+              data-slot="command-input-chip"
+              className="-my-0.5 inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-sm bg-background px-1.5 font-medium text-foreground text-xs shadow-[0_1px_2px_rgb(0_0_0/0.08),0_0_0_1px_rgb(0_0_0/0.06)] dark:bg-secondary dark:shadow-[0_1px_2px_rgb(0_0_0/0.5),0_0_0_1px_rgb(255_255_255/0.05)]"
+            >
+              {chip}
+            </span>
+          )}
         </InputGroupAddon>
       </InputGroup>
     </div>
@@ -163,10 +176,10 @@ function CommandItem({
       className={cn(
         // strictbudget: cmdk writes data-selected="false" on the other rows, so the
         // highlight keys on data-[selected=true], not the bare data-selected.
-        // The Dropdown Menu row: 32px, and the highlighted row lifts out of the
-        // shell as a raised key. A press sinks it back (the Button's press).
+        // The Dropdown Menu row: 32px, the highlighted row accent-tinted
+        // (strictbudget). A press sinks it (the Button's press).
         // Highlight is instant: it follows the arrow keys tens of times a day.
-        "group/command-item relative flex min-h-8 cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-[selected=true]:bg-linear-to-b data-[selected=true]:from-background data-[selected=true]:to-[color-mix(in_oklch,var(--background),var(--secondary)_60%)] data-[selected=true]:text-foreground data-[selected=true]:shadow-[0_1px_2px_rgb(0_0_0/0.08),0_0_0_1px_rgb(0_0_0/0.06),inset_0_-1px_0_rgb(0_0_0/0.03)] data-[selected=true]:active:translate-y-[0.5px] data-[selected=true]:active:shadow-[0_0_0_1px_rgb(0_0_0/0.06)] motion-reduce:data-[selected=true]:active:translate-y-0 dark:data-[selected=true]:from-[color-mix(in_oklch,var(--secondary),var(--foreground)_7%)] dark:data-[selected=true]:to-[color-mix(in_oklch,var(--secondary),var(--foreground)_3%)] dark:data-[selected=true]:shadow-[0_1px_2px_rgb(0_0_0/0.5),0_0_0_1px_rgb(255_255_255/0.05),inset_0_1px_0_rgb(255_255_255/0.06)] dark:data-[selected=true]:active:shadow-[0_0_0_1px_rgb(255_255_255/0.05)] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground data-[selected=true]:[&_svg:not([class*='text-'])]:text-foreground",
+        "group/command-item relative flex min-h-8 cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-[selected=true]:bg-accent data-[selected=true]:text-foreground data-[selected=true]:active:translate-y-[0.5px] motion-reduce:data-[selected=true]:active:translate-y-0 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground data-[selected=true]:[&_svg:not([class*='text-'])]:text-foreground",
         className,
       )}
       {...props}

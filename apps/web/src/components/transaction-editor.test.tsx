@@ -1,11 +1,11 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { Account } from "@/lib/accounts";
 import type { MoneySettings } from "@/lib/money-input";
-import { emptyDraft } from "@/lib/transactions";
+import { type Draft, emptyDraft, emptyLine } from "@/lib/transactions";
 import { registerColumns } from "./register-columns";
-import { TransactionEditor } from "./transaction-editor";
+import { type EditorFocus, TransactionEditor } from "./transaction-editor";
 
 const usd: MoneySettings = {
   currency: "USD",
@@ -41,7 +41,27 @@ const account = (id: string, type: Account["type"]): Account => ({
   balances: { cleared: "0", uncleared: "0", working: "0" },
 });
 
-function renderEditor(accountId = "checking", { another = false } = {}) {
+/** The register's columns with Outflow and Inflow folded into one Amount (a narrow register). */
+const folded = registerColumns(false).flatMap((c) =>
+  c === "outflow" ? (["amount"] as const) : c === "inflow" ? [] : [c],
+);
+
+function renderEditor(
+  accountId = "checking",
+  {
+    another = false,
+    columns = registerColumns(false),
+    initial,
+    focusCell,
+    morePayees = [],
+  }: {
+    morePayees?: string[];
+    another?: boolean;
+    columns?: ReturnType<typeof registerColumns>;
+    initial?: Draft;
+    focusCell?: EditorFocus;
+  } = {},
+) {
   const onSave = vi.fn();
   const onCancel = vi.fn();
   const onSaveAndAddAnother = vi.fn();
@@ -50,8 +70,9 @@ function renderEditor(accountId = "checking", { another = false } = {}) {
     <table>
       <tbody>
         <TransactionEditor
-          initial={emptyDraft(accountId, "2026-10-01")}
-          columns={registerColumns(false)}
+          initial={initial ?? emptyDraft(accountId, "2026-10-01")}
+          focusCell={focusCell}
+          columns={columns}
           accounts={[
             account("checking", "checking"),
             account("savings", "savings"),
@@ -59,6 +80,17 @@ function renderEditor(accountId = "checking", { another = false } = {}) {
             account("visa", "credit_card"),
           ]}
           payees={[
+            ...morePayees.map((name, i) => ({
+              id: `more-${i}`,
+              name,
+              hidden: false,
+              useCount: 1,
+              categorization: "auto" as const,
+              defaultCategoryId: null,
+              autoCategoryId: null,
+              prefillCategoryId: null,
+              recentCategoryIds: [],
+            })),
             {
               id: "p1",
               name: "Market",
@@ -197,7 +229,12 @@ describe("TransactionEditor", () => {
   it("offers Save and add another on a new row, and Enter does it", async () => {
     const { onSave, onSaveAndAddAnother } = renderEditor("checking", { another: true });
     const user = userEvent.setup();
-    expect(screen.getByRole("button", { name: "Save and add another" })).toBeInTheDocument();
+    // Enter's action is the primary button; Save, which closes the row, is the quieter one.
+    expect(screen.getByRole("button", { name: "Save and add another" })).toHaveAttribute(
+      "data-variant",
+      "default",
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toHaveAttribute("data-variant", "outline");
     await user.type(screen.getByLabelText("Outflow"), "5{Enter}");
     expect(onSaveAndAddAnother).toHaveBeenCalledWith(
       expect.objectContaining({ outflow: "5" }),
@@ -252,8 +289,9 @@ describe("TransactionEditor", () => {
     const { onSave } = renderEditor();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Payee"), "Bakery");
-    expect(screen.getByRole("button", { name: "Create “Bakery” Payee" })).toBeInTheDocument();
-    expect(screen.getByText("“Bakery” will be created as a payee.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create “Bakery” payee" })).toBeInTheDocument();
+    // Said once, by the button.
+    expect(screen.getAllByText(/Bakery/)).toHaveLength(1);
     await user.keyboard("{Enter}");
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ payeeName: "Bakery" }), null);
   });
@@ -267,8 +305,8 @@ describe("TransactionEditor", () => {
     await user.click(screen.getByLabelText("Payee"));
     const groups = within(screen.getByRole("listbox")).getAllByRole("group");
     expect(groups[0]).toHaveTextContent(/^SelectedMarket$/);
-    expect(groups[1]).toHaveTextContent(/^Payments and Transfers/);
-    expect(groups[2]).toHaveTextContent(/^Saved PayeesMarket$/);
+    expect(groups[1]).toHaveTextContent(/^Payments and transfers/);
+    expect(groups[2]).toHaveTextContent(/^Saved payeesMarket$/);
   });
 
   it("creates the typed payee from the button even when a payee matches", async () => {
@@ -276,11 +314,87 @@ describe("TransactionEditor", () => {
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Payee"), "Mar");
     expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual(["Market"]);
-    await user.click(screen.getByRole("button", { name: "Create “Mar” Payee" }));
+    // Typed on, the name completes; Backspace takes the completion off.
+    expect(screen.getByLabelText("Payee")).toHaveValue("Market");
+    await user.keyboard("{Backspace}");
+    await user.click(screen.getByRole("button", { name: "Create “Mar” payee" }));
     expect(screen.getByLabelText("Payee")).toHaveValue("Mar");
     expect(screen.getByLabelText("Category")).toHaveValue("");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ payeeName: "Mar" }), null);
+  });
+
+  it("completes a typed payee in the field, keeping it as you type on and on Tab", async () => {
+    renderEditor();
+    const user = userEvent.setup();
+    const payee = screen.getByLabelText("Payee") as HTMLInputElement;
+    await user.type(payee, "ma");
+    expect(payee).toHaveValue("Market");
+    expect([payee.selectionStart, payee.selectionEnd]).toEqual([2, 6]);
+    // Typing the next letter of the completion replaces the selection and completes again.
+    await user.keyboard("r");
+    expect(payee).toHaveValue("Market");
+    expect([payee.selectionStart, payee.selectionEnd]).toEqual([3, 6]);
+    await user.keyboard("{Tab}");
+    expect(payee).toHaveValue("Market");
+  });
+
+  it("stops at a payee whose whole name is typed, though a longer one starts with it", async () => {
+    // The longer name comes first, so "m" completes to it.
+    renderEditor("checking", { morePayees: ["Market Hall"] });
+    const user = userEvent.setup();
+    const payee = screen.getByLabelText("Payee") as HTMLInputElement;
+    await user.type(payee, "market");
+    expect(payee).toHaveValue("market");
+    await user.keyboard("{Tab}");
+    expect(payee).toHaveValue("Market");
+  });
+
+  describe("opened by a click on a cell", () => {
+    const split: Draft = {
+      ...emptyDraft("checking", "2026-10-01"),
+      payeeName: "Market",
+      memo: "Weekly shop",
+      outflow: "30.00",
+      lines: [
+        emptyLine({ categoryId: "groceries", outflow: "20.00" }),
+        emptyLine({ categoryId: "rent", outflow: "10.00", payeeName: "Landlord" }),
+      ],
+    };
+
+    it("starts in the clicked field instead of the date", async () => {
+      renderEditor("checking", { initial: split, focusCell: { column: "memo" } });
+      await waitFor(() => expect(screen.getByLabelText("Memo")).toHaveFocus());
+      expect(screen.getByLabelText("Date")).not.toHaveFocus();
+    });
+
+    it("selects a clicked amount, so typing replaces it", async () => {
+      renderEditor("checking", { initial: split, focusCell: { column: "outflow" } });
+      const outflow = screen.getByLabelText("Outflow") as HTMLInputElement;
+      await waitFor(() => expect(outflow).toHaveFocus());
+      expect([outflow.selectionStart, outflow.selectionEnd]).toEqual([0, outflow.value.length]);
+    });
+
+    it("starts in a split line's field, and in the first line's category for the split's", async () => {
+      renderEditor("checking", { initial: split, focusCell: { column: "payee", line: 1 } });
+      await waitFor(() => expect(screen.getByLabelText("Payee, line 2")).toHaveFocus());
+    });
+
+    it("starts in the first line's category for the split's own category", async () => {
+      renderEditor("checking", { initial: split, focusCell: { column: "category" } });
+      await waitFor(() => expect(screen.getByLabelText("Category, line 1")).toHaveFocus());
+    });
+  });
+
+  it("opens an empty category's closed list on Enter instead of saving", async () => {
+    const { onSave } = renderEditor();
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText("Category"));
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("option", { name: "Rent" })).not.toBeInTheDocument();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("option", { name: "Rent" })).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it("closes an open list on Esc before cancelling the row", async () => {
@@ -364,7 +478,7 @@ describe("TransactionEditor", () => {
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Outflow"), "5");
     await user.click(screen.getByLabelText("Payee"));
-    expect(screen.getByText("Payments and Transfers")).toBeInTheDocument();
+    expect(screen.getByText("Payments and transfers")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Transfer to savings" })).toBeInTheDocument();
     await user.click(screen.getByRole("option", { name: "Transfer to savings" }));
     expect(screen.getByLabelText("Payee")).toHaveValue("Transfer to savings");
@@ -375,12 +489,12 @@ describe("TransactionEditor", () => {
     const user = userEvent.setup();
     const headings = () =>
       screen
-        .getAllByText(/^(Saved Payees|Payments and Transfers)$/)
+        .getAllByText(/^(Saved payees|Payments and transfers)$/)
         .map((element) => element.textContent);
     await user.click(screen.getByLabelText("Payee"));
-    expect(headings()).toEqual(["Payments and Transfers", "Saved Payees"]);
+    expect(headings()).toEqual(["Payments and transfers", "Saved payees"]);
     await user.type(screen.getByLabelText("Payee"), "a");
-    expect(headings()).toEqual(["Saved Payees", "Payments and Transfers"]);
+    expect(headings()).toEqual(["Saved payees", "Payments and transfers"]);
   });
 
   it("offers Payment/Transfer in the category list, back to the payee list", async () => {
@@ -397,27 +511,108 @@ describe("TransactionEditor", () => {
     expect(screen.getByRole("option", { name: "To/From savings" })).toBeInTheDocument();
   });
 
+  it("totals a split's lines live while its own amount is empty", async () => {
+    renderEditor();
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText("Category"));
+    await user.click(screen.getByRole("option", { name: "Split" }));
+    await user.type(screen.getByLabelText("Outflow, line 1"), "30");
+    await user.type(screen.getByLabelText("Outflow, line 2"), "12.5");
+    expect(screen.getByText("Total $42.50")).toBeInTheDocument();
+    expect(screen.getByLabelText("Outflow")).toHaveValue("");
+    expect(screen.getByLabelText("Outflow")).toHaveAttribute("placeholder", "$42.50");
+  });
+
   it("splits across categories, with a remaining counter", async () => {
     const { onSave } = renderEditor();
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Outflow"), "120");
     await user.click(screen.getByLabelText("Category"));
     await user.click(screen.getByRole("option", { name: "Split" }));
-    expect(screen.getByText("Split (2 lines)")).toBeInTheDocument();
-    expect(screen.getByText("120.00 left to split")).toBeInTheDocument();
-
-    await user.type(screen.getByLabelText("Outflow, line 1"), "80");
-    await user.type(screen.getByLabelText("Outflow, line 2"), "40");
+    expect(screen.getByText("Split into 2 lines")).toBeInTheDocument();
+    // The amount reads as the budget writes amounts once it's left.
+    expect(screen.getByLabelText("Outflow")).toHaveValue("120.00");
+    // The first line starts with the whole amount, selected so typing replaces it.
+    const first = screen.getByLabelText("Outflow, line 1") as HTMLInputElement;
+    await waitFor(() => expect(first).toHaveFocus());
+    expect(first).toHaveValue("120.00");
+    expect([first.selectionStart, first.selectionEnd]).toEqual([0, 6]);
+    expect(screen.getByLabelText("Outflow, line 2")).toHaveValue("");
     expect(screen.getByText("Fully split")).toBeInTheDocument();
+
+    // The last empty line takes the rest once the other's amount changes.
+    await user.keyboard("80");
+    // What's left is only a count while the lines are being typed, not an error.
+    expect(screen.getByText("Remaining $40.00")).not.toHaveClass("text-destructive");
+    await user.tab();
+    expect(screen.getByLabelText("Outflow, line 1")).toHaveValue("80.00");
+    expect(screen.getByLabelText("Outflow, line 2")).toHaveValue("40.00");
+    expect(screen.getByText("Fully split")).toHaveClass("text-success");
     await user.click(screen.getByRole("button", { name: "Add line" }));
     await user.click(screen.getByRole("button", { name: "Remove line 3" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
-        outflow: "120",
+        outflow: "120.00",
         lines: [
-          expect.objectContaining({ outflow: "80" }),
-          expect.objectContaining({ outflow: "40" }),
+          expect.objectContaining({ outflow: "80.00" }),
+          expect.objectContaining({ outflow: "40.00" }),
+        ],
+      }),
+      null,
+    );
+  });
+
+  it("moves to the first line's amount once split from the category list", async () => {
+    renderEditor();
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Inflow"), "50");
+    await user.click(screen.getByLabelText("Category"));
+    await user.click(screen.getByRole("option", { name: "Split" }));
+    // On the transaction's side: an inflow's lines start in Inflow.
+    await waitFor(() => expect(screen.getByLabelText("Inflow, line 1")).toHaveFocus());
+  });
+
+  it("edits a folded Amount, its sign switched by its button or a typed + or -", async () => {
+    const { onSave } = renderEditor("checking", { columns: folded });
+    const user = userEvent.setup();
+    expect(screen.queryByLabelText("Inflow")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Outflow"), "+25");
+    expect(screen.getByLabelText("Inflow")).toHaveValue("25");
+    await user.click(screen.getByRole("button", { name: "Make it an outflow" }));
+    expect(screen.getByLabelText("Outflow")).toHaveValue("25.00");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ outflow: "25.00", inflow: "" }),
+      null,
+    );
+
+    await user.clear(screen.getByLabelText("Outflow"));
+    await user.type(screen.getByLabelText("Outflow"), "+12");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenLastCalledWith(
+      expect.objectContaining({ outflow: "", inflow: "12.00" }),
+      null,
+    );
+  });
+
+  it("splits within a folded Amount, each line on the transaction's side", async () => {
+    const { onSave } = renderEditor("checking", { columns: folded });
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Outflow"), "120");
+    await user.click(screen.getByLabelText("Category"));
+    await user.click(screen.getByRole("option", { name: "Split" }));
+    await waitFor(() => expect(screen.getByLabelText("Outflow, line 1")).toHaveFocus());
+    expect(screen.getByLabelText("Outflow, line 1")).toHaveValue("120.00");
+    await user.keyboard("80");
+    await user.tab();
+    expect(screen.getByLabelText("Outflow, line 2")).toHaveValue("40.00");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lines: [
+          expect.objectContaining({ outflow: "80.00" }),
+          expect.objectContaining({ outflow: "40.00" }),
         ],
       }),
       null,
@@ -430,12 +625,14 @@ describe("TransactionEditor", () => {
     await user.type(screen.getByLabelText("Outflow"), "10");
     await user.click(screen.getByLabelText("Category"));
     await user.click(screen.getByRole("option", { name: "Split" }));
+    await user.clear(screen.getByLabelText("Outflow, line 1"));
     await user.type(screen.getByLabelText("Outflow, line 1"), "3");
+    await user.clear(screen.getByLabelText("Outflow, line 2"));
     await user.type(screen.getByLabelText("Outflow, line 2"), "4");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).not.toHaveBeenCalled();
     const prompt = await screen.findByRole("alertdialog");
-    expect(prompt).toHaveTextContent("Something Doesn't Add Up");
+    expect(prompt).toHaveTextContent("Something doesn't add up");
     expect(prompt).toHaveTextContent(
       "The total is -$10.00, but the splits add up to -$7.00. How would you like to handle " +
         "the unassigned -$3.00?",
@@ -446,7 +643,7 @@ describe("TransactionEditor", () => {
 
     // Auto-Distribute: 3 and 4 share the $3; the row stays open.
     await user.click(screen.getByRole("button", { name: "Save" }));
-    await user.click(await screen.findByRole("button", { name: "Auto-Distribute" }));
+    await user.click(await screen.findByRole("button", { name: "Auto-distribute" }));
     expect(screen.getByLabelText("Outflow, line 1")).toHaveValue("4.29");
     expect(screen.getByLabelText("Outflow, line 2")).toHaveValue("5.71");
     expect(onSave).not.toHaveBeenCalled();
@@ -460,13 +657,17 @@ describe("TransactionEditor", () => {
     await user.type(screen.getByLabelText("Outflow"), "10");
     await user.click(screen.getByLabelText("Category"));
     await user.click(screen.getByRole("option", { name: "Split" }));
+    await user.clear(screen.getByLabelText("Outflow, line 1"));
     await user.type(screen.getByLabelText("Outflow, line 1"), "3");
+    await user.clear(screen.getByLabelText("Outflow, line 2"));
     await user.type(screen.getByLabelText("Outflow, line 2"), "4");
     await user.click(screen.getByRole("button", { name: "Save" }));
-    await user.click(await screen.findByRole("button", { name: "Adjust Manually" }));
-    expect(screen.getByLabelText("Outflow")).toHaveValue("10");
+    await user.click(await screen.findByRole("button", { name: "Adjust manually" }));
+    expect(screen.getByLabelText("Outflow")).toHaveValue("10.00");
+    // Saving found the lines short, so what's left now reads as a problem.
+    expect(screen.getByText("Remaining $3.00")).toHaveClass("text-destructive");
     await user.click(screen.getByRole("button", { name: "Save" }));
-    await user.click(await screen.findByRole("button", { name: "Update Total" }));
+    await user.click(await screen.findByRole("button", { name: "Update total" }));
     expect(screen.getByLabelText("Outflow")).toHaveValue("7.00");
     expect(onSave).not.toHaveBeenCalled();
   });
@@ -502,15 +703,30 @@ describe("TransactionEditor", () => {
 });
 
 describe("TransactionEditor, stacked for a phone's drawer", () => {
-  it("names each field, opens without focusing one, and saves", async () => {
+  function renderStacked(
+    props: { focusAmount?: boolean; recentPayees?: string[]; allAccounts?: boolean } = {},
+  ) {
     const onSave = vi.fn();
+    const { allAccounts = false, ...rest } = props;
     render(
       <TransactionEditor
         layout="stacked"
         initial={emptyDraft("checking", "2026-10-01")}
-        columns={registerColumns(false)}
-        accounts={[account("checking", "checking")]}
-        payees={[]}
+        columns={registerColumns(allAccounts)}
+        accounts={[account("checking", "checking"), account("savings", "savings")]}
+        payees={[
+          {
+            id: "p1",
+            name: "Market",
+            hidden: false,
+            useCount: 3,
+            categorization: "auto",
+            defaultCategoryId: null,
+            autoCategoryId: "rent",
+            prefillCategoryId: "rent",
+            recentCategoryIds: ["rent"],
+          },
+        ]}
         categories={[{ id: "rent", name: "Rent", group: "Bills" }]}
         dateFormat="MM/DD/YYYY"
         settings={usd}
@@ -520,16 +736,93 @@ describe("TransactionEditor, stacked for a phone's drawer", () => {
         error={null}
         onSave={onSave}
         onCancel={vi.fn()}
+        {...rest}
       />,
     );
-    const form = screen.getByRole("form", { name: "New transaction" });
+    return { onSave, form: screen.getByRole("form", { name: "New transaction" }) };
+  }
+
+  it("names each field, opens without focusing one, and saves", async () => {
+    const { onSave, form } = renderStacked();
     for (const name of ["Date", "Payee", "Category", "Memo", "Outflow", "Inflow"]) {
       expect(within(form).getByText(name)).toBeInTheDocument();
     }
+    // The memo is named above it, not again inside it.
+    expect(within(form).getByLabelText("Memo")).not.toHaveAttribute("placeholder");
     expect(document.activeElement).toBe(document.body);
     const user = userEvent.setup();
-    await user.type(within(form).getByLabelText("Outflow"), "12.50");
+    await user.type(within(form).getByLabelText("Outflow"), "12.5");
     await user.click(within(form).getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ outflow: "12.50" }), null);
+  });
+
+  it("starts in the amount, switched between outflow and inflow, with recent payees a tap away", async () => {
+    const { onSave, form } = renderStacked({ focusAmount: true, recentPayees: ["Market"] });
+    const amount = within(form).getByLabelText("Outflow");
+    expect(amount).toHaveFocus();
+    expect(amount).toHaveAttribute("inputmode", "decimal");
+    const user = userEvent.setup();
+    await user.keyboard("40");
+    await user.click(within(form).getByRole("radio", { name: "Inflow" }));
+    expect(within(form).getByLabelText("Inflow")).toHaveValue("40.00");
+    await user.click(within(form).getByRole("button", { name: "Market" }));
+    expect(within(form).getByLabelText("Payee")).toHaveValue("Market");
+    await user.click(within(form).getByRole("button", { name: "Save" }));
+    // The payee's category comes with it.
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inflow: "40.00",
+        outflow: "",
+        payeeName: "Market",
+        categoryId: "rent",
+      }),
+      null,
+    );
+  });
+});
+
+describe("TransactionEditor, stacked in All Accounts", () => {
+  it("starts in the amount, not the account list", () => {
+    render(
+      <TransactionEditor
+        layout="stacked"
+        focusAmount
+        initial={emptyDraft("checking", "2026-10-01")}
+        columns={registerColumns(true)}
+        accounts={[account("checking", "checking"), account("savings", "savings")]}
+        payees={[]}
+        categories={[]}
+        dateFormat="MM/DD/YYYY"
+        settings={usd}
+        flags={[]}
+        onRenameFlags={async () => {}}
+        pending={false}
+        error={null}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("Account")).not.toHaveFocus();
+    expect(screen.getByLabelText("Outflow")).toHaveFocus();
+  });
+});
+
+describe("TransactionEditor in a register without room for Memo", () => {
+  it("edits the memo in its footer, and each split line's before its payee", async () => {
+    renderEditor("checking", {
+      columns: registerColumns(false).filter((c) => c !== "memo"),
+    });
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Memo"), "Lunch");
+    await user.type(screen.getByLabelText("Outflow"), "20");
+    await user.click(screen.getByLabelText("Category"));
+    await user.click(screen.getByRole("option", { name: "Split" }));
+    // Splitting moves to the first line's amount; then on to its memo.
+    await waitFor(() => expect(screen.getByLabelText("Outflow, line 1")).toHaveFocus());
+    await user.type(screen.getByLabelText("Memo, line 1"), "Mine");
+    expect(screen.getByLabelText("Memo")).toHaveValue("Lunch");
+    expect(screen.getByLabelText("Memo, line 1")).toHaveValue("Mine");
+    // The line's memo spans the cells its row leaves empty, before the payee.
+    expect(screen.getByLabelText("Memo, line 1").closest("td")).toHaveAttribute("colspan");
   });
 });

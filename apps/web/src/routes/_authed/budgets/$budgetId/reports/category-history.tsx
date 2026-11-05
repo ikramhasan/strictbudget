@@ -11,6 +11,7 @@ import {
   NativeSelectOption,
 } from "@strictbudget/ui/components/native-select";
 import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -21,7 +22,7 @@ import {
 import { ChartCard } from "@/components/reports/chart-card";
 import { type DrillDown, DrillDownSheet } from "@/components/reports/drill-down-sheet";
 import { ExportButton } from "@/components/reports/export-button";
-import { ReportFilterBar } from "@/components/reports/report-filter-bar";
+import { ReportFilterBar, toolbarSelectClass } from "@/components/reports/report-filter-bar";
 import { ReportPage } from "@/components/reports/report-page";
 import { useBudget } from "@/lib/budget-context";
 import { type CategoryList, categoriesQueryOptions } from "@/lib/categories";
@@ -36,7 +37,7 @@ import {
   pickerGroups,
 } from "@/lib/category-history";
 import { todayIso } from "@/lib/dates";
-import { monthLabel, rangeLabel } from "@/lib/reports";
+import { monthLabel } from "@/lib/reports";
 import { useReportState } from "@/lib/use-report";
 
 export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/category-history")({
@@ -82,9 +83,9 @@ function Report() {
   const empty = query.isError
     ? "Couldn't load the report."
     : subject === undefined && categories.data
-      ? "Add a category to see its history."
+      ? "Add a category on the plan to see its history here."
       : history && history.months.length === 0
-        ? "The plan has no months in this range."
+        ? "The plan has no months in this range. Pick a range from the plan's first month on."
         : undefined;
 
   const onPick = (month: BudgetMonth) =>
@@ -130,7 +131,7 @@ function Report() {
         />
       }
       filters={
-        <div className="flex flex-wrap items-center gap-2">
+        <>
           {categories.data && (
             <SubjectPicker
               list={categories.data}
@@ -158,7 +159,7 @@ function Report() {
             earliest={state.earliest}
             show={[]}
           />
-        </div>
+        </>
       }
     >
       <section
@@ -190,7 +191,7 @@ function Report() {
       </section>
 
       <ChartCard
-        title={`${history?.name ?? "Category"}${history?.hidden ? " (hidden)" : ""} · ${rangeLabel(state.range)}`}
+        title={`${history?.name ?? "Category"}${history?.hidden ? " (hidden)" : ""}`}
         view={search.view ?? "chart"}
         onViewChange={(view) => update({ view })}
         loading={loading}
@@ -226,7 +227,7 @@ function SubjectPicker({
       aria-label="Category or group"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="max-w-full"
+      className={cn("max-w-full", toolbarSelectClass())}
     >
       <NativeSelectOptGroup label="Groups">
         {groups.map((g) => (
@@ -257,7 +258,7 @@ function SubjectPicker({
 
 function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <div className="grid content-start gap-1 rounded-lg border p-4">
+    <div className="grid content-start gap-1 rounded-lg border bg-card p-4">
       <span className="text-muted-foreground text-sm">{label}</span>
       <span className="font-semibold text-2xl tabular-nums">{value}</span>
       {note && <span className="text-muted-foreground text-xs tabular-nums">{note}</span>}

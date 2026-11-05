@@ -42,6 +42,7 @@ export function ChangeHistoryDialog({
           <ActivityList
             events={events}
             dateOf={(at) => formatDate(formatDay(new Date(at), "yyyy-MM-dd"))}
+            links={false}
           />
         )}
       </DialogContent>

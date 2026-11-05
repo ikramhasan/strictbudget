@@ -51,11 +51,11 @@ describe("editWarning", () => {
   it("warns on a reconciled transaction's amount or account, not its memo or date", () => {
     const reconciled = { ...base, cleared: "reconciled" as const };
     expect(editWarning(reconciled, { amount: "-800" }, name)).toMatchObject({
-      title: "Save Changes to Reconciled Transaction",
+      title: "Save changes to reconciled transaction",
       confirm: "Save",
     });
     expect(editWarning(reconciled, { accountId: "a3" }, name)).toMatchObject({
-      title: "Move Reconciled Transaction",
+      title: "Move reconciled transaction",
       confirm: "Move",
     });
     expect(editWarning(reconciled, { memo: "x", date: "2026-10-02" }, name)).toBeNull();
@@ -66,7 +66,7 @@ describe("editWarning", () => {
   it("warns when a transfer with a reconciled other side changes amount, payee or account", () => {
     const warning = editWarning(transfer, { amount: "-1000" }, name);
     expect(warning).toEqual({
-      title: "Save Changes to Reconciled Transfer",
+      title: "Save changes to reconciled transfer",
       paragraphs: [
         "This transfer has already been reconciled in Savings.",
         "Any changes to this transaction will automatically modify the matching, reconciled transaction in Savings and may bring the reconciliation out of balance.",
@@ -84,9 +84,9 @@ describe("deleteWarning", () => {
   it("asks only when something reconciled goes", () => {
     expect(deleteWarning(rowDeleteScope(base))).toBeNull();
     expect(deleteWarning(rowDeleteScope({ ...base, cleared: "reconciled" }))?.title).toBe(
-      "Delete Reconciled Transaction?",
+      "Delete reconciled transaction?",
     );
-    expect(deleteWarning(rowDeleteScope(transfer))?.title).toBe("Delete Reconciled Transfer?");
+    expect(deleteWarning(rowDeleteScope(transfer))?.title).toBe("Delete reconciled transfer?");
     const split = {
       ...base,
       subtransactions: [
@@ -107,7 +107,7 @@ describe("deleteWarning", () => {
         },
       ],
     };
-    expect(deleteWarning(rowDeleteScope(split))?.title).toBe("Delete Reconciled Transfer?");
+    expect(deleteWarning(rowDeleteScope(split))?.title).toBe("Delete reconciled transfer?");
     // Several: "Delete 2 Transactions?", the transfer wording winning.
     expect(deleteWarning({ count: 2, reconciled: 1, reconciledTransfers: 1 })).toMatchObject({
       title: "Delete 2 Transactions?",

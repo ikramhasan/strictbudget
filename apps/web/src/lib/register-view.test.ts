@@ -17,11 +17,11 @@ describe("register view", () => {
     });
   });
 
-  it("hides reconciled transactions and the running balance by default", () => {
+  it("hides reconciled transactions and shows the running balance by default", () => {
     expect(DEFAULT_VIEW).toEqual({
       range: "all",
       showReconciled: false,
-      showRunningBalance: false,
+      showRunningBalance: true,
       showFlags: true,
       showAttachments: true,
       showEnteredBy: false,

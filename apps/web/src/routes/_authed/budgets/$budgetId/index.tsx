@@ -7,6 +7,7 @@ import {
 import { Button } from "@strictbudget/ui/components/button";
 import {
   Drawer,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerHeader,
@@ -18,14 +19,14 @@ import {
   ResizablePanelGroup,
   useDefaultLayout,
 } from "@strictbudget/ui/components/resizable";
-import { Skeleton } from "@strictbudget/ui/components/skeleton";
+import { ScrollArea } from "@strictbudget/ui/components/scroll-area";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { PanelRight, Pencil, Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Check, PanelRight, Pencil, TriangleAlert, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { AddAccountDialog } from "@/components/add-account-dialog";
 import { AssignedCell } from "@/components/assigned-cell";
 import { AutoAssignPanel } from "@/components/auto-assign";
 import { BudgetFilterBar } from "@/components/budget-filter-bar";
@@ -52,8 +53,10 @@ import {
 } from "@/components/move-money";
 import { PageHeader } from "@/components/page-header";
 import { PageTitle } from "@/components/page-title";
+import { PlanTableSkeleton } from "@/components/plan-skeleton";
 import { FutureMonthsPanel, ReadyToAssignBanner } from "@/components/ready-to-assign";
 import { RecentMoves } from "@/components/recent-moves";
+import { isInsidePopup } from "@/components/register-fields";
 import { SpendingPacePanel } from "@/components/spending-pace-panel";
 import {
   type MoneyIO,
@@ -131,7 +134,7 @@ const layoutStorage = {
 };
 
 /** The inspector's width, in percent of the list and inspector together. */
-const INSPECTOR_SHARE = { min: 25, max: 50, default: 33 };
+const INSPECTOR_SHARE = { max: 50, default: 33 };
 
 export const Route = createFileRoute("/_authed/budgets/$budgetId/")({
   validateSearch: z.object({
@@ -162,8 +165,6 @@ function BudgetPage() {
   const actions = useCategoryActions(budget.id);
   const history = useUndo();
   const targetActions = useTargetActions(budget.id, history.record);
-  const accounts = useQuery(accountsQueryOptions(budget.id));
-  const [addingAccount, setAddingAccount] = useState(false);
   const { collapsed, setCollapsed } = useCollapsedGroups(budget.id);
   const { filter, setFilter } = useBudgetFilter(budget.id);
   const views = useQuery(viewsQueryOptions(budget.id));
@@ -174,7 +175,20 @@ function BudgetPage() {
     id: "strictbudget:budget-inspector",
     storage: layoutStorage,
   });
-  const [inspectorWidth, setInspectorWidth] = useState<number | null>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const [pageWidth, setPageWidth] = useState<number | null>(null);
+  useEffect(() => {
+    const page = pageRef.current;
+    if (!page || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setPageWidth(Math.round(entry.contentRect.width));
+    });
+    observer.observe(page);
+    return () => observer.disconnect();
+  }, []);
+  const accountList = useQuery(accountsQueryOptions(budget.id));
+  /** No open account yet: no money, so the inspector's summary panels have nothing to say. */
+  const noAccounts = accountList.data?.accounts.every((a) => a.closed) ?? false;
   const viewActions = useViewActions(budget.id);
   const [viewDialog, setViewDialog] = useState<ViewDialog>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -335,13 +349,24 @@ function BudgetPage() {
     const parse = (text: string) => parseMoneyInput(text, settings);
     const toInput = (amount: string) => toMoneyInput(amount, settings);
 
+    /** Shows a change on screen before the server confirms it; returns how to put it back. */
+    function optimistic(patch: (month: BudgetMonthData) => BudgetMonthData) {
+      const key = monthQueryOptions(budget.id, onScreen).queryKey;
+      const previous = queryClient.getQueryData<BudgetMonthData>(key);
+      if (!previous) return () => {};
+      queryClient.setQueryData(key, patch(previous));
+      return () => queryClient.setQueryData(key, previous);
+    }
+
     async function save(
       work: () => Promise<BudgetMonthData>,
       inverse: () => Promise<BudgetMonthData>,
       label: string,
       failure: string,
       replay = work,
+      expected?: (month: BudgetMonthData) => BudgetMonthData,
     ) {
+      const rollback = expected ? optimistic(expected) : undefined;
       try {
         const updated = await work();
         if (updated.month === onScreen) {
@@ -353,6 +378,7 @@ function BudgetPage() {
           redo: () => saveHistory(replay),
         });
       } catch (error) {
+        rollback?.();
         toast.error(apiErrorMessage(error, failure));
       } finally {
         await refreshBudget();
@@ -444,6 +470,7 @@ function BudgetPage() {
                 "assigned amount",
                 "Couldn't assign the money.",
                 () => moveDelta(false),
+                (m) => movedLocally(m, readyToAssignId, readyToAssignId, categoryId, delta),
               );
             },
           },
@@ -491,11 +518,16 @@ function BudgetPage() {
             today: todayIso(),
           },
         });
+      const readyToAssignId = categories.data?.readyToAssignCategoryId;
       return save(
         () => mutate(fromCategoryId, toCategoryId),
         () => mutate(toCategoryId, fromCategoryId),
         "money move",
         "Couldn't move the money.",
+        undefined,
+        m === onScreen
+          ? (d) => movedLocally(d, readyToAssignId, fromCategoryId, toCategoryId, amount)
+          : undefined,
       );
     }
     // mutateAsync is stable; the mutation objects themselves change every render.
@@ -654,6 +686,8 @@ function BudgetPage() {
             });
           } catch (error) {
             toast.error(apiErrorMessage(error, "Couldn't assign the money."));
+            // The panel confirms only what was applied.
+            throw error;
           } finally {
             void refresh();
           }
@@ -661,25 +695,45 @@ function BudgetPage() {
       />
     );
 
-  // Below lg the inspector is a drawer; from there it's beside the list, as wide as the user drags
-  // it (25–50% of the area, a third to start, kept in this browser).
-  const wide = viewportWidth >= 1024;
-  // On a phone, picking one category opens the inspector drawer for it. A tablet shows the
-  // Assigned column, so a tap there edits it in place, as on a desktop; Summary opens the drawer.
+  // When the page has room for both (the list at about 440px and the inspector at 280px, whatever
+  // the sidebar takes), the inspector sits beside the list, as wide as the user drags it (at most
+  // half, a third to start, kept in this browser); otherwise it's a drawer.
+  const wide = !phone && (pageWidth ?? viewportWidth - 300) >= 720;
+  // Below that, picking one category with a click or tap opens the drawer for it. Keyboard steps
+  // through the list don't (they'd cover the list), nor does a click on an Assigned amount, which
+  // edits it in place.
   const pickedOne = selection.size === 1 ? [...selection][0] : undefined;
+  const pointerPick = useRef<{ at: number; assigned: boolean }>({ at: 0, assigned: false });
+  /** The inspector opens at its top whenever what it shows changes. */
+  const inspectorScroll = useRef<HTMLDivElement>(null);
+  const inspectorSubject = `${month}|${filter}|${[...selection].sort().join(",")}`;
   useEffect(() => {
-    if (phone && pickedOne !== undefined) setInspectorOpen(true);
-  }, [pickedOne, phone]);
+    if (inspectorSubject) inspectorScroll.current?.scrollTo({ top: 0 });
+  }, [inspectorSubject]);
+  useEffect(() => {
+    if (wide || pickedOne === undefined) return;
+    const { at, assigned } = pointerPick.current;
+    if (phone || (Date.now() - at < 1000 && !assigned)) setInspectorOpen(true);
+  }, [pickedOne, phone, wide]);
   const listColumn = (
     <>
       {categories.isPending ? (
-        <Skeleton className="h-64" />
+        <PlanTableSkeleton />
       ) : categories.isError ? (
         <p className="text-muted-foreground">Couldn't load categories.</p>
       ) : (
-        <div className="grid gap-3">
+        <div
+          className={wide ? "flex h-full min-h-0 flex-col gap-3" : "grid gap-3"}
+          onPointerDownCapture={(e) => {
+            pointerPick.current = {
+              at: Date.now(),
+              assigned:
+                e.target instanceof Element && e.target.closest("[data-assigned-cell]") !== null,
+            };
+          }}
+        >
           {/* The divider is an inset shadow the selected tab's underline paints over. */}
-          <div className="flex flex-wrap items-end gap-x-2 gap-y-1 shadow-[inset_0_-1px_0_var(--border)]">
+          <div className="flex shrink-0 flex-wrap items-end gap-x-2 gap-y-1 shadow-[inset_0_-1px_0_var(--border)]">
             {listFigures && (
               <BudgetFilterBar
                 filter={customView ? filter : preset}
@@ -731,7 +785,7 @@ function BudgetPage() {
                   }
                 />
               )}
-              {!readOnly && <UndoRedoButtons />}
+              {!readOnly && <UndoRedoButtons labelled />}
               <BudgetOptionsMenu
                 onTemplates={readOnly ? undefined : () => setGalleryOpen(true)}
                 progressBars={progressBars}
@@ -763,18 +817,73 @@ function BudgetPage() {
             collapsed={collapsed}
             onCollapsedChange={setCollapsed}
             addGroupDisabled={Boolean(customView)}
+            fill={wide}
           />
         </div>
       )}
     </>
   );
+  // Overspending shows beside Ready to Assign, wherever the list is scrolled to.
+  const overspentNow = listFigures ? overspentCount(listFigures.month, visible) : 0;
+  const overspentAlert = overspentNow > 0 && filter !== "overspent" && (
+    <Button
+      variant="outline"
+      size="sm"
+      className={cn(
+        "shrink-0 border-destructive/40 text-destructive hover:bg-destructive/8 hover:text-destructive",
+        listFigures &&
+          overspentOnlyCredit(listFigures.month, visible) &&
+          "border-amber-500/50 text-amber-700 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-300",
+      )}
+      onClick={() => setFilter("overspent")}
+    >
+      <TriangleAlert />
+      {overspentNow}
+      {/* A phone's bar keeps the month's arrows clear: the count and icon only. */}
+      <span className="max-md:sr-only">overspent</span>
+    </Button>
+  );
+  const readyToAssign = listFigures && (
+    <ReadyToAssignBanner
+      compact
+      amount={listFigures.month.readyToAssign}
+      overdraft={listFigures.month.overdraft}
+      format={listFigures.format}
+      breakdown={{
+        lines: listFigures.month.readyToAssignBreakdown,
+        month: listFigures.month.month,
+      }}
+      assign={
+        listFigures.move && (
+          <AssignButton
+            readyToAssign={listFigures.month.readyToAssign}
+            format={listFigures.format}
+            actions={listFigures.move}
+            auto={autoAssignPanel(new Set(), true)}
+          />
+        )
+      }
+      action={
+        listFigures.move && (
+          <FixThisButton
+            readyToAssign={listFigures.month.readyToAssign}
+            format={listFigures.format}
+            actions={listFigures.move}
+            months={fixThisMonths}
+          />
+        )
+      }
+    />
+  );
   const onlySelected = selection.size === 1 ? [...selection][0] : undefined;
   const inspectorTitle =
-    onlySelected === undefined
-      ? "Month summary"
-      : onlySelected === UNCATEGORIZED
-        ? "Uncategorized Transactions"
-        : (listed.get(onlySelected)?.name ?? "Category");
+    selection.size > 1
+      ? `${selection.size} categories`
+      : onlySelected === undefined
+        ? "Month summary"
+        : onlySelected === UNCATEGORIZED
+          ? "Uncategorized Transactions"
+          : (listed.get(onlySelected)?.name ?? "Category");
   // A phone's rows have no Assigned cell, so the drawer leads with one.
   const onlyFigures =
     onlySelected && listFigures?.month.categories.find((c) => c.categoryId === onlySelected);
@@ -791,28 +900,84 @@ function BudgetPage() {
       />
     </div>
   );
+  // The first days of a budget: a short checklist until the basics are done or it's dismissed.
+  const gettingStartedKey = `strictbudget:getting-started-dismissed:${budget.id}`;
+  const [gettingStartedDismissed, setGettingStartedDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(gettingStartedKey) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const firstRun = (() => {
+    if (gettingStartedDismissed || noAccounts || readOnly || !listFigures) return null;
+    // Only while the budget is new: its first month with money in it is this one.
+    if (month !== today || addMonths(listFigures.month.firstMonth, 1) < today) return null;
+    const cats = listFigures.month.categories;
+    const steps = {
+      assigned: cats.some((c) => c.assigned !== "0") && listFigures.month.readyToAssign === "0",
+      target: cats.some((c) => c.target !== null),
+      spent: cats.some((c) => c.activity !== "0") || Boolean(listFigures.month.uncategorized),
+    };
+    return steps.assigned && steps.target && steps.spent ? null : steps;
+  })();
   const inspectorColumn = listFigures && (
     <aside className="grid grid-cols-[minmax(0,1fr)] gap-4" aria-label="Inspector">
-      <Inspector
-        figures={listFigures}
-        selection={selection}
-        shown={shown}
-        listed={listed}
-        onNoteChange={(categoryId, note) => actions.updateCategory(categoryId, { note })}
-        targetActions={targetActions}
-        onShowOverspent={() => setFilter("overspent")}
-      />
-      {selection.size === 0 && month <= today && <SpendingPacePanel month={month} />}
-      {/* Uncategorized alone has no Auto-Assign: money can't be assigned to it. */}
-      {!(selection.size === 1 && selection.has(UNCATEGORIZED)) && autoAssignPanel(selection)}
-      {month === today && (
-        <FutureMonthsPanel data={listFigures.month} format={listFigures.format} />
+      {noAccounts && selection.size === 0 ? (
+        // Nothing to sum up yet: say what this panel will show instead of a page of zeros.
+        <section className="grid gap-2 rounded-lg border border-dashed p-4 text-sm">
+          <h2 className="font-semibold">Your month at a glance</h2>
+          <p className="text-muted-foreground leading-relaxed">
+            Once you add an account, this panel sums up the month: what you assigned, what you
+            spent, what's left, and what your targets still need. Pick a category to see its
+            details.
+          </p>
+        </section>
+      ) : (
+        <>
+          {firstRun && selection.size === 0 && (
+            <GettingStarted
+              steps={firstRun}
+              onDismiss={() => {
+                setGettingStartedDismissed(true);
+                try {
+                  localStorage.setItem(gettingStartedKey, "1");
+                } catch {
+                  // Without storage it shows again next visit; nothing breaks.
+                }
+              }}
+            />
+          )}
+          <Inspector
+            figures={listFigures}
+            selection={selection}
+            shown={shown}
+            listed={listed}
+            onNoteChange={(categoryId, note) => actions.updateCategory(categoryId, { note })}
+            targetActions={targetActions}
+            onShowOverspent={() => setFilter("overspent")}
+          />
+          {selection.size === 0 && month <= today && <SpendingPacePanel month={month} />}
+          {/* Uncategorized alone has no Auto-Assign: money can't be assigned to it. */}
+          {/* A brand-new plan has nothing to auto-assign from yet. */}
+          {!(selection.size === 1 && selection.has(UNCATEGORIZED)) &&
+            !(firstRun && !firstRun.assigned) &&
+            autoAssignPanel(selection)}
+          {month === today && (
+            <FutureMonthsPanel data={listFigures.month} format={listFigures.format} />
+          )}
+        </>
       )}
     </aside>
   );
 
   return (
-    <div className="grid gap-4">
+    // On a wide screen the page is exactly the window's height: the month and Ready to Assign stay
+    // put while the categories and the inspector each scroll on their own.
+    <div
+      ref={pageRef}
+      className={wide ? "flex h-[calc(100svh-6rem)] flex-col gap-4" : "grid gap-4"}
+    >
       <TemplateGallery
         open={galleryOpen}
         onOpenChange={setGalleryOpen}
@@ -835,105 +1000,77 @@ function BudgetPage() {
           if (await templates.importTemplate(importing.id, categoryIds)) setTemplate(undefined);
         }}
       />
-      <div
-        className="flex flex-wrap items-center justify-between gap-4 lg:grid"
-        style={
-          wide && inspectorWidth !== null
-            ? { gridTemplateColumns: `minmax(0,1fr) ${inspectorWidth}px` }
-            : undefined
-        }
-      >
-        <div className="grid gap-1">
-          <PageTitle name={budget.name} />
-          <PageHeader
-            title={budget.name}
-            actions={
-              !wide &&
-              listFigures && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="max-md:min-h-11"
-                  onClick={() => setInspectorOpen(true)}
-                >
-                  <PanelRight /> Summary
-                </Button>
-              )
-            }
-          />
-          <MonthNav
-            month={month}
-            current={today}
-            first={range?.first ?? month}
-            last={range?.last ?? month}
-            onChange={goTo}
-          />
-          {figures.data && (
-            <MonthNote
-              key={month}
-              note={figures.data.note}
-              onSave={(note) => saveMonthNote(month, figures.data?.note ?? "", note)}
+      <PageTitle name={budget.name} />
+      {/* The month and Ready to Assign live in the top bar, so the categories start right away. */}
+      <PageHeader
+        title={<span className="sr-only">Budget</span>}
+        meta={
+          <div className="flex min-w-0 items-center gap-2">
+            <MonthNav
+              month={month}
+              current={today}
+              first={range?.first ?? month}
+              last={range?.last ?? month}
+              onChange={goTo}
+              note={
+                figures.data &&
+                !phone && (
+                  <MonthNote
+                    key={month}
+                    note={figures.data.note}
+                    onSave={(note) => saveMonthNote(month, figures.data?.note ?? "", note)}
+                  />
+                )
+              }
             />
-          )}
+          </div>
+        }
+        actions={
+          <>
+            {overspentAlert}
+            {/* Ready to Assign stays on the right of the bar (a deliberate choice). */}
+            {!phone && readyToAssign}
+            {!wide && listFigures && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="max-md:min-h-11"
+                aria-label="Summary"
+                onClick={() => setInspectorOpen(true)}
+              >
+                <PanelRight /> <span className="max-md:hidden">Summary</span>
+              </Button>
+            )}
+          </>
+        }
+      />
+      {phone && readyToAssign && (
+        // A phone's bar has room for the month only: Ready to Assign pins just under it.
+        <div className="sticky top-0 z-20 -mx-4 -mt-4 border-b bg-background px-4 py-2 [&>output]:w-full">
+          {readyToAssign}
         </div>
-        {listFigures && (
-          <ReadyToAssignBanner
-            amount={listFigures.month.readyToAssign}
-            overdraft={listFigures.month.overdraft}
-            format={listFigures.format}
-            breakdown={{
-              lines: listFigures.month.readyToAssignBreakdown,
-              month: listFigures.month.month,
-            }}
-            assign={
-              listFigures.move && (
-                <AssignButton
-                  readyToAssign={listFigures.month.readyToAssign}
-                  format={listFigures.format}
-                  actions={listFigures.move}
-                  auto={autoAssignPanel(new Set(), true)}
-                />
-              )
-            }
-            action={
-              listFigures.move && (
-                <FixThisButton
-                  readyToAssign={listFigures.month.readyToAssign}
-                  format={listFigures.format}
-                  actions={listFigures.move}
-                  months={fixThisMonths}
-                />
-              )
-            }
+      )}
+      {phone && figures.data && (
+        <div className="-mt-2">
+          <MonthNote
+            key={month}
+            note={figures.data.note}
+            onSave={(note) => saveMonthNote(month, figures.data?.note ?? "", note)}
           />
-        )}
-      </div>
+        </div>
+      )}
       {budget.archivedAt && (
-        <p className="rounded-lg border bg-muted/40 px-4 py-3 text-sm">
+        <p className="shrink-0 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
           This budget was archived by a fresh start on {formatDate(budget.archivedAt.slice(0, 10))}.
           Its history is kept here; new budgeting happens in the budget that replaced it.
         </p>
-      )}
-      {accounts.data && accounts.data.accounts.length === 0 && !budget.archivedAt && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed px-4 py-3">
-          <div className="grid gap-0.5">
-            <p className="font-medium text-sm">Add your first account</p>
-            <p className="text-muted-foreground text-sm">
-              Its balance today becomes money you can give a job.
-            </p>
-          </div>
-          <Button size="sm" onClick={() => setAddingAccount(true)}>
-            <Plus /> Add Account
-          </Button>
-          <AddAccountDialog budget={budget} open={addingAccount} onOpenChange={setAddingAccount} />
-        </div>
       )}
       {wide ? (
         <ResizablePanelGroup
           id="budget-inspector"
           defaultLayout={inspectorLayout.defaultLayout}
           onLayoutChanged={inspectorLayout.onLayoutChanged}
-          className="items-start"
+          className="min-h-0 flex-1"
         >
           <ResizablePanel id="list" minSize="50" className="min-w-0">
             {listColumn}
@@ -945,11 +1082,16 @@ function BudgetPage() {
           <ResizablePanel
             id="inspector"
             defaultSize={String(INSPECTOR_SHARE.default)}
-            minSize={String(INSPECTOR_SHARE.min)}
+            minSize={280}
             maxSize={String(INSPECTOR_SHARE.max)}
-            onResize={(size) => setInspectorWidth(size.inPixels)}
           >
-            {inspectorColumn}
+            <ScrollArea
+              className="h-full"
+              viewportRef={inspectorScroll}
+              viewportClassName="overscroll-contain [&>div]:block!"
+            >
+              <div className="pr-3 pb-4">{inspectorColumn}</div>
+            </ScrollArea>
           </ResizablePanel>
         </ResizablePanelGroup>
       ) : (
@@ -963,14 +1105,30 @@ function BudgetPage() {
             }}
             direction={phone ? "bottom" : "right"}
           >
-            <DrawerContent className="data-[vaul-drawer-direction=bottom]:max-h-[90svh] data-[vaul-drawer-direction=right]:w-[min(26rem,92vw)] data-[vaul-drawer-direction=right]:sm:max-w-none">
-              <DrawerHeader className="text-left">
-                <DrawerTitle>{inspectorTitle}</DrawerTitle>
+            <DrawerContent
+              className="data-[vaul-drawer-direction=bottom]:max-h-[90svh] data-[vaul-drawer-direction=right]:w-[min(26rem,92vw)] data-[vaul-drawer-direction=right]:sm:max-w-none"
+              // A picker inside the drawer (cover, move, target) lists its options in a portal of
+              // its own: choosing one isn't a click outside the drawer.
+              onInteractOutside={(e) => {
+                if (isInsidePopup(e.target)) e.preventDefault();
+              }}
+            >
+              <DrawerHeader className="flex-row items-center justify-between gap-2 text-left">
+                <DrawerTitle className="truncate">{inspectorTitle}</DrawerTitle>
+                <DrawerClose asChild>
+                  <Button variant="ghost" size="icon-sm" aria-label="Close">
+                    <X />
+                  </Button>
+                </DrawerClose>
                 <DrawerDescription className="sr-only">
                   The category's numbers, target and note, or the month's summary.
                 </DrawerDescription>
               </DrawerHeader>
-              <div className="grid gap-4 overflow-y-auto px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+              {/*
+               * The drawer's title already names the category. In the drawer the inspector's
+               * panels are flat sections between hairlines, not cards inside a card.
+               */}
+              <div className="grid gap-4 overflow-y-auto px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] [&_[data-inspector-name]]:sr-only [&>aside]:gap-0 [&>aside>section]:rounded-none [&>aside>section]:border-x-0 [&>aside>section]:border-b-0 [&>aside>section]:px-0 [&>aside>section]:py-5 [&>aside>section:last-child]:pb-1">
                 {drawerAssigned}
                 {inspectorColumn}
               </div>
@@ -980,6 +1138,150 @@ function BudgetPage() {
       )}
     </div>
   );
+}
+
+/** The first-run checklist: the three habits that make the plan work, ticked as they happen. */
+function GettingStarted({
+  steps,
+  onDismiss,
+}: {
+  steps: { assigned: boolean; target: boolean; spent: boolean };
+  onDismiss: () => void;
+}) {
+  const items = [
+    {
+      done: steps.assigned,
+      title: "Give every dollar a job",
+      hint: "Click an Assigned amount and type what the category needs, until Ready to Assign is $0.",
+    },
+    {
+      done: steps.target,
+      title: "Set a target",
+      hint: "Pick a category that repeats, like rent, and say how much it needs each month.",
+    },
+    {
+      done: steps.spent,
+      title: "Record a purchase",
+      hint: "Add a transaction in an account, or import your bank's file.",
+    },
+  ];
+  return (
+    <section
+      aria-label="Getting started"
+      className="grid gap-3 rounded-lg border bg-card p-4 text-sm"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="grid gap-0.5">
+          <h2 className="font-semibold">Getting started</h2>
+          <p className="text-muted-foreground text-xs">
+            {items.filter((i) => i.done).length} of {items.length} done
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Dismiss getting started"
+          onClick={onDismiss}
+        >
+          <X />
+        </Button>
+      </div>
+      <ol className="grid gap-2.5">
+        {items.map((item) => (
+          <li key={item.title} className="flex gap-2.5">
+            <span
+              aria-hidden
+              className={cn(
+                "mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border",
+                item.done ? "border-success bg-success text-white" : "border-muted-foreground/50",
+              )}
+            >
+              {item.done && <Check className="size-3" />}
+            </span>
+            <span className="grid gap-0.5">
+              <span
+                className={cn("font-medium", item.done && "text-muted-foreground line-through")}
+              >
+                {item.title}
+                <span className="sr-only">{item.done ? " (done)" : ""}</span>
+              </span>
+              {!item.done && <span className="text-muted-foreground text-xs">{item.hint}</span>}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/**
+ * A category's target and bar once `by` more is assigned, so its caption, pill and inspector move
+ * with its amounts. Money in only (taking money out can't be read off these figures alone); the
+ * server's figures replace these a moment later either way.
+ */
+function withTargetShift(
+  c: BudgetMonthData["categories"][number],
+  by: bigint,
+): Partial<BudgetMonthData["categories"][number]> {
+  if (by <= 0n || !c.target || c.target.snoozed || c.target.pastDue) return {};
+  const underfunded = BigInt(c.target.underfunded);
+  const left = underfunded > by ? underfunded - by : 0n;
+  const target = {
+    ...c.target,
+    funded: (BigInt(c.target.funded) + by).toString(),
+    underfunded: left.toString(),
+  };
+  if (!c.bar) return { target };
+  const sections = c.bar.sections.map((section) => ({
+    ...section,
+    segments: [...section.segments],
+  }));
+  const last = sections.findLast((section) => section.kind === "target");
+  if (last) {
+    const i = last.segments.findIndex((segment) => segment.kind === "available");
+    if (i >= 0) {
+      const segment = last.segments[i];
+      if (segment) {
+        last.segments[i] = { ...segment, amount: (BigInt(segment.amount) + by).toString() };
+      }
+    } else {
+      last.segments.push({ kind: "available", amount: by.toString() });
+    }
+  }
+  return {
+    target,
+    bar: { ...c.bar, tone: left > 0n ? "underfunded" : "funded", sections },
+  };
+}
+
+/**
+ * The month as it will be once `amount` moves from one category (or Ready to Assign) to another:
+ * what's shown until the server's figures arrive. A negative amount moves the other way.
+ */
+function movedLocally(
+  month: BudgetMonthData,
+  readyToAssignId: string | undefined,
+  from: string | undefined,
+  to: string,
+  amount: bigint,
+): BudgetMonthData {
+  if (amount === 0n || from === undefined) return month;
+  const shift = (id: string, by: bigint) => (c: BudgetMonthData["categories"][number]) =>
+    c.categoryId === id
+      ? {
+          ...c,
+          assigned: (BigInt(c.assigned) + by).toString(),
+          available: (BigInt(c.available) + by).toString(),
+          ...withTargetShift(c, by),
+        }
+      : c;
+  let readyToAssign = BigInt(month.readyToAssign);
+  let categories = month.categories;
+  if (from === readyToAssignId) readyToAssign -= amount;
+  else categories = categories.map(shift(from, -amount));
+  if (to === readyToAssignId) readyToAssign += amount;
+  else categories = categories.map(shift(to, amount));
+  return { ...month, readyToAssign: readyToAssign.toString(), categories };
 }
 
 const paymentFigures = (p: NonNullable<BudgetMonthData["categories"][number]["payment"]>) =>
@@ -1152,7 +1454,7 @@ function Inspector({
               )
             ) : (
               <TargetSection
-                key={only}
+                key={`target-${only}`}
                 name={category.name}
                 target={category.target}
                 need={totals.target}
@@ -1204,7 +1506,26 @@ function Inspector({
         }
         available={available}
         upcoming={upcoming}
-        history={<CategoryHistoryPanel key={only} categoryId={only} month={month.month} />}
+        history={
+          <CategoryHistoryPanel key={`history-${only}`} categoryId={only} month={month.month} />
+        }
+        cover={
+          figures.move &&
+          totals.available.startsWith("-") && (
+            <AvailableButton
+              categoryId={only}
+              categoryName={category.name}
+              amount={totals.available}
+              format={format}
+              actions={figures.move}
+              trigger={
+                <Button size="sm" variant="outline" className="justify-self-start bg-background">
+                  Cover overspending
+                </Button>
+              }
+            />
+          )
+        }
         note={category.note}
         onNoteChange={(note) => onNoteChange(only, note)}
         target={
@@ -1218,7 +1539,7 @@ function Inspector({
             />
           ) : (
             <TargetSection
-              key={only}
+              key={`target-${only}`}
               name={category.name}
               target={category.target}
               need={totals.target}

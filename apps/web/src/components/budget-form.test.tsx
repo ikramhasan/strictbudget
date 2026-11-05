@@ -34,6 +34,21 @@ describe("BudgetForm", () => {
   });
   afterEach(() => vi.useRealTimers());
 
+  it("keeps Save off until a saved setting changes", async () => {
+    renderForm({
+      defaultValues: { ...defaults, name: "Home" },
+      requireChange: true,
+      submitLabel: "Save changes",
+    });
+    const save = screen.getByRole("button", { name: "Save changes" });
+    expect(save).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Budget name"), " ");
+    // Only spaces added: nothing to save.
+    expect(save).toBeDisabled();
+    await userEvent.selectOptions(screen.getByLabelText("Date format"), "DD/MM/YYYY");
+    expect(save).toBeEnabled();
+  });
+
   it("previews the default settings", () => {
     renderForm();
     expect(screen.getByLabelText("Preview")).toHaveTextContent("-$1,234,567.89 · 10/01/2026");
@@ -57,6 +72,16 @@ describe("BudgetForm", () => {
       name: "Household",
       dateFormat: "YYYY-MM-DD",
     });
+  });
+
+  it("asks for a name under the field instead of submitting a blank one", async () => {
+    const onSubmit = renderForm();
+    await userEvent.type(screen.getByLabelText("Budget name"), "   ");
+    await userEvent.click(screen.getByRole("button", { name: "Create budget" }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    const name = screen.getByLabelText("Budget name");
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    expect(name).toHaveAccessibleDescription(/give the budget a name/i);
   });
 
   it("shows the error returned by onSubmit", async () => {

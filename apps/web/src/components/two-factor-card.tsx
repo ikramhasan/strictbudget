@@ -35,7 +35,7 @@ export function TwoFactorCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Two-Step Verification</CardTitle>
+        <CardTitle>Two-step verification</CardTitle>
         <CardDescription>
           Increase your strictbudget login security by adding a second method of login: a code from
           a verification app on your phone.
@@ -46,10 +46,10 @@ export function TwoFactorCard() {
         {me.data &&
           (enabled ? (
             <Button variant="outline" onClick={() => setDialog("off")}>
-              Turn Off
+              Turn off
             </Button>
           ) : (
-            <Button onClick={() => setDialog("setup")}>Set Up</Button>
+            <Button onClick={() => setDialog("setup")}>Set up</Button>
           ))}
       </CardContent>
       {dialog === "setup" && <SetUpDialog onClose={() => setDialog(null)} />}
@@ -115,7 +115,7 @@ function SetUpDialog({ onClose }: { onClose: () => void }) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {state.step === "saved" ? "Save Your Backup Code" : "Set Up a Verification App"}
+            {state.step === "saved" ? "Save your backup code" : "Set up a verification app"}
           </DialogTitle>
           <DialogDescription>
             {state.step === "password"
@@ -177,7 +177,7 @@ function SetUpDialog({ onClose }: { onClose: () => void }) {
               </div>
             </Field>
             <Field>
-              <FieldLabel htmlFor="tf-code">6-Digit Code</FieldLabel>
+              <FieldLabel htmlFor="tf-code">6-digit code</FieldLabel>
               <Input
                 id="tf-code"
                 name="code"
@@ -195,7 +195,7 @@ function SetUpDialog({ onClose }: { onClose: () => void }) {
                 Cancel
               </Button>
               <Button type="submit" disabled={pending}>
-                {pending && <Spinner />} Turn On
+                {pending && <Spinner />} Turn on
               </Button>
             </DialogFooter>
           </form>
@@ -254,13 +254,13 @@ function TurnOffDialog({ onClose }: { onClose: () => void }) {
       <DialogContent className="sm:max-w-sm">
         <form onSubmit={submit} className="grid gap-4">
           <DialogHeader>
-            <DialogTitle>Turn Off Two-Step Verification</DialogTitle>
+            <DialogTitle>Turn off two-step verification</DialogTitle>
             <DialogDescription>
               Enter the 6-digit code from your verification app.
             </DialogDescription>
           </DialogHeader>
           <Field>
-            <FieldLabel htmlFor="tf-off-code">6-Digit Code</FieldLabel>
+            <FieldLabel htmlFor="tf-off-code">6-digit code</FieldLabel>
             <Input
               id="tf-off-code"
               name="code"

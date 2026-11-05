@@ -7,8 +7,11 @@ import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/na
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { Switch } from "@strictbudget/ui/components/switch";
 import { cn } from "@strictbudget/ui/lib/utils";
-import { Check, CircleHelp, Trash2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Check, CircleHelp, Plus, Target, Trash2 } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
+import { accountsQueryOptions } from "@/lib/accounts";
+import { useOptionalBudget } from "@/lib/budget-context";
 import { todayIso } from "@/lib/dates";
 import type { LoanPlan } from "@/lib/loan-planner";
 import {
@@ -29,6 +32,7 @@ import {
 } from "@/lib/targets";
 import { CurrencyPicker } from "./currency-picker";
 import { DebtTargetEditor } from "./debt-target-editor";
+import { splitEmoji } from "./name-popover";
 import { DateField } from "./register-fields";
 
 type Format = (minorUnits: string) => string;
@@ -82,9 +86,9 @@ const CADENCES: { value: Cadence; label: string }[] = [
 
 /** Behaviour choices and their help, per cadence. */
 const CHOICES = {
-  set_aside: { use: "Use for: bills, subscriptions, saving over time" },
-  refill: { use: "Use for: gasoline, fun money, dining out" },
-  balance: { use: "Use for: long-term savings" },
+  set_aside: { use: "Good for bills, subscriptions and saving up over time." },
+  refill: { use: "Good for spending that starts over, like fuel, fun money or eating out." },
+  balance: { use: "Good for long-term savings." },
 } as const;
 
 function choiceLabel(cadence: Cadence, behavior: Behavior, amount: string) {
@@ -147,7 +151,7 @@ export function TargetSection({
     fundedSpending: string;
     paymentsMade: string;
     overpaid: boolean;
-    /** A month before the current one: no Payment alert there, only "Create Target". */
+    /** A month before the current one: no Payment alert there, only "Create target". */
     past: boolean;
     alert: (createTarget: () => void) => ReactNode;
   };
@@ -165,7 +169,7 @@ export function TargetSection({
     target && currency && target.currency !== currency.budgetCurrency
       ? currency.moneyIn(target.currency).format
       : format;
-  const title = debt ? "Debt Payment Target" : "Target";
+  const title = debt ? "Debt payment target" : "Target";
   if (editing && debt) {
     return (
       <DebtTargetEditor
@@ -245,7 +249,7 @@ export function TargetSection({
           target can't say what it needs. It's left out of Underfunded until there is one.
         </p>
         <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
-          Edit Target
+          Edit target
         </Button>
       </Section>
     );
@@ -253,14 +257,26 @@ export function TargetSection({
   if (!target || !need) {
     return (
       <Section title={title}>
-        <p className="font-medium text-sm">How much do you need for {name}?</p>
-        <p className="text-muted-foreground text-sm">
-          When you create a target, we'll let you know how much money to set aside to stay on track
-          over time.
-        </p>
-        <Button size="sm" variant="secondary" className="w-fit" onClick={() => setEditing(true)}>
-          Create Target
-        </Button>
+        <div className="grid justify-items-center gap-3 rounded-lg border border-dashed bg-muted/40 px-4 py-5 text-center">
+          <span
+            aria-hidden
+            className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary-text ring-1 ring-primary/20"
+          >
+            <Target className="size-5" />
+          </span>
+          <div className="grid gap-1">
+            <p className="text-balance font-medium text-sm">
+              Plan ahead for {splitEmoji(name).text}
+            </p>
+            <p className="text-pretty text-muted-foreground text-sm">
+              Say what it needs and when. We'll work out what to set aside each month so the money
+              is there in time.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setEditing(true)}>
+            <Plus /> Create target
+          </Button>
+        </div>
       </Section>
     );
   }
@@ -356,11 +372,7 @@ function TargetSummary({
             {message.suffix}
           </p>
           {onAssign && (
-            <Button
-              size="sm"
-              className="bg-yellow-400 text-yellow-950 hover:bg-yellow-500"
-              onClick={() => onAssign(BigInt(need.underfunded))}
-            >
+            <Button size="sm" variant="warning" onClick={() => onAssign(BigInt(need.underfunded))}>
               Assign
             </Button>
           )}
@@ -372,13 +384,13 @@ function TargetSummary({
             key={line.label}
             label={line.label}
             value={line.value}
-            className={line.label === "To Go" ? "border-t pt-2" : undefined}
+            className={line.label === "To go" ? "border-t pt-2" : undefined}
           />
         ))}
       </dl>
       {onEdit && (
         <Button size="sm" variant="secondary" onClick={onEdit}>
-          Edit Target
+          Edit target
         </Button>
       )}
       {onEdit && (onSnooze || (snoozeLocked && !payment)) && (
@@ -425,7 +437,7 @@ export function ReadOnlyTarget({
   payment?: { month: string; fundedSpending: string; paymentsMade: string };
 }) {
   if (!target) return null;
-  const title = debt ? "Debt Payment Target" : "Target";
+  const title = debt ? "Debt payment target" : "Target";
   const targetFormat =
     currency && target.currency !== currency.budgetCurrency
       ? currency.moneyIn(target.currency).format
@@ -468,12 +480,11 @@ function SnoozeHelp() {
           <CircleHelp />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 text-sm">
-        <p className="font-medium">Snooze Target</p>
+      <PopoverContent arrow className="w-64 text-sm">
+        <p className="font-medium">Snooze target</p>
         <p className="text-muted-foreground">
-          When you snooze a Target, strictbudget will treat the category as if it didn't have a
-          Target (which means the category won't show as underfunded). At the start of next month,
-          your Target will reactivate, well-rested and in a very good mood!
+          A snoozed target asks for nothing this month, so the category doesn't count as
+          underfunded. It wakes up again on the first of next month.
         </p>
       </PopoverContent>
     </Popover>
@@ -521,7 +532,15 @@ function ProgressRing({ percent, green }: { percent: number; green: boolean }) {
         role="img"
         aria-label={`${percent}% of the target funded`}
       >
-        <circle cx="32" cy="32" r={r} fill="none" strokeWidth="6" className="stroke-muted" />
+        {/* The track stands 3:1 against the panel, so an empty ring still reads as a ring. */}
+        <circle
+          cx="32"
+          cy="32"
+          r={r}
+          fill="none"
+          strokeWidth="6"
+          className="stroke-[color-mix(in_oklch,var(--muted-foreground),var(--card)_30%)]"
+        />
         <circle
           cx="32"
           cy="32"
@@ -537,6 +556,19 @@ function ProgressRing({ percent, green }: { percent: number; green: boolean }) {
         {percent}%
       </span>
     </div>
+  );
+}
+
+/** Whether the budget has an open account in a currency other than `budgetCurrency`. */
+function useHasOtherCurrencies(budgetCurrency: CurrencyCode | undefined) {
+  const budgetId = useOptionalBudget()?.budget.id;
+  const accounts = useQuery({
+    ...accountsQueryOptions(budgetId ?? ""),
+    enabled: Boolean(budgetId && budgetCurrency),
+  });
+  return Boolean(
+    budgetCurrency &&
+      accounts.data?.accounts.some((a) => !a.closed && a.currency !== budgetCurrency),
   );
 }
 
@@ -572,6 +604,14 @@ function TargetEditor({
   const [currency, setCurrency] = useState<CurrencyCode | null>(
     currencies ? (target?.currency ?? currencies.budgetCurrency) : null,
   );
+  const otherCurrencies = useHasOtherCurrencies(currencies?.budgetCurrency);
+  // A budget kept in one currency doesn't ask which; a target already in another one still shows it.
+  const showCurrency =
+    currencies &&
+    currency &&
+    (otherCurrencies ||
+      currency !== currencies.budgetCurrency ||
+      (target !== null && target.currency !== currencies.budgetCurrency));
   const { format, parse, toInput } =
     currencies && currency
       ? currencies.moneyIn(currency)
@@ -689,7 +729,7 @@ function TargetEditor({
           />
           {error && <FieldError>{error}</FieldError>}
         </Field>
-        {currencies && currency && (
+        {showCurrency && (
           <Field>
             <FieldLabel htmlFor="target-currency">Currency</FieldLabel>
             <CurrencyPicker id="target-currency" value={currency} onChange={setCurrency} />
@@ -871,7 +911,7 @@ function TargetEditor({
             Cancel
           </Button>
           <Button type="submit" size="sm" disabled={busy}>
-            Save Target
+            Save target
           </Button>
         </div>
       </form>
@@ -883,8 +923,8 @@ function TargetEditor({
 const nextMonthValue = () => firstOfNextMonth().slice(0, 7);
 
 /**
- * The target form on a credit card's payment category: "Pay Off Balance by Date" (the default) with
- * a month and a year, or "Pay Specific Amount Monthly" with one amount field.
+ * The target form on a credit card's payment category: "Pay off balance by date" (the default) with
+ * a month and a year, or "Pay specific amount monthly" with one amount field.
  */
 function PaymentTargetEditor({
   target,
@@ -1027,7 +1067,7 @@ function PaymentTargetEditor({
             Cancel
           </Button>
           <Button type="submit" size="sm" disabled={busy}>
-            Save Target
+            Save target
           </Button>
         </div>
       </form>

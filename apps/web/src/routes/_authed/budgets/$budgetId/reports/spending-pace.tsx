@@ -1,5 +1,4 @@
-import { addMonths, type BudgetMonth, money, monthOf } from "@strictbudget/engine";
-import { Button } from "@strictbudget/ui/components/button";
+import { type BudgetMonth, money, monthOf } from "@strictbudget/engine";
 import {
   NativeSelect,
   NativeSelectOptGroup,
@@ -18,18 +17,24 @@ import {
 import { cn } from "@strictbudget/ui/lib/utils";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
+import { CategoryLabel } from "@/components/category-label";
 import { ChartCard } from "@/components/reports/chart-card";
+import { MonthStepper } from "@/components/reports/range-picker";
+import { toolbarSelectClass } from "@/components/reports/report-filter-bar";
 import { ReportPage } from "@/components/reports/report-page";
-import { SpendingPaceChart, SpendingPaceTable } from "@/components/reports/spending-pace-chart";
+import {
+  SpendingPaceChart,
+  SpendingPaceLegend,
+  SpendingPaceTable,
+} from "@/components/reports/spending-pace-chart";
 import { $api } from "@/lib/api";
 import { useBudget } from "@/lib/budget-context";
 import { todayIso } from "@/lib/dates";
-import { monthLabel } from "@/lib/reports";
 import {
   type PaceCategory,
   paceCallout,
+  paceScope,
   REASON_LABELS,
   type SpendingPace,
   STATUS_LABELS,
@@ -72,32 +77,12 @@ function Report() {
     <ReportPage
       title="Spending Pace"
       filters={
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Previous month"
-              onClick={() => setSearch({ month: addMonths(month, -1) })}
-            >
-              <ChevronLeft />
-            </Button>
-            <span className="min-w-28 text-center font-medium text-sm tabular-nums">
-              {monthLabel(month, "long")}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Next month"
-              disabled={month >= current}
-              onClick={() => {
-                const next = addMonths(month, 1);
-                setSearch({ month: next >= current ? undefined : next });
-              }}
-            >
-              <ChevronRight />
-            </Button>
-          </div>
+        <>
+          <MonthStepper
+            month={month}
+            current={current}
+            onChange={(next) => setSearch({ month: next >= current ? undefined : next })}
+          />
           <LinePicker
             data={data}
             value={
@@ -110,7 +95,7 @@ function Report() {
               })
             }
           />
-        </div>
+        </>
       }
     >
       {query.isError ? (
@@ -119,7 +104,17 @@ function Report() {
         <Skeleton className="h-32 w-full" />
       ) : (
         <>
-          <Headline data={data} format={format} />
+          <Headline
+            data={data}
+            format={format}
+            scope={
+              search.category
+                ? undefined
+                : search.group
+                  ? paceScope(data.categories.filter((c) => c.groupId === search.group))
+                  : paceScope(data.categories)
+            }
+          />
           <ChartCard
             title={data.finished ? "How the month went" : "Left to spend"}
             view={view}
@@ -127,7 +122,7 @@ function Report() {
             loading={query.isPending}
             empty={
               BigInt(data.line.start) === 0n && BigInt(data.line.spent) === 0n
-                ? "Nothing assigned or spent here this month."
+                ? "Nothing assigned or spent here this month. Assign money on the plan to see how fast it's being spent."
                 : undefined
             }
             fileName={`spending-pace-${month}`}
@@ -138,7 +133,7 @@ function Report() {
                   elapsed={data.elapsed}
                   finished={data.finished}
                 />
-                <Legend finished={data.finished} />
+                <SpendingPaceLegend line={data.line} finished={data.finished} />
               </div>
             }
             table={<SpendingPaceTable line={data.line} />}
@@ -171,7 +166,7 @@ function LinePicker({
       aria-label="Show the pace of"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="max-w-full"
+      className={cn("max-w-full", toolbarSelectClass())}
     >
       <NativeSelectOption value="">Whole plan</NativeSelectOption>
       <NativeSelectOptGroup label="Groups">
@@ -194,7 +189,16 @@ function LinePicker({
   );
 }
 
-function Headline({ data, format }: { data: SpendingPace; format: (amount: bigint) => string }) {
+function Headline({
+  data,
+  format,
+  scope,
+}: {
+  data: SpendingPace;
+  format: (amount: bigint) => string;
+  /** What the line covers, so it isn't read as the month's Available. */
+  scope: string | undefined;
+}) {
   const line = data.line;
   const passed = Math.round((data.elapsed * 100) / data.days);
   const stats = [
@@ -206,7 +210,7 @@ function Headline({ data, format }: { data: SpendingPace; format: (amount: bigin
       : [{ label: "Safe to spend per day", value: format(BigInt(line.safePerDay)) }]),
   ];
   return (
-    <section aria-label="Pace" className="grid gap-3 rounded-lg border p-4">
+    <section aria-label="Pace" className="grid gap-3 rounded-lg border bg-card p-4">
       <p
         className={cn(
           "font-semibold text-lg",
@@ -223,33 +227,19 @@ function Headline({ data, format }: { data: SpendingPace; format: (amount: bigin
           </div>
         ))}
       </dl>
-      {!data.finished && (
+      {(!data.finished || scope) && (
         <p className="text-muted-foreground text-xs tabular-nums">
-          {passed}% of the month passed,{" "}
-          {line.usedPercent === null ? "–" : `${Math.round(line.usedPercent)}%`} of the money used.
+          {!data.finished && (
+            <>
+              {passed}% of the month passed,{" "}
+              {line.usedPercent === null ? "–" : `${Math.round(line.usedPercent)}%`} of the money
+              used.{" "}
+            </>
+          )}
+          {scope}
         </p>
       )}
     </section>
-  );
-}
-
-function Legend({ finished }: { finished: boolean }) {
-  const items = [
-    { label: "Left to spend", style: { background: "var(--report-1)" } },
-    { label: "Even pace", style: { borderTop: "2px dashed var(--muted-foreground)" } },
-    ...(finished
-      ? []
-      : [{ label: "At this pace", style: { borderTop: "2px dashed var(--report-4)" } }]),
-  ];
-  return (
-    <p className="flex flex-wrap gap-3 text-muted-foreground text-xs">
-      {items.map((i) => (
-        <span key={i.label} className="flex items-center gap-1">
-          <span className="h-0.5 w-4" style={i.style} />
-          {i.label}
-        </span>
-      ))}
-    </p>
   );
 }
 
@@ -287,7 +277,7 @@ function CategoryPace({
   const passed = (data.elapsed * 100) / data.days;
   if (sorted.length === 0) return null;
   return (
-    <section aria-labelledby="pace-categories" className="grid gap-3 rounded-lg border p-4">
+    <section aria-labelledby="pace-categories" className="grid gap-3 rounded-lg border bg-card p-4">
       <div className="grid gap-1">
         <h2 id="pace-categories" className="font-semibold">
           By category
@@ -315,7 +305,7 @@ function CategoryPace({
               <TableRow key={c.categoryId} className={cn(!c.included && "text-muted-foreground")}>
                 <TableCell>
                   <span className="grid">
-                    <span>{c.name}</span>
+                    <CategoryLabel name={c.name} />
                     <span className="text-muted-foreground text-xs">
                       {c.groupName}
                       {c.reason && ` · ${REASON_LABELS[c.reason]}`}

@@ -47,7 +47,7 @@ export function NameCard({ name }: { name: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>First Name</CardTitle>
+        <CardTitle>First name</CardTitle>
         <CardDescription>
           We use your first name to personalize strictbudget, and partners see it on budgets you
           share.

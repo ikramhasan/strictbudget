@@ -174,6 +174,7 @@ describe("import through the source's API", () => {
     expect(missing.status).toBe(404);
   });
 
+  // A whole multi-year plan, imported and re-checked month by month: slow under a full parallel run.
   it("gives every month's Ready to Assign and category balances the source computed", async () => {
     const { cookie } = await signUp(app);
     const { status, body } = await importPlan(cookie);
@@ -214,7 +215,7 @@ describe("import through the source's API", () => {
       .filter((a) => balances.get(a.name) !== cents(a.balance))
       .map((a) => `${a.name}: ${balances.get(a.name)} != ${cents(a.balance)}`);
     expect(wrong).toEqual([]);
-  });
+  }, 60_000);
 
   it("imports the same plan once; replace makes a fresh copy", async () => {
     const { cookie } = await signUp(app);

@@ -68,10 +68,10 @@ function renderDialog(lastFromAccountId: string | null) {
       onSave={vi.fn(async () => null)}
     />,
   );
-  return screen.getByLabelText("From Account") as HTMLSelectElement;
+  return screen.getByLabelText("From account") as HTMLSelectElement;
 }
 
-describe("Record Payment's From Account", () => {
+describe("Record payment's From Account", () => {
   it("starts on the account of the payment entered last", () => {
     expect(renderDialog("L7 Chk").value).toBe("L7 Chk");
   });

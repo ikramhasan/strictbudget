@@ -1,4 +1,9 @@
 import { Button } from "@strictbudget/ui/components/button";
+import {
+  keepFocusOnClose,
+  RELEASE_ON_CLOSE,
+  releaseOnClose,
+} from "@strictbudget/ui/components/dialog";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui";
 import * as React from "react";
@@ -24,8 +29,10 @@ function AlertDialogOverlay({
   return (
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
+      // strictbudget: a plain theme-aware scrim (--scrim in theme.css); no backdrop blur.
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] supports-backdrop-filter:backdrop-blur-xs data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 dark:bg-black/40",
+        "fixed inset-0 isolate z-50 bg-scrim duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
+        RELEASE_ON_CLOSE,
         className,
       )}
       {...props}
@@ -36,6 +43,8 @@ function AlertDialogOverlay({
 function AlertDialogContent({
   className,
   size = "default",
+  onAnimationStart,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm";
@@ -48,8 +57,17 @@ function AlertDialogContent({
         data-size={size}
         className={cn(
           "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 grid-cols-1 gap-4 rounded-2xl bg-popover p-5 text-sm text-popover-foreground shadow-[0_1px_2px_rgb(0_0_0/0.04),0_16px_40px_-8px_rgb(0_0_0/0.16)] ring-1 ring-border duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-96 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-96 motion-reduce:data-[state=open]:zoom-in-100 motion-reduce:data-[state=closed]:zoom-out-100 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm dark:shadow-[0_1px_2px_rgb(0_0_0/0.5),0_16px_40px_-8px_rgb(0_0_0/0.6),inset_0_1px_0_rgb(255_255_255/0.05)]",
+          RELEASE_ON_CLOSE,
           className,
         )}
+        onAnimationStart={(event) => {
+          releaseOnClose(event);
+          onAnimationStart?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          keepFocusOnClose(event);
+          onCloseAutoFocus?.(event);
+        }}
         {...props}
       />
     </AlertDialogPortal>

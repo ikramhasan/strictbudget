@@ -280,19 +280,15 @@ describe("CategoryList", () => {
     expect(actions.updateCategory).not.toHaveBeenCalled();
   });
 
-  it("renames a category and edits its note", async () => {
+  it("renames a category (its note is edited in the inspector)", async () => {
     const actions = renderList();
     await userEvent.click(screen.getByRole("button", { name: "Electric" }));
     const name = screen.getByLabelText("Category name");
     await userEvent.clear(name);
     await userEvent.type(name, "Power");
-    await userEvent.clear(screen.getByLabelText("Note"));
-    await userEvent.type(screen.getByLabelText("Note"), "Monthly now");
+    expect(screen.queryByLabelText("Note")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "OK" }));
-    expect(actions.updateCategory).toHaveBeenCalledWith("c2", {
-      name: "Power",
-      note: "Monthly now",
-    });
+    expect(actions.updateCategory).toHaveBeenCalledWith("c2", { name: "Power" });
   });
 
   it("adds a category to a group", async () => {
@@ -683,6 +679,18 @@ describe("CategoryList keys", () => {
     expect(selectedNow()).toBe("uncategorized");
     await user.keyboard("{ArrowUp}");
     expect(selectedNow()).toBe("c2");
+  });
+
+  it("tabs from one Assigned input to the next category's, saving it", async () => {
+    const { user, onAssign } = setup();
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+    await user.keyboard("{Control>}a{/Control}42");
+    await user.tab();
+    expect(onAssign).toHaveBeenCalledWith("pay", 42n);
+    expect(selectedNow()).toBe("c1");
+    expect(screen.getByRole("textbox", { name: "Assigned to Rent" })).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(screen.getByRole("textbox", { name: "Assigned to Visa" })).toHaveFocus();
   });
 
   it("saves the Assigned amount it leaves", async () => {

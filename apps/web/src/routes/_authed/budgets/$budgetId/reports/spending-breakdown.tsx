@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { DrillDown } from "@/components/reports/drill-down-sheet";
 import { DrillDownSheet } from "@/components/reports/drill-down-sheet";
 import { ExportButton } from "@/components/reports/export-button";
-import { ReportFilterBar } from "@/components/reports/report-filter-bar";
+import { GroupBySelect, ReportFilterBar } from "@/components/reports/report-filter-bar";
 import { ReportPage } from "@/components/reports/report-page";
 import { SpendingBreakdownBody } from "@/components/reports/spending-breakdown-body";
 import { useBudget } from "@/lib/budget-context";
@@ -13,6 +13,8 @@ import { categoriesQueryOptions } from "@/lib/categories";
 import { todayIso } from "@/lib/dates";
 import { reportActivityOptions, reportTransactionsOptions } from "@/lib/reports";
 import {
+  BREAKDOWN_BY,
+  type BreakdownBy,
   exportNames,
   type SpendingBreakdownSearch,
   spendingBreakdownSearchSchema,
@@ -20,6 +22,14 @@ import {
   transactionsExportRows,
 } from "@/lib/spending-breakdown";
 import { useReportState } from "@/lib/use-report";
+
+const GROUP_BY_LABELS: Record<BreakdownBy, string> = {
+  category: "Category",
+  group: "Category group",
+  payee: "Payee",
+  account: "Account",
+  flag: "Flag",
+};
 
 export const Route = createFileRoute("/_authed/budgets/$budgetId/reports/spending-breakdown")({
   validateSearch: spendingBreakdownSearchSchema,
@@ -59,6 +69,7 @@ function Report() {
             state.range,
             budget.numberFormat,
             budget.currency,
+            state.earliest,
           ),
           delimiter,
         ),
@@ -92,7 +103,13 @@ function Report() {
           earliest={state.earliest}
           show={["categories", "accounts", "payees", "flags", "compare"]}
           accountFilter={(a) => isOnBudget(a.type)}
-        />
+        >
+          <GroupBySelect
+            value={search.by ?? "category"}
+            options={BREAKDOWN_BY.map((b) => ({ value: b, label: GROUP_BY_LABELS[b] }))}
+            onChange={(by) => update({ by: by === "category" ? undefined : by, group: undefined })}
+          />
+        </ReportFilterBar>
       }
     >
       <SpendingBreakdownBody search={search} state={state} update={update} onDrill={setDrill} />

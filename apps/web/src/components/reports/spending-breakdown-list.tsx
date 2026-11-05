@@ -11,6 +11,7 @@ import { cn } from "@strictbudget/ui/lib/utils";
 import { useBudget } from "@/lib/budget-context";
 import { chartNumber } from "@/lib/reports";
 import { type Breakdown, type BreakdownRow, rowChange, shares } from "@/lib/spending-breakdown";
+import { CategoryLabel } from "../category-label";
 
 /** A change as "+$15.00 (+50%)", or "−$5.00 (−10%)"; "new" when nothing was spent before. */
 function useChangeLabel() {
@@ -52,6 +53,9 @@ export function SpendingBreakdownList({
     ...[...(previous?.values() ?? [])].map((v) => chartNumber(v, currency)),
   );
   const width = (a: bigint) => `${Math.max(0, (chartNumber(a, currency) / max) * 100)}%`;
+  // Categories from several groups: name each one's group.
+  const groupsShown =
+    new Set(breakdown.spending.flatMap((r) => (r.family ? [r.groupKey] : []))).size > 1;
   return (
     <div className="grid gap-4">
       <ul className="grid gap-1">
@@ -65,8 +69,14 @@ export function SpendingBreakdownList({
                 onClick={() => onSelect(row)}
                 className="grid w-full gap-1 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
               >
-                <span className="flex items-baseline gap-2">
-                  <span className="min-w-0 flex-1 truncate font-medium">{row.name}</span>
+                <span className="flex items-center gap-2">
+                  {/* The row's colour in the chart, on its swatch and its bar alike. */}
+                  <span
+                    aria-hidden
+                    className="size-2.5 shrink-0 rounded-[3px]"
+                    style={{ background: row.color }}
+                  />
+                  <CategoryLabel name={row.name} className="flex-1 font-medium" />
                   <span className="font-medium tabular-nums">{format(-row.net)}</span>
                 </span>
                 <span className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -84,6 +94,9 @@ export function SpendingBreakdownList({
                   />
                 </span>
                 <span className="flex flex-wrap gap-x-3 text-muted-foreground text-xs tabular-nums">
+                  {groupsShown && row.family && row.groupName && (
+                    <span className="max-w-full truncate">{row.groupName}</span>
+                  )}
                   {share.ofTotal && <span>{share.ofTotal} of spending</span>}
                   {share.ofIncome && <span>{share.ofIncome} of income</span>}
                   {change && (
@@ -117,7 +130,7 @@ export function SpendingBreakdownList({
                   onClick={() => onSelect(row)}
                   className="flex w-full items-baseline gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                 >
-                  <span className="min-w-0 flex-1 truncate">{row.name}</span>
+                  <CategoryLabel name={row.name} className="flex-1" />
                   <span className="tabular-nums">+{format(row.net)}</span>
                 </button>
               </li>
@@ -154,7 +167,7 @@ export function SpendingBreakdownTable({
       <TableRow key={row.key}>
         <TableCell>
           <button type="button" className="text-left hover:underline" onClick={() => onSelect(row)}>
-            {row.name}
+            <CategoryLabel name={row.name} />
           </button>
         </TableCell>
         <TableCell className="text-right tabular-nums">
@@ -182,7 +195,7 @@ export function SpendingBreakdownTable({
       <TableHeader>
         <TableRow>
           <TableHead>{rowTitle}</TableHead>
-          <TableHead className="text-right">Total Spending</TableHead>
+          <TableHead className="text-right">Total spending</TableHead>
           <TableHead className="text-right">% of spending</TableHead>
           {income !== undefined && <TableHead className="text-right">% of income</TableHead>}
           {previous && (
@@ -196,7 +209,7 @@ export function SpendingBreakdownTable({
       <TableBody>
         {breakdown.spending.map((r) => line(r, false))}
         <TableRow className="font-medium">
-          <TableCell>Total Spending</TableCell>
+          <TableCell>Total spending</TableCell>
           <TableCell className="text-right tabular-nums">{format(breakdown.total)}</TableCell>
           <TableCell colSpan={1 + (income !== undefined ? 1 : 0) + (previous ? 2 : 0)} />
         </TableRow>

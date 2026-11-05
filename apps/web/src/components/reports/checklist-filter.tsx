@@ -4,6 +4,7 @@ import { Input } from "@strictbudget/ui/components/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { ChevronDown, EyeOff, Search } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { CategoryLabel } from "../category-label";
 
 export interface ChecklistItem {
   id: string;
@@ -29,9 +30,9 @@ export function ChecklistFilter({
   selected,
   onChange,
 }: {
-  /** The button's text with everything selected ("All Categories"). */
+  /** The button's text with everything selected ("Categories"). */
   allLabel: string;
-  /** Singular and plural for a partial selection ("1 Category", "3 Categories"). */
+  /** Singular and plural for a partial selection ("1 category", "3 categories"). */
   noun: [string, string];
   searchPlaceholder: string;
   sections: ChecklistSection[];
@@ -45,14 +46,18 @@ export function ChecklistFilter({
     count === all.length
       ? allLabel
       : count === 0
-        ? `No ${noun[1]} Selected`
-        : `${count} ${count === 1 ? noun[0] : noun[1]}`;
+        ? `No ${noun[1].toLowerCase()} selected`
+        : `${count} ${(count === 1 ? noun[0] : noun[1]).toLowerCase()}`;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="gap-1" data-partial={count < all.length || undefined}>
+        <Button
+          variant="outline"
+          className="gap-1 data-partial:border-primary/40 data-partial:bg-primary/5 data-partial:text-primary-text"
+          data-partial={count < all.length || undefined}
+        >
           {label}
-          <ChevronDown className="size-4" />
+          <ChevronDown className="size-4 opacity-60" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)] p-0">
@@ -151,7 +156,7 @@ function ChecklistBody({
                     onCheckedChange={(v) => set([i.id], v === true)}
                   />
                   {i.icon}
-                  <span className="truncate">{i.label}</span>
+                  <CategoryLabel name={i.label} />
                   {i.hidden && (
                     <EyeOff
                       aria-label="Hidden"
@@ -166,10 +171,10 @@ function ChecklistBody({
       </div>
       <div className="flex items-center gap-1 border-t p-2">
         <Button variant="link" size="sm" onClick={() => set(all, true)}>
-          Select All
+          Select all
         </Button>
         <Button variant="link" size="sm" onClick={() => set(all, false)}>
-          Select None
+          Select none
         </Button>
         <Button variant="outline" size="sm" className="ml-auto" onClick={onCancel}>
           Cancel

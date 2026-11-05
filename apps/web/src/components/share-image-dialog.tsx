@@ -83,7 +83,7 @@ export function ShareImageDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[95vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Download and Share</DialogTitle>
+          <DialogTitle>Download and share</DialogTitle>
         </DialogHeader>
         <div className="grid gap-6 md:grid-cols-[13rem_minmax(0,1fr)]">
           <div className="grid content-start gap-3">
@@ -109,11 +109,11 @@ export function ShareImageDialog({
             <div className="grid gap-3 border-t pt-3">
               <div className="flex items-center gap-2">
                 <Switch id="share-tagline" checked={showTagline} onCheckedChange={setShowTagline} />
-                <Label htmlFor="share-tagline">Show Tagline</Label>
+                <Label htmlFor="share-tagline">Show tagline</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch id="share-amounts" checked={showAmounts} onCheckedChange={setShowAmounts} />
-                <Label htmlFor="share-amounts">Show Amounts</Label>
+                <Label htmlFor="share-amounts">Show amounts</Label>
               </div>
             </div>
           </div>
@@ -160,7 +160,7 @@ export function ShareImageDialog({
             Cancel
           </Button>
           <Button onClick={download} disabled={busy}>
-            Download Image
+            Download image
           </Button>
         </DialogFooter>
       </DialogContent>

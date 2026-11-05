@@ -8,25 +8,59 @@ import {
   TableHeader,
   TableRow,
 } from "@strictbudget/ui/components/table";
-import {
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ReferenceArea,
-  ReferenceLine,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { cn } from "@strictbudget/ui/lib/utils";
+import { CartesianGrid, ComposedChart, Line, ReferenceLine, Tooltip, XAxis, YAxis } from "recharts";
 import { useBudget } from "@/lib/budget-context";
 import { chartNumber, chartTick } from "@/lib/reports";
 import { dayLabel, type PaceLine } from "@/lib/spending-pace";
 
-const config = {
-  remaining: { label: "Left to spend", color: "var(--report-1)" },
-  ideal: { label: "Even pace", color: "var(--muted-foreground)" },
-  projection: { label: "At this pace", color: "var(--report-4)" },
-} satisfies ChartConfig;
+const REMAINING_COLOR = "var(--report-1)";
+const IDEAL_COLOR = "var(--muted-foreground)";
+const TODAY_COLOR = "color-mix(in oklab, var(--foreground) 45%, transparent)";
+
+/** The projection is red only when it runs out; otherwise it continues the line it projects. */
+const projectionColor = (line: PaceLine) =>
+  line.runOutDate !== null || line.status === "behind" ? "var(--destructive)" : REMAINING_COLOR;
+
+interface Stroke {
+  label: string;
+  color: string;
+  width: number;
+  dash?: string;
+  /** Round caps turn a "0 n" dash into dots. */
+  round?: boolean;
+}
+
+/**
+ * How each line is drawn, shared by the chart and its legend so they can't drift apart. Every
+ * line differs from the others in colour or pattern: the actual line solid, the even pace a grey
+ * dash, the projection dotted.
+ */
+const strokesOf = (line: PaceLine) =>
+  ({
+    remaining: { label: "Left to spend", color: REMAINING_COLOR, width: 2.5 },
+    ideal: { label: "Even pace", color: IDEAL_COLOR, width: 1.5, dash: "6 4" },
+    projection: {
+      label: "At this pace",
+      color: projectionColor(line),
+      width: 3,
+      dash: "0 6",
+      round: true,
+    },
+  }) satisfies Record<string, Stroke>;
+
+const configOf = (line: PaceLine) =>
+  Object.fromEntries(
+    Object.entries(strokesOf(line)).map(([k, s]) => [k, { label: s.label, color: s.color }]),
+  ) satisfies ChartConfig;
+
+/** A line's props for recharts, from its Stroke. */
+const lineProps = (s: Stroke) => ({
+  stroke: s.color,
+  strokeWidth: s.width,
+  ...(s.dash && { strokeDasharray: s.dash }),
+  ...(s.round && { strokeLinecap: "round" as const }),
+});
 
 interface Point {
   /** Days since the month began: 0 is its start, n the end of day n. */
@@ -78,7 +112,8 @@ function chartPoints(line: PaceLine, elapsed: number, finished: boolean, currenc
 
 /**
  * The burndown: money left to spend at the end of each day so far, the even pace to zero (dashed,
- * grey), the projection at the pace so far (dashed) and the days passed shaded up to today.
+ * grey), the projection at the pace so far (dotted, red when it runs out) and today's line.
+ * SpendingPaceLegend names each mark, drawn from the same strokes.
  */
 export function SpendingPaceChart({
   line,
@@ -91,7 +126,7 @@ export function SpendingPaceChart({
   elapsed: number;
   finished: boolean;
   className?: string;
-  /** No axes, grid or tooltip (the plan screen's version). */
+  /** Small (the plan screen's version): no grid, only the first and last day and the start. */
   compact?: boolean;
 }) {
   const { budget, formatAmount } = useBudget();
@@ -102,32 +137,29 @@ export function SpendingPaceChart({
   const spec = NUMBER_FORMAT_SPECS[budget.numberFormat];
   const tick = (units: number) => chartTick(units, currency, exact, spec.decimal);
   const dateOf = (day: number) => line.points[Math.max(0, day - 1)]?.date ?? "";
-  const ticks = [1, 8, 15, 22, days];
+  const ticks = compact ? [1, days] : [1, 8, 15, 22, days];
+  const startUnits = chartNumber(BigInt(line.start), currency);
+  const strokes = strokesOf(line);
 
   return (
-    <ChartContainer config={config} className={className}>
+    <ChartContainer config={configOf(line)} className={className}>
       <ComposedChart
         data={data}
-        margin={compact ? { top: 4, right: 4, bottom: 4, left: 4 } : { top: 8, right: 16, left: 8 }}
+        margin={
+          compact ? { top: 14, right: 8, bottom: 0, left: 0 } : { top: 20, right: 16, left: 8 }
+        }
       >
         {!compact && <CartesianGrid vertical={false} strokeDasharray="3 3" />}
-        <ReferenceArea
-          x1={0}
-          x2={elapsed}
-          fill="var(--muted-foreground)"
-          fillOpacity={0.08}
-          ifOverflow="extendDomain"
-        />
         {!finished && (
           <ReferenceLine
             x={elapsed}
-            stroke="var(--foreground)"
-            strokeOpacity={0.4}
-            label={
-              compact
-                ? undefined
-                : { value: "Today", position: "insideTopRight", fontSize: 11, fill: "currentColor" }
-            }
+            stroke={TODAY_COLOR}
+            label={{
+              value: "Today",
+              position: "top",
+              fontSize: compact ? 10 : 11,
+              fill: "var(--muted-foreground)",
+            }}
           />
         )}
         <ReferenceLine y={0} stroke="var(--border)" />
@@ -142,16 +174,23 @@ export function SpendingPaceChart({
           tickFormatter={(d: number) => dayLabel(dateOf(d))}
           tickLine={false}
           axisLine={false}
-          hide={compact}
+          fontSize={compact ? 10 : undefined}
         />
-        <YAxis tickFormatter={tick} tickLine={false} axisLine={false} width={80} hide={compact} />
+        <YAxis
+          {...(compact ? { ticks: [0, startUnits], fontSize: 10, width: 64 } : { width: 80 })}
+          niceTicks={compact ? undefined : "snap125"}
+          // The small chart's one amount, the start, reads as whole units.
+          tickFormatter={compact ? (units: number) => tick(Math.trunc(units)) : tick}
+          tickLine={false}
+          axisLine={false}
+        />
         {!compact && (
           <Tooltip
             content={({ active, payload }) => {
               const point = payload?.[0]?.payload as Point | undefined;
               if (!active || !point) return null;
               return (
-                <div className="grid gap-0.5 rounded-md border bg-background px-3 py-2 text-xs shadow-sm">
+                <div className="grid gap-0.5 rounded-md border bg-popover px-3 py-2 text-xs shadow-md text-popover-foreground">
                   <span className="text-muted-foreground">
                     {point.date ? `End of ${dayLabel(point.date)}` : "Start of the month"}
                   </span>
@@ -177,18 +216,14 @@ export function SpendingPaceChart({
         <Line
           dataKey="ideal"
           type="linear"
-          stroke="var(--color-ideal)"
-          strokeDasharray="4 4"
-          strokeWidth={1.5}
+          {...lineProps(strokes.ideal)}
           dot={false}
           isAnimationActive={false}
         />
         <Line
           dataKey="projection"
           type="linear"
-          stroke="var(--color-projection)"
-          strokeDasharray="6 4"
-          strokeWidth={2}
+          {...lineProps(strokes.projection)}
           dot={false}
           connectNulls
           isAnimationActive={false}
@@ -196,13 +231,49 @@ export function SpendingPaceChart({
         <Line
           dataKey="remaining"
           type="linear"
-          stroke="var(--color-remaining)"
-          strokeWidth={2}
+          {...lineProps(strokes.remaining)}
           dot={false}
           isAnimationActive={false}
         />
       </ComposedChart>
     </ChartContainer>
+  );
+}
+
+/** Names every mark on SpendingPaceChart, each swatch drawn with its line's own stroke. */
+export function SpendingPaceLegend({
+  line,
+  finished,
+  className,
+}: {
+  line: PaceLine;
+  finished: boolean;
+  className?: string;
+}) {
+  const strokes = strokesOf(line);
+  const items = [strokes.remaining, strokes.ideal, ...(finished ? [] : [strokes.projection])];
+  return (
+    <ul
+      aria-label="Legend"
+      className={cn("flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground text-xs", className)}
+    >
+      {items.map((s) => (
+        <li key={s.label} className="flex items-center gap-1.5">
+          <svg aria-hidden width="22" height="8" viewBox="0 0 22 8" className="shrink-0">
+            <line x1="2" y1="4" x2="20" y2="4" {...lineProps(s)} />
+          </svg>
+          {s.label}
+        </li>
+      ))}
+      {!finished && (
+        <li className="flex items-center gap-1.5">
+          <svg aria-hidden width="8" height="12" viewBox="0 0 8 12" className="shrink-0">
+            <line x1="4" y1="0" x2="4" y2="12" stroke={TODAY_COLOR} strokeWidth={1} />
+          </svg>
+          Today
+        </li>
+      )}
+    </ul>
   );
 }
 

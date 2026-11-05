@@ -1,9 +1,15 @@
-import { addMonths } from "@strictbudget/engine";
+import { addMonths, isOnBudget } from "@strictbudget/engine";
+import { Button } from "@strictbudget/ui/components/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
 import { cn } from "@strictbudget/ui/lib/utils";
-import { CircleCheck, CircleMinus, CirclePlus, Info, TriangleAlert } from "lucide-react";
-import type { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { CircleCheck, CircleMinus, CirclePlus, Info, Plus, TriangleAlert } from "lucide-react";
+import { type ReactNode, useState } from "react";
+import { accountsQueryOptions } from "@/lib/accounts";
+import { useOptionalBudget } from "@/lib/budget-context";
 import { type BudgetMonthData, monthName } from "@/lib/months";
+import { useOptionalQueryClient } from "@/lib/query-client";
+import { AddAccountDialog } from "./add-account-dialog";
 import { TargetPie } from "./move-money";
 
 type Breakdown = BudgetMonthData["readyToAssignBreakdown"];
@@ -119,7 +125,10 @@ export function ReadyToAssignBanner({
   action,
   assign,
   breakdown,
+  compact = false,
 }: {
+  /** One line, for the top bar: the amount and label side by side. */
+  compact?: boolean;
   amount: string;
   overdraft: boolean;
   format: (minorUnits: string) => string;
@@ -131,13 +140,22 @@ export function ReadyToAssignBanner({
   breakdown?: { lines: Breakdown; month: string };
 }) {
   const sign = amount === "0" ? 0 : amount.startsWith("-") ? -1 : 1;
+  const noAccounts = useNoBudgetAccounts();
+  if (sign === 0 && noAccounts) return <AddAccountPrompt compact={compact} format={format} />;
   const negativeLabel = overdraft
     ? "Overdraft? We can help with that!"
     : "You assigned more than you have";
   const summary = (
     <>
-      <span className="font-semibold text-2xl tabular-nums">{format(amount)}</span>
-      <span className="text-sm">
+      <span
+        className={cn(
+          "tabular-nums",
+          compact ? "font-semibold text-[1.5rem] leading-none tracking-tight" : "text-display",
+        )}
+      >
+        {format(amount)}
+      </span>
+      <span className={cn("font-medium", compact ? "text-xs leading-tight" : "text-sm")}>
         {sign > 0 ? "Ready to Assign" : sign === 0 ? "All Money Assigned" : negativeLabel}
       </span>
     </>
@@ -146,9 +164,16 @@ export function ReadyToAssignBanner({
     <output
       aria-live="polite"
       className={cn(
-        "flex min-w-56 flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-2 max-md:w-full transition-colors duration-200 ease-out-quint",
+        "flex items-center justify-between rounded-lg transition-colors duration-200 ease-out-quint",
+        compact
+          ? "h-12 shrink-0 flex-nowrap gap-4 py-0 pr-2 pl-4"
+          : "min-w-56 flex-wrap gap-3 px-4 py-2 max-md:w-full",
         sign > 0 && "bg-green-200 text-green-950 dark:bg-green-900/60 dark:text-green-50",
-        sign === 0 && "bg-muted text-muted-foreground",
+        sign === 0 &&
+          cn(
+            "border border-muted-foreground/45 border-dashed text-muted-foreground",
+            !compact && "px-[15px] py-[7px]",
+          ),
         sign < 0 && "bg-red-200 text-red-950 dark:bg-red-900/60 dark:text-red-50",
       )}
     >
@@ -171,6 +196,89 @@ export function ReadyToAssignBanner({
       {sign > 0 && assign}
       {sign === 0 && <CircleCheck className="size-6" aria-hidden />}
       {sign < 0 && !overdraft && action}
+    </output>
+  );
+}
+
+/**
+ * The budget has no open cash or credit account, so there's no money to assign yet (outside a
+ * budget, or before the accounts load: false).
+ */
+function useNoBudgetAccounts() {
+  const context = useOptionalBudget();
+  const { client, present } = useOptionalQueryClient();
+  const accounts = useQuery(
+    { ...accountsQueryOptions(context?.budget.id ?? ""), enabled: present && context !== null },
+    client,
+  );
+  return (
+    accounts.data !== undefined &&
+    !accounts.data.accounts.some((a) => !a.closed && isOnBudget(a.type))
+  );
+}
+
+/** In place of "All Money Assigned" while there's no account for money to come from. */
+function AddAccountPrompt({
+  compact = false,
+  format,
+}: {
+  compact?: boolean;
+  format: (minorUnits: string) => string;
+}) {
+  const context = useOptionalBudget();
+  const [adding, setAdding] = useState(false);
+  // Mounted on first use, so the banner needs no router until then.
+  const [dialogMounted, setDialogMounted] = useState(false);
+  return (
+    // A set width (narrower in a tight column), never its content's, so the container query can drop
+    // the button under the text when the two don't fit side by side.
+    <output
+      aria-live="polite"
+      className={cn(
+        "rounded-lg border border-input border-dashed bg-muted/40",
+        // In the top bar: one compact line at its content's width (no container query there: a
+        // size container takes no width from its content and would collapse).
+        compact
+          ? "flex h-12 w-max shrink-0 items-center gap-4 py-0 pr-2 pl-4"
+          : "@container w-[21rem] min-w-56 max-w-full shrink px-4 py-2 max-md:w-full",
+      )}
+    >
+      <span
+        className={cn(
+          "flex items-center justify-between gap-x-4 gap-y-2",
+          compact ? "flex-nowrap" : "flex-wrap @[18rem]:flex-nowrap",
+        )}
+      >
+        <span className={cn("grid", compact ? "whitespace-nowrap" : "@[18rem]:whitespace-nowrap")}>
+          {compact ? (
+            // The number keeps its place in the bar, with what to do about it.
+            <span className="font-semibold text-[1.5rem] tabular-nums leading-none tracking-tight">
+              {format("0")}
+            </span>
+          ) : (
+            <span className="font-semibold text-base">No money yet</span>
+          )}
+          <span className={cn("text-muted-foreground", compact ? "text-xs" : "text-sm")}>
+            Add an account to start
+          </span>
+        </span>
+        {context && !context.readOnly && (
+          <>
+            <Button
+              size="sm"
+              onClick={() => {
+                setDialogMounted(true);
+                setAdding(true);
+              }}
+            >
+              <Plus /> Add account
+            </Button>
+            {dialogMounted && (
+              <AddAccountDialog budget={context.budget} open={adding} onOpenChange={setAdding} />
+            )}
+          </>
+        )}
+      </span>
     </output>
   );
 }

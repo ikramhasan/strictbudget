@@ -41,7 +41,7 @@ describe("NamePopover withEmoji", () => {
     expect(screen.getByRole("button", { name: `Emoji: ${bag}. Change emoji` })).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("New category group"), "Savings");
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
-    expect(onSubmit).toHaveBeenCalledWith({ name: `${bag} Savings`, note: "" });
+    expect(onSubmit).toHaveBeenCalledWith({ name: `${bag} Savings` });
   });
 
   it("leaves the name alone without one", async () => {
@@ -50,7 +50,7 @@ describe("NamePopover withEmoji", () => {
     await userEvent.click(screen.getByRole("button", { name: "Open" }));
     await userEvent.type(screen.getByLabelText("New category group"), "Savings");
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
-    expect(onSubmit).toHaveBeenCalledWith({ name: "Savings", note: "" });
+    expect(onSubmit).toHaveBeenCalledWith({ name: "Savings" });
   });
 });
 
@@ -79,7 +79,7 @@ describe("NamePopover withEmoji, renaming", () => {
       <NamePopover
         title="Category name"
         withEmoji
-        initial={{ name, note: "" }}
+        initial={{ name }}
         onSubmit={onSubmit}
         trigger={<button type="button">Open</button>}
       />,
@@ -92,8 +92,10 @@ describe("NamePopover withEmoji, renaming", () => {
     await userEvent.click(screen.getByRole("button", { name: "Open" }));
     expect(screen.getByLabelText("Category name")).toHaveValue("Rent");
     expect(screen.getByRole("button", { name: "Emoji: 🏠. Change emoji" })).toBeInTheDocument();
+    // A category's note is edited in the inspector only.
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
     await userEvent.click(screen.getByRole("button", { name: "OK" }));
-    expect(onSubmit).toHaveBeenCalledWith({ name: "🏠 Rent", note: "" });
+    expect(onSubmit).toHaveBeenCalledWith({ name: "🏠 Rent" });
   });
 
   it("drops the emoji when it is removed", async () => {
@@ -103,7 +105,7 @@ describe("NamePopover withEmoji, renaming", () => {
     await userEvent.click(screen.getByRole("button", { name: "Emoji: 🏠. Change emoji" }));
     await userEvent.click(await screen.findByRole("button", { name: "Remove" }));
     await userEvent.click(screen.getByRole("button", { name: "OK" }));
-    expect(onSubmit).toHaveBeenCalledWith({ name: "Rent", note: "" });
+    expect(onSubmit).toHaveBeenCalledWith({ name: "Rent" });
   });
 
   it("has no box while the name is locked", async () => {
@@ -112,7 +114,7 @@ describe("NamePopover withEmoji, renaming", () => {
         title="Category name"
         withEmoji
         nameLockedReason="Named after its credit account."
-        initial={{ name: "🏠 Visa", note: "" }}
+        initial={{ name: "🏠 Visa" }}
         onSubmit={vi.fn()}
         trigger={<button type="button">Open</button>}
       />,

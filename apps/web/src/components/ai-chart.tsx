@@ -29,6 +29,7 @@ import {
   YAxis,
 } from "recharts";
 import { useBudget } from "@/lib/budget-context";
+import { OTHER_COLOR, REPORT_COLORS, reportColor } from "@/lib/reports";
 
 /** The assistant's chart, as its `presentChart` tool call describes it (checked by the server). */
 export interface AiChartSpec {
@@ -55,8 +56,31 @@ export function chartSpec(input: unknown): AiChartSpec | null {
     : null;
 }
 
-/** The report palette: colourful in both themes (the chart tokens are greys in this theme). */
-const color = (i: number) => `var(--report-${(i % 8) + 1})`;
+/** Money in and out keep the reports' colours: blue (the palette's first) and orange (its second). */
+const MONEY_SLOTS: readonly [RegExp, number][] = [
+  [/income|inflow|earned/i, 0],
+  [/spend|expense|outflow/i, 1],
+];
+
+/**
+ * The report palette for a chart's series (or slices), in order: income and spending take blue and
+ * orange wherever they sit, the rest the palette's other colours in turn; none repeats, and past
+ * the palette the rest share the "Other" neutral.
+ */
+export function aiChartColors(labels: readonly string[]): string[] {
+  const fixed = new Set<number>();
+  const slots = labels.map((label) => {
+    const slot = MONEY_SLOTS.find(([pattern]) => pattern.test(label))?.[1];
+    if (slot === undefined || fixed.has(slot)) return undefined;
+    fixed.add(slot);
+    return slot;
+  });
+  const free = Array.from({ length: REPORT_COLORS }, (_, i) => i).filter((i) => !fixed.has(i));
+  return slots.map((slot) => {
+    const next = slot ?? free.shift();
+    return next === undefined ? OTHER_COLOR : reportColor(next);
+  });
+}
 
 /**
  * A chart the assistant showed: every kind shadcn's chart component draws (bar, line, area, pie,
@@ -81,10 +105,23 @@ export function AiChart({ spec }: { spec: AiChartSpec }) {
   }));
   const sliced = spec.type === "pie" || spec.type === "radial";
   // A pie or radial chart colours its slices; the others colour their series.
+  const sliceColors = aiChartColors(rows.map((r) => r.label));
+  const seriesColors = aiChartColors(spec.series.map((s) => s.label));
   const config: ChartConfig = sliced
-    ? Object.fromEntries(rows.map((r, i) => [`r${i}`, { label: r.label, color: color(i) }]))
-    : Object.fromEntries(spec.series.map((s, i) => [`s${i}`, { label: s.label, color: color(i) }]));
-  const slices = rows.map((r, i) => ({ ...r, slice: `r${i}`, fill: color(i) }));
+    ? Object.fromEntries(
+        rows.map((r, i) => [`r${i}`, { label: r.label, color: sliceColors[i] ?? OTHER_COLOR }]),
+      )
+    : Object.fromEntries(
+        spec.series.map((s, i) => [
+          `s${i}`,
+          { label: s.label, color: seriesColors[i] ?? OTHER_COLOR },
+        ]),
+      );
+  const slices = rows.map((r, i) => ({
+    ...r,
+    slice: `r${i}`,
+    fill: sliceColors[i] ?? OTHER_COLOR,
+  }));
 
   const tooltip = (
     <ChartTooltip

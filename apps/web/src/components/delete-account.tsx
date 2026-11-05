@@ -32,7 +32,7 @@ export function DeleteAccountCard() {
     // Card draws its edge with a ring, so the warning colour goes on the ring.
     <Card className="ring-destructive/40">
       <CardHeader>
-        <CardTitle>Delete Account</CardTitle>
+        <CardTitle>Delete account</CardTitle>
         <CardDescription>
           Delete your account if you no longer wish to use strictbudget (and want all of your
           account and budget data permanently deleted).
@@ -40,7 +40,7 @@ export function DeleteAccountCard() {
       </CardHeader>
       <CardContent>
         <Button variant="destructive" onClick={() => setOpen(true)}>
-          Delete Account
+          Delete account
         </Button>
       </CardContent>
       {open && <DeleteAccountDialog onClose={() => setOpen(false)} />}
@@ -102,7 +102,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
             account and budget data will be permanently deleted.
           </p>
           <Field>
-            <FieldLabel htmlFor="delete-password">Confirm Password</FieldLabel>
+            <FieldLabel htmlFor="delete-password">Confirm password</FieldLabel>
             <Input
               id="delete-password"
               name="password"
@@ -118,7 +118,7 @@ function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
               Cancel
             </Button>
             <Button type="submit" variant="destructive" disabled={remove.isPending}>
-              {remove.isPending && <Spinner />} Delete Account
+              {remove.isPending && <Spinner />} Delete account
             </Button>
           </DialogFooter>
         </form>

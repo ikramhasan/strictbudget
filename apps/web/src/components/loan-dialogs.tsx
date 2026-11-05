@@ -250,7 +250,7 @@ export function RecordPaymentDialog({
     <LoanDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Record Payment"
+      title="Record payment"
       intro={
         fromInspector
           ? "This payment will appear in the paired account, and as a transaction in the account your payment is coming from."
@@ -276,14 +276,14 @@ export function RecordPaymentDialog({
     >
       <AmountInput
         id="loan-payment-amount"
-        label="Payment Amount"
+        label="Payment amount"
         value={amount}
         onChange={setAmount}
         description="Enter the total amount you are paying. strictbudget will estimate the portion of each payment that is principal and interest."
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor={fromId}>From Account</FieldLabel>
+          <FieldLabel htmlFor={fromId}>From account</FieldLabel>
           <NativeSelect
             id={fromId}
             value={fromAccountId}
@@ -291,8 +291,8 @@ export function RecordPaymentDialog({
             className="w-full"
           >
             {[
-              { label: "Cash Accounts:", list: cash },
-              { label: "Credit Accounts:", list: credit },
+              { label: "Cash accounts:", list: cash },
+              { label: "Credit accounts:", list: credit },
             ]
               .filter((g) => g.list.length > 0)
               .map((g) => (
@@ -320,29 +320,29 @@ const ACTIVITY_COPY: Record<
   { add: string; edit: string; intro: string; info?: string; remove: string; amount: string }
 > = {
   credit: {
-    add: "Record Credit or Refund",
-    edit: "Edit Credit or Refund",
+    add: "Record credit or refund",
+    edit: "Edit credit or refund",
     intro: "This is for credits or refunds to your account, other than payments.",
     info: "This amount will be credited towards your account balance, but will not be included in Ready to Assign or in your plan category balance.",
-    remove: "Delete Credit",
+    remove: "Delete credit",
     amount: "Amount",
   },
   charge: {
-    add: "Record New Charge",
-    edit: "Edit Charge",
+    add: "Record new charge",
+    edit: "Edit charge",
     intro:
       "This is for charges against your account other than interest or escrow: new withdrawals, late fees, annual fees, etc.",
     info: "Remember to set additional money aside in your plan for payment if you do not want these new charges to carry forward as increased debt.",
-    remove: "Delete Charge",
+    remove: "Delete charge",
     amount: "Amount",
   },
   adjustment: {
-    add: "Balance Adjustment",
-    edit: "Edit Balance Adjustment",
+    add: "Balance adjustment",
+    edit: "Edit balance adjustment",
     intro:
       "strictbudget made this adjustment during a balance update. After editing, make sure you update your balance again to make sure your account balance in strictbudget still matches your financial institution.",
-    remove: "Delete Adjustment",
-    amount: "Balance Adjustment Amount",
+    remove: "Delete adjustment",
+    amount: "Balance adjustment amount",
   },
 };
 
@@ -506,7 +506,7 @@ export function RecordInterestDialog({
     <LoanDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Record Interest"
+      title="Record interest"
       intro="Interest recorded will be in addition to any existing estimated or recorded interest in the chosen month."
       error={error}
       pending={pending}
@@ -519,7 +519,7 @@ export function RecordInterestDialog({
       <div className="grid gap-4 sm:grid-cols-2">
         <AmountInput
           id="loan-interest-amount"
-          label="Interest Amount"
+          label="Interest amount"
           value={text}
           onChange={setText}
         />
@@ -638,7 +638,7 @@ export function UpdateBalanceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-center">Update Balance</DialogTitle>
+          <DialogTitle className="text-center">Update balance</DialogTitle>
         </DialogHeader>
         {step === "confirm" && (
           <div className="grid justify-items-center gap-3 py-2 text-center">
@@ -751,7 +751,7 @@ export function UpdateBalanceDialog({
               <ul className="divide-y border-y">
                 {adjustment !== 0n && (
                   <li className="flex justify-between py-2">
-                    <span>Balance Adjustment</span>
+                    <span>Balance adjustment</span>
                     <span className="tabular-nums">
                       {adjustment > 0n ? "+" : ""}
                       {format(adjustment)}

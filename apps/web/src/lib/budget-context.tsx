@@ -13,13 +13,16 @@ interface BudgetContextValue {
   readOnly: boolean;
 }
 
+const MINUS = "\u2212";
+
 const BudgetContext = createContext<BudgetContextValue | null>(null);
 
 export function BudgetProvider({ budget, children }: { budget: Budget; children: ReactNode }) {
   const value = useMemo<BudgetContextValue>(
     () => ({
       budget,
-      formatAmount: (m) => formatAmount(m, budget),
+      // A true minus sign: the hyphen sits loose before the figures in tabular numerals.
+      formatAmount: (m) => formatAmount(m, budget).replace(/^-/, MINUS),
       formatDate: (isoDate) => formatDate(isoDate, budget.dateFormat),
       readOnly: budget.role === "viewer",
     }),

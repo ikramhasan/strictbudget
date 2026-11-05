@@ -7,8 +7,10 @@ import {
   type ReportPreset,
 } from "@strictbudget/engine";
 import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Flag } from "lucide-react";
+import type { ReactNode } from "react";
 import { accountsQueryOptions } from "@/lib/accounts";
 import { useBudget } from "@/lib/budget-context";
 import { categoriesQueryOptions } from "@/lib/categories";
@@ -22,14 +24,29 @@ export type ReportFilterName = "categories" | "accounts" | "payees" | "flags" | 
 
 export type UpdateSearch = (patch: Partial<ReportSearch>) => void;
 
+/**
+ * A toolbar select in the filter buttons' skin: outlined, tinted like a narrowed filter while
+ * `active` (a comparison on). Classes on NativeSelect's wrapper, aimed at its select.
+ */
+export function toolbarSelectClass(active?: boolean) {
+  return cn(
+    "[&>select]:bg-background [&>select]:bg-none [&>select]:text-foreground [&>select]:shadow-xs [&>select:hover]:bg-accent dark:[&>select]:shadow-[0_1px_2px_rgb(0_0_0/0.4)]",
+    active &&
+      "[&>select]:border-primary/40 [&>select]:bg-primary/5 [&>select]:text-primary-text [&>select:hover]:bg-primary/10",
+  );
+}
+
 const ACCOUNT_SECTIONS = [
-  ["cash", "Cash Accounts"],
-  ["credit", "Credit Accounts"],
+  ["cash", "Cash accounts"],
+  ["credit", "Credit accounts"],
   ["loan", "Loans"],
-  ["tracking", "Tracking Accounts"],
+  ["tracking", "Tracking accounts"],
 ] as const;
 
-/** A report's filters, kept in its URL. */
+/**
+ * A report's filters, kept in its URL: the range, then what to include, then anything the report
+ * adds (`children`, such as Group by), as items of the report's one toolbar row.
+ */
 export function ReportFilterBar({
   search,
   update,
@@ -39,6 +56,7 @@ export function ReportFilterBar({
   earliest,
   show,
   accountFilter,
+  children,
 }: {
   search: ReportSearch;
   update: UpdateSearch;
@@ -49,6 +67,7 @@ export function ReportFilterBar({
   show: readonly ReportFilterName[];
   /** Which accounts the account filter offers (budget accounts for spending reports). */
   accountFilter?: (account: { type: Parameters<typeof accountFamily>[0] }) => boolean;
+  children?: ReactNode;
 }) {
   const { budget } = useBudget();
   const categories = useQuery({
@@ -75,7 +94,7 @@ export function ReportFilterBar({
         {
           id: "uncategorized",
           items: [
-            { id: categories.data.uncategorizedCategoryId, label: "Uncategorized Transactions" },
+            { id: categories.data.uncategorizedCategoryId, label: "Uncategorized transactions" },
           ],
         },
         ...categories.data.groups
@@ -105,13 +124,13 @@ export function ReportFilterBar({
     })),
     {
       id: "closed",
-      title: "Closed Accounts",
+      title: "Closed accounts",
       items: shownAccounts.filter((a) => a.closed).map((a) => ({ id: a.id, label: a.name })),
     },
   ].filter((s) => s.items.length);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <>
       <RangePicker
         range={range}
         preset={preset}
@@ -121,9 +140,9 @@ export function ReportFilterBar({
       />
       {show.includes("categories") && (
         <ChecklistFilter
-          allLabel="All Categories"
+          allLabel="Categories"
           noun={["Category", "Categories"]}
-          searchPlaceholder="Search All Categories"
+          searchPlaceholder="Search all categories"
           sections={categorySections}
           selected={splitIds(search.categories)}
           onChange={(v) => update({ categories: ids(v) })}
@@ -131,9 +150,9 @@ export function ReportFilterBar({
       )}
       {show.includes("accounts") && (
         <ChecklistFilter
-          allLabel="All Accounts"
+          allLabel="Accounts"
           noun={["Account", "Accounts"]}
-          searchPlaceholder="Search All Accounts"
+          searchPlaceholder="Search all accounts"
           sections={accountSections}
           selected={splitIds(search.accounts)}
           onChange={(v) => update({ accounts: ids(v) })}
@@ -141,9 +160,9 @@ export function ReportFilterBar({
       )}
       {show.includes("payees") && (
         <ChecklistFilter
-          allLabel="All Payees"
+          allLabel="Payees"
           noun={["Payee", "Payees"]}
-          searchPlaceholder="Search All Payees"
+          searchPlaceholder="Search all payees"
           sections={[
             {
               id: "payees",
@@ -159,9 +178,9 @@ export function ReportFilterBar({
       )}
       {show.includes("flags") && (
         <ChecklistFilter
-          allLabel="All Flags"
+          allLabel="Flags"
           noun={["Flag", "Flags"]}
-          searchPlaceholder="Search Flags"
+          searchPlaceholder="Search flags"
           sections={[
             {
               id: "flags",
@@ -182,6 +201,7 @@ export function ReportFilterBar({
       {show.includes("compare") && (
         <NativeSelect
           aria-label="Compare with"
+          className={toolbarSelectClass(search.compare !== undefined)}
           // As wide as the chosen option, like the filter buttons beside it, not the longest one.
           style={{ fieldSizing: "content" }}
           value={search.compare ?? ""}
@@ -189,7 +209,7 @@ export function ReportFilterBar({
             update({ compare: (e.target.value || undefined) as ReportComparison | undefined })
           }
         >
-          <NativeSelectOption value="">No comparison</NativeSelectOption>
+          <NativeSelectOption value="">Compare: Off</NativeSelectOption>
           {REPORT_COMPARISONS.map((c) => (
             <NativeSelectOption key={c} value={c}>
               Compare: {COMPARISON_LABELS[c]}
@@ -197,6 +217,34 @@ export function ReportFilterBar({
           ))}
         </NativeSelect>
       )}
-    </div>
+      {children}
+    </>
+  );
+}
+
+/** How a report groups its rows, as one select in the toolbar. */
+export function GroupBySelect<T extends string>({
+  value,
+  options,
+  onChange,
+}: {
+  value: T;
+  options: readonly { value: T; label: string }[];
+  onChange: (value: T) => void;
+}) {
+  return (
+    <NativeSelect
+      aria-label="Group by"
+      className={toolbarSelectClass()}
+      style={{ fieldSizing: "content" }}
+      value={value}
+      onChange={(e) => onChange(e.target.value as T)}
+    >
+      {options.map((o) => (
+        <NativeSelectOption key={o.value} value={o.value}>
+          By {o.label.toLowerCase()}
+        </NativeSelectOption>
+      ))}
+    </NativeSelect>
   );
 }

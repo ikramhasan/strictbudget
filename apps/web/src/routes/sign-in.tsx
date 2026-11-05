@@ -47,7 +47,7 @@ function SignInPage() {
   return (
     <AuthCard
       title="Welcome back"
-      description="Sign in to your budget."
+      description="Sign in to pick up where you left off."
       footer={
         <span>
           New here?{" "}
@@ -119,7 +119,7 @@ function TwoStepVerification({ onVerified }: { onVerified: () => Promise<void> }
 
   return (
     <AuthCard
-      title="Two-Step Verification"
+      title="Two-step verification"
       description={
         backup
           ? "Enter the emergency backup code you saved when you set up two-step verification."
@@ -140,7 +140,7 @@ function TwoStepVerification({ onVerified }: { onVerified: () => Promise<void> }
     >
       <form key={String(backup)} onSubmit={handleSubmit} className="grid gap-4">
         <Field>
-          <FieldLabel htmlFor="code">{backup ? "Backup code" : "6-Digit Code"}</FieldLabel>
+          <FieldLabel htmlFor="code">{backup ? "Backup code" : "6-digit code"}</FieldLabel>
           <Input
             id="code"
             name="code"

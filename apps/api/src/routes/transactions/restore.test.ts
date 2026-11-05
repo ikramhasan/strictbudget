@@ -15,6 +15,8 @@ afterAll(close);
 
 type Account = { id: string };
 type Side = {
+  id?: string;
+  version?: number;
   memo: string;
   cleared: string;
   flag: string | null;
@@ -33,6 +35,7 @@ type Line = {
 };
 type Txn = {
   id: string;
+  version: number;
   accountId: string;
   date: string;
   amount: string;
@@ -49,7 +52,7 @@ type Txn = {
 };
 type Category = { id: string; name: string };
 type Group = { kind: string | null; categories: Category[] };
-type ErrorBody = { error: { code: string } };
+type ErrorBody = { error: { code: string; details?: unknown } };
 
 const TODAY = "2026-10-01";
 
@@ -243,7 +246,8 @@ describe("restoring a deleted transaction (undo)", () => {
     await ctx.created(ctx.restoreBody(tracked));
     const [budgetSide] = await ctx.register(checking.id);
     expect(budgetSide).toMatchObject({ amount: "-1000", categoryId: ctx.groceries.id });
-    expect(budgetSide?.id).not.toBe(out.id);
+    // The other side's id came back with it.
+    expect(budgetSide?.id).toBe(out.id);
   });
 
   it("brings a transfer back to an account closed since, but only as a restore", async () => {
@@ -261,7 +265,8 @@ describe("restoring a deleted transaction (undo)", () => {
     await ctx.closeAccount(old.id);
 
     const { restore: _, ...plain } = ctx.restoreBody(before);
-    const refused = await ctx.post(plain);
+    const { id: __, ...side } = plain.transferSide ?? {};
+    const refused = await ctx.post({ ...plain, transferSide: side });
     expect((await json<ErrorBody>(refused)).error.code).toBe("ACCOUNT_CLOSED");
 
     await ctx.created(ctx.restoreBody(before));
@@ -343,5 +348,64 @@ describe("restoring a deleted transaction (undo)", () => {
       },
     });
     expect(res.status).toBe(400);
+  });
+
+  it("brings a deleted transaction back as the same record, in its place in the day", async () => {
+    const ctx = await setup();
+    const checking = await ctx.addAccount("Checking", "checking", "100000");
+    const savings = await ctx.addAccount("Savings", "savings");
+    const first = await ctx.created({ accountId: checking.id, amount: "-100", payeeName: "A" });
+    const out = await ctx.created({
+      accountId: checking.id,
+      transferAccountId: savings.id,
+      amount: "-200",
+    });
+    await ctx.created({ accountId: checking.id, amount: "-300", payeeName: "C" });
+    const ids = (await ctx.register(checking.id)).map((t) => t.id);
+    const before = (await ctx.register(checking.id)).find((t) => t.id === out.id);
+    const plain = (await ctx.register(checking.id)).find((t) => t.id === first.id);
+    if (!before || !plain) throw new Error("missing");
+
+    await ctx.remove(out.id);
+    await ctx.remove(first.id);
+    const back = await ctx.created({ ...ctx.restoreBody(before), id: before.id });
+    expect(back.id).toBe(out.id);
+    // It goes on from the version it was deleted at, both sides.
+    expect(back.version).toBe(before.version + 1);
+    expect(back.transferSide?.version).toBe((before.transferSide?.version ?? 0) + 1);
+    expect(back.transferTransactionId).toBe(out.transferTransactionId);
+    await ctx.created({ ...ctx.restoreBody(plain), id: plain.id });
+    expect((await ctx.register(checking.id)).map((t) => t.id)).toEqual(ids);
+    expect((await ctx.register(savings.id))[0]?.id).toBe(out.transferTransactionId);
+
+    // Back already: the id is taken.
+    const again = await ctx.post({ ...ctx.restoreBody(plain), id: plain.id });
+    expect(again.status).toBe(409);
+    const refused = await json<ErrorBody>(again);
+    expect(refused.error.code).toBe("ID_UNAVAILABLE");
+    expect(refused.error.details).toEqual({ live: [plain.id] });
+  });
+
+  it("only takes an id deleted from this budget, and only as a restore", async () => {
+    const ctx = await setup();
+    const checking = await ctx.addAccount("Checking", "checking", "100000");
+    const kept = await ctx.created({ accountId: checking.id, amount: "-100", payeeName: "A" });
+    const body = { accountId: checking.id, amount: "-100", payeeName: "A", restore: true };
+    // Never deleted: a live transaction's id, or one made up.
+    for (const id of [kept.id, "019a0000-0000-7000-8000-000000000000"]) {
+      const res = await ctx.post({ ...body, id });
+      expect(res.status).toBe(409);
+    }
+    // Deleted from another budget.
+    const other = await setup();
+    const elsewhere = await other.addAccount("Elsewhere", "checking", "100000");
+    const theirs = await other.created({ accountId: elsewhere.id, amount: "-1", payeeName: "B" });
+    await other.remove(theirs.id);
+    expect((await ctx.post({ ...body, id: theirs.id })).status).toBe(409);
+    // Without `restore`.
+    await ctx.remove(kept.id);
+    const { restore: _, ...plain } = body;
+    expect((await ctx.post({ ...plain, id: kept.id })).status).toBe(400);
+    expect((await ctx.post({ ...body, id: kept.id })).status).toBe(201);
   });
 });

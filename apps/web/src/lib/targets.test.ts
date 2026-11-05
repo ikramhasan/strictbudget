@@ -83,30 +83,30 @@ describe("target wording", () => {
   });
 
   it("matches the inspector headings", () => {
-    expect(targetHeading(target(), "$100.00")).toBe("Set Aside Another $100.00 Each Month");
+    expect(targetHeading(target(), "$100.00")).toBe("Set aside another $100.00 each month");
     expect(targetHeading(target({ behavior: "refill" }), "$100.00")).toBe(
-      "Refill Up to $100.00 Each Month",
+      "Refill up to $100.00 each month",
     );
     expect(targetHeading(target({ cadence: "weekly", dueDay: 6 }), "$10.00")).toBe(
-      "Set Aside Another $10.00 Each Week",
+      "Set aside another $10.00 each week",
     );
     expect(targetHeading(target({ cadence: "yearly" }), "$1,000.00")).toBe(
-      "Set Aside Another $1,000.00 Each Year",
+      "Set aside another $1,000.00 each year",
     );
     expect(
       targetHeading(target({ cadence: "custom", repeatEvery: 2, repeatUnit: "month" }), "$300.00"),
-    ).toBe("Set Aside Another $300.00 Every 2 Months");
+    ).toBe("Set aside another $300.00 every 2 months");
     expect(targetHeading(target({ cadence: "custom" }), "$300.00")).toBe(
-      "Set Aside Another $300.00",
+      "Set aside another $300.00",
     );
     expect(targetHeading(target({ cadence: "custom", behavior: "balance" }), "$300.00")).toBe(
-      "Have a Balance of $300.00",
+      "Have a balance of $300.00",
     );
   });
 
   it("matches the due lines", () => {
-    expect(targetDueLine(target(), null)).toBe("By the End of the Month");
-    expect(targetDueLine(target({ dueDay: 15 }), null)).toBe("By the 15th of the Month");
+    expect(targetDueLine(target(), null)).toBe("By the end of the month");
+    expect(targetDueLine(target({ dueDay: 15 }), null)).toBe("By the 15th of the month");
     expect(targetDueLine(target({ cadence: "weekly", dueDay: 6 }), null)).toBe("By Saturday");
     expect(
       targetDueLine(target({ cadence: "yearly", dueDate: "2026-12-30" }), {
@@ -137,7 +137,7 @@ describe("target wording", () => {
     expect(note(yearly, need("100000", "33334", "66666", "2026-12-30"), "2026-12")).toBe(
       "$666.66 more needed by December 30th",
     );
-    expect(note(yearly, need("100000", "33334", "0", "2026-12-30"))).toBe("On Track");
+    expect(note(yearly, need("100000", "33334", "0", "2026-12-30"))).toBe("On track");
     const eventually = target({ cadence: "custom", behavior: "balance", amount: "30000" });
     expect(note(eventually, need("30000", "0", "0"))).toBe("$300.00 needed eventually");
     expect(
@@ -152,18 +152,18 @@ describe("target wording", () => {
     // $50.00 assigned and spent.
     expect(row(monthly, need("5000", "5000", "0"), "5000", "0")).toEqual({
       strong: "",
-      rest: "Fully Spent",
+      rest: "Fully spent",
     });
     expect(row(monthly, need("5000", "5000", "0"), "2000", "3000")).toEqual({
-      strong: "Funded",
-      rest: ". Spent $20.00 of $50.00",
+      strong: "",
+      rest: "Spent $20.00 of $50.00",
     });
     const once = target({ cadence: "custom", amount: "10000", dueDate: "2026-09-15" });
     const past = (funded: string) => need("10000", funded, "0", "2026-09-15", true);
     // $30.00 assigned, $10.00 spent; then with $40.00 and with nothing in it.
     expect(row(once, past("3000"), "1000", "2000")).toEqual({
-      strong: "Funded",
-      rest: ". Spent $10.00 of $30.00",
+      strong: "",
+      rest: "Spent $10.00 of $30.00",
     });
     expect(row(once, past("4000"), "0", "4000")).toEqual({ strong: "Funded", rest: "" });
     expect(row(once, past("0"), "0", "0")).toBeNull();
@@ -192,23 +192,23 @@ describe("target wording", () => {
       prompt: "$0.00",
       suffix: " to meet your target",
     });
-    expect(targetLines(monthly, n, format).at(-1)).toEqual({ label: "To Go", value: "$0.00" });
+    expect(targetLines(monthly, n, format).at(-1)).toEqual({ label: "To go", value: "$0.00" });
   });
 
   it("labels the inspector lines and message per kind", () => {
     const yearly = target({ cadence: "yearly", dueDate: "2026-12-30" });
     const n = need("100000", "0", "33334", "2026-12-30");
     expect(targetLines(yearly, n, format).map((l) => l.label)).toEqual([
-      "Total to Assign by Dec 30 2026",
-      "Assigned So Far",
-      "To Go",
+      "Total to assign by Dec 30 2026",
+      "Assigned so far",
+      "To go",
     ]);
     expect(targetMessage(yearly, n, format)).toEqual({
       prompt: "$333.34",
       suffix: " this month to stay on track",
     });
     expect(targetMessage(yearly, need("100000", "33334", "0"), format)).toEqual({
-      text: "You're on track to meet your target!",
+      text: "On track to meet this target.",
     });
     expect(targetMessage(target(), need("10000", "4000", "6000"), format)).toEqual({
       prompt: "$60.00 more",
@@ -216,9 +216,9 @@ describe("target wording", () => {
     });
     const eventually = target({ cadence: "custom", behavior: "balance" });
     expect(targetLines(eventually, need("30000", "0", "0"), format).map((l) => l.label)).toEqual([
-      "Balance Needed",
-      "Current Balance",
-      "To Go",
+      "Balance needed",
+      "Current balance",
+      "To go",
     ]);
     expect(targetMessage(eventually, need("30000", "0", "0"), format)).toBeNull();
   });
@@ -238,23 +238,23 @@ describe("payment target wording", () => {
     expect(targetDueLine(payoff, null)).toBe("By Mar 2027");
     // $110.00 owed, $10.00 of it funded spending: the lines add it back.
     expect(targetLines(payoff, need("10000", "0", "3334", "2026-12-01"), format, "1000")).toEqual([
-      { label: "Needed for Payoff", value: "$110.00" },
-      { label: "Available for Payment", value: "$10.00" },
-      { label: "To Go", value: "$100.00" },
+      { label: "Needed for payoff", value: "$110.00" },
+      { label: "Available for payment", value: "$10.00" },
+      { label: "To go", value: "$100.00" },
     ]);
     expect(targetMessage(payoff, need("12500", "0", "2084"), format)).toEqual({
       prompt: "$20.84",
       suffix: " this month to stay on track",
     });
     expect(targetMessage(payoff, need("12500", "5000", "0"), format)).toEqual({
-      text: "You're on track to meet your target!",
+      text: "On track to meet this target.",
     });
   });
 
   it("cheers a met pay-off target and heads it with what's been put in plus To Go", () => {
     // Owes $14.00, $20.00 assigned and $6.00 paid, so $14.00 counts.
     expect(targetMessage(payoff, need("1400", "1400", "0"), format)).toEqual({
-      text: "Cheers to a debt-free future!",
+      text: "Enough is set aside to pay off this card.",
     });
     expect(payoffAmount(need("1400", "1400", "0"), "-600")).toBe("2000");
     // Paid off: nothing owed or counted, $20.00 paid.
@@ -263,17 +263,17 @@ describe("payment target wording", () => {
     expect(payoffAmount(need("12500", "5000", "2084"), "0")).toBe("12500");
     // A met Pay Specific Amount Monthly keeps the usual words.
     expect(targetMessage(monthly, need("500", "500", "0"), format)).toEqual({
-      text: "You've met your target!",
+      text: "This target is fully funded.",
     });
   });
 
   it("heads Pay Specific Amount Monthly with its amount, each month", () => {
     expect(targetHeading(monthly, "$30.00")).toBe("$30.00");
-    expect(targetDueLine(monthly, null)).toBe("Each Month");
+    expect(targetDueLine(monthly, null)).toBe("Each month");
     expect(targetLines(monthly, need("3000", "0", "3000"), format).map((l) => l.label)).toEqual([
-      "Amount to Assign This Month",
-      "Assigned So Far",
-      "To Go",
+      "Amount to assign this month",
+      "Assigned so far",
+      "To go",
     ]);
     expect(targetMessage(monthly, need("3000", "0", "3000"), format)).toEqual({
       prompt: "$30.00",

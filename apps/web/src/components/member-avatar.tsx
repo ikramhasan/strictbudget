@@ -93,14 +93,14 @@ function usePattern(userId: string | null, active: boolean) {
   return on && userId ? avatarPattern(members.data?.members ?? [], userId) : 0;
 }
 
-/** An avatar's tooltip: "Pat", "Pat (you)", "Pat (removed)", "Inactive Member". */
+/** An avatar's tooltip: "Pat", "Pat (you)", "Pat (removed)", "Inactive member". */
 export function memberTooltip(
   userId: string | null,
   userName: string | null,
   removed: boolean,
   currentUserId: string | undefined,
 ): string {
-  if (!userId || !userName) return "Inactive Member";
+  if (!userId || !userName) return "Inactive member";
   if (removed) return `${userName} (removed)`;
   return `${userName}${userId === currentUserId ? " (you)" : ""}`;
 }
@@ -109,7 +109,7 @@ export function memberTooltip(
  * Who made a change: a small round avatar with the first letter of the
  * name in the member's colour and the name as its tooltip. Someone who has left the budget keeps
  * their own colour and initial, with "(removed)" in the tooltip. Once their user is
- * deleted there's no colour: the grey inactive avatar (#DBD7CC), empty, "Inactive Member".
+ * deleted there's no colour: the grey inactive avatar (#DBD7CC), empty, "Inactive member".
  */
 export function MemberAvatar({
   userId,

@@ -30,7 +30,7 @@ export function editWarning(
   if (t.transferReconciled && t.transferAccountId && (moved || amountChanged || payeeChanged)) {
     const other = accountName(t.transferAccountId);
     return {
-      title: "Save Changes to Reconciled Transfer",
+      title: "Save changes to reconciled transfer",
       paragraphs: [
         `This transfer has already been reconciled in ${other}.`,
         `Any changes to this transaction will automatically modify the matching, reconciled transaction in ${other} and may bring the reconciliation out of balance.`,
@@ -41,7 +41,7 @@ export function editWarning(
   if (t.cleared !== "reconciled") return null;
   if (moved) {
     return {
-      title: "Move Reconciled Transaction",
+      title: "Move reconciled transaction",
       paragraphs: [
         "Moving this reconciled transaction to another account will bring the reconciliation out of balance.",
       ],
@@ -50,7 +50,7 @@ export function editWarning(
   }
   if (amountChanged) {
     return {
-      title: "Save Changes to Reconciled Transaction",
+      title: "Save changes to reconciled transaction",
       paragraphs: [
         "Saving your changes to this reconciled transaction may bring your reconciliation out of balance.",
       ],
@@ -84,7 +84,7 @@ export function deleteWarning(scope: DeleteScope): ReconciledWarning | null {
   const several = `Delete ${scope.count} Transactions?`;
   if (scope.reconciledTransfers > 0) {
     return {
-      title: scope.count === 1 ? "Delete Reconciled Transfer?" : several,
+      title: scope.count === 1 ? "Delete reconciled transfer?" : several,
       paragraphs: [
         "Deleting a transfer transaction will delete the transfer in both accounts.",
         "Some matching transfers in other accounts have been reconciled. Deleting these transactions could bring those account's reconciliations out of balance.",
@@ -94,7 +94,7 @@ export function deleteWarning(scope: DeleteScope): ReconciledWarning | null {
   }
   if (scope.reconciled > 0) {
     return {
-      title: scope.count === 1 ? "Delete Reconciled Transaction?" : several,
+      title: scope.count === 1 ? "Delete reconciled transaction?" : several,
       paragraphs: [
         "Deleting a reconciled transaction will bring the reconciliation out of balance.",
       ],

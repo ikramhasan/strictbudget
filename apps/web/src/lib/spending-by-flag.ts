@@ -51,6 +51,7 @@ export function flagRows(
     key: color,
     name: flagName(color, flags),
     color: FLAG_COLOR[color],
+    ownColor: FLAG_COLOR[color],
     net: by.get(color)?.net ?? 0n,
     count: by.get(color)?.count ?? 0,
   }));

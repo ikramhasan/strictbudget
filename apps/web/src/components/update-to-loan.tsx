@@ -29,13 +29,13 @@ const LOAN_TYPES = ACCOUNT_TYPES.filter((t) => accountFamily(t) === "loan");
 /** Only on a tracking liability; tracking assets and budget accounts don't have it. */
 export function UpdateToLoanSection({ onLearnMore }: { onLearnMore: () => void }) {
   return (
-    <section className="grid gap-2 border-t pt-4" aria-label="Update to a Loan Account">
-      <h3 className="font-medium text-sm">Update to a Loan Account</h3>
+    <section className="grid gap-2 border-t pt-4" aria-label="Update to a loan account">
+      <h3 className="font-medium text-sm">Update to a loan account</h3>
       <p className="text-muted-foreground text-sm">
         Plan your payments and track your progress when you migrate to a loan account.
       </p>
       <Button size="sm" className="justify-self-start" onClick={onLearnMore}>
-        Learn More
+        Learn more
       </Button>
     </section>
   );
@@ -151,7 +151,7 @@ export function UpdateToLoanDialog({
         {step === "learn" && (
           <>
             <DialogHeader>
-              <DialogTitle>Update to a Loan Account</DialogTitle>
+              <DialogTitle>Update to a loan account</DialogTitle>
               <DialogDescription className="font-semibold text-foreground">
                 The new loan account makes it easier for you to plan, track, and pay down your
                 debts.
@@ -169,9 +169,9 @@ export function UpdateToLoanDialog({
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Maybe Later
+                Maybe later
               </Button>
-              <Button onClick={() => setStep("type")}>Get Started</Button>
+              <Button onClick={() => setStep("type")}>Get started</Button>
             </DialogFooter>
           </>
         )}
@@ -179,9 +179,9 @@ export function UpdateToLoanDialog({
         {step === "type" && (
           <>
             <DialogHeader>
-              <DialogTitle>Select Account Type</DialogTitle>
+              <DialogTitle>Select account type</DialogTitle>
               <DialogDescription>
-                <span className="block font-semibold text-foreground">Mortgages and Loans</span>
+                <span className="block font-semibold text-foreground">Mortgages and loans</span>
                 Accounts that have an outstanding balance you're currently paying off, and aren't
                 spending from.
               </DialogDescription>
@@ -208,7 +208,7 @@ export function UpdateToLoanDialog({
         {step === "details" && (
           <form onSubmit={details} className="grid gap-4">
             <DialogHeader>
-              <DialogTitle>Add Unlinked Account</DialogTitle>
+              <DialogTitle>Add unlinked account</DialogTitle>
               <DialogDescription>
                 Let's go! And don't worry, you can edit this account at any time.
               </DialogDescription>
@@ -261,7 +261,7 @@ export function UpdateToLoanDialog({
         {step === "pair" && (
           <>
             <DialogHeader>
-              <DialogTitle>Pair Account with Category</DialogTitle>
+              <DialogTitle>Pair account with category</DialogTitle>
               <DialogDescription className="font-semibold text-foreground">
                 Pair your loan with a plan category
               </DialogDescription>
@@ -295,7 +295,7 @@ export function UpdateToLoanDialog({
         {step === "confirm" && values && (
           <>
             <DialogHeader>
-              <DialogTitle>Update Account</DialogTitle>
+              <DialogTitle>Update account</DialogTitle>
             </DialogHeader>
             <div className="grid grid-cols-[1fr_auto] gap-x-4 rounded-lg bg-muted px-4 py-3 text-sm tabular-nums">
               <span className="font-semibold">
@@ -367,8 +367,8 @@ export function OriginalHistory({
   const [open, setOpen] = useState(false);
   const Toggle = open ? ChevronDown : ChevronRight;
   return (
-    <section className="grid gap-3" aria-label="Original Tracking Account History">
-      <h2 className="font-semibold text-xl">Original Tracking Account History</h2>
+    <section className="grid gap-3" aria-label="Original tracking account history">
+      <h2 className="font-semibold text-xl">Original tracking account history</h2>
       <div className="overflow-hidden rounded-lg border">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <button
@@ -377,11 +377,11 @@ export function OriginalHistory({
             aria-expanded={open}
             onClick={() => setOpen(!open)}
           >
-            Closed Account
+            Closed account
             <Toggle className="size-4" aria-hidden />
           </button>
           <Button variant="link" size="sm" className="h-auto p-0" onClick={onGoToAccount}>
-            Go To Tracking Account
+            Go to tracking account
           </Button>
         </div>
         {open &&

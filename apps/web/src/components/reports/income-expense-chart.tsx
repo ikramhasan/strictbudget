@@ -13,12 +13,12 @@ import {
 } from "recharts";
 import { useBudget } from "@/lib/budget-context";
 import type { IncomeExpenseTable } from "@/lib/income-expense";
-import { chartNumber, chartTick, monthLabel } from "@/lib/reports";
+import { chartNumber, chartTick, INCOME_COLOR, monthLabel, SPENDING_COLOR } from "@/lib/reports";
 
 const config = {
-  income: { label: "Income", color: "var(--report-3)" },
-  expenses: { label: "Expenses", color: "var(--report-4)" },
-  net: { label: "Net Income", color: "var(--foreground)" },
+  income: { label: "Income", color: INCOME_COLOR },
+  expenses: { label: "Expenses", color: SPENDING_COLOR },
+  net: { label: "Net income", color: "var(--foreground)" },
 } satisfies ChartConfig;
 
 export type ChartSeries = "income" | "expenses";
@@ -71,7 +71,13 @@ export function IncomeExpenseChart({
             tickLine={false}
             axisLine={false}
           />
-          <YAxis tickFormatter={tick} tickLine={false} axisLine={false} width={80} />
+          <YAxis
+            niceTicks="snap125"
+            tickFormatter={tick}
+            tickLine={false}
+            axisLine={false}
+            width={80}
+          />
           <ReferenceLine y={0} stroke="var(--border)" />
           <Tooltip
             cursor={{ fill: "var(--muted)", fillOpacity: 0.4 }}
@@ -79,7 +85,7 @@ export function IncomeExpenseChart({
               const point = active ? data.find((d) => d.month === label) : undefined;
               if (!point) return null;
               return (
-                <div className="grid min-w-44 gap-1 rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
+                <div className="grid min-w-44 gap-1 rounded-lg border bg-popover px-3 py-2 text-xs shadow-md text-popover-foreground">
                   <p className="font-medium">{monthLabel(point.month, "long")}</p>
                   {(["income", "expenses", "net"] as const).map((k) => (
                     <p key={k} className="flex items-center gap-2">

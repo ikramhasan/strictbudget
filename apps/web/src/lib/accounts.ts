@@ -12,7 +12,10 @@ export const accountsQueryOptions = (budgetId: string, today = todayIso()) =>
     params: { path: { budgetId }, query: { today } },
   });
 
-export type SidebarSectionId = "starred" | "budget" | "loans" | "tracking" | "closed";
+export type SidebarSectionId = "starred" | "cash" | "credit" | "loans" | "tracking" | "closed";
+
+/** An account as the list returns it: with its balances in the display currency (null: no rate). */
+type ListedAccount = Account & { converted?: { currency: string; working: string } | null };
 
 export interface SidebarSection {
   id: SidebarSectionId;
@@ -29,15 +32,16 @@ export interface SidebarSection {
 }
 
 const SECTION_OF: Record<AccountFamily, SidebarSectionId> = {
-  cash: "budget",
-  credit: "budget",
+  cash: "cash",
+  credit: "credit",
   loan: "loans",
   tracking: "tracking",
 };
 
 const TITLES: Record<SidebarSectionId, string> = {
   starred: "Starred",
-  budget: "Budget",
+  cash: "Cash",
+  credit: "Credit",
   loans: "Loans",
   tracking: "Tracking",
   closed: "Closed",
@@ -55,16 +59,17 @@ export function isStarred(account: Account) {
 
 /**
  * Starred first (its own order; those accounts stay in their usual group too), then open accounts
- * by family, then closed ones. Empty sections are left out. Totals are the API's, converted to the
- * display currency at today's rates; without them (or for a group they don't cover) they add up the
- * accounts in `budgetCurrency` only.
+ * by family (cash, credit, loans, tracking), then closed ones. Empty sections are left out. Totals
+ * are in the display currency at today's rates: the API's, or for Cash and Credit (which it totals
+ * as one) the sum of the accounts' converted balances. Without them they add up the accounts in
+ * `budgetCurrency` only.
  */
 export function sidebarSections(
-  accounts: readonly Account[],
+  accounts: readonly ListedAccount[],
   budgetCurrency: string,
   totals?: AccountTotals,
 ): SidebarSection[] {
-  const order: SidebarSectionId[] = ["starred", "budget", "loans", "tracking", "closed"];
+  const order: SidebarSectionId[] = ["starred", "cash", "credit", "loans", "tracking", "closed"];
   const inSectionOf = (id: SidebarSectionId) => {
     if (id === "starred") {
       return accounts
@@ -76,33 +81,42 @@ export function sidebarSections(
     );
   };
   return order
-    .map((id) => {
+    .map((id): SidebarSection => {
       const inSection = inSectionOf(id);
-      const given = totals?.[id];
+      const base = { id, title: TITLES[id], accounts: inSection };
+      const given = id === "cash" || id === "credit" ? undefined : totals?.[id];
       if (given) {
         const missing = new Set(given.missing);
         return {
-          id,
-          title: TITLES[id],
-          accounts: inSection,
+          ...base,
           total: BigInt(given.amount),
           currency: given.currency,
           converted: given.converted,
           excluded: inSection.filter((a) => missing.has(a.id)),
         };
       }
-      const total = inSection
-        .filter((a) => a.currency === budgetCurrency)
-        .reduce((sum, a) => sum + BigInt(a.balances.working), 0n);
-      const excluded = inSection.filter((a) => a.currency !== budgetCurrency);
+      if (totals) {
+        // As the API totals: converted balances, leaving out the accounts with no rate.
+        const display = totals.netWorth.currency;
+        return {
+          ...base,
+          total: inSection.reduce(
+            (sum, a) => (a.converted ? sum + BigInt(a.converted.working) : sum),
+            0n,
+          ),
+          currency: display,
+          converted: inSection.some((a) => a.converted && a.currency !== display),
+          excluded: inSection.filter((a) => !a.converted),
+        };
+      }
       return {
-        id,
-        title: TITLES[id],
-        accounts: inSection,
-        total,
+        ...base,
+        total: inSection
+          .filter((a) => a.currency === budgetCurrency)
+          .reduce((sum, a) => sum + BigInt(a.balances.working), 0n),
         currency: budgetCurrency,
         converted: false,
-        excluded,
+        excluded: inSection.filter((a) => a.currency !== budgetCurrency),
       };
     })
     .filter((s) => s.accounts.length > 0);

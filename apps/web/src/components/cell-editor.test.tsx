@@ -119,9 +119,19 @@ describe("CellEditor", () => {
     expect(groups[1]).toHaveTextContent(/^Bills/);
   });
 
+  it("opens a payee's list on Alt+Down, not on entering the cell", async () => {
+    renderCell("payee");
+    const user = userEvent.setup();
+    expect(screen.getByLabelText("Payee")).toHaveFocus();
+    expect(screen.getByLabelText("Payee")).toHaveAttribute("aria-expanded", "false");
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
+    expect(screen.getByLabelText("Payee")).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("moves on with Tab from a payee while its list is open", async () => {
     const payee = renderCell("payee");
     const user = userEvent.setup();
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
     expect(screen.getByLabelText("Payee")).toHaveAttribute("aria-expanded", "true");
     await user.keyboard("{Tab}");
     expect(payee.onCommit).toHaveBeenCalledWith("Market", "next", null);
@@ -138,7 +148,7 @@ describe("CellEditor", () => {
     const { onCommit } = renderCell("payee");
     const user = userEvent.setup();
     await user.keyboard("{Control>}a{/Control}sav");
-    expect(screen.getByText("Payments and Transfers")).toBeInTheDocument();
+    expect(screen.getByText("Payments and transfers")).toBeInTheDocument();
     await user.click(await screen.findByRole("option", { name: "Savings" }));
     expect(onCommit).toHaveBeenCalledWith("Transfer : Savings", "stay", "savings");
   });
@@ -178,15 +188,23 @@ describe("CellEditor", () => {
     const { onCommit } = renderCell("payee", txn, payees);
     const user = userEvent.setup();
     const options = () => screen.getAllByRole("option").map((o) => o.textContent);
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
     // The current payee under Selected, then transfers while nothing is typed.
     const groups = within(screen.getByRole("listbox")).getAllByRole("group");
     expect(groups[0]).toHaveTextContent(/^SelectedMarket$/);
     expect(options()).toEqual(["Market", "Savings", "Market", "Bakery"]);
-    // The current payee is selected, so typing replaces it. Create is on top, but the first
-    // match stays the highlighted one.
+    // The current payee is selected, so typing replaces it, and the name completes in the field
+    // with the rest selected.
     await user.keyboard("bak");
     expect(options()).toEqual(["Bakery"]);
-    expect(screen.getByRole("button", { name: "Create “bak” Payee" })).toBeInTheDocument();
+    const input = screen.getByLabelText("Payee") as HTMLInputElement;
+    expect(input).toHaveValue("Bakery");
+    expect([input.selectionStart, input.selectionEnd]).toEqual([3, 6]);
+    // Backspace takes the completion off. Create is on top, but the first match stays the
+    // highlighted one.
+    await user.keyboard("{Backspace}");
+    expect(input).toHaveValue("bak");
+    expect(screen.getByRole("button", { name: "Create “bak” payee" })).toBeInTheDocument();
     await user.keyboard("{Enter}");
     expect(onCommit).toHaveBeenCalledWith("Bakery", "stay", null);
   });
@@ -219,6 +237,7 @@ describe("CellEditor", () => {
     const { onCommit } = renderCell("payee", txn, payees);
     const user = userEvent.setup();
     const options = () => screen.getAllByRole("option").map((o) => o.textContent);
+    await user.keyboard("{Alt>}{ArrowDown}{/Alt}");
     expect(options()).toEqual(["Market", "Savings", "Market"]);
     await user.keyboard("trip cafe");
     // No "Create payee": the name is a hidden payee's.

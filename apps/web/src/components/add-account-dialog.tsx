@@ -79,7 +79,7 @@ export function AddAccountDialog({
                   setFormKey((k) => k + 1);
                 }}
               >
-                Add Another
+                Add another
               </Button>
               <Button onClick={() => void done()}>Done</Button>
             </DialogFooter>

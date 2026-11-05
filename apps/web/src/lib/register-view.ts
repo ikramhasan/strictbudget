@@ -44,11 +44,11 @@ export const DATE_RANGE_LABELS: Record<(typeof DATE_RANGES)[number], string> = {
   all: "All Dates",
 };
 
-/** Defaults: all dates, reconciled transactions and the running balance hidden. */
+/** Defaults: all dates, reconciled transactions hidden, an account's running balance shown. */
 export const DEFAULT_VIEW: RegisterView = {
   range: "all",
   showReconciled: false,
-  showRunningBalance: false,
+  showRunningBalance: true,
   showFlags: true,
   showAttachments: true,
   showEnteredBy: false,

@@ -19,18 +19,23 @@ import {
   DialogTitle,
 } from "@strictbudget/ui/components/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@strictbudget/ui/components/dropdown-menu";
+import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
 } from "@strictbudget/ui/components/empty";
-import { Skeleton } from "@strictbudget/ui/components/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@strictbudget/ui/components/tooltip";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Info, Lock, Pencil } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { CircleCheckBig, Info, Lock, MoreHorizontal, Pencil } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { type AccountEdit, AccountLogoField, EditAccountForm } from "@/components/account-forms";
@@ -47,6 +52,7 @@ import { PageHeader } from "@/components/page-header";
 import { PageTitle } from "@/components/page-title";
 import { ReconcileBanner, ReconcilePopover, reconciledLabel } from "@/components/reconcile";
 import { Register } from "@/components/register";
+import { AccountPageSkeleton } from "@/components/register-skeleton";
 import { REVIEW_SEARCH, ReviewBanner } from "@/components/review-banner";
 import { StarButton } from "@/components/star-button";
 import { signedAmount, UnrealizedGain } from "@/components/unrealized-gain";
@@ -64,6 +70,7 @@ import { type RegisterSearch, registerSearchSchema } from "@/lib/register-filter
 import { scheduledQueryPrefix } from "@/lib/scheduled";
 import { useShortcut } from "@/lib/shortcuts";
 import { transactionsQueryPrefix } from "@/lib/transactions";
+import { useViewportWidth } from "@/lib/use-viewport-width";
 
 export const Route = createFileRoute("/_authed/budgets/$budgetId/accounts/$accountId")({
   /**
@@ -117,6 +124,10 @@ function AccountPage() {
   const [editing, setEditing] = useState(false);
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [reconcileOpen, setReconcileOpen] = useState(false);
+  // A phone's top bar keeps the account's name and puts the actions in a menu.
+  const viewportWidth = useViewportWidth();
+  const narrow = viewportWidth < 768;
+  const toReconcile = useRef(false);
   const [pairing, setPairing] = useState(false);
   const [updatingToLoan, setUpdatingToLoan] = useState(false);
   const updateToLoan = $api.useMutation(
@@ -233,7 +244,7 @@ function AccountPage() {
     toast.success(`Deleted “${account?.name}”`);
   }
 
-  if (accounts.isPending) return <Skeleton className="h-40" />;
+  if (accounts.isPending) return <AccountPageSkeleton phone={viewportWidth < 1024} />;
   if (!account) {
     return (
       <Empty>
@@ -277,7 +288,7 @@ function AccountPage() {
         <AlertDialog open onOpenChange={(o) => !o && setConfirm(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Re-open Account</AlertDialogTitle>
+              <AlertDialogTitle>Re-open account</AlertDialogTitle>
               <AlertDialogDescription>
                 The history in this closed account was migrated to your {loanName} loan account.
                 Re-opening this account will erase the information that was migrated.
@@ -296,7 +307,7 @@ function AccountPage() {
                   await reopenNow();
                 }}
               >
-                Erase &amp; Re-open
+                Erase &amp; re-open
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -308,7 +319,7 @@ function AccountPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirm === "close" ? "Close Account" : `Delete “${account.name}”?`}
+              {confirm === "close" ? "Close account" : `Delete “${account.name}”?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirm === "delete"
@@ -338,7 +349,7 @@ function AccountPage() {
                 await closeNow();
               }}
             >
-              {confirm === "delete" ? "Delete account" : "Adjust Balance & Close"}
+              {confirm === "delete" ? "Delete account" : "Adjust balance & close"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -386,8 +397,8 @@ function AccountPage() {
           }
         />
         {isLoan && !account.closed && (
-          <section className="grid gap-2 border-t pt-4" aria-label="Paired Plan Category">
-            <h3 className="font-medium text-sm">Paired Plan Category</h3>
+          <section className="grid gap-2 border-t pt-4" aria-label="Paired plan category">
+            <h3 className="font-medium text-sm">Paired plan category</h3>
             <p className="text-muted-foreground text-sm">
               Pairing a category helps you create realistic payoff plans, and keep track of your
               progress.
@@ -409,7 +420,7 @@ function AccountPage() {
                   )
                 }
               >
-                Unpair Category
+                Unpair category
               </Button>
             ) : (
               <Button
@@ -451,7 +462,7 @@ function AccountPage() {
           )}
           {!account.closed && account.hasHistory && (
             <Button variant="outline" size="sm" onClick={handleClose}>
-              Close Account
+              Close account
             </Button>
           )}
           {(account.closed || !account.hasHistory) && (
@@ -466,7 +477,7 @@ function AccountPage() {
                     disabled={account.hasHistory}
                     onClick={() => setConfirm("delete")}
                   >
-                    {account.closed ? "Delete" : "Delete Account"}
+                    {account.closed ? "Delete" : "Delete account"}
                   </Button>
                 </span>
               </TooltipTrigger>
@@ -556,6 +567,93 @@ function AccountPage() {
     );
   }
 
+  const reconcilePopover = reconcilable && !readOnly && (
+    <ReconcilePopover
+      account={account}
+      settings={accountSettings}
+      open={reconcileOpen}
+      onOpenChange={setReconcileOpen}
+      show={show}
+      pending={reconcile.isPending}
+      onConfirm={() => void finishReconciling(BigInt(account.balances.cleared))}
+      onStart={(balance) => {
+        setReconcileOpen(false);
+        setReconcilingTo(balance);
+      }}
+    />
+  );
+  const loanLink = account.migratedToAccountId && (
+    <Link
+      to="/budgets/$budgetId/accounts/$accountId"
+      params={{ budgetId: budget.id, accountId: account.migratedToAccountId }}
+    >
+      Go to Loan Account
+    </Link>
+  );
+  const wideActions = (
+    <>
+      {loanLink && (
+        <Button variant="link" size="sm" asChild>
+          {loanLink}
+        </Button>
+      )}
+      {!readOnly && (
+        <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+          <Pencil /> Edit account
+        </Button>
+      )}
+      {reconcilePopover}
+    </>
+  );
+  const narrowActions = (loanLink || !readOnly) && (
+    <div className="relative">
+      {/*
+       * The reconcile popover opens from the menu but points at its button: the popover's own
+       * trigger sits invisibly under it.
+       */}
+      {reconcilePopover && (
+        <div className="invisible absolute inset-0 *:size-full" aria-hidden>
+          {reconcilePopover}
+        </div>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon-sm" aria-label="Account actions">
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className="min-w-44"
+          // Reconcile opens once the menu has closed (so the closing doesn't dismiss it), and
+          // takes the focus instead of the menu's button.
+          onCloseAutoFocus={(e) => {
+            if (!toReconcile.current) return;
+            toReconcile.current = false;
+            e.preventDefault();
+            setReconcileOpen(true);
+          }}
+        >
+          {!readOnly && (
+            <DropdownMenuItem onSelect={() => setEditing(true)}>
+              <Pencil /> Edit account
+            </DropdownMenuItem>
+          )}
+          {reconcilePopover && (
+            <DropdownMenuItem
+              onSelect={() => {
+                toReconcile.current = true;
+              }}
+            >
+              <CircleCheckBig /> Reconcile
+            </DropdownMenuItem>
+          )}
+          {loanLink && <DropdownMenuItem asChild>{loanLink}</DropdownMenuItem>}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+
   return (
     <div className="grid gap-6">
       <ReviewBanner count={account.toReview} onView={() => onSearchChange({ q: REVIEW_SEARCH })} />
@@ -573,10 +671,10 @@ function AccountPage() {
             )}
             {account.closed && <Badge variant="secondary">Closed</Badge>}
             <span className="hidden min-w-0 items-center gap-x-3 truncate text-muted-foreground text-sm md:inline-flex">
-              <span>
+              <Badge variant="secondary" className="text-xs">
                 {ACCOUNT_TYPE_LABELS[account.type]}
-                {isOnBudget(account.type) ? "" : " · off budget"}
-              </span>
+                {isOnBudget(account.type) ? "" : " · Off budget"}
+              </Badge>
               {reconcilable && (
                 <span className="inline-flex items-center gap-1">
                   <Lock className="size-3.5" aria-hidden />
@@ -586,61 +684,38 @@ function AccountPage() {
             </span>
           </>
         }
-        actions={
-          <>
-            {account.migratedToAccountId && (
-              <Button variant="link" size="sm" asChild>
-                <Link
-                  to="/budgets/$budgetId/accounts/$accountId"
-                  params={{ budgetId: budget.id, accountId: account.migratedToAccountId }}
-                >
-                  Go to Loan Account
-                </Link>
-              </Button>
-            )}
-            {!readOnly && (
-              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                <Pencil /> Edit account
-              </Button>
-            )}
-            {reconcilable && !readOnly && (
-              <ReconcilePopover
-                account={account}
-                settings={accountSettings}
-                open={reconcileOpen}
-                onOpenChange={setReconcileOpen}
-                show={show}
-                pending={reconcile.isPending}
-                onConfirm={() => void finishReconciling(BigInt(account.balances.cleared))}
-                onStart={(balance) => {
-                  setReconcileOpen(false);
-                  setReconcilingTo(balance);
-                }}
-              />
-            )}
-          </>
-        }
+        actions={narrow ? narrowActions : wideActions}
       />
       {account.note && <p className="max-w-prose text-sm">{account.note}</p>}
 
-      <dl className="flex flex-wrap items-end gap-x-8 gap-y-2 rounded-lg border px-4 py-3 tabular-nums">
-        <Balance label="Cleared Balance" value={show(account.balances.cleared)} />
-        <Balance label="Uncleared Balance" value={show(account.balances.uncleared)} operator="+" />
-        <Balance
-          operator="="
-          label="Working Balance"
-          value={show(account.balances.working)}
-          negative={working < 0n}
-          strong
-        />
-        {account.currency !== budget.currency && (
-          <UnrealizedGain
-            account={account}
-            budgetCurrency={budget.currency}
-            format={(m) => showBudget(m)}
-            pending={revalue.isPending}
-            onRevalue={handleRevalue}
+      <BalanceHistory
+        key={`history-${accountId}`}
+        budgetId={budget.id}
+        accountId={accountId}
+        currency={account.currency}
+      >
+        {/* One line, so an operator never wraps away from its figure. */}
+        <dl className="flex items-end gap-x-6 sm:gap-x-8">
+          <Balance label="Cleared" value={show(account.balances.cleared)} />
+          <Balance label="Uncleared" value={show(account.balances.uncleared)} operator="+" />
+          <Balance
+            operator="="
+            label="Working"
+            value={show(account.balances.working)}
+            negative={working < 0n}
+            strong
           />
+        </dl>
+        {account.currency !== budget.currency && (
+          <dl>
+            <UnrealizedGain
+              account={account}
+              budgetCurrency={budget.currency}
+              format={(m) => showBudget(m)}
+              pending={revalue.isPending}
+              onRevalue={handleRevalue}
+            />
+          </dl>
         )}
         {cardPayment && (
           <div className="ml-auto flex items-end gap-4">
@@ -657,7 +732,7 @@ function AccountPage() {
             />
           </div>
         )}
-      </dl>
+      </BalanceHistory>
 
       {reconcilingTo !== null && (
         <ReconcileBanner
@@ -668,13 +743,6 @@ function AccountPage() {
           onFinish={() => void finishReconciling(reconcilingTo)}
         />
       )}
-
-      <BalanceHistory
-        key={`history-${accountId}`}
-        budgetId={budget.id}
-        accountId={accountId}
-        currency={account.currency}
-      />
 
       <Register
         key={accountId}
@@ -724,13 +792,18 @@ function Balance({
   return (
     <div
       className={cn(
-        "relative grid",
+        "relative grid min-w-0",
+        // Centred in the gap before it (gap-x-6, then gap-x-8 from sm).
         operator &&
-          "before:absolute before:-left-5 before:bottom-0.5 before:text-muted-foreground before:content-[var(--operator)]",
+          "before:absolute before:-left-4 before:bottom-0.5 before:text-muted-foreground before:content-[var(--operator)] sm:before:-left-5",
       )}
       style={operator ? ({ "--operator": `"${operator}"` } as React.CSSProperties) : undefined}
     >
-      <dt className="text-muted-foreground text-xs">{label}</dt>
+      {/* "Cleared balance" and so on, shortened to the first word on a phone. */}
+      <dt className="text-muted-foreground text-xs">
+        {label}
+        <span className="max-sm:hidden"> balance</span>
+      </dt>
       <dd
         className={cn(
           // One line height (/7) for every figure, so the larger Working Balance doesn't lift its

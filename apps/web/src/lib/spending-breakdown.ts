@@ -15,16 +15,18 @@ import {
 } from "@strictbudget/engine";
 import { z } from "zod";
 import type { CategoryList } from "./categories";
-import { COLOR_LABEL, type Flag, type FlagColor, flagName } from "./flags";
+import { COLOR_LABEL, FLAG_COLOR, type Flag, type FlagColor, flagName } from "./flags";
 import {
+  distinctColors,
   monthLabel,
-  planColors,
+  OTHER_COLOR,
+  REPORT_COLORS,
   type ReportSum,
   type ReportTransaction,
-  reportColor,
   reportSearchSchema,
   UNCATEGORIZED_COLOR,
 } from "./reports";
+import type { ColorSlots } from "./reports-colors";
 
 /**
  * What Spending Breakdown's rows are: categories or groups, or the payee, account and flag
@@ -56,7 +58,14 @@ export const NONE = "none";
 export interface BreakdownRow {
   key: string;
   name: string;
+  /** The row's colour in the chart (breakdownOf gives each row its own). */
   color: string;
+  /** A category's group, which the chart keeps its slices together under; none for other rows. */
+  family?: string;
+  /** A colour of its own (Uncategorized's grey, a flag's colour). */
+  ownColor?: string;
+  /** A category's or group's place in the plan, which picks its colour (distinctColors). */
+  slot?: number;
   /** For a category: its group, which the treemap nests it in. */
   groupKey?: string;
   groupName?: string;
@@ -71,6 +80,8 @@ export interface BreakdownNames {
   payees: readonly { id: string; name: string }[];
   accounts: readonly { id: string; name: string }[];
   flags: readonly Flag[];
+  /** Each category's and group's colour across reports; plan order without. */
+  slots?: ColorSlots;
 }
 
 /** The plan's categories in order, Uncategorized first, each with its group and plan index. */
@@ -82,11 +93,8 @@ export function planCategories(list: CategoryList | undefined) {
     groupName: string;
     index: number;
     groupIndex: number;
-    color: string;
-    groupColor: string;
   }[] = [];
   if (!list) return out;
-  const colors = planColors(list);
   out.push({
     id: list.uncategorizedCategoryId,
     name: "Uncategorized",
@@ -94,8 +102,6 @@ export function planCategories(list: CategoryList | undefined) {
     groupName: "Uncategorized",
     index: 0,
     groupIndex: 0,
-    color: UNCATEGORIZED_COLOR,
-    groupColor: UNCATEGORIZED_COLOR,
   });
   list.groups.forEach((g, gi) => {
     for (const c of g.categories) {
@@ -106,8 +112,6 @@ export function planCategories(list: CategoryList | undefined) {
         groupName: g.name,
         index: out.length,
         groupIndex: gi + 1,
-        color: colors.categories.get(c.id) ?? UNCATEGORIZED_COLOR,
-        groupColor: colors.groups.get(g.id) ?? UNCATEGORIZED_COLOR,
       });
     }
   });
@@ -145,13 +149,20 @@ export function breakdownRows(
       const c = plan.get(id);
       const groupKey = c?.groupKey ?? NONE;
       if (group !== undefined && groupKey !== group) continue;
-      const key = by === "group" && group === undefined ? groupKey : id;
+      const groups = by === "group" && group === undefined;
+      const key = groups ? groupKey : id;
       const row = rows.get(key) ?? {
         key,
-        name: by === "group" && group === undefined ? (c?.groupName ?? "") : (c?.name ?? ""),
-        // The same colour in every report (planColors).
-        color:
-          (by === "group" && group === undefined ? c?.groupColor : c?.color) ?? UNCATEGORIZED_COLOR,
+        name: groups ? (c?.groupName ?? "") : (c?.name ?? ""),
+        color: UNCATEGORIZED_COLOR,
+        ...(c?.groupIndex
+          ? {
+              slot: groups
+                ? (names.slots?.groups.get(groupKey) ?? c.groupIndex - 1)
+                : (names.slots?.categories.get(id) ?? c.index - 1),
+              ...(!groups && { family: groupKey }),
+            }
+          : { ownColor: UNCATEGORIZED_COLOR }),
         ...(c && { groupKey: c.groupKey, groupName: c.groupName }),
         net: 0n,
         count: 0,
@@ -168,12 +179,15 @@ export function breakdownRows(
     if (by === "account") return names.accounts.find((a) => a.id === key)?.name ?? "";
     return flagName(key === NONE ? null : (key as FlagColor), names.flags);
   };
-  return sums.map((sum, index) => {
+  return sums.map((sum) => {
     const key = keyOf(sum, by);
+    const own =
+      key === NONE ? UNCATEGORIZED_COLOR : by === "flag" ? FLAG_COLOR[key as FlagColor] : undefined;
     return {
       key,
       name: label(key),
-      color: reportColor(index),
+      color: own ?? UNCATEGORIZED_COLOR,
+      ...(own && { ownColor: own }),
       net: BigInt(sum.net),
       count: sum.count,
     };
@@ -196,11 +210,57 @@ export interface Breakdown {
   total: bigint;
 }
 
+/** Rows the chart names before folding the rest into "Other": one per palette colour. */
+export const BREAKDOWN_NAMED = REPORT_COLORS;
+
+/**
+ * Rows in the order the chart draws them: a group's rows together, biggest first, groups in order
+ * of their biggest row. Other rows (payees, accounts, groups) are each a group of their own.
+ */
+export function drawOrder<T extends { key: string; family?: string }>(rows: readonly T[]): T[] {
+  const groups = new Map<string, T[]>();
+  for (const r of rows) {
+    const key = r.family ?? r.key;
+    groups.set(key, [...(groups.get(key) ?? []), r]);
+  }
+  return [...groups.values()].flat();
+}
+
+/**
+ * The rows split into spending and positive inflows, each row coloured: the biggest spenders (up
+ * to BREAKDOWN_NAMED) take their own palette colours (distinctColors), the same in every report;
+ * Uncategorized and flags keep their own, and the rest get OTHER_COLOR, which the donut folds into
+ * "Other".
+ */
 export function breakdownOf(rows: readonly BreakdownRow[]): Breakdown {
   const split = splitSpending(rows.map((r) => ({ key: r, net: r.net })));
+  const spending = split.spending
+    .map((r) => r.key)
+    .sort((a, b) => cmp(a.net, b.net) || byName(a, b));
+  const positive = split.positive
+    .map((r) => r.key)
+    .sort((a, b) => cmp(a.net, b.net) || byName(a, b));
+  const drawn = spending.filter((r) => r.net < 0n);
+  const named = new Set(
+    drawn
+      .filter((r) => !r.ownColor)
+      .slice(0, BREAKDOWN_NAMED)
+      .map((r) => r.key),
+  );
+  const colors = distinctColors(
+    drawOrder(drawn).map((r) => ({
+      key: r.key,
+      slot: r.slot,
+      color: r.ownColor ?? (named.has(r.key) ? undefined : OTHER_COLOR),
+    })),
+  );
+  const colored = (r: BreakdownRow) => ({
+    ...r,
+    color: colors.get(r.key) ?? r.ownColor ?? OTHER_COLOR,
+  });
   return {
-    spending: split.spending.map((r) => r.key).sort((a, b) => cmp(a.net, b.net) || byName(a, b)),
-    positive: split.positive.map((r) => r.key).sort((a, b) => cmp(a.net, b.net) || byName(a, b)),
+    spending: spending.map(colored),
+    positive: positive.map(colored),
     grossOutflows: split.grossOutflows,
     positiveInflows: split.positiveInflows,
     total: split.total,
@@ -251,17 +311,29 @@ export function shares(row: BreakdownRow, breakdown: Breakdown, income: bigint |
 }
 
 /**
+ * How many of `range`'s months an average counts: those from the budget's first month with
+ * transactions (`first`), or all of them for a range wholly before it.
+ */
+function countedMonths(range: MonthRange, first: BudgetMonth | null): number {
+  const months = monthsIn(range);
+  const since = first ? months.filter((m) => m >= first) : months;
+  return since.length > 0 ? since.length : months.length;
+}
+
+/**
  * What each row spent in the comparison period, keyed like the rows: the period's spending, or for
- * an average comparison, the average month times the range's months.
+ * an average comparison, the average month times the range's months. Both count months from the
+ * budget's first with transactions (`first`), as the range's own figures do.
  */
 export function comparedSpending(
   rows: readonly BreakdownRow[],
   comparison: ComparisonRange,
   range: MonthRange,
+  first: BudgetMonth | null = null,
 ): Map<string, bigint> {
   const out = new Map<string, bigint>();
-  const months = monthsIn(comparison).length;
-  const length = BigInt(monthsIn(range).length);
+  const months = countedMonths(comparison, first);
+  const length = BigInt(countedMonths(range, first));
   for (const r of rows) {
     out.set(r.key, comparison.average ? -averageOf(r.net, months) * length : -r.net);
   }
@@ -285,8 +357,10 @@ export function summaryExportRows(
   range: MonthRange,
   numberFormat: NumberFormat,
   currency: Parameters<typeof currencyExponent>[0],
+  first: BudgetMonth | null = null,
 ): DelimitedCell[][] {
   const months = monthsIn(range);
+  const counted = countedMonths(range, first);
   const exponent = currencyExponent(currency);
   const amount = (a: bigint) => ({ raw: plainAmount(a, exponent, numberFormat) });
   const byCategory = new Map<string, Map<BudgetMonth, bigint>>();
@@ -309,7 +383,7 @@ export function summaryExportRows(
       c.groupKey === UNCATEGORIZED_GROUP ? "" : c.groupName,
       c.name,
       ...values.map(amount),
-      amount(averageOf(total, months.length)),
+      amount(averageOf(total, counted)),
       amount(total),
     ]);
   }

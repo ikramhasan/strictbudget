@@ -78,7 +78,10 @@ function Report() {
         </ToggleGroup>
       }
     >
-      <section aria-label="Current Age of Money" className="grid gap-1 rounded-lg border p-4">
+      <section
+        aria-label="Current Age of Money"
+        className="grid gap-1 rounded-lg border bg-card p-4"
+      >
         <span className="text-muted-foreground text-sm">Current</span>
         {query.isPending ? (
           <Skeleton className="h-9 w-32" />
@@ -110,11 +113,23 @@ function Report() {
               : undefined
         }
         fileName={`age-of-money-${span}`}
-        chart={<AgeChart points={points} />}
+        chart={
+          <div className="grid gap-2">
+            <AgeChart points={points} />
+            {points.length === 1 && (
+              <p className="text-muted-foreground text-xs">
+                One month so far. Each month-end adds a point, and the line starts with the next.
+              </p>
+            )}
+          </div>
+        }
         table={<AgeTable rows={rows} />}
       />
 
-      <section aria-labelledby="aom-about" className="grid gap-2 rounded-lg border p-4 text-sm">
+      <section
+        aria-labelledby="aom-about"
+        className="grid gap-2 rounded-lg border bg-card p-4 text-sm"
+      >
         <h2 id="aom-about" className="font-semibold">
           Understanding Age of Money
         </h2>
@@ -161,7 +176,7 @@ function AgeChart({ points }: { points: AgeOfMoneyMonth[] }) {
           content={({ active, payload }) => {
             const point = payload?.[0]?.payload as AgeOfMoneyMonth | undefined;
             return active && point?.days != null ? (
-              <div className="grid gap-0.5 rounded-md border bg-background px-3 py-2 text-xs shadow-sm">
+              <div className="grid gap-0.5 rounded-md border bg-popover px-3 py-2 text-xs shadow-md text-popover-foreground">
                 <span className="text-muted-foreground">
                   {monthLabel(point.month as BudgetMonth)}
                 </span>

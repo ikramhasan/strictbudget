@@ -29,6 +29,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@strictbudget/ui/components/popover";
+import { ScrollArea } from "@strictbudget/ui/components/scroll-area";
 import { useIsMobile } from "@strictbudget/ui/hooks/use-mobile";
 import { cn } from "@strictbudget/ui/lib/utils";
 import { ChevronRight, GripVertical, Plus, StickyNote } from "lucide-react";
@@ -57,9 +58,10 @@ import { useShortcut } from "@/lib/shortcuts";
 import { categoryRowNote } from "@/lib/targets";
 import { type AssignActions, AssignedCell } from "./assigned-cell";
 import { ActivityButton, type ActivityTarget, type CardSummary } from "./category-activity";
+import { CategoryLabel } from "./category-label";
 import { CategoryMovesButton, type CategoryMovesContext } from "./category-moves";
 import { AvailableButton, AvailablePill, type MoveActions } from "./move-money";
-import { NamePopover } from "./name-popover";
+import { NamePopover, splitEmoji } from "./name-popover";
 import { ProgressBar } from "./progress-bar";
 
 export interface CategoryListActions {
@@ -145,11 +147,16 @@ const NO_GROUPS: ReadonlySet<string> = new Set();
 // On a phone a row is its name and Available, a thumb's height; Assigned and Activity are in the
 // category's drawer.
 const ROW =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-1 px-2 py-1.5 max-md:min-h-12 md:grid-cols-[minmax(10rem,1fr)_6.5rem_6.5rem_7.5rem]";
+  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-1 px-2 py-1.5 max-md:min-h-12 md:grid-cols-[minmax(9rem,1fr)_6rem_6.5rem] @min-[32rem]/list:md:grid-cols-[minmax(9rem,1fr)_6rem_6rem_6.5rem]";
 /** The plan's keys also work from a category's open Assigned input. */
 const inAssigned = (target: Element) => target.closest("[data-assigned-cell]") !== null;
 /** Cells left off a phone's narrow rows. */
 const WIDE_ONLY = "max-md:hidden";
+/**
+ * Activity gives way first when the table itself is narrow (a smaller window beside the
+ * inspector): names keep their room, and the inspector still shows each category's activity.
+ */
+const ACTIVITY_COL = "max-md:hidden @max-[32rem]/list:hidden";
 const NAME_CELL = "flex min-w-0 items-center gap-1";
 const FIGURE = "min-w-0 truncate text-right tabular-nums";
 /**
@@ -160,15 +167,17 @@ const FIGURE = "min-w-0 truncate text-right tabular-nums";
 const FIGURE_PAD = "px-2";
 /** Lets a name button shrink and truncate (shadcn's Button doesn't shrink by default). */
 const NAME_BUTTON = "min-w-0 shrink justify-start";
-// The shared Table's look (ui.ikramhasan.com's data table): a muted tray, the header on it, the
-// rows on a raised card. Group rows and the hidden-categories row take a tint a step deeper than
-// a hovered row's, so the two read apart in both themes.
+// One surface: the table is a single bordered card with a tinted header row (no tray around a
+// card). Group rows and the hidden-categories row take a tint a step deeper than a hovered row's,
+// so the two read apart in both themes.
 const TRAY =
-  "overflow-x-auto rounded-xl bg-muted px-[5px] pb-[5px] ring-1 ring-border dark:bg-[color-mix(in_oklch,var(--background),black_20%)]";
-const BODY =
-  "overflow-hidden rounded-[10px] border bg-background shadow-[0_1px_2px_rgb(0_0_0/0.04)] dark:shadow-[0_1px_2px_rgb(0_0_0/0.4)]";
+  "@container/list overflow-x-auto rounded-xl border bg-background shadow-[0_1px_2px_rgb(0_0_0/0.04)] dark:shadow-none";
+/** The header row: a tint over the table, opaque so rows scroll under it when it's pinned. */
+const TRAY_FILL =
+  "border-b bg-[color-mix(in_oklch,var(--muted),var(--background)_35%)] dark:bg-[color-mix(in_oklch,var(--muted),var(--background)_50%)]";
+const BODY = "";
 const GROUP_ROW =
-  "bg-[color-mix(in_oklch,var(--muted),var(--foreground)_6%)] dark:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_8%)]";
+  "bg-[color-mix(in_oklch,var(--muted),var(--background)_35%)] dark:bg-[color-mix(in_oklch,var(--muted),var(--background)_45%)]";
 const HOVER_ROW =
   "hover:bg-muted dark:hover:bg-[color-mix(in_oklch,var(--muted),var(--foreground)_3%)]";
 const SELECTED_ROW =
@@ -200,6 +209,7 @@ export function CategoryList({
   collapsed = NO_GROUPS,
   onCollapsedChange,
   addGroupDisabled = false,
+  fill = false,
 }: {
   data: CategoryListData;
   actions: CategoryListActions;
@@ -208,6 +218,11 @@ export function CategoryList({
   onCollapsedChange?: (collapsed: ReadonlySet<string>) => void;
   /** Greys out the header's "Add a category group" button (as in a custom view). */
   addGroupDisabled?: boolean;
+  /**
+   * Fill the height it's given and scroll inside the tray, the column header pinned on top, so
+   * the labels never leave the screen.
+   */
+  fill?: boolean;
 }) {
   // A viewer can't add, rename, hide, delete or reorder.
   const readOnly = useOptionalBudget()?.readOnly ?? false;
@@ -285,20 +300,22 @@ export function CategoryList({
     const active = document.activeElement;
     if (active instanceof HTMLElement && active.closest("[data-assigned-cell]")) active.blur();
   }
-  function stepCategories(direction: 1 | -1, extend: boolean) {
-    if (!selection) return;
+  /** Moves the selection a row up or down; false when there's no row that way. */
+  function stepCategories(direction: 1 | -1, extend: boolean): boolean {
+    if (!selection) return false;
     const next = stepSelection(onScreen, selection.selected, cursor.current, direction, {
       extend,
       several: "none",
     });
-    if (!next) return;
+    if (!next) return false;
     cursor.current = next.cursor;
     leaveAssigned();
     selection.setAll(next.ids);
     const id = next.cursor.head;
-    if (!id) return;
+    if (!id) return true;
     if (!extend && id !== UNCATEGORIZED_ID && figures?.assign) setKeyEdit(id);
     document.querySelector(`[data-category-row="${id}"]`)?.scrollIntoView?.({ block: "nearest" });
+    return true;
   }
   const keys = { enabled: selection !== undefined, allowIn: inAssigned };
   useShortcut("moveRows", (e) => stepCategories(e.key === "ArrowUp" ? -1 : 1, false), keys);
@@ -383,254 +400,287 @@ export function CategoryList({
     await (kind === "group" ? actions.deleteGroup(id, target) : actions.deleteCategory(id, target));
   }
 
-  return (
-    <div className="grid gap-4">
-      <div className={TRAY}>
-        <div className="min-w-fit">
-          <div className={cn(ROW, "font-medium text-[13px] text-muted-foreground")}>
-            <div className={NAME_CELL}>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                aria-label={allCollapsed ? "Expand all groups" : "Collapse all groups"}
-                onClick={() =>
-                  onCollapsedChange?.(allCollapsed ? new Set() : new Set(layout.groupOrder))
-                }
-              >
-                <ChevronRight
-                  className={cn(
-                    "transition-transform duration-150 ease-out-quint motion-reduce:transition-none",
-                    !allCollapsed && "rotate-90",
-                  )}
-                />
-              </Button>
-              {selection && (
-                <span className={cn(SLOT, WIDE_ONLY)}>
-                  <Checkbox
-                    aria-label={allChecked ? "Uncheck all" : "Check all"}
-                    checked={allChecked}
-                    onCheckedChange={() => selection.setAll(allChecked ? [] : selectable)}
-                  />
-                </span>
+  const table = (
+    <div className="min-w-fit">
+      <div
+        className={cn(
+          ROW,
+          "font-medium text-[13px] text-muted-foreground",
+          TRAY_FILL,
+          fill && "sticky top-0 z-10",
+        )}
+      >
+        <div className={NAME_CELL}>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label={allCollapsed ? "Expand all groups" : "Collapse all groups"}
+            onClick={() =>
+              onCollapsedChange?.(allCollapsed ? new Set() : new Set(layout.groupOrder))
+            }
+          >
+            <ChevronRight
+              className={cn(
+                "transition-transform duration-150 ease-out-quint motion-reduce:transition-none",
+                !allCollapsed && "rotate-90",
               )}
-              <span className="truncate px-2">Category</span>
-              {!readOnly && (
-                <NamePopover
-                  title="New category group"
-                  withEmoji
-                  submitLabel="Add"
-                  onSubmit={({ name }) => actions.createGroup(name)}
-                  trigger={
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label="Add a category group"
-                      title="Add a category group"
-                      disabled={addGroupDisabled}
-                      className="-ml-1 text-muted-foreground"
-                    >
-                      <Plus />
-                    </Button>
-                  }
+            />
+          </Button>
+          {selection && (
+            <span className={cn(SLOT, WIDE_ONLY)}>
+              <Checkbox
+                aria-label={allChecked ? "Uncheck all" : "Check all"}
+                checked={allChecked}
+                onCheckedChange={() => selection.setAll(allChecked ? [] : selectable)}
+              />
+            </span>
+          )}
+          <span className="truncate px-2">Category</span>
+          {!readOnly && (
+            <NamePopover
+              title="New category group"
+              withEmoji
+              submitLabel="Add"
+              onSubmit={({ name }) => actions.createGroup(name)}
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  aria-label="Add a category group"
+                  disabled={addGroupDisabled}
+                  className="-ml-1 font-normal text-muted-foreground"
+                >
+                  <Plus />
+                  <span aria-hidden className="max-md:hidden @max-[36rem]/list:hidden">
+                    Group
+                  </span>
+                </Button>
+              }
+            />
+          )}
+        </div>
+        {figures && (
+          <>
+            <span className={cn(FIGURE, FIGURE_PAD, WIDE_ONLY)}>Assigned</span>
+            <span className={cn(FIGURE, FIGURE_PAD, ACTIVITY_COL)}>Activity</span>
+            <span className={cn(FIGURE, FIGURE_PAD)}>Available</span>
+          </>
+        )}
+      </div>
+      <div className={BODY}>
+        {figures?.month.uncategorized && showUncategorized && (
+          <div
+            className={cn(
+              ROW,
+              "border-b text-sm",
+              selection?.selected.has(UNCATEGORIZED_ID) && SELECTED_ROW,
+            )}
+          >
+            <div className={NAME_CELL}>
+              <Spacer />
+              {selection && (
+                <RowCheckbox
+                  id={UNCATEGORIZED_ID}
+                  name="Uncategorized Transactions"
+                  selection={selection}
                 />
+              )}
+              {selection ? (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className={cn(NAME_BUTTON, "font-normal text-sm")}
+                  onClick={() => selection.selectOnly(UNCATEGORIZED_ID)}
+                >
+                  <span className="truncate">Uncategorized Transactions</span>
+                </Button>
+              ) : (
+                <span className="truncate px-2">Uncategorized Transactions</span>
               )}
             </div>
-            {figures && (
-              <>
-                <span className={cn(FIGURE, FIGURE_PAD, WIDE_ONLY)}>Assigned</span>
-                <span className={cn(FIGURE, FIGURE_PAD, WIDE_ONLY)}>Activity</span>
-                <span className={cn(FIGURE, FIGURE_PAD)}>Available</span>
-              </>
-            )}
-          </div>
-          <div className={BODY}>
-            {figures?.month.uncategorized && showUncategorized && (
-              <div
-                className={cn(
-                  ROW,
-                  "border-b text-sm",
-                  selection?.selected.has(UNCATEGORIZED_ID) && SELECTED_ROW,
-                )}
-              >
-                <div className={NAME_CELL}>
-                  <Spacer />
-                  {selection && (
-                    <RowCheckbox
-                      id={UNCATEGORIZED_ID}
-                      name="Uncategorized Transactions"
-                      selection={selection}
-                    />
-                  )}
-                  {selection ? (
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      className={cn(NAME_BUTTON, "font-normal text-sm")}
-                      onClick={() => selection.selectOnly(UNCATEGORIZED_ID)}
-                    >
-                      <span className="truncate">Uncategorized Transactions</span>
-                    </Button>
-                  ) : (
-                    <span className="truncate px-2">Uncategorized Transactions</span>
-                  )}
-                </div>
-                {/* A dash: money can't be assigned to Uncategorized. */}
-                <span className={cn(FIGURE, FIGURE_PAD, WIDE_ONLY)}>–</span>
-                <span className={cn(FIGURE, "text-sm", WIDE_ONLY)}>
-                  <Activity
-                    figures={figures}
-                    target={{ uncategorized: true }}
-                    name="Uncategorized Transactions"
-                    amount={figures.month.uncategorized.activity}
-                  />
-                </span>
-                <span className={FIGURE}>
-                  <AvailablePill
-                    amount={figures.month.uncategorized.available}
-                    format={figures.format}
-                  />
-                </span>
-              </div>
-            )}
-            <DragDropProvider
-              onDragStart={() => {
-                dragging.current = true;
-                beforeDrag.current = layout;
-              }}
-              onDragOver={(event) => {
-                const type = event.operation.source?.type;
-                if (type !== "category" && type !== "payment") return;
-                setLayout((l) => ({ ...l, items: move(l.items, event) }));
-              }}
-              onDragEnd={(event) => {
-                dragging.current = false;
-                const source = event.operation.source;
-                if (event.canceled || !source) {
-                  setLayout(beforeDrag.current);
-                  return;
-                }
-                const id = String(source.id);
-                if (source.type === "group") {
-                  const groupOrder = move(layout.groupOrder, event);
-                  setLayout((l) => ({ ...l, groupOrder }));
-                  // Credit Card Payments stays pinned first; order the other groups around it.
-                  const movable = (order: string[]) =>
-                    order.filter((g) => !groupsById.get(g)?.kind);
-                  const before = nextId(movable(groupOrder), id);
-                  if (before !== nextId(movable(beforeDrag.current.groupOrder), id)) {
-                    void actions.moveGroup(id, before);
-                  }
-                  return;
-                }
-                const now = locateCategory(layout.items, id);
-                const was = locateCategory(beforeDrag.current.items, id);
-                if (
-                  now &&
-                  (now.groupId !== was?.groupId || now.beforeCategoryId !== was?.beforeCategoryId)
-                ) {
-                  void actions.moveCategory(id, now.groupId, now.beforeCategoryId);
-                }
-              }}
-            >
-              {groupOrder.map((groupId, groupIndex) => {
-                const group = groupsById.get(groupId);
-                if (!group) return null;
-                return (
-                  <GroupSection
-                    key={groupId}
-                    group={group}
-                    index={groupIndex}
-                    actions={actions}
-                    totals={
-                      // Under a view a group totals only its categories in view.
-                      shown && figures
-                        ? toTotals(summarize(figures.month, itemsOf(groupId)))
-                        : groupFigures.get(groupId)
-                    }
-                    figures={figures}
-                    reorderable={!shown && !readOnly}
-                    onToggleSelection={selection && (() => toggleGroupSelection(groupId))}
-                    checked={
-                      selection &&
-                      itemsOf(groupId).length > 0 &&
-                      itemsOf(groupId).every((id) => selection.selected.has(id))
-                    }
-                    collapsed={collapsed.has(groupId)}
-                    onToggle={() => toggleGroup(groupId)}
-                    onDelete={() => requestDelete("group", group.id, group.name)}
-                  >
-                    {itemsOf(groupId).map((categoryId, index) => {
-                      const category = categoriesById.get(categoryId);
-                      if (!category) return null;
-                      return (
-                        <CategoryRow
-                          key={categoryId}
-                          category={category}
-                          index={index}
-                          groupId={groupId}
-                          actions={actions}
-                          totals={categoryFigures.get(categoryId)}
-                          figures={figures}
-                          reorderable={!shown && !readOnly}
-                          onDelete={() => requestDelete("category", category.id, category.name)}
-                          keyEdit={keyEdit === categoryId}
-                          onKeyEditStarted={() => setKeyEdit(undefined)}
-                        />
-                      );
-                    })}
-                  </GroupSection>
-                );
-              })}
-            </DragDropProvider>
-            {shown && selectable.length === 0 && figures?.emptyView && (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyDescription>{figures.emptyView.message}</EmptyDescription>
-                </EmptyHeader>
-                <div className="flex gap-2">
-                  {figures.emptyView.onEdit && (
-                    <Button variant="secondary" size="sm" onClick={figures.emptyView.onEdit}>
-                      Edit View
-                    </Button>
-                  )}
-                  <Button variant="link" size="sm" onClick={figures.emptyView.onViewAll}>
-                    View All
-                  </Button>
-                </div>
-              </Empty>
-            )}
-            {shown && selectable.length > 0 && figures?.emptyView && (
-              <p className="flex items-center justify-center gap-1 border-t px-2 py-3 text-muted-foreground text-sm">
-                Some categories are hidden by your current view.
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="h-auto p-0"
-                  onClick={figures.emptyView.onViewAll}
-                >
-                  View All
-                </Button>
-              </p>
-            )}
-            {layout.groupOrder.length === 0 && (
-              <Empty>
-                <EmptyHeader>
-                  <EmptyTitle>No categories yet</EmptyTitle>
-                  <EmptyDescription>Add a category group to get started.</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            )}
-            {!shown && (
-              <HiddenRow
-                hidden={hidden}
-                actions={actions}
-                totals={figures?.month.hidden}
-                format={figures?.format}
-                withCheckboxes={Boolean(selection)}
+            {/* A dash: money can't be assigned to Uncategorized. */}
+            <span className={cn(FIGURE, FIGURE_PAD, WIDE_ONLY)}>–</span>
+            <span className={cn(FIGURE, "text-sm", ACTIVITY_COL)}>
+              <Activity
+                figures={figures}
+                target={{ uncategorized: true }}
+                name="Uncategorized Transactions"
+                amount={figures.month.uncategorized.activity}
               />
-            )}
+            </span>
+            <span className={FIGURE}>
+              <AvailablePill
+                amount={figures.month.uncategorized.available}
+                format={figures.format}
+              />
+            </span>
           </div>
-        </div>
+        )}
+        <DragDropProvider
+          onDragStart={() => {
+            dragging.current = true;
+            beforeDrag.current = layout;
+          }}
+          onDragOver={(event) => {
+            const type = event.operation.source?.type;
+            if (type !== "category" && type !== "payment") return;
+            setLayout((l) => ({ ...l, items: move(l.items, event) }));
+          }}
+          onDragEnd={(event) => {
+            dragging.current = false;
+            const source = event.operation.source;
+            if (event.canceled || !source) {
+              setLayout(beforeDrag.current);
+              return;
+            }
+            const id = String(source.id);
+            if (source.type === "group") {
+              const groupOrder = move(layout.groupOrder, event);
+              setLayout((l) => ({ ...l, groupOrder }));
+              // Credit Card Payments stays pinned first; order the other groups around it.
+              const movable = (order: string[]) => order.filter((g) => !groupsById.get(g)?.kind);
+              const before = nextId(movable(groupOrder), id);
+              if (before !== nextId(movable(beforeDrag.current.groupOrder), id)) {
+                void actions.moveGroup(id, before);
+              }
+              return;
+            }
+            const now = locateCategory(layout.items, id);
+            const was = locateCategory(beforeDrag.current.items, id);
+            if (
+              now &&
+              (now.groupId !== was?.groupId || now.beforeCategoryId !== was?.beforeCategoryId)
+            ) {
+              void actions.moveCategory(id, now.groupId, now.beforeCategoryId);
+            }
+          }}
+        >
+          {groupOrder.map((groupId, groupIndex) => {
+            const group = groupsById.get(groupId);
+            if (!group) return null;
+            return (
+              <GroupSection
+                key={groupId}
+                group={group}
+                index={groupIndex}
+                actions={actions}
+                totals={
+                  // Under a view a group totals only its categories in view.
+                  shown && figures
+                    ? toTotals(summarize(figures.month, itemsOf(groupId)))
+                    : groupFigures.get(groupId)
+                }
+                figures={figures}
+                reorderable={!shown && !readOnly}
+                onToggleSelection={selection && (() => toggleGroupSelection(groupId))}
+                checked={
+                  selection &&
+                  itemsOf(groupId).length > 0 &&
+                  itemsOf(groupId).every((id) => selection.selected.has(id))
+                }
+                collapsed={collapsed.has(groupId)}
+                onToggle={() => toggleGroup(groupId)}
+                onDelete={() => requestDelete("group", group.id, group.name)}
+              >
+                {itemsOf(groupId).map((categoryId, index) => {
+                  const category = categoriesById.get(categoryId);
+                  if (!category) return null;
+                  return (
+                    <CategoryRow
+                      key={categoryId}
+                      category={category}
+                      index={index}
+                      groupId={groupId}
+                      actions={actions}
+                      totals={categoryFigures.get(categoryId)}
+                      figures={figures}
+                      reorderable={!shown && !readOnly}
+                      onDelete={() => requestDelete("category", category.id, category.name)}
+                      keyEdit={keyEdit === categoryId}
+                      onKeyEditStarted={() => setKeyEdit(undefined)}
+                    />
+                  );
+                })}
+              </GroupSection>
+            );
+          })}
+        </DragDropProvider>
+        {shown && selectable.length === 0 && figures?.emptyView && (
+          <Empty>
+            <EmptyHeader>
+              <EmptyDescription>{figures.emptyView.message}</EmptyDescription>
+            </EmptyHeader>
+            <div className="flex gap-2">
+              {figures.emptyView.onEdit && (
+                <Button variant="secondary" size="sm" onClick={figures.emptyView.onEdit}>
+                  Edit View
+                </Button>
+              )}
+              <Button variant="link" size="sm" onClick={figures.emptyView.onViewAll}>
+                View All
+              </Button>
+            </div>
+          </Empty>
+        )}
+        {shown && selectable.length > 0 && figures?.emptyView && (
+          <p className="flex items-center justify-center gap-1 border-t px-2 py-3 text-muted-foreground text-sm">
+            Some categories are hidden by your current view.
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto p-0"
+              onClick={figures.emptyView.onViewAll}
+            >
+              View All
+            </Button>
+          </p>
+        )}
+        {layout.groupOrder.length === 0 && (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>No categories yet</EmptyTitle>
+              <EmptyDescription>Add a category group to get started.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
+        {!shown && (
+          <HiddenRow
+            hidden={hidden}
+            actions={actions}
+            totals={figures?.month.hidden}
+            format={figures?.format}
+            withCheckboxes={Boolean(selection)}
+          />
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className={fill ? "flex min-h-0 flex-1 flex-col" : "grid gap-4"}>
+      {/* Tab in an Assigned input saves it and opens the next category's, like a spreadsheet. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard handling for the inputs inside */}
+      <div
+        className={cn(TRAY, fill && "flex min-h-0 flex-col overflow-x-hidden overflow-y-hidden")}
+        onKeyDown={(e) => {
+          if (e.key !== "Tab" || !(e.target instanceof HTMLInputElement) || !inAssigned(e.target)) {
+            return;
+          }
+          if (stepCategories(e.shiftKey ? -1 : 1, false)) e.preventDefault();
+        }}
+      >
+        {fill ? (
+          // The same overlay scrollbar as the register, inside the table's rounded edge.
+          <ScrollArea
+            className="min-h-0 flex-1"
+            scrollbars="both"
+            viewportClassName="overscroll-contain [&>div]:block!"
+          >
+            {table}
+          </ScrollArea>
+        ) : (
+          table
+        )}
       </div>
 
       <AlertDialog open={pendingDelete !== null} onOpenChange={(o) => !o && setPendingDelete(null)}>
@@ -771,9 +821,11 @@ function GroupSection({
           <Button
             variant="ghost"
             size="icon-xs"
-            aria-label={`${collapsed ? "Expand" : "Collapse"} ${group.name}`}
+            aria-label={`${collapsed ? "Expand" : "Collapse"} ${spoken(group.name)}`}
             aria-expanded={!collapsed}
             onClick={onToggle}
+            // An open group isn't an open menu: no resting tint.
+            className="aria-expanded:bg-transparent aria-expanded:hover:bg-accent"
           >
             <ChevronRight
               className={cn(
@@ -785,7 +837,7 @@ function GroupSection({
           {onToggleSelection && (
             <span className={cn(SLOT, WIDE_ONLY)}>
               <Checkbox
-                aria-label={`Select ${group.name}`}
+                aria-label={`Select ${spoken(group.name)}`}
                 checked={checked ?? false}
                 onCheckedChange={onToggleSelection}
               />
@@ -799,7 +851,7 @@ function GroupSection({
               <NamePopover
                 title="Category group name"
                 withEmoji
-                initial={{ name: group.name, note: "" }}
+                initial={{ name: group.name }}
                 onSubmit={({ name }) => actions.updateGroup(group.id, { name })}
                 actions={(close) => (
                   <>
@@ -848,7 +900,7 @@ function GroupSection({
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Add a category to ${group.name}`}
+                      aria-label={`Add a category to ${spoken(group.name)}`}
                     >
                       <Plus />
                     </Button>
@@ -858,7 +910,7 @@ function GroupSection({
               {reorderable && (
                 <DragHandle
                   ref={handleRef}
-                  label={`Reorder ${group.name}`}
+                  label={`Reorder ${spoken(group.name)}`}
                   className={HOVER_REVEAL}
                 />
               )}
@@ -869,6 +921,13 @@ function GroupSection({
           <TotalCells
             totals={totals}
             format={format}
+            overspent={
+              figures?.month.categories.some(
+                (c) =>
+                  c.available.startsWith("-") &&
+                  group.categories.some((g) => g.id === c.categoryId),
+              ) ?? false
+            }
             activity={
               figures && (
                 <Activity
@@ -919,6 +978,7 @@ function CategoryRow({
 }) {
   const { format, assign, move, selection } = figures ?? {};
   const isPayment = Boolean(category.linkedAccountId);
+  const showStatus = Boolean(totals && figures && figures.progressBars !== false);
   const caution =
     totals && figures ? isCaution(totals, figures.month.month, figures.currentMonth) : false;
   const { ref, handleRef, isDragSource } = useSortable({
@@ -987,88 +1047,92 @@ function CategoryRow({
     >
       <div className="grid min-w-0 gap-1">
         <div className={NAME_CELL}>
-          {/* The handle takes the slot a group's chevron uses, shown when the row is hovered. */}
-          {reorderable ? (
-            <DragHandle
-              ref={handleRef}
-              label={`Reorder ${category.name}`}
-              className={HOVER_REVEAL}
-            />
-          ) : (
-            <>
-              <Spacer />
-              {/* An empty handle keeps dnd-kit's button role off the row. */}
-              <span ref={handleRef} hidden />
-            </>
-          )}
-          {selection && <RowCheckbox id={category.id} name={category.name} selection={selection} />}
-          <NamePopover
-            title="Category name"
-            withEmoji
-            withNote
-            nameLockedReason={
-              isPayment ? "Named after its credit account. Rename the account instead." : undefined
-            }
-            initial={{ name: category.name, note: category.note }}
-            onSubmit={({ name, note }) => actions.updateCategory(category.id, { name, note })}
-            actions={(close) => (
+          {/* The controls and the name stay together; only the status caption wraps below. */}
+          <div className="flex min-w-0 shrink items-center gap-1">
+            {/* The handle takes the slot a group's chevron uses, shown when the row is hovered. */}
+            {reorderable ? (
+              <DragHandle
+                ref={handleRef}
+                label={`Reorder ${spoken(category.name)}`}
+                className={HOVER_REVEAL}
+              />
+            ) : (
               <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    close();
-                    await actions.updateCategory(category.id, { hidden: true });
-                  }}
-                >
-                  Hide
-                </Button>
-                {!isPayment && (
+                <Spacer />
+                {/* An empty handle keeps dnd-kit's button role off the row. */}
+                <span ref={handleRef} hidden />
+              </>
+            )}
+            {selection && (
+              <RowCheckbox id={category.id} name={spoken(category.name)} selection={selection} />
+            )}
+            <NamePopover
+              title="Category name"
+              withEmoji
+              nameLockedReason={
+                isPayment
+                  ? "Named after its credit account. Rename the account instead."
+                  : undefined
+              }
+              initial={{ name: category.name }}
+              onSubmit={({ name }) => actions.updateCategory(category.id, { name })}
+              actions={(close) => (
+                <>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="text-destructive"
-                    onClick={() => {
+                    onClick={async () => {
                       close();
-                      onDelete();
+                      await actions.updateCategory(category.id, { hidden: true });
                     }}
                   >
-                    Delete
+                    Hide
                   </Button>
-                )}
-              </>
-            )}
-            trigger={
-              <Button
-                variant="ghost"
-                size="xs"
-                className={cn(NAME_BUTTON, "font-normal text-sm")}
-                onClick={(e) => {
-                  if (!selection || onlySelected) return;
-                  // Selecting comes first; Radix skips opening the editor on a prevented click.
-                  e.preventDefault();
-                  selectAndEdit();
-                }}
-              >
-                <span className="truncate">{category.name}</span>
-              </Button>
-            }
-          />
-          {category.note && (
-            <StickyNote
-              className="size-3.5 shrink-0 text-muted-foreground"
-              aria-label="Has a note"
+                  {!isPayment && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => {
+                        close();
+                        onDelete();
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  )}
+                </>
+              )}
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className={cn(NAME_BUTTON, "font-normal text-sm")}
+                  onClick={(e) => {
+                    if (!selection || onlySelected) return;
+                    // Selecting comes first; Radix skips opening the editor on a prevented click.
+                    e.preventDefault();
+                    selectAndEdit();
+                  }}
+                >
+                  <CategoryLabel name={category.name} />
+                </Button>
+              }
             />
-          )}
-          {totals &&
-            format &&
+            {category.note && (
+              <StickyNote
+                className="size-3.5 shrink-0 text-muted-foreground"
+                aria-label="Has a note"
+              />
+            )}
+          </div>
+          {/* The target's status, right-aligned on the name's line: the name gives way first. */}
+          {showStatus &&
+            totals &&
             figures &&
-            figures.progressBars !== false &&
-            // No note under a payment category, target or not.
-            !isPayment &&
-            (totals.available.startsWith("-") ? (
+            (isPayment || !format ? null : totals.available.startsWith("-") ? (
               <OverspentNote totals={totals} format={format} />
             ) : (
               <RowNote
@@ -1082,10 +1146,14 @@ function CategoryRow({
               />
             ))}
         </div>
-        {totals?.bar && figures?.progressBars !== false && (
-          // Lined up with the name, past the two slots and the name button's padding.
-          <ProgressBar bar={totals.bar} className="mr-1 ml-16" />
-        )}
+        {showStatus &&
+          (totals?.bar ? (
+            // Lined up with the name, past the two slots and the name button's padding.
+            <ProgressBar bar={totals.bar} className="mr-1 ml-16" />
+          ) : (
+            // Rows without a bar keep the same height, so the list keeps one rhythm.
+            <span aria-hidden className="h-1" />
+          ))}
       </div>
       {totals && format && (
         <>
@@ -1093,7 +1161,7 @@ function CategoryRow({
             {assign ? (
               <AssignedCell
                 categoryId={category.id}
-                categoryName={category.name}
+                categoryName={spoken(category.name)}
                 amount={totals.assigned}
                 format={format}
                 actions={assign}
@@ -1114,7 +1182,7 @@ function CategoryRow({
               <span className="absolute top-1/2 left-full -translate-y-1/2">
                 <CategoryMovesButton
                   categoryId={category.id}
-                  categoryName={category.name}
+                  categoryName={spoken(category.name)}
                   context={figures.moves}
                   format={format}
                   visible={selected}
@@ -1122,22 +1190,28 @@ function CategoryRow({
               </span>
             )}
           </div>
-          <span className={cn(FIGURE, "text-sm", WIDE_ONLY)}>
+          <span className={cn(FIGURE, "text-sm", ACTIVITY_COL)}>
             {figures && (
               <Activity
                 figures={figures}
                 target={{ categoryId: category.id }}
-                name={category.name}
+                name={spoken(category.name)}
                 amount={totals.activity}
                 card={isPayment ? totals.payment : undefined}
               />
             )}
           </span>
-          <span className={FIGURE}>
+          {/* Opening the pill's move or cover makes its row the current one, inspector and all. */}
+          <span
+            className={FIGURE}
+            onClickCapture={() => {
+              if (selection && !onlySelected) selection.selectOnly(category.id);
+            }}
+          >
             {move ? (
               <AvailableButton
                 categoryId={category.id}
-                categoryName={category.name}
+                categoryName={spoken(category.name)}
                 amount={totals.available}
                 format={format}
                 actions={move}
@@ -1159,21 +1233,28 @@ function CategoryRow({
   );
 }
 
+/**
+ * The status caption, right-aligned on the name's line, in whatever room the name leaves: the
+ * name always shows first, the caption gives way (its full text is in the tooltip), and every row
+ * keeps the same height.
+ */
+const NOTE = "min-w-0 flex-1 basis-0 truncate whitespace-nowrap pl-2 text-right text-xs leading-4";
+
 /** The note under a category's name: its target's status, or what was spent. */
 function RowNote({ note }: { note: { strong: string; rest: string } | null }) {
   if (!note) return null;
   return (
-    <span className="min-w-0 flex-1 basis-0 truncate pl-2 text-right text-muted-foreground text-xs">
+    <span className={cn(NOTE, "text-muted-foreground")} title={`${note.strong}${note.rest}`}>
       {note.strong && <span className="font-medium text-foreground">{note.strong}</span>}
       {note.rest}
     </span>
   );
 }
 
-/**
- * The note on an overspent category: what was spent of what it had (carried in plus assigned),
- * e.g. "Overspent. $25.00 of $10.00".
- */
+/** A name as a screen reader should say it: without its leading emoji. */
+const spoken = (name: string) => splitEmoji(name).text;
+
+/** The note on an overspent category: by how much, e.g. "Overspent by $15.00". */
 function OverspentNote({
   totals,
   format,
@@ -1181,11 +1262,14 @@ function OverspentNote({
   totals: MonthTotals;
   format: CategoryFigures["format"];
 }) {
-  const spent = -BigInt(totals.activity);
-  const had = BigInt(totals.available) - BigInt(totals.activity);
+  const over = -BigInt(totals.available);
+  if (over <= 0n) return null;
   return (
-    <span className="min-w-0 flex-1 basis-0 truncate pl-2 text-right text-destructive text-xs">
-      Overspent. {format(spent.toString())} of {format(had.toString())}
+    <span
+      className={cn(NOTE, "font-medium text-destructive")}
+      title={`Overspent by ${format(over.toString())}`}
+    >
+      Overspent by {format(over.toString())}
     </span>
   );
 }
@@ -1195,9 +1279,12 @@ function TotalCells({
   totals,
   format,
   activity,
+  overspent = false,
 }: {
   totals: MonthTotals;
   format: CategoryFigures["format"];
+  /** A category inside is overspent: a red dot flags the group even when it's folded. */
+  overspent?: boolean;
   /** Activity as a drill-down button instead of a plain number. */
   activity?: ReactNode;
 }) {
@@ -1206,10 +1293,17 @@ function TotalCells({
       <span className={cn(FIGURE, FIGURE_PAD, "font-medium text-sm", WIDE_ONLY)}>
         {format(totals.assigned)}
       </span>
-      <span className={cn(FIGURE, "font-medium text-sm", WIDE_ONLY)}>
+      <span className={cn(FIGURE, "font-medium text-sm", ACTIVITY_COL)}>
         {activity ?? <span className={FIGURE_PAD}>{format(totals.activity)}</span>}
       </span>
       <span className={cn(FIGURE, FIGURE_PAD, "font-medium text-sm")}>
+        {overspent && (
+          <span
+            role="img"
+            aria-label="Has an overspent category"
+            className="mr-1.5 inline-block size-1.5 rounded-full bg-destructive align-middle"
+          />
+        )}
         {format(totals.available)}
       </span>
     </>

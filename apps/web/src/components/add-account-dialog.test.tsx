@@ -45,7 +45,7 @@ describe("AddAccountDialog", () => {
     await addAccount("Checking");
     expect(await screen.findByText("Success!")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Add Another" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add another" }));
     expect(screen.getByLabelText("Nickname")).toHaveValue("");
     await addAccount("Savings");
     expect(created).toEqual(["Checking", "Savings"]);

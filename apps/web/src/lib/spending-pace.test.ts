@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type PaceSummary, paceCallout } from "./spending-pace";
+import { type PaceCategory, type PaceSummary, paceCallout, paceScope } from "./spending-pace";
 
 const summary = (over: Partial<PaceSummary>): PaceSummary => ({
   start: "30000",
@@ -46,6 +46,18 @@ describe("paceCallout", () => {
   it("has nothing to say with nothing to spend", () => {
     expect(paceCallout(summary({ status: null }), false, format)).toBe(
       "Nothing to spend this month.",
+    );
+  });
+});
+
+describe("paceScope", () => {
+  const cat = (included: boolean, reason: PaceCategory["reason"] = null) =>
+    ({ included, reason }) as PaceCategory;
+
+  it("says which categories the line counts and why the rest aren't", () => {
+    expect(paceScope([cat(true), cat(true)])).toBe("All 2 categories you spend from are counted.");
+    expect(paceScope([cat(true), cat(false, "bill"), cat(false, "saving"), cat(false)])).toBe(
+      "1 category counted; 3 left out (bills, savings, switched off).",
     );
   });
 });

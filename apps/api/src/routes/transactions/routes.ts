@@ -302,6 +302,10 @@ const splitRules =
 
 const TransferSideInput = z
   .object({
+    id: z
+      .string()
+      .optional()
+      .describe("With `restore`: the other side's own id, so it comes back as the same record"),
     memo: Memo,
     cleared: NewCleared,
     flag: Flag,
@@ -422,6 +426,14 @@ export const createTransaction = createRoute({
     body: json(
       z
         .object({
+          id: z
+            .string()
+            .optional()
+            .describe(
+              "With `restore`: the deleted transaction's own id, so it comes back as the same " +
+                "record, in its place among its day's transactions. Only an id this budget's " +
+                "history shows deleted and not restored since (ID_UNAVAILABLE otherwise)",
+            ),
           accountId: z.string(),
           date: IsoDate,
           amount: zMinorUnits.describe("Negative is an outflow"),
@@ -491,6 +503,9 @@ export const createTransaction = createRoute({
     401: jsonError("Not signed in"),
     403: forbidden,
     404: notFound,
+    409: jsonError(
+      "`id` (or a `transferSide` id) isn't a deleted transaction of this budget (ID_UNAVAILABLE)",
+    ),
     422: crossCurrency,
   },
 });

@@ -1,5 +1,10 @@
 import type { components } from "@strictbudget/api-client";
-import { BUDGET_MONTH_PATTERN, type BudgetMonth, type PaceStatus } from "@strictbudget/engine";
+import {
+  BUDGET_MONTH_PATTERN,
+  type BudgetMonth,
+  monthOf,
+  type PaceStatus,
+} from "@strictbudget/engine";
 import { format, parseISO } from "date-fns";
 import { z } from "zod";
 import { $api } from "./api";
@@ -21,14 +26,23 @@ export const spendingPaceSearchSchema = z.object({
 });
 export type SpendingPaceSearch = z.infer<typeof spendingPaceSearchSchema>;
 
-/** A month's pace (`GET /reports/spending-pace`): the plan's line unless a group or category. */
+/**
+ * A month's pace (`GET /reports/spending-pace`): the plan's line unless a group or category. The
+ * month is always explicit (today's by default), so the plan's panel, the Reports home and the
+ * report read one cached answer for the same month.
+ */
 export const spendingPaceOptions = (
   budgetId: string,
   { month, groupId, categoryId }: { month?: BudgetMonth; groupId?: string; categoryId?: string },
-) =>
-  $api.queryOptions("get", "/v1/budgets/{budgetId}/reports/spending-pace", {
-    params: { path: { budgetId }, query: { today: todayIso(), month, groupId, categoryId } },
+) => {
+  const today = todayIso();
+  return $api.queryOptions("get", "/v1/budgets/{budgetId}/reports/spending-pace", {
+    params: {
+      path: { budgetId },
+      query: { today, month: month ?? monthOf(today), groupId, categoryId },
+    },
   });
+};
 
 export const STATUS_LABELS: Record<PaceStatus, string> = {
   ahead: "Ahead",
@@ -77,3 +91,25 @@ export const REASON_LABELS: Record<NonNullable<PaceCategory["reason"]>, string> 
   scheduled: "Has a scheduled transaction",
   hidden: "Hidden",
 };
+
+const LEFT_OUT: Record<NonNullable<PaceCategory["reason"]> | "setting", string> = {
+  bill: "bills",
+  saving: "savings",
+  scheduled: "scheduled",
+  hidden: "hidden",
+  setting: "switched off",
+};
+
+/**
+ * What the plan's line covers, in words: the categories counted and why the rest aren't ("12
+ * categories counted; 3 left out: bills, savings"). The line is everyday spending, not the month's
+ * Available, so the two can differ.
+ */
+export function paceScope(categories: readonly PaceCategory[]): string {
+  const counted = categories.filter((c) => c.included).length;
+  const out = categories.filter((c) => !c.included);
+  const noun = (n: number) => `${n} ${n === 1 ? "category" : "categories"}`;
+  if (out.length === 0) return `All ${noun(counted)} you spend from are counted.`;
+  const why = [...new Set(out.map((c) => LEFT_OUT[c.reason ?? "setting"]))];
+  return `${noun(counted)} counted; ${out.length} left out (${why.join(", ")}).`;
+}

@@ -42,7 +42,7 @@ describe("UpcomingTransactions", () => {
       />,
     );
     expect(screen.getByRole("button", { name: "2 Upcoming Transactions" })).toBeInTheDocument();
-    expect(screen.getByText("Available After Upcoming")).toBeInTheDocument();
+    expect(screen.getByText("Available after upcoming")).toBeInTheDocument();
     expect(screen.getAllByText("$-50.00")).toHaveLength(2);
     expect(container.firstElementChild?.className).toContain("bg-yellow-100");
   });

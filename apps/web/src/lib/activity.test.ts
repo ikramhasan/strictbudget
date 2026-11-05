@@ -1,6 +1,15 @@
 import { formatAmount } from "@strictbudget/engine";
 import { describe, expect, it } from "vitest";
-import { type ActivityEvent, type ActivityLookups, actorName, describeEvent } from "./activity";
+import {
+  type ActivityEvent,
+  type ActivityLookups,
+  actorName,
+  changesOf,
+  describeEvent,
+  groupEvents,
+  moveOf,
+  restoredEvents,
+} from "./activity";
 
 const lookups: ActivityLookups = {
   account: (id) => ({ chk: "Checking" })[id],
@@ -23,6 +32,7 @@ const event = (over: Partial<ActivityEvent>): ActivityEvent => ({
   at: "2026-10-16T12:00:00.000Z",
   actor: { userId: "pat", name: "Pat", avatarColor: 2, removed: false, picture: null, agent: null },
   source: null,
+  requestId: null,
   entity: "transaction",
   rowId: "t",
   op: "update",
@@ -64,7 +74,7 @@ describe("Activity lines", () => {
     expect(line.changes).toEqual([
       { label: "Category", before: "Groceries", after: "Rent" },
       { label: "Amount", before: "-$1,234.56", after: "-$90,071,992,547,409.93" },
-      { label: "Memo", before: "(blank)", after: "split" },
+      { label: "Memo", before: "—", after: "split" },
     ]);
   });
 
@@ -81,6 +91,87 @@ describe("Activity lines", () => {
     });
   });
 
+  it("words states, yes/no columns, months and fixed values as words", () => {
+    const added = describeEvent(
+      event({
+        op: "insert",
+        after: { ...txn, cleared: "uncleared", approved: "true", flag: "red" },
+      }),
+      lookups,
+    );
+    // A new row's blanks and usual defaults aren't listed.
+    expect(added.changes.map((c) => c.label)).toEqual([
+      "Account",
+      "Payee",
+      "Category",
+      "Amount",
+      "Flag",
+    ]);
+    expect(added.changes).toContainEqual({ label: "Flag", before: null, after: "Red" });
+
+    const changed = describeEvent(
+      event({
+        before: { ...txn, cleared: "cleared", approved: "false", memo: "milk" },
+        after: { ...txn, cleared: "reconciled", approved: "true", memo: "" },
+      }),
+      lookups,
+    );
+    expect(changed.changes).toEqual([
+      { label: "Memo", before: "milk", after: "—" },
+      { label: "Status", before: "Cleared", after: "Reconciled" },
+      { label: "Approval", before: "Not approved", after: "Approved" },
+    ]);
+
+    const target = describeEvent(
+      event({
+        entity: "category_target",
+        op: "insert",
+        after: {
+          category_id: "groc",
+          cadence: "monthly",
+          behavior: "set_aside",
+          amount: "20000",
+          start_month: "2026-11-01",
+        },
+      }),
+      lookups,
+    );
+    expect(target.subject).toBe("Groceries");
+    expect(target.changes).toEqual([
+      { label: "Category", before: null, after: "Groceries" },
+      { label: "Cadence", before: null, after: "Monthly" },
+      { label: "Behavior", before: null, after: "Set aside" },
+      { label: "Amount", before: null, after: "$200.00" },
+      { label: "Start month", before: null, after: "Nov 2026" },
+    ]);
+
+    expect(
+      describeEvent(
+        event({ entity: "month_note", op: "insert", after: { month: "2026-11-01", note: "Hi" } }),
+        lookups,
+      ).subject,
+    ).toBe("Nov 2026");
+    expect(
+      describeEvent(
+        event({
+          entity: "payee_rule",
+          op: "insert",
+          after: { payee_id: "shop", operator: "contains", text: "SHOP #" },
+        }),
+        lookups,
+      ).subject,
+    ).toBe("Shop · contains “SHOP #”");
+  });
+
+  it("reads a category cleared by a split as Split", () => {
+    const line = describeEvent(
+      event({ before: txn, after: { ...txn, category_id: null } }),
+      lookups,
+      [event({ entity: "sub_transaction", op: "insert", after: { amount: "-100" } })],
+    );
+    expect(line.changes).toEqual([{ label: "Category", before: "Groceries", after: "Split" }]);
+  });
+
   it("words assigned money and membership", () => {
     const assigned = describeEvent(
       event({
@@ -92,14 +183,50 @@ describe("Activity lines", () => {
     );
     expect(assigned).toEqual({
       action: "changed an assigned amount",
-      subject: "Groceries (2026-10)",
+      subject: "Groceries (Oct 2026)",
       changes: [{ label: "Amount", before: "$10.00", after: "$25.00" }],
+      target: { kind: "category", categoryId: "groc", month: "2026-10" },
     });
     const joined = describeEvent(
       event({ entity: "budget_member", op: "insert", after: { user_id: "pat", role: "editor" } }),
       lookups,
     );
     expect(joined).toEqual({ action: "added a member", subject: "Pat", changes: [] });
+  });
+
+  it("names a split line by its category", () => {
+    const line = describeEvent(
+      event({
+        entity: "sub_transaction",
+        op: "insert",
+        after: { category_id: "groc", amount: "-7000", currency: "USD" },
+      }),
+      lookups,
+    );
+    expect(line.subject).toBe("Groceries · -$70.00");
+  });
+
+  it("links a subject that still exists, and not one that's gone", () => {
+    expect(describeEvent(event({ op: "update", before: txn, after: txn }), lookups).target).toEqual(
+      { kind: "transaction", accountId: "chk", transactionId: "t" },
+    );
+    expect(describeEvent(event({ op: "delete", before: txn }), lookups).target).toBeUndefined();
+    const renamed = event({
+      entity: "category",
+      rowId: "rent",
+      before: { name: "Rent" },
+      after: { name: "Housing" },
+    });
+    expect(describeEvent(renamed, lookups).target).toEqual({
+      kind: "category",
+      categoryId: "rent",
+    });
+    const gone = event({
+      entity: "category_target",
+      op: "insert",
+      after: { category_id: "gone", amount: "100" },
+    });
+    expect(describeEvent(gone, lookups).target).toBeUndefined();
   });
 
   it("names who made a change, or why nobody did", () => {
@@ -133,5 +260,221 @@ describe("Activity lines", () => {
         }),
       ),
     ).toBe("Claude Code for Pat");
+  });
+});
+
+describe("changesOf dates", () => {
+  it("reads dates and timestamps as dates, and leaves text that starts with one alone", () => {
+    const changes = changesOf(
+      event({
+        before: { ...txn, memo: "2026-11-05 lunch", date: "2026-11-04" },
+        after: { ...txn, memo: "2026-11-05 dinner", date: "2026-11-05" },
+      }),
+      lookups,
+    );
+    expect(changes.map((c) => [c.label, c.before, c.after])).toEqual([
+      ["Memo", "2026-11-05 lunch", "2026-11-05 dinner"],
+      ["Date", "2026-11-04", "2026-11-05"],
+    ]);
+  });
+});
+
+describe("groupEvents", () => {
+  it("folds one save into its transaction and drops bookkeeping-only changes", () => {
+    const at = "2026-10-16T12:00:00.000Z";
+    const events = [
+      event({
+        id: "line",
+        entity: "sub_transaction",
+        op: "insert",
+        at,
+        after: { amount: "-7000" },
+      }),
+      event({ id: "txn", entity: "transaction", op: "insert", at, after: txn }),
+      event({
+        id: "payee",
+        entity: "payee",
+        op: "update",
+        at,
+        before: { auto_category_saved: "false" },
+        after: { auto_category_saved: "true" },
+      }),
+      event({
+        id: "later",
+        entity: "category",
+        op: "update",
+        at: "2026-10-16T12:05:00.000Z",
+        before: { name: "A" },
+        after: { name: "B" },
+      }),
+    ];
+    const groups = groupEvents(events, lookups);
+    expect(groups.map((g) => [g.lead.id, g.rest.map((e) => e.id)])).toEqual([
+      ["txn", ["line"]],
+      ["later", []],
+    ]);
+  });
+
+  it("reads an undone delete as a restore, apart from the delete it undid", () => {
+    const at = "2026-10-16T12:00:00.000Z";
+    const soon = "2026-10-16T12:00:01.000Z";
+    // Newest first: two deleted at once, then both brought back a second later.
+    const events = [
+      event({ id: "e5", entity: "transaction", rowId: "b", op: "insert", at: soon, after: txn }),
+      event({
+        id: "e4",
+        entity: "sub_transaction",
+        rowId: "line",
+        op: "insert",
+        at: soon,
+        after: { amount: "-7000" },
+      }),
+      event({ id: "e3", entity: "transaction", rowId: "a", op: "insert", at: soon, after: txn }),
+      event({ id: "e2", entity: "transaction", rowId: "b", op: "delete", at, before: txn }),
+      event({ id: "e1", entity: "transaction", rowId: "a", op: "delete", at, before: txn }),
+    ];
+    expect([...restoredEvents(events)].sort()).toEqual(["e3", "e5"]);
+    const groups = groupEvents(events, lookups);
+    // The restored split's lines come back with it; the delete is an entry of its own.
+    expect(groups.map((g) => [g.lead.id, g.rest.map((e) => e.id)])).toEqual([
+      ["e5", ["e3"]],
+      ["e2", ["e1"]],
+    ]);
+    const [restore] = groups;
+    if (!restore) throw new Error("missing");
+    expect(describeEvent(restore.lead, lookups, restore.rest, true)).toEqual({
+      action: "restored a transaction",
+      subject: "Shop · -$1,234.56",
+      changes: [],
+      target: { kind: "transaction", accountId: "chk", transactionId: "b" },
+    });
+    expect(describeEvent(events[3] as ActivityEvent, lookups).action).toBe("deleted a transaction");
+  });
+
+  it("keeps two changes to one row apart, but not a new row and its fill-in", () => {
+    const at = "2026-10-16T12:00:00.000Z";
+    const events = [
+      event({
+        id: "e3",
+        op: "update",
+        at,
+        before: { ...txn, memo: "b" },
+        after: { ...txn, memo: "c" },
+      }),
+      event({
+        id: "e2",
+        op: "update",
+        at,
+        before: { ...txn, memo: "a" },
+        after: { ...txn, memo: "b" },
+      }),
+      event({ id: "e1", op: "insert", at, after: txn, rowId: "t" }),
+    ];
+    const groups = groupEvents(events, lookups);
+    expect(groups.map((g) => [g.lead.id, g.rest.map((e) => e.id)])).toEqual([
+      ["e3", []],
+      ["e2", ["e1"]],
+    ]);
+    expect(restoredEvents(events).size).toBe(0);
+  });
+
+  it("keeps a change made just after a restore apart from it", () => {
+    const at = "2026-10-16T12:00:00.000Z";
+    const events = [
+      event({
+        id: "e3",
+        op: "update",
+        at,
+        before: { ...txn, memo: "a" },
+        after: { ...txn, memo: "b" },
+      }),
+      event({ id: "e2", op: "insert", at, after: { ...txn, memo: "a" } }),
+      event({ id: "e1", op: "delete", at: "2026-10-16T11:00:00.000Z", before: txn }),
+    ];
+    expect(groupEvents(events, lookups).map((g) => [g.lead.id, g.rest.map((e) => e.id)])).toEqual([
+      ["e3", []],
+      ["e2", []],
+      ["e1", []],
+    ]);
+  });
+});
+
+describe("moveOf", () => {
+  const assigned = (category: string, before: string | null, after: string, month = "2026-11-01") =>
+    event({
+      id: category,
+      entity: "category_assignment",
+      rowId: `a-${category}`,
+      op: before === null ? "insert" : "update",
+      before:
+        before === null ? null : { category_id: category, month, amount: before, currency: "USD" },
+      after: { category_id: category, month, amount: after, currency: "USD" },
+    });
+
+  it("reads two opposite Assigned changes in one month as a move", () => {
+    const events = [assigned("rent", "20599", "22474"), assigned("groc", "27000", "25125")];
+    const [group] = groupEvents(events, lookups);
+    if (!group) throw new Error("missing");
+    expect(moveOf([group.lead, ...group.rest], lookups)).toEqual({
+      amount: "$18.75",
+      from: {
+        categoryId: "groc",
+        name: "Groceries",
+        target: { kind: "category", categoryId: "groc", month: "2026-11" },
+      },
+      to: {
+        categoryId: "rent",
+        name: "Rent",
+        target: { kind: "category", categoryId: "rent", month: "2026-11" },
+      },
+      month: "Nov 2026",
+    });
+  });
+
+  it("keeps two quick saves apart: two assignments aren't a move", () => {
+    const events = [
+      { ...assigned("rent", "500", "1500"), requestId: "r2" },
+      { ...assigned("groc", "2000", "1000"), requestId: "r1" },
+    ];
+    const groups = groupEvents(events, lookups);
+    expect(groups.map((g) => [g.lead.id, g.rest.map((e) => e.id)])).toEqual([
+      ["rent", []],
+      ["groc", []],
+    ]);
+    const cover = events.map((e) => ({ ...e, requestId: "r3" }));
+    expect(groupEvents(cover, lookups)).toHaveLength(1);
+  });
+
+  it("counts a new assignment as starting from zero", () => {
+    const move = moveOf([assigned("rent", null, "500"), assigned("groc", "800", "300")], lookups);
+    expect(move?.amount).toBe("$5.00");
+    expect(move?.from.name).toBe("Groceries");
+  });
+
+  it("leaves anything else as it was", () => {
+    // Amounts that don't cancel out, two months, three changes, or something besides Assigned.
+    expect(moveOf([assigned("rent", "0", "500"), assigned("groc", "800", "400")], lookups)).toBe(
+      null,
+    );
+    expect(
+      moveOf([assigned("rent", "0", "500"), assigned("groc", "800", "300", "2026-10-01")], lookups),
+    ).toBe(null);
+    expect(
+      moveOf(
+        [assigned("rent", "0", "500"), assigned("groc", "800", "300"), assigned("gone", "0", "0")],
+        lookups,
+      ),
+    ).toBe(null);
+    expect(
+      moveOf(
+        [assigned("rent", "0", "500"), event({ op: "update", before: txn, after: txn })],
+        lookups,
+      ),
+    ).toBe(null);
+  });
+
+  it("names a deleted category without linking it", () => {
+    const move = moveOf([assigned("rent", "0", "500"), assigned("gone", "800", "300")], lookups);
+    expect(move?.from).toEqual({ categoryId: "gone", name: "a deleted category" });
   });
 });

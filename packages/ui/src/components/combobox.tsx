@@ -101,16 +101,18 @@ function ComboboxContent({
         align={align}
         alignOffset={alignOffset}
         anchor={anchor}
-        className="isolate z-50"
+        // strictbudget: clickable inside a modal (a drawer or dialog sets `pointer-events: none`
+        // on the body, which this portalled list would otherwise inherit).
+        className="pointer-events-auto isolate z-50"
       >
         <ComboboxPrimitive.Popup
           data-slot="combobox-content"
           data-chips={!!anchor}
           className={cn(
-            // The Select shell: muted, 14px radius, scaling from the field.
+            // The Select shell (strictbudget: elevated), 14px radius, scaling from the field.
             // The list pads 4px, so rows are 10px (14 − 4) and their text
             // lands 11px in (4px + 7px), level with the input's text above.
-            "group/combobox-content relative max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) min-w-(--anchor-width) origin-(--transform-origin) overflow-hidden rounded-xl bg-muted text-sm text-popover-foreground shadow-[0_1px_2px_rgb(0_0_0/0.04),0_8px_24px_rgb(0_0_0/0.1),inset_0_1px_0_rgb(255_255_255/0.7)] ring-1 ring-border transition-[opacity,scale] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] outline-none data-ending-style:scale-96 data-ending-style:opacity-0 data-ending-style:duration-100 data-starting-style:scale-96 data-starting-style:opacity-0 motion-reduce:data-ending-style:scale-100 motion-reduce:data-starting-style:scale-100 dark:bg-[color-mix(in_oklch,var(--popover),black_20%)] dark:shadow-[0_1px_2px_rgb(0_0_0/0.5),0_8px_24px_rgb(0_0_0/0.5),inset_0_1px_0_rgb(255_255_255/0.04)]",
+            "group/combobox-content relative max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) min-w-(--anchor-width) origin-(--transform-origin) overflow-hidden rounded-xl bg-popover text-sm text-popover-foreground shadow-floating ring-1 ring-floating-border transition-[opacity,scale] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] outline-none data-ending-style:scale-96 data-ending-style:opacity-0 data-ending-style:duration-100 data-starting-style:scale-96 data-starting-style:opacity-0 motion-reduce:data-ending-style:scale-100 motion-reduce:data-starting-style:scale-100",
             // An input inside the popup is pressed into the shell, like the
             // Command's query: the Kbd's recessed well, 4px from the edges
             // (radius 14 − 4), with its text on the rows' 11px column. It
@@ -144,9 +146,9 @@ function ComboboxItem({ className, children, ...props }: ComboboxPrimitive.Item.
       data-slot="combobox-item"
       className={cn(
         // The Select row: 32px, and the highlighted row (pointer or arrows,
-        // while focus stays in the input) lifts out of the shell as a raised
-        // card, instantly.
-        "relative flex min-h-8 w-full cursor-default items-center gap-2 rounded-lg py-1.5 pr-8 pl-[7px] text-sm outline-hidden select-none data-highlighted:bg-linear-to-b data-highlighted:from-background data-highlighted:to-[color-mix(in_oklch,var(--background),var(--secondary)_60%)] data-highlighted:text-accent-foreground data-highlighted:shadow-[0_1px_2px_rgb(0_0_0/0.08),0_0_0_1px_rgb(0_0_0/0.06),inset_0_-1px_0_rgb(0_0_0/0.03)] dark:data-highlighted:from-[color-mix(in_oklch,var(--secondary),var(--foreground)_7%)] dark:data-highlighted:to-[color-mix(in_oklch,var(--secondary),var(--foreground)_3%)] dark:data-highlighted:shadow-[0_1px_2px_rgb(0_0_0/0.5),0_0_0_1px_rgb(255_255_255/0.05),inset_0_1px_0_rgb(255_255_255/0.06)] data-highlighted:[&_svg:not([class*='text-'])]:text-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground",
+        // while focus stays in the input) takes the accent tint, instantly
+        // (strictbudget).
+        "relative flex min-h-8 w-full cursor-default items-center gap-2 rounded-lg py-1.5 pr-8 pl-[7px] text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-highlighted:[&_svg:not([class*='text-'])]:text-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground",
         className,
       )}
       {...props}

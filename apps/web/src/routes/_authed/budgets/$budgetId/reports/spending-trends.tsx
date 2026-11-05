@@ -10,11 +10,10 @@ import {
   money,
   monthsIn,
   rollingAverage,
+  type TrendMonth,
   toDelimited,
   trendMonths,
 } from "@strictbudget/engine";
-import { Button } from "@strictbudget/ui/components/button";
-import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
 import {
   Table,
   TableBody,
@@ -24,7 +23,6 @@ import {
   TableRow,
 } from "@strictbudget/ui/components/table";
 import { Toggle } from "@strictbudget/ui/components/toggle";
-import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -36,10 +34,10 @@ import {
   Percent,
 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
-import { ChartCard } from "@/components/reports/chart-card";
+import { ChartCard, ReportEmpty } from "@/components/reports/chart-card";
 import { type DrillDown, DrillDownSheet } from "@/components/reports/drill-down-sheet";
 import { ExportButton } from "@/components/reports/export-button";
-import { ReportFilterBar } from "@/components/reports/report-filter-bar";
+import { GroupBySelect, ReportFilterBar } from "@/components/reports/report-filter-bar";
 import { ReportPage } from "@/components/reports/report-page";
 import { SpendingCalendar } from "@/components/reports/spending-trends-calendar";
 import {
@@ -58,11 +56,15 @@ import { categoriesQueryOptions } from "@/lib/categories";
 import { todayIso } from "@/lib/dates";
 import {
   COMPARISON_LABELS,
+  monthLabel,
+  OTHER_COLOR,
   type ReportRequest,
   reportActivityOptions,
   reportTransactionsOptions,
 } from "@/lib/reports";
+import { useColorSlots } from "@/lib/reports-colors";
 import {
+  BAR_SERIES,
   type CalendarDay,
   type Catalog,
   catalogOf,
@@ -70,8 +72,10 @@ import {
   chartedMonths,
   exportBaseName,
   OTHER_KEY,
+  seriesColors,
   seriesInfo,
   seriesKeys,
+  sinceFirstMonth,
   summaryExportRows,
   TOP_SERIES,
   TREND_MODE_LABELS,
@@ -114,13 +118,17 @@ function Report() {
 
   const mode = search.mode ?? "bars";
   const level: TrendLevel = search.group ? "category" : (search.by ?? "category");
-  const [overlays, setOverlays] = useState<TrendOverlays>({ average: true, rolling: false });
+  const [chosenOverlays, setOverlays] = useState<TrendOverlays>({
+    average: true,
+    rolling: false,
+  });
   const [drill, setDrill] = useState<DrillDown | null>(null);
 
   const categories = useQuery(categoriesQueryOptions(budget.id));
+  const slots = useColorSlots();
   const catalog = useMemo(
-    () => (categories.data ? catalogOf(categories.data) : null),
-    [categories.data],
+    () => (categories.data && slots ? catalogOf(categories.data, slots) : null),
+    [categories.data, slots],
   );
   const filters = { ...state.filters, ...(search.group && { groupIds: search.group }) };
   const request = (range: MonthRange, extra?: Partial<ReportRequest>): ReportRequest => ({
@@ -146,7 +154,8 @@ function Report() {
   const derived = useMemo(() => {
     if (!catalog || !activity.data) return null;
     const leadMonths = trendMonths(cellsOf(activity.data.rows, catalog, level), monthsIn(lead));
-    const months = leadMonths.slice(LEAD_MONTHS);
+    const months = sinceFirstMonth(leadMonths.slice(LEAD_MONTHS), state.earliest);
+    const skipped = leadMonths.length - LEAD_MONTHS - months.length;
     const rollingValues = rollingAverage(
       leadMonths.map((m) => m.total),
       3,
@@ -170,27 +179,51 @@ function Report() {
         monthsIn(state.comparison),
       );
       if (state.comparison.average) {
-        compared = { kind: "average", label, average: averageMonthlySpending(compMonths) };
+        compared = {
+          kind: "average",
+          label,
+          average: averageMonthlySpending(sinceFirstMonth(compMonths, state.earliest)),
+        };
       } else {
         compared = {
           kind: "period",
           label,
-          totals: new Map(months.map((m, i) => [m.month, compMonths[i]?.total ?? 0n])),
+          totals: new Map(months.map((m, i) => [m.month, compMonths[i + skipped]?.total ?? 0n])),
         };
       }
     }
-    const info = (key: string) => seriesInfo(catalog, level, key);
-    const base = { average, previous, rolling, comparison: compared, info };
-    const all: TrendChartData = { ...base, months, keys: seriesKeys(months, catalog, level) };
-    const folded = withOther(months, TOP_SERIES);
-    const top: TrendChartData = { ...base, months: folded.months, keys: folded.keys };
-    return { all, top, total, average };
+    const plain = (key: string) => seriesInfo(catalog, level, key);
+    const base = { average, previous, rolling, comparison: compared };
+    // Each chart's series get colours of their own (seriesColors); series a chart folds into
+    // "Other" share its neutral wherever they're listed.
+    const colored = (
+      folded: { months: TrendMonth<string>[]; keys: string[] },
+      colors = seriesColors(folded.keys, plain),
+    ): TrendChartData => ({
+      ...base,
+      ...folded,
+      info: (key) => ({ ...plain(key), color: colors.get(key) ?? OTHER_COLOR }),
+    });
+    const barsFolded = withOther(months, BAR_SERIES);
+    const bars = colored({
+      months: barsFolded.months,
+      // Stacked in plan order, Other on top.
+      keys: [...barsFolded.keys].sort((a, b) => plain(a).order - plain(b).order),
+    });
+    const all = colored(
+      { months, keys: seriesKeys(months, catalog, level) },
+      new Map(barsFolded.keys.map((k) => [k, bars.info(k).color])),
+    );
+    const top = colored(withOther(months, TOP_SERIES));
+    const from = skipped > 0 ? months[0]?.month : undefined;
+    return { all, bars, top, total, average, count: months.length, from };
   }, [
     catalog,
     activity.data,
     comparison.data,
     level,
     state.range,
+    state.earliest,
     state.comparison,
     search.compare,
   ]);
@@ -199,7 +232,7 @@ function Report() {
     if (!catalog) return;
     const range = month ? { from: month, to: month } : state.range;
     if (key === null) {
-      setDrill({ title: "Total Spending", request: request(range) });
+      setDrill({ title: "Total spending", request: request(range) });
       return;
     }
     if (level === "group" && key !== catalog.uncategorizedId && key !== OTHER_KEY) {
@@ -211,7 +244,7 @@ function Report() {
       key === OTHER_KEY ? otherCategories(catalog, level, data) : categoryIdsOf(catalog, level, key)
     ).filter((id) => !chosen || chosen.includes(id));
     setDrill({
-      title: key === catalog.uncategorizedId ? "Uncategorized Transactions" : data.info(key).label,
+      title: key === catalog.uncategorizedId ? "Uncategorized transactions" : data.info(key).label,
       request: request(range, { filters: { ...filters, categoryIds: categoryIds.join(",") } }),
     });
   };
@@ -239,6 +272,7 @@ function Report() {
             rows: activity.data.rows.filter((r) => r.month && r.month >= state.range.from),
             catalog,
             range: state.range,
+            first: state.earliest,
             average: averageOf,
             currency,
             numberFormat: budget.numberFormat,
@@ -262,9 +296,20 @@ function Report() {
     ];
   };
 
+  // One month is its own average: no average line.
+  const oneMonth = derived ? derived.count <= 1 : state.range.from === state.range.to;
+  const overlays = { ...chosenOverlays, average: chosenOverlays.average && !oneMonth };
   const groupName = search.group && catalog?.groups.get(search.group)?.label;
   const loading = !derived;
-  const empty = derived && derived.all.keys.length === 0 ? "No spending in this range." : undefined;
+  const filtered = Object.keys(state.filters).length > 0;
+  const empty =
+    derived && derived.all.keys.length === 0 ? (
+      <ReportEmpty title="No spending to show">
+        {filtered
+          ? "Nothing matches these filters in this range. Widen the range or clear a filter."
+          : "How your spending changes month to month will show here once you add transactions."}
+      </ReportEmpty>
+    ) : undefined;
   const dayMap = new Map(
     (daily.data?.rows ?? []).flatMap((r) =>
       r.day ? [[r.day, { total: -BigInt(r.net), count: r.count }] as const] : [],
@@ -273,19 +318,19 @@ function Report() {
 
   const chart = (() => {
     if (!derived) return null;
-    const { all, top } = derived;
+    const { all, bars, top } = derived;
     switch (mode) {
       case "bars":
         return (
           <div className="grid gap-2">
             <TrendBarsChart
-              data={all}
-              charted={chartedMonths(all.months)}
+              data={bars}
+              charted={chartedMonths(bars.months)}
               overlays={overlays}
-              onPick={(m, k) => pick(m, k, all)}
+              onPick={(m, k) => pick(m, k, bars)}
             />
-            <TrendBarsKey data={all} overlays={overlays} />
-            <TrendLegend data={all} onPick={(k) => pick(null, k, all)} />
+            <TrendBarsKey data={bars} overlays={overlays} />
+            <TrendLegend data={bars} onPick={(k) => pick(null, k, bars)} />
           </div>
         );
       case "lines":
@@ -369,95 +414,105 @@ function Report() {
           earliest={state.earliest}
           show={["categories", "accounts", "payees", "flags", "compare"]}
           accountFilter={(a) => isOnBudget(a.type)}
-        />
+        >
+          {mode !== "calendar" && (
+            <GroupBySelect
+              value={search.group ? "group" : level}
+              options={[
+                { value: "category", label: "Category" },
+                { value: "group", label: "Category group" },
+              ]}
+              onChange={(by) =>
+                update({ by: by === "group" ? "group" : undefined, group: undefined })
+              }
+            />
+          )}
+        </ReportFilterBar>
       }
     >
       <section aria-label="Summary" className="flex flex-wrap items-end gap-x-8 gap-y-2">
+        {/* Over one month the monthly average is the total again: show the total alone. */}
+        {!oneMonth && (
+          <div>
+            <p className="text-muted-foreground text-sm">Average monthly spending</p>
+            <p className="font-semibold text-3xl tabular-nums">
+              {derived ? format(derived.average) : "–"}
+            </p>
+            {derived?.from && (
+              <p className="text-muted-foreground text-xs">
+                Since your first transaction, in {monthLabel(derived.from, "long")}
+              </p>
+            )}
+          </div>
+        )}
         <div>
-          <p className="text-muted-foreground text-sm">Average Monthly Spending</p>
-          <p className="font-semibold text-3xl tabular-nums">
-            {derived ? format(derived.average) : "–"}
-          </p>
-        </div>
-        <div>
-          <p className="text-muted-foreground text-sm">Total Spending</p>
-          <p className="font-semibold text-lg tabular-nums">
+          <p className="text-muted-foreground text-sm">Total spending</p>
+          <p
+            className={
+              oneMonth
+                ? "font-semibold text-3xl tabular-nums"
+                : "font-semibold text-lg tabular-nums"
+            }
+          >
             {derived ? format(derived.total) : "–"}
           </p>
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          size="sm"
-          value={mode}
-          onValueChange={(v) => v && update({ mode: v === "bars" ? undefined : (v as TrendMode) })}
-          aria-label="Chart type"
-        >
-          {TREND_MODES.map((m) => (
-            <ToggleGroupItem
-              key={m}
-              value={m}
-              aria-label={TREND_MODE_LABELS[m]}
-              title={TREND_MODE_LABELS[m]}
-            >
-              {MODE_ICONS[m]}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-        {mode !== "calendar" &&
-          (search.group ? (
-            <nav aria-label="Drill-down" className="flex items-center gap-1 text-sm">
-              <Button
-                variant="link"
-                size="sm"
-                className="h-auto px-0"
-                onClick={() => update({ group: undefined, by: "group" })}
-              >
-                All groups
-              </Button>
-              <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
-              <span className="font-medium">{groupName ?? "Group"}</span>
-            </nav>
-          ) : (
-            <NativeSelect
-              aria-label="Series"
-              size="sm"
-              value={level}
-              onChange={(e) => update({ by: e.target.value === "group" ? "group" : undefined })}
-            >
-              <NativeSelectOption value="category">By category</NativeSelectOption>
-              <NativeSelectOption value="group">By category group</NativeSelectOption>
-            </NativeSelect>
-          ))}
-        {mode === "bars" && (
-          <div className="flex items-center gap-1">
-            <Toggle
-              size="sm"
-              variant="outline"
-              pressed={overlays.average}
-              onPressedChange={(average) => setOverlays((o) => ({ ...o, average }))}
-            >
-              Average
-            </Toggle>
-            <Toggle
-              size="sm"
-              variant="outline"
-              pressed={overlays.rolling}
-              onPressedChange={(rolling) => setOverlays((o) => ({ ...o, rolling }))}
-            >
-              3-month average
-            </Toggle>
-          </div>
-        )}
-      </div>
+      {mode !== "calendar" && search.group && (
+        <nav aria-label="Drill-down" className="flex items-center gap-1 font-medium text-lg">
+          <button
+            type="button"
+            className="rounded-sm text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => update({ group: undefined, by: "group" })}
+          >
+            All groups
+          </button>
+          <ChevronRight aria-hidden className="size-4 text-muted-foreground" />
+          <span>{groupName ?? "Group"}</span>
+        </nav>
+      )}
 
       <ChartCard
-        title={TREND_MODE_LABELS[mode]}
+        title={mode === "calendar" ? "Spending by day" : "Spending by month"}
         view={state.view}
-        onViewChange={(view) => update({ view: view === "chart" ? undefined : view })}
+        kinds={TREND_MODES.map((m) => ({
+          value: m,
+          label: TREND_MODE_LABELS[m],
+          icon: MODE_ICONS[m],
+        }))}
+        kind={mode}
+        onViewChange={(view, kind) =>
+          update({
+            view: view === "chart" ? undefined : view,
+            ...(kind && { mode: kind === "bars" ? undefined : (kind as TrendMode) }),
+          })
+        }
+        options={
+          mode === "bars" && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-muted-foreground text-xs">Show</span>
+              {!oneMonth && (
+                <Toggle
+                  size="sm"
+                  variant="outline"
+                  pressed={overlays.average}
+                  onPressedChange={(average) => setOverlays((o) => ({ ...o, average }))}
+                >
+                  Average
+                </Toggle>
+              )}
+              <Toggle
+                size="sm"
+                variant="outline"
+                pressed={overlays.rolling}
+                onPressedChange={(rolling) => setOverlays((o) => ({ ...o, rolling }))}
+              >
+                3-month average
+              </Toggle>
+            </div>
+          )
+        }
         loading={loading || (mode === "calendar" && daily.isPending)}
         empty={empty}
         chart={chart}
@@ -465,8 +520,8 @@ function Report() {
         fileName={exportBaseName(todayIso())}
       />
 
-      {derived && (
-        <section aria-label="Months" className="overflow-x-auto rounded-lg border">
+      {derived && !empty && (
+        <section aria-label="Months" className="overflow-x-auto rounded-lg border bg-card">
           <TrendMonthsTable data={derived.all} />
         </section>
       )}

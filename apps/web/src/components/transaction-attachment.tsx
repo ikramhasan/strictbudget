@@ -251,7 +251,7 @@ function AttachmentViewer({
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Attachment</AlertDialogTitle>
+            <AlertDialogTitle>Delete attachment</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this attachment?
             </AlertDialogDescription>
@@ -332,7 +332,7 @@ export function AttachmentCell({
         size="icon-xs"
         className="mx-auto flex text-muted-foreground/60 hover:text-foreground"
         aria-label={`Add a photo or PDF to ${label}`}
-        title="Add Attachment"
+        title="Add attachment"
         onClick={(e) => {
           e.stopPropagation();
           picker.open();

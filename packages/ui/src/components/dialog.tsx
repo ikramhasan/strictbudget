@@ -22,6 +22,30 @@ function DialogClose({ ...props }: React.ComponentProps<typeof DialogPrimitive.C
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
 }
 
+/**
+ * strictbudget: Radix keeps the page locked (`pointer-events: none` on the body, the overlay
+ * catching clicks) until the exit animation ends, which swallowed a click made right after a
+ * close. The page is released as soon as closing starts (the overlay and panel stop taking
+ * clicks via `RELEASE_ON_CLOSE`, the body through `releaseOnClose`), unless another modal layer
+ * is still open, and `keepFocusOnClose` leaves focus where such a click put it.
+ */
+const RELEASE_ON_CLOSE = "data-[state=closed]:pointer-events-none!";
+
+function releaseOnClose(event: React.AnimationEvent<HTMLElement>) {
+  const node = event.currentTarget;
+  if (event.target !== node || node.dataset.state !== "closed") return;
+  const doc = node.ownerDocument;
+  if (!doc.querySelector(OPEN_LAYER)) doc.body.style.pointerEvents = "";
+}
+
+const OPEN_LAYER = "[role=dialog][data-state=open], [role=alertdialog][data-state=open]";
+
+/** For `onCloseAutoFocus`: skips returning focus to the trigger when a click moved it elsewhere. */
+function keepFocusOnClose(event: Event) {
+  const active = document.activeElement;
+  if (active && active !== document.body && !active.closest(OPEN_LAYER)) event.preventDefault();
+}
+
 function DialogOverlay({
   className,
   ...props
@@ -29,8 +53,10 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
+      // strictbudget: a plain theme-aware scrim (--scrim in theme.css); no backdrop blur.
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] supports-backdrop-filter:backdrop-blur-xs data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 dark:bg-black/40",
+        "fixed inset-0 isolate z-50 bg-scrim duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
+        RELEASE_ON_CLOSE,
         className,
       )}
       {...props}
@@ -45,6 +71,8 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onAnimationStart,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
@@ -57,8 +85,17 @@ function DialogContent({
         className={cn(
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 grid-cols-1 gap-4 rounded-2xl bg-popover p-5 text-sm text-popover-foreground shadow-[0_1px_2px_rgb(0_0_0/0.04),0_16px_40px_-8px_rgb(0_0_0/0.16)] ring-1 ring-border duration-250 ease-[cubic-bezier(0.23,1,0.32,1)] data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-96 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-96 motion-reduce:data-[state=open]:zoom-in-100 motion-reduce:data-[state=closed]:zoom-out-100 outline-none sm:max-w-sm dark:shadow-[0_1px_2px_rgb(0_0_0/0.5),0_16px_40px_-8px_rgb(0_0_0/0.6),inset_0_1px_0_rgb(255_255_255/0.05)]",
           showCloseButton && "*:data-[slot=dialog-header]:pr-8",
+          RELEASE_ON_CLOSE,
           className,
         )}
+        onAnimationStart={(event) => {
+          releaseOnClose(event);
+          onAnimationStart?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          keepFocusOnClose(event);
+          onCloseAutoFocus?.(event);
+        }}
         {...props}
       >
         {children}
@@ -145,4 +182,7 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+  keepFocusOnClose,
+  RELEASE_ON_CLOSE,
+  releaseOnClose,
 };

@@ -1,5 +1,6 @@
 import type { RouteHandler } from "@hono/zod-openapi";
 import {
+  auditEvent,
   budgetAccount,
   type ClearedState,
   type FlagColor,
@@ -8,7 +9,7 @@ import {
   transaction,
 } from "@strictbudget/db/schema";
 import { normalizeRate } from "@strictbudget/engine";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { type FxDeps, oppositeSides, rebase, syncBases } from "../../lib/base-amount";
 import { loadBudgetAccess } from "../../lib/budget-access";
 import { assertNotFuture, latestTransactionDate } from "../../lib/dates";
@@ -118,6 +119,8 @@ export const createTransactionHandler: RouteHandler<typeof createTransaction, En
 };
 
 export interface CreateBody {
+  /** With `restore`: the deleted transaction's own id (`assertRestorableIds`). */
+  id?: string;
   accountId: string;
   date: string;
   amount: string;
@@ -159,6 +162,7 @@ export async function insertNewTransaction(tx: Db, fx: FxDeps, budgetId: string,
 /** `insertNewTransaction`, plus a transfer's fee (`body.fee`); returns both ids. */
 export async function insertWithFee(tx: Db, fx: FxDeps, budgetId: string, body: CreateBody) {
   assertOnePayee(body);
+  const restoredVersions = await restorableIds(tx, budgetId, body);
   const account = await findAccount(tx, budgetId, body.accountId);
   if (!body.restore) assertOpen(account);
   let transferTo: AccountRow | null = null;
@@ -210,6 +214,7 @@ export async function insertWithFee(tx: Db, fx: FxDeps, budgetId: string, body: 
     }
   }
   const id = await insertTransaction(tx, {
+    id: body.id,
     budgetId,
     accountId: account.id,
     date: body.date,
@@ -259,7 +264,73 @@ export async function insertWithFee(tx: Db, fx: FxDeps, budgetId: string, body: 
     }
   }
   await syncBases(tx, id);
+  await continueVersions(tx, restoredVersions);
   return { id, feeId };
+}
+
+/**
+ * An undo brings a deleted transaction back as the same record, so it keeps its place among its
+ * day's transactions and the undo history can still name it: its own id, its transfer's other
+ * side's and its split's transfer lines' other sides'. Only ids this budget's change log shows
+ * deleted, and not back already. Returns each one's version when it was deleted.
+ */
+async function restorableIds(tx: Db, budgetId: string, body: CreateBody) {
+  const ids = [
+    body.id,
+    body.transferSide?.id,
+    ...(body.subtransactions ?? []).map((line) => line.transferSide?.id),
+  ].filter((id): id is string => id !== undefined);
+  const versions = new Map<string, number>();
+  if (ids.length === 0) return versions;
+  if (!body.restore) {
+    throw new AppError(400, "BAD_REQUEST", "Ids are only given when restoring (`restore`)");
+  }
+  // `details.live` names the ids that are back already (restored since, by this or another tab).
+  const unavailable = (live: string[] = []) =>
+    new AppError(
+      409,
+      "ID_UNAVAILABLE",
+      "That transaction can't come back as it was: it isn't a deleted transaction of this budget",
+      { live },
+    );
+  if (new Set(ids).size !== ids.length) throw unavailable();
+  const deletes = await tx
+    .select({ id: auditEvent.rowId, version: sql<string | null>`${auditEvent.before}->>'version'` })
+    .from(auditEvent)
+    .where(
+      and(
+        eq(auditEvent.budgetId, budgetId),
+        eq(auditEvent.tableName, "transaction"),
+        eq(auditEvent.op, "delete"),
+        inArray(auditEvent.rowId, ids),
+      ),
+    )
+    .orderBy(desc(auditEvent.id));
+  // Newest first: a row deleted, restored and deleted again goes on from its latest version.
+  for (const row of deletes) {
+    if (!versions.has(row.id)) versions.set(row.id, Number(row.version ?? 0));
+  }
+  const existing = await tx
+    .select({ id: transaction.id })
+    .from(transaction)
+    .where(inArray(transaction.id, ids));
+  if (versions.size !== ids.length || existing.length > 0) {
+    throw unavailable(existing.map((row) => row.id));
+  }
+  return versions;
+}
+
+/**
+ * A restored row goes on from the version it was deleted at (one more), rather than starting over
+ * at 1, so a client holding its old version sees the restore as one more change.
+ */
+async function continueVersions(tx: Db, versions: ReadonlyMap<string, number>) {
+  for (const [id, version] of versions) {
+    await tx
+      .update(transaction)
+      .set({ version: version + 1 })
+      .where(eq(transaction.id, id));
+  }
 }
 
 /**

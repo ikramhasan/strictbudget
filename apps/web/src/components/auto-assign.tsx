@@ -16,13 +16,17 @@ import {
 } from "@strictbudget/ui/components/alert-dialog";
 import { Button } from "@strictbudget/ui/components/button";
 import { cn } from "@strictbudget/ui/lib/utils";
-import { useState } from "react";
+import { ChevronRight } from "lucide-react";
+import { createContext, useContext, useId, useState } from "react";
+import { toast } from "sonner";
+import { useCommand } from "@/lib/commands";
 import type { BudgetMonthData } from "@/lib/months";
+import { useOptionalUndo } from "@/lib/undo";
 
 type Format = (minorUnits: string) => string;
 type MonthCategory = BudgetMonthData["categories"][number];
 
-/** An Auto-Assign as Recent Moves names its method ("Method: Reset Assigned Amounts"). */
+/** An Auto-Assign as Recent Moves names its method ("Method: Reset assigned amounts"). */
 export const autoAssignMethodLabel = (option: AutoAssignOption) => label(option, false);
 
 function label(option: AutoAssignOption, one: boolean, payment = false) {
@@ -30,19 +34,19 @@ function label(option: AutoAssignOption, one: boolean, payment = false) {
     case "underfunded":
       return "Underfunded";
     case "reduceOverfunding":
-      return "Reduce Overfunding";
+      return "Reduce overfunding";
     case "assignedLastMonth":
-      return "Assigned Last Month";
+      return "Assigned last month";
     case "spentLastMonth":
-      return payment ? "Paid Last Month" : "Spent Last Month";
+      return payment ? "Paid last month" : "Spent last month";
     case "averageAssigned":
-      return "Average Assigned";
+      return "Average assigned";
     case "averageSpent":
-      return payment ? "Average Paid" : "Average Spent";
+      return payment ? "Average paid" : "Average spent";
     case "resetAvailable":
-      return one ? "Reset Available Amount" : "Reset Available Amounts";
+      return one ? "Reset available amount" : "Reset available amounts";
     case "resetAssigned":
-      return one ? "Reset Assigned Amount" : "Reset Assigned Amounts";
+      return one ? "Reset assigned amount" : "Reset assigned amounts";
   }
 }
 
@@ -119,6 +123,66 @@ function listsOption(option: AutoAssignOption, amount: bigint, one: boolean) {
   return true;
 }
 
+/**
+ * What an option's row says before it's chosen: `none` when it would change nothing, `empty` for
+ * Underfunded with nothing ready to give, `over` when it assigns more than Ready to Assign (by
+ * `short`), and `partial` when Underfunded can fund only part of what's short.
+ */
+export function optionState(
+  option: AutoAssignOption,
+  value: bigint,
+  categories: readonly MonthCategory[],
+  names: ReadonlyMap<string, { name: string; group: string }>,
+  readyToAssign: bigint,
+): { kind: "none" | "empty" | "partial" | "ok" } | { kind: "over"; short: bigint } {
+  const changes = autoAssignChanges(option, categories, names, readyToAssign);
+  if (changes.length === 0) {
+    return option === "underfunded" && value > 0n && readyToAssign <= 0n
+      ? { kind: "empty" }
+      : { kind: "none" };
+  }
+  const totals = autoAssignTotals(changes, readyToAssign);
+  if (totals.short > 0n) return { kind: "over", short: totals.short };
+  if (option === "underfunded" && totals.total < value) return { kind: "partial" };
+  return { kind: "ok" };
+}
+
+/**
+ * What applying the changes does to Ready to Assign: the total moved into (or out of) the
+ * categories, Ready to Assign before and after, and how much past what's there it assigns.
+ */
+export function autoAssignTotals(changes: readonly { delta: bigint }[], readyToAssign: bigint) {
+  const total = changes.reduce((sum, c) => sum + c.delta, 0n);
+  const after = readyToAssign - total;
+  // Only new money assigned can overdraw: what's past Ready to Assign (all of it once it's below 0).
+  const short = after < 0n && total > 0n ? (-after < total ? -after : total) : 0n;
+  return { total, before: readyToAssign, after, short };
+}
+
+const count = (n: number) => `${n} ${n === 1 ? "category" : "categories"}`;
+
+/**
+ * What applying changes did, for the toast: "Assigned $20.00 to 1 category", or, when some
+ * categories went up and others down, what that did to Ready to Assign.
+ */
+export function autoAssignSummary(changes: readonly { delta: bigint }[], format: Format) {
+  const total = changes.reduce((sum, c) => sum + c.delta, 0n);
+  const n = count(changes.length);
+  const amount = format((total < 0n ? -total : total).toString());
+  if (changes.every((c) => c.delta > 0n)) return `Assigned ${amount} to ${n}`;
+  if (changes.every((c) => c.delta < 0n)) return `Moved ${amount} from ${n} to Ready to Assign`;
+  if (total > 0n) return `Updated ${n}, assigning ${amount} more`;
+  if (total < 0n) return `Updated ${n}, returning ${amount} to Ready to Assign`;
+  return `Updated ${n}`;
+}
+
+/**
+ * Closes whatever the panel sits in once an option is applied (the Ready to Assign banner's
+ * Assign pop-up); the inspector's panel has nothing to close.
+ */
+const CloseContext = createContext<(() => void) | null>(null);
+export const AutoAssignClose = CloseContext.Provider;
+
 /** Cards Underfunded lists apart: credit overspending, or uncategorized transactions this month. */
 const needsAttention = (c: MonthCategory) =>
   Boolean(c.payment && (c.payment.overspentCategories !== "0" || c.payment.hasUncategorized));
@@ -153,6 +217,9 @@ export function AutoAssignPanel({
   bare?: boolean;
 }) {
   const [preview, setPreview] = useState<AutoAssignOption | null>(null);
+  const id = useId();
+  const history = useOptionalUndo();
+  const close = useContext(CloseContext);
   // Labels go singular whenever one category is covered (selected or the only one in view).
   const one = categories.length === 1;
   const payment = one && Boolean(categories[0]?.payment);
@@ -180,12 +247,48 @@ export function AutoAssignPanel({
   const fullyFunded = underfunded ? listed.filter(isFull) : listed;
   const partlyFunded = underfunded ? listed.filter((c) => !isFull(c)) : [];
   const amountText = (delta: bigint) => `${delta > 0n ? "+" : ""}${format(delta.toString())}`;
-  const count = (n: number) => `${n} ${n === 1 ? "category" : "categories"}`;
+  const totals = autoAssignTotals(changes, readyToAssign);
+  const overdraws = totals.short > 0n;
+  // The command palette runs Underfunded too, always through its preview.
+  useCommand({
+    label: selection
+      ? `Assign to underfunded in ${one ? "selected category" : "selected categories"}`
+      : "Assign to underfunded",
+    keywords: ["auto-assign", "fund targets", "underfunded"],
+    run: () => setPreview("underfunded"),
+    enabled:
+      !bare &&
+      categories.length > 0 &&
+      autoAssignChanges("underfunded", categories, names, readyToAssign).length > 0,
+  });
+  /** Applies an option, then says what changed, with Undo (a failure has its own toast). */
+  const apply = async (option: AutoAssignOption) => {
+    const applied = autoAssignChanges(option, categories, names, readyToAssign);
+    close?.();
+    try {
+      await onApply(option);
+    } catch {
+      return;
+    }
+    if (applied.length === 0) toast("Nothing to change. The assigned amounts already match.");
+    else if (history) history.announce(autoAssignSummary(applied, format));
+    else toast(autoAssignSummary(applied, format));
+  };
+  // Selected categories apply at once, unless that would assign money that isn't there.
+  const choose = (option: AutoAssignOption) => {
+    if (!selection) return setPreview(option);
+    const short = autoAssignTotals(
+      autoAssignChanges(option, categories, names, readyToAssign),
+      readyToAssign,
+    ).short;
+    if (short > 0n) setPreview(option);
+    else void apply(option);
+  };
 
   return (
     <section
       aria-label="Auto-Assign"
-      className={cn("grid gap-2", !bare && "rounded-lg border p-4")}
+      className={cn("grid gap-2", !bare && "rounded-lg border bg-card p-4")}
     >
       {!bare && <h2 className="font-semibold text-sm">Auto-Assign</h2>}
       {categories.length === 0 ? (
@@ -193,31 +296,74 @@ export function AutoAssignPanel({
           <p>This view has no categories.</p>
           {onViewAll && (
             <Button variant="link" size="sm" className="h-auto p-0" onClick={onViewAll}>
-              View All Categories
+              View all categories
             </Button>
           )}
         </div>
       ) : (
-        <div className="grid gap-1">
+        <ul className="-mx-2 grid">
           {AUTO_ASSIGN_OPTIONS.map((option) => {
             const value = buttonAmount(option, categories);
             if (!listsOption(option, value, one)) return null;
             const amount = format(value.toString());
+            const name = label(option, one, payment);
+            const state = optionState(option, value, categories, names, readyToAssign);
+            const note =
+              state.kind === "over"
+                ? `${format(state.short.toString())} more than you have`
+                : state.kind === "partial"
+                  ? `Only ${format(readyToAssign.toString())} to assign`
+                  : state.kind === "empty"
+                    ? "Nothing ready to assign"
+                    : null;
+            const noteId = `${id}-${option}`;
             return (
-              <Button
-                key={option}
-                variant="secondary"
-                size="sm"
-                aria-label={`${label(option, one, payment)} ${amount}`}
-                className="justify-between font-normal"
-                onClick={() => (selection ? void onApply(option) : setPreview(option))}
-              >
-                <span>{label(option, one, payment)}</span>
-                <span className="tabular-nums">{amount}</span>
-              </Button>
+              <li key={option}>
+                <button
+                  type="button"
+                  aria-label={`${name} ${amount}`}
+                  aria-describedby={note ? noteId : undefined}
+                  disabled={state.kind === "none" || state.kind === "empty"}
+                  className="group/option grid min-h-8 w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 rounded-md px-2 py-1.5 text-left text-sm outline-none transition-[background-color,scale] duration-150 ease-out-quint enabled:hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring enabled:active:scale-[0.98] disabled:cursor-default motion-reduce:active:scale-100"
+                  onClick={() => choose(option)}
+                >
+                  <span className="truncate font-medium text-primary-text group-disabled/option:text-muted-foreground">
+                    {name}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-muted-foreground tabular-nums transition-colors duration-150 group-enabled/option:group-hover/option:text-foreground group-focus-visible/option:text-foreground",
+                      state.kind === "over" &&
+                        "font-medium text-destructive group-enabled/option:group-hover/option:text-destructive",
+                      "group-disabled/option:opacity-60",
+                    )}
+                  >
+                    {amount}
+                  </span>
+                  <ChevronRight
+                    aria-hidden
+                    className="size-3.5 shrink-0 text-muted-foreground transition-[translate,color] duration-150 ease-out-quint group-enabled/option:group-hover/option:translate-x-0.5 group-enabled/option:group-hover/option:text-foreground group-disabled/option:invisible motion-reduce:transition-none"
+                  />
+                  {note && (
+                    <span
+                      id={noteId}
+                      className={cn(
+                        "col-span-2 text-xs",
+                        state.kind === "over"
+                          ? "text-destructive"
+                          : state.kind === "partial"
+                            ? "text-amber-700 dark:text-amber-300"
+                            : "text-muted-foreground",
+                      )}
+                    >
+                      {note}
+                    </span>
+                  )}
+                </button>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
 
       <AlertDialog open={preview !== null} onOpenChange={(open) => !open && setPreview(null)}>
@@ -263,16 +409,48 @@ export function AutoAssignPanel({
             )}
             {!underfunded && <ChangeList changes={listed} amountText={amountText} />}
           </div>
+          {changes.length > 0 && (
+            <div className="grid gap-2 border-t pt-3 text-sm">
+              <dl className="grid gap-1">
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Total change</dt>
+                  <dd className="font-medium tabular-nums">{amountText(totals.total)}</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt className="text-muted-foreground">Ready to Assign</dt>
+                  <dd className="tabular-nums">
+                    {format(totals.before.toString())}
+                    <span aria-hidden className="mx-1.5 text-muted-foreground">
+                      →
+                    </span>
+                    <span className="sr-only"> becomes </span>
+                    <span className={cn("font-medium", totals.after < 0n && "text-destructive")}>
+                      {format(totals.after.toString())}
+                    </span>
+                  </dd>
+                </div>
+              </dl>
+              {overdraws && (
+                <p
+                  role="alert"
+                  className="rounded-md bg-destructive/10 px-3 py-2 text-[color-mix(in_oklch,var(--destructive),black_12%)] dark:bg-destructive/20 dark:text-[color-mix(in_oklch,var(--destructive),white_25%)]"
+                >
+                  This assigns {format(totals.short.toString())} more than you have.
+                </p>
+              )}
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              variant={overdraws ? "destructive" : "default"}
               disabled={changes.length === 0}
               onClick={() => {
-                if (preview) void onApply(preview);
+                if (preview) void apply(preview);
                 setPreview(null);
               }}
             >
-              {underfunded ? "Assign Money" : "Update Assigned Amounts"}
+              Apply changes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

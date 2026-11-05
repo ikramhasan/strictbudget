@@ -49,11 +49,11 @@ export function matchesFilter(
 }
 
 export const EMPTY_VIEW: Record<Exclude<BudgetFilter, "all">, string> = {
-  overspent: "That's a win! You've knocked out all overspent categories.",
-  underfunded: "Cheers! You don't currently have any underfunded categories.",
-  overfunded: "You don't currently have any overfunded targets.",
-  available: "You don't currently have categories with money available.",
-  snoozed: "You don't currently have categories with snoozed targets in this month.",
+  overspent: "Nothing is overspent. Every category covers what was spent from it.",
+  underfunded: "Every target has what it needs this month.",
+  overfunded: "No category holds more than its target asks for.",
+  available: "No category has money available right now.",
+  snoozed: "No targets are snoozed this month.",
 };
 
 /**
@@ -250,18 +250,20 @@ export function isPresetFilter(view: string): view is BudgetFilter {
   return (BUDGET_FILTERS as readonly string[]).includes(view);
 }
 
+/**
+ * A preset's filter (Overspent, Underfunded…) lasts this browser session; a custom view, which the
+ * user built to come back to, lasts across sessions. So a returning user starts on All rather than
+ * on a filter that may have nothing left in it.
+ */
 function readFilter(key: string): string {
   try {
-    return localStorage.getItem(key) || "all";
+    return sessionStorage.getItem(key) || localStorage.getItem(key) || "all";
   } catch {
     return "all";
   }
 }
 
-/**
- * The budget list's view: a preset (`BudgetFilter`) or a custom view's id, kept across reloads and
- * months in this browser, per budget.
- */
+/** The budget list's view: a preset (`BudgetFilter`) or a custom view's id, per budget. */
 export function useBudgetFilter(budgetId: string) {
   const key = `strictbudget:budget-filter:${budgetId}`;
   const [filter, setFilter] = useState<string>(() => readFilter(key));
@@ -269,7 +271,9 @@ export function useBudgetFilter(budgetId: string) {
     (next: string) => {
       setFilter(next);
       try {
-        localStorage.setItem(key, next);
+        sessionStorage.setItem(key, next);
+        if (isPresetFilter(next)) localStorage.removeItem(key);
+        else localStorage.setItem(key, next);
       } catch {
         // Storage can be unavailable (private windows); the view still works for this visit.
       }

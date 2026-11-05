@@ -1,7 +1,7 @@
-import { averageOf, toDelimited, trendMonths } from "@strictbudget/engine";
+import { averageOf, type BudgetMonth, toDelimited, trendMonths } from "@strictbudget/engine";
 import { describe, expect, it } from "vitest";
 import type { CategoryList } from "./categories";
-import type { ReportSum, ReportTransaction } from "./reports";
+import { REPORT_COLORS, type ReportSum, type ReportTransaction } from "./reports";
 import {
   calendarLevels,
   calendarWeeks,
@@ -10,7 +10,10 @@ import {
   chartedMonths,
   exportMoney,
   OTHER_KEY,
+  seriesColors,
+  seriesInfo,
   seriesKeys,
+  sinceFirstMonth,
   summaryExportRows,
   transactionExportRows,
   trendsSearchSchema,
@@ -108,6 +111,47 @@ describe("trend series", () => {
     expect(folded.map((m) => m.total)).toEqual(byCategory.map((m) => m.total));
   });
 
+  it("names a lone leftover series instead of folding it into Other", () => {
+    const byCategory = trendMonths(cellsOf(rows, catalog, "category"), months);
+    const { keys } = withOther(byCategory, 4);
+    expect(keys).not.toContain(OTHER_KEY);
+    expect(keys).toHaveLength(5);
+  });
+
+  it("folds a lone leftover into Other once every palette colour is taken", () => {
+    const many = Array.from({ length: REPORT_COLORS + 1 }, (_, i) => `c${i}`);
+    const month = {
+      month: "2026-10" as BudgetMonth,
+      total: 0n,
+      spending: 0n,
+      netInflows: 0n,
+      nets: new Map(many.map((key, i) => [key, BigInt(-100 - i)])),
+    };
+    const { keys } = withOther([month], REPORT_COLORS);
+    expect(keys).toHaveLength(REPORT_COLORS + 1);
+    expect(keys.at(-1)).toBe(OTHER_KEY);
+  });
+
+  it("colours each series by its place in the plan, neutrals kept", () => {
+    const byCategory = trendMonths(cellsOf(rows, catalog, "category"), months);
+    const info = (key: string) => seriesInfo(catalog, "category", key);
+    const { keys } = withOther(byCategory, 2);
+    const colors = seriesColors(keys, info);
+    expect(keys.map((k) => colors.get(k))).toEqual([
+      "var(--report-uncategorized)",
+      "var(--report-1)",
+      "var(--report-other)",
+    ]);
+    // Each keeps its colour in any chart, whatever else it shows.
+    const stacked = seriesColors(["rent", "phone", "food"], info);
+    expect([...stacked.values()]).toEqual([
+      "var(--report-1)",
+      "var(--report-2)",
+      "var(--report-3)",
+    ]);
+    expect(seriesColors(["food"], info).get("food")).toBe("var(--report-3)");
+  });
+
   it("charts only months with transactions", () => {
     const byCategory = trendMonths(cellsOf(rows, catalog, "category"), months);
     expect(chartedMonths(byCategory).map((m) => m.month)).toEqual([
@@ -125,6 +169,7 @@ describe("spending trends export", () => {
         rows,
         catalog,
         range: { from: "2026-08", to: "2026-10" },
+        first: null,
         average: averageOf,
         currency: "USD",
         numberFormat: "comma_dot",
@@ -139,6 +184,20 @@ describe("spending trends export", () => {
       '"Needs","Groceries",-3.00,0.00,-200.00,-67.67,-203.00',
       '"Needs","Gas",0.00,0.00,-10.00,-3.33,-10.00',
     ]);
+  });
+
+  it("averages from the budget's first month, as the screen does", () => {
+    const [, , rent] = summaryExportRows({
+      rows,
+      catalog,
+      range: { from: "2026-08", to: "2026-10" },
+      first: "2026-09",
+      average: averageOf,
+      currency: "USD",
+      numberFormat: "comma_dot",
+    });
+    // Rent spent -1,005.00 over Sep and Oct: the average is over those two months, not three.
+    expect(rent?.at(-2)).toEqual({ raw: "-502.50" });
   });
 
   it("writes amounts with the symbol and no grouping", () => {
@@ -244,5 +303,19 @@ describe("calendar heatmap", () => {
     expect(days.map(level)).toEqual([1, 1, 1, 2, 2, 3, 3, 4]);
     expect(level(day(0n))).toBe(0);
     expect(level(day(-5n))).toBe(0);
+  });
+});
+
+describe("sinceFirstMonth", () => {
+  const months = (["2026-09", "2026-10", "2026-11"] as const).map((month) => ({ month }));
+
+  it("leaves out the range's months before the budget's first transaction", () => {
+    expect(sinceFirstMonth(months, "2026-10").map((m) => m.month)).toEqual(["2026-10", "2026-11"]);
+  });
+
+  it("keeps every month when the first is before the range, unknown, or after it", () => {
+    expect(sinceFirstMonth(months, "2026-01")).toHaveLength(3);
+    expect(sinceFirstMonth(months, null)).toHaveLength(3);
+    expect(sinceFirstMonth(months, "2027-01")).toHaveLength(3);
   });
 });

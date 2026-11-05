@@ -31,12 +31,19 @@ describe("AddAccountForm", () => {
     Element.prototype.scrollIntoView = vi.fn();
     const onSubmit = vi.fn().mockResolvedValue(null);
     render(<AddAccountForm settings={usd} onSubmit={onSubmit} />);
-    // Budget accounts take a currency; loans use the budget's.
-    expect(screen.getByLabelText("Currency")).toHaveTextContent("USD");
-    await userEvent.selectOptions(screen.getByLabelText("Account type"), "mortgage");
+    // Budget accounts take a currency, behind a disclosure; loans use the budget's.
     expect(screen.queryByLabelText("Currency")).not.toBeInTheDocument();
+    const disclosure = screen.getByRole("button", { name: "Different currency?" });
+    expect(disclosure).toHaveAttribute("aria-expanded", "false");
+    await userEvent.selectOptions(screen.getByLabelText("Account type"), "mortgage");
+    expect(screen.queryByRole("button", { name: "Different currency?" })).not.toBeInTheDocument();
 
     await userEvent.selectOptions(screen.getByLabelText("Account type"), "asset");
+    await userEvent.click(screen.getByRole("button", { name: "Different currency?" }));
+    expect(screen.getByRole("button", { name: "Use USD" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
     expect(screen.getByLabelText("Currency")).toHaveTextContent("USD");
     await userEvent.click(screen.getByLabelText("Currency"));
     await userEvent.click(await screen.findByRole("option", { name: /JPY/ }));
@@ -50,6 +57,45 @@ describe("AddAccountForm", () => {
       currency: "JPY",
       balance: "150000",
     });
+  });
+
+  it("says what's missing under the field instead of submitting", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(null);
+    render(<AddAccountForm settings={usd} onSubmit={onSubmit} />);
+    await userEvent.type(screen.getByLabelText("What's the balance today?"), "12.3.4");
+    await userEvent.click(screen.getByRole("button", { name: "Add account" }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    const name = screen.getByLabelText("Nickname");
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    expect(name).toHaveAccessibleDescription(/nickname/i);
+    expect(name).toHaveFocus();
+    expect(screen.getByLabelText("What's the balance today?")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    // Typing a name clears its message.
+    await userEvent.type(name, "Checking");
+    expect(name).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("puts setup's Back and Skip beside one primary button", async () => {
+    const onBack = vi.fn();
+    render(
+      <AddAccountForm
+        settings={usd}
+        submitLabel="Add account and continue"
+        onBack={onBack}
+        secondaryAction={<button type="button">Skip for now</button>}
+        onSubmit={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Add account and continue" })).toHaveAttribute(
+      "type",
+      "submit",
+    );
+    expect(screen.getByRole("button", { name: "Skip for now" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(onBack).toHaveBeenCalled();
   });
 
   it("asks debt accounts for the amount owed and stores it as negative", async () => {

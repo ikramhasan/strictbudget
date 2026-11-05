@@ -1,4 +1,5 @@
 import {
+  addMonths,
   type BudgetMonth,
   type MonthRange,
   monthsIn,
@@ -135,8 +136,8 @@ function RangeDialog({
         <div className="grid grid-cols-2 gap-3">
           {(
             [
-              ["Start Date", from, setFrom],
-              ["End Date", to, setTo],
+              ["Start date", from, setFrom],
+              ["End date", to, setTo],
             ] as const
           ).map(([label, value, set]) => (
             <Label key={label} className="grid gap-1 font-normal">
@@ -173,5 +174,46 @@ function RangeDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** A one-month report's month, styled as the range picker: the arrows step a month at a time. */
+export function MonthStepper({
+  month,
+  first,
+  current,
+  onChange,
+}: {
+  month: BudgetMonth;
+  /** The earliest month to step back to, if any. */
+  first?: BudgetMonth;
+  current: BudgetMonth;
+  onChange: (month: BudgetMonth) => void;
+}) {
+  return (
+    <div className="flex items-center rounded-md border">
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Previous month"
+        disabled={first !== undefined && month <= first}
+        onClick={() => onChange(addMonths(month, -1))}
+      >
+        <ChevronLeft />
+      </Button>
+      <span className="flex h-8 items-center gap-2 px-2 font-medium text-sm">
+        <CalendarDays aria-hidden className="size-4" />
+        <span className="tabular-nums">{monthLabel(month)}</span>
+      </span>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Next month"
+        disabled={month >= current}
+        onClick={() => onChange(addMonths(month, 1))}
+      >
+        <ChevronRight />
+      </Button>
+    </div>
   );
 }

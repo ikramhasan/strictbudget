@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createBodyFromTransaction, updateBodyFromTransaction } from "./transaction-history";
+import {
+  createBodyFromTransaction,
+  isIdUnavailable,
+  liveIds,
+  updateBodyFromTransaction,
+  withoutIds,
+} from "./transaction-history";
 import type { Transaction } from "./transactions";
 
 const transaction: Transaction = {
@@ -102,7 +108,7 @@ describe("transaction history bodies", () => {
       amount: "500",
       currency: "USD" as const,
     };
-    const { currency: _, ...input } = side;
+    const { currency: _, version: __, ...input } = side;
     const transfer = {
       ...transaction,
       payeeName: "Transfer : Savings",
@@ -149,7 +155,7 @@ describe("transaction history bodies", () => {
       transferSide: side,
       subtransactions: [],
     };
-    const { currency: _, ...input } = side;
+    const { currency: _, version: __, ...input } = side;
     expect(createBodyFromTransaction(transfer).transferSide).toEqual(input);
     expect(updateBodyFromTransaction(transfer).transferAmount).toBe("430");
     // In one currency the other side just follows.
@@ -186,5 +192,56 @@ describe("transaction history bodies", () => {
   it("puts an edited transaction's approval back (edits approve it)", () => {
     expect(updateBodyFromTransaction({ ...transaction, approved: false }).approved).toBe(false);
     expect(updateBodyFromTransaction(transaction).approved).toBe(true);
+  });
+
+  it("brings a deleted transaction back as the same record, or as a new one if it can't", () => {
+    const side = {
+      id: "side",
+      version: 3,
+      memo: "",
+      cleared: "uncleared" as const,
+      flag: null,
+      approved: true,
+      categoryId: null,
+      amount: "500",
+      currency: "USD" as const,
+    };
+    const lines = transaction.subtransactions.map((line) =>
+      line.transferAccountId ? { ...line, transferSide: { ...side, id: "line-side" } } : line,
+    );
+    const body = createBodyFromTransaction({ ...transaction, subtransactions: lines });
+    expect(body.id).toBe("t1");
+    expect(body.subtransactions?.[1]?.transferSide?.id).toBe("line-side");
+    const transfer = createBodyFromTransaction({
+      ...transaction,
+      transferAccountId: "a2",
+      transferTransactionId: "side",
+      transferSide: side,
+      subtransactions: [],
+    });
+    expect(transfer).toMatchObject({ id: "t1", transferSide: { id: "side" } });
+    expect(transfer.transferSide).not.toHaveProperty("version");
+
+    const fresh = withoutIds(transfer);
+    expect(fresh).not.toHaveProperty("id");
+    expect(fresh.transferSide).not.toHaveProperty("id");
+    expect(fresh).toMatchObject({
+      restore: true,
+      transferSide: { memo: "", cleared: "uncleared" },
+    });
+    const freshSplit = withoutIds(body);
+    expect(freshSplit.subtransactions?.[1]?.transferSide).not.toHaveProperty("id");
+    expect(freshSplit.subtransactions).toHaveLength(2);
+    expect(withoutIds(createBodyFromTransaction(transaction))).not.toHaveProperty("transferSide");
+
+    expect(isIdUnavailable({ error: { code: "ID_UNAVAILABLE", message: "" } })).toBe(true);
+    expect(isIdUnavailable({ error: { code: "NOT_FOUND", message: "" } })).toBe(false);
+    expect(isIdUnavailable(null)).toBe(false);
+  });
+
+  it("reads the ids a refusal names as back already", () => {
+    const refusal = { error: { code: "ID_UNAVAILABLE", message: "", details: { live: ["t1"] } } };
+    expect(liveIds(refusal)).toEqual(["t1"]);
+    expect(liveIds({ error: { code: "ID_UNAVAILABLE", message: "" } })).toEqual([]);
   });
 });

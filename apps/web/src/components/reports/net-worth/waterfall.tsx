@@ -2,7 +2,16 @@ import type { CurrencyCode } from "@strictbudget/engine";
 import { type ChartConfig, ChartContainer } from "@strictbudget/ui/components/chart";
 import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
 import { cn } from "@strictbudget/ui/lib/utils";
-import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  getNiceTickValues,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from "recharts";
 import {
   type NetWorthReport,
   PART_HINTS,
@@ -48,13 +57,20 @@ export function WhatChanged({
   const current = report.months[index];
   if (!current) return null;
   const steps = waterfall(previousNetWorth(report, index), current);
+  // Totals neutral, rises blue and falls orange; a part that didn't move has no colour to claim.
   const color = (key: string, amount: bigint) =>
     key === "start" || key === "end"
       ? "var(--muted-foreground)"
-      : amount < 0n
-        ? "var(--report-4)"
-        : "var(--report-3)";
+      : amount === 0n
+        ? "var(--border)"
+        : amount < 0n
+          ? "var(--report-2)"
+          : "var(--report-1)";
   const scale = waterfallScale(steps);
+  const domain: [number, number] = [
+    chartNumber(scale.low, currency),
+    chartNumber(scale.high, currency),
+  ];
   const data = steps.map((s) => {
     const total = s.key === "start" || s.key === "end";
     const [low, high] = total
@@ -68,7 +84,10 @@ export function WhatChanged({
     };
   });
   return (
-    <section aria-label="What changed this month" className="grid gap-3 rounded-lg border p-4">
+    <section
+      aria-label="What changed this month"
+      className="grid gap-3 rounded-lg border bg-card p-4"
+    >
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="font-semibold">What changed this month</h2>
         <NativeSelect
@@ -100,7 +119,11 @@ export function WhatChanged({
             tickLine={false}
             axisLine={false}
             width={80}
-            domain={[chartNumber(scale.low, currency), chartNumber(scale.high, currency)]}
+            domain={domain}
+            // Round steps inside the zoomed-in domain (its ends are rarely round).
+            ticks={getNiceTickValues(domain, 5, true, "snap125").filter(
+              (t) => t >= domain[0] && t <= domain[1],
+            )}
             allowDataOverflow
           />
           {scale.baseline === 0n && <ReferenceLine y={0} stroke="var(--border)" />}

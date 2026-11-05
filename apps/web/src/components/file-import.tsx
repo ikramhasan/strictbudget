@@ -82,7 +82,7 @@ export function FileImportButton({ accountId }: { accountId?: string }) {
         variant="outline"
         onClick={() => (introHidden() ? input.current?.click() : setIntroOpen(true))}
       >
-        <FileUp /> File Import
+        <FileUp /> File import
       </Button>
       <input
         ref={input}
@@ -170,7 +170,7 @@ function FileImportIntro({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>File Import</DialogTitle>
+          <DialogTitle>File import</DialogTitle>
           <DialogDescription>
             To import transactions without linking your financial institution, first download a set
             of transactions from your bank or credit card website.
@@ -192,7 +192,7 @@ function FileImportIntro({
             <Checkbox checked={dontShow} onCheckedChange={(v) => setDontShow(v === true)} />
             Don't show again
           </Label>
-          <Button onClick={() => onChoose(dontShow)}>Choose File</Button>
+          <Button onClick={() => onChoose(dontShow)}>Choose file</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -397,7 +397,7 @@ function CsvImportDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Import Transactions</DialogTitle>
+          <DialogTitle>Import transactions</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 text-sm">
           <div className="grid gap-2">
@@ -562,7 +562,7 @@ function CsvImportDialog({
                   checked={current.swapInflowOutflow}
                   onCheckedChange={(v) => update({ swapInflowOutflow: v === true })}
                 />
-                Swap Inflow and Outflow
+                Swap inflow and outflow
               </Label>
               <Label className="font-normal">
                 <Checkbox checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
@@ -650,7 +650,7 @@ function StatementImportDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Import Transactions</DialogTitle>
+          <DialogTitle>Import transactions</DialogTitle>
         </DialogHeader>
         {read.error ? (
           <p className="text-destructive text-sm">
@@ -740,21 +740,21 @@ function StatementImportDialog({
                   checked={current.importMemos}
                   onCheckedChange={(v) => set({ importMemos: v === true })}
                 />
-                Import Memos
+                Import memos
               </Label>
               <Label className="font-normal">
                 <Checkbox
                   checked={current.swapPayeeMemo}
                   onCheckedChange={(v) => set({ swapPayeeMemo: v === true })}
                 />
-                Swap Payee and Memo
+                Swap payee and memo
               </Label>
               <Label className="font-normal">
                 <Checkbox
                   checked={current.swapInflowOutflow}
                   onCheckedChange={(v) => set({ swapInflowOutflow: v === true })}
                 />
-                Swap Inflow and Outflow
+                Swap inflow and outflow
               </Label>
               <Label className="font-normal">
                 <Checkbox checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
@@ -846,13 +846,13 @@ function laterOf(a: string | null, b: string | null) {
 }
 
 /**
- * The result dialogs: "Import Matched" when nothing new came in, otherwise "Import
+ * The result dialogs: "Import matched" when nothing new came in, otherwise "Import
  * Successful", with how many entered transactions were matched.
  */
 export function resultMessage(sent: number, imported: number, matched = 0): Result {
   if (imported === 0 && sent > 0) {
     return {
-      title: "Import Matched",
+      title: "Import matched",
       message: `${sent} ${sent === 1 ? "transaction has" : "transactions have"} been successfully imported. All transactions were matched to already entered or imported transactions, so there's nothing else for you to do!`,
     };
   }
@@ -861,5 +861,5 @@ export function resultMessage(sent: number, imported: number, matched = 0): Resu
     matched === 0
       ? ""
       : ` ${matched} previously imported ${matched === 1 ? "transaction has" : "transactions have"} been matched.`;
-  return { title: "Import Successful", message: base + extra };
+  return { title: "Import successful", message: base + extra };
 }

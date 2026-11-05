@@ -16,6 +16,17 @@ const queryClient = new QueryClient({
 });
 const router = createAppRouter(queryClient);
 
+// index.html shows the app icon until the first page has rendered, so a cold load is never blank.
+const stopBoot = router.subscribe("onRendered", hideBootScreen);
+setTimeout(hideBootScreen, 15_000);
+function hideBootScreen() {
+  stopBoot();
+  const boot = document.getElementById("boot");
+  if (!boot || boot.dataset.done) return;
+  boot.dataset.done = "1";
+  setTimeout(() => boot.remove(), 150);
+}
+
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("#root element missing from index.html");
 

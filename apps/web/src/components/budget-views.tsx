@@ -31,7 +31,7 @@ import { type OverflowView, TAB } from "./budget-filter-bar";
 const PRESET_LABELS: Record<string, string> = {
   underfunded: "Underfunded",
   overfunded: "Overfunded",
-  available: "Money Available",
+  available: "Money available",
   snoozed: "Snoozed",
 };
 
@@ -83,10 +83,10 @@ export function ViewsMenu({
         ))}
         {overflow.length > 0 && <DropdownMenuSeparator />}
         <DropdownMenuItem onSelect={onManage}>
-          <ListPlus /> Manage Views
+          <ListPlus /> Manage views
         </DropdownMenuItem>
         <DropdownMenuItem disabled={full} onSelect={onNew}>
-          <PlusCircle /> New View
+          <PlusCircle /> New view
         </DropdownMenuItem>
         {full && (
           <>
@@ -154,7 +154,7 @@ export function ViewDialogs({
 }
 
 /**
- * "New Custom View" / "Edit Custom View": a name and the categories to include, listed by
+ * "New custom view" / "Edit custom view": a name and the categories to include, listed by
  * group. Hidden categories aren't offered (so saving drops any the view had); categories selected
  * on the budget screen start checked in a new view.
  */
@@ -210,13 +210,13 @@ export function ViewEditorDialog({
       <DialogContent className="sm:max-w-md">
         <form onSubmit={submit} className="grid gap-4">
           <DialogHeader>
-            <DialogTitle>{view ? "Edit Custom View" : "New Custom View"}</DialogTitle>
+            <DialogTitle>{view ? "Edit custom view" : "New custom view"}</DialogTitle>
             <DialogDescription>
               Choose a set of categories to include in this custom view.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-1.5">
-            <Label htmlFor={`${id}-name`}>View Name</Label>
+            <Label htmlFor={`${id}-name`}>View name</Label>
             <Input
               id={`${id}-name`}
               value={name}
@@ -313,7 +313,7 @@ export function ManageViewsDialog({
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Manage Views</DialogTitle>
+          <DialogTitle>Manage views</DialogTitle>
           <DialogDescription className="sr-only">
             Drag the views into order, or edit and delete custom views.
           </DialogDescription>
@@ -356,7 +356,7 @@ export function ManageViewsDialog({
         <DialogFooter className="items-center">
           {full && <p className="mr-auto text-muted-foreground text-xs">{LIMIT_MESSAGE}</p>}
           <Button variant="outline" disabled={full} onClick={onNew}>
-            New View
+            New view
           </Button>
           <Button onClick={onClose}>Done</Button>
         </DialogFooter>

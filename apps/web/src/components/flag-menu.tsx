@@ -13,11 +13,14 @@ export function FlagMenu({
   flags,
   onChange,
   onRename,
+  labelled = false,
 }: {
   value: FlagColor | null;
   flags: readonly Flag[];
   onChange: (flag: FlagColor | null) => void;
   onRename: (changes: Flag[]) => Promise<void>;
+  /** A full-width button naming the flag (a phone's editor), not a bare icon. */
+  labelled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -59,16 +62,26 @@ export function FlagMenu({
       <PopoverTrigger asChild>
         <Button
           type="button"
-          variant="ghost"
-          size="icon-sm"
+          variant={labelled ? "outline" : "ghost"}
+          size={labelled ? "default" : "icon-sm"}
           aria-label={current ? `Flag: ${flagLabel(current)}` : "Add flag"}
           title={current ? flagLabel(current) : undefined}
+          className={cn(labelled && "w-full justify-start font-normal")}
         >
           <Bookmark
             className={cn(
-              current ? [FLAG_CLASS[current.color], "fill-current"] : "text-muted-foreground/40",
+              current
+                ? [FLAG_CLASS[current.color], "fill-current"]
+                : labelled
+                  ? "text-muted-foreground"
+                  : "text-muted-foreground/40",
             )}
           />
+          {labelled && (
+            <span className={cn(!current && "text-muted-foreground")}>
+              {current ? flagLabel(current) : "No flag"}
+            </span>
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 p-1.5">

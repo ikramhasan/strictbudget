@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@fontsource-variable/inter";
+/* strictbudget: Geist, the marketing site's face, so the app and the site read as one. */
+@import "@fontsource-variable/geist";
 @import "./theme.css";
 
 @source "../../../../apps/**/*.{ts,tsx}";

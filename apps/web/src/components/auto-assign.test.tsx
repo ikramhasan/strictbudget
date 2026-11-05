@@ -1,8 +1,11 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { Toaster, toast } from "sonner";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { CommandRegistryProvider, useScreenCommands } from "@/lib/commands";
+import { UndoProvider, useUndo } from "@/lib/undo";
 import { NO_AUTO_ASSIGN } from "@/test/fixtures";
-import { AutoAssignPanel } from "./auto-assign";
+import { AutoAssignClose, AutoAssignPanel, autoAssignSummary } from "./auto-assign";
 
 const categories = [
   {
@@ -54,7 +57,88 @@ const names = new Map([
 ]);
 const format = (a: string) => `A${a}`;
 
+describe("autoAssignSummary", () => {
+  it("says how much moved and into or out of how many categories", () => {
+    expect(autoAssignSummary([{ delta: 13899n }], format)).toBe("Assigned A13899 to 1 category");
+    expect(autoAssignSummary([{ delta: -500n }, { delta: -100n }], format)).toBe(
+      "Moved A600 from 2 categories to Ready to Assign",
+    );
+    expect(autoAssignSummary([{ delta: 700n }, { delta: -500n }], format)).toBe(
+      "Updated 2 categories, assigning A200 more",
+    );
+    expect(autoAssignSummary([{ delta: 100n }, { delta: -500n }], format)).toBe(
+      "Updated 2 categories, returning A400 to Ready to Assign",
+    );
+    expect(autoAssignSummary([{ delta: 500n }, { delta: -500n }], format)).toBe(
+      "Updated 2 categories",
+    );
+  });
+});
+
 describe("AutoAssignPanel", () => {
+  // Sonner keeps its toasts across renders.
+  afterEach(() => toast.dismiss());
+
+  it("closes the pop-up it sits in and says what changed, with Undo", async () => {
+    const user = userEvent.setup();
+    const close = vi.fn();
+    // Applying records the change, as the plan does, so the toast can offer to undo it.
+    function Panel() {
+      const history = useUndo();
+      return (
+        <AutoAssignPanel
+          bare
+          categories={categories}
+          names={names}
+          selection={false}
+          readyToAssign={0n}
+          format={format}
+          onApply={async () =>
+            history.record({ label: "auto-assign", undo: vi.fn(), redo: vi.fn() })
+          }
+        />
+      );
+    }
+    render(
+      <UndoProvider>
+        <Toaster />
+        <AutoAssignClose value={close}>
+          <Panel />
+        </AutoAssignClose>
+      </UndoProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: "Assigned last month A3000" }));
+    expect(close).not.toHaveBeenCalled();
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Apply changes" }),
+    );
+    expect(close).toHaveBeenCalled();
+    expect(await screen.findByText("Assigned A2000 to 1 category")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+  });
+
+  it("says nothing when applying fails (the failure has its own message)", async () => {
+    const user = userEvent.setup();
+    render(
+      <UndoProvider>
+        <Toaster />
+        <AutoAssignPanel
+          categories={categories}
+          names={names}
+          selection={false}
+          readyToAssign={0n}
+          format={format}
+          onApply={vi.fn().mockRejectedValue(new Error("offline"))}
+        />
+      </UndoProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: "Assigned last month A3000" }));
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Apply changes" }),
+    );
+    expect(screen.queryByText(/Assigned A2000/)).not.toBeInTheDocument();
+  });
+
   it("previews the whole plan before assigning", async () => {
     const user = userEvent.setup();
     const onApply = vi.fn().mockResolvedValue(undefined);
@@ -68,14 +152,75 @@ describe("AutoAssignPanel", () => {
         onApply={onApply}
       />,
     );
-    await user.click(screen.getByRole("button", { name: "Assigned Last Month A3000" }));
+    await user.click(screen.getByRole("button", { name: "Assigned last month A3000" }));
     const dialog = screen.getByRole("alertdialog");
     expect(within(dialog).getByText(/for 1 category/)).toBeInTheDocument();
     expect(within(dialog).getByText("Rent")).toBeInTheDocument();
-    expect(within(dialog).getByText("+A2000")).toBeInTheDocument();
+    expect(within(dialog).getAllByText("+A2000")).toHaveLength(2);
     expect(onApply).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Update Assigned Amounts" }));
+    await user.click(within(dialog).getByRole("button", { name: "Apply changes" }));
     expect(onApply).toHaveBeenCalledWith("assignedLastMonth");
+  });
+
+  it("totals the preview and warns when it assigns more than Ready to Assign", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <AutoAssignPanel
+        categories={categories}
+        names={names}
+        selection={false}
+        readyToAssign={500n}
+        format={format}
+        onApply={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Assigned last month A3000" }));
+    let dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).getByText("Total change").nextSibling).toHaveTextContent("+A2000");
+    expect(within(dialog).getByText("Ready to Assign").nextSibling).toHaveTextContent(
+      /A500\s*→ becomes A-1500/,
+    );
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "This assigns A1500 more than you have.",
+    );
+    expect(within(dialog).getByRole("button", { name: "Apply changes" })).toHaveAttribute(
+      "data-variant",
+      "destructive",
+    );
+    rerender(
+      <AutoAssignPanel
+        categories={categories}
+        names={names}
+        selection={false}
+        readyToAssign={5000n}
+        format={format}
+        onApply={vi.fn()}
+      />,
+    );
+    dialog = screen.getByRole("alertdialog");
+    expect(within(dialog).queryByRole("alert")).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Apply changes" })).toHaveAttribute(
+      "data-variant",
+      "default",
+    );
+  });
+
+  it("previews selected categories first when applying would overdraw", async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AutoAssignPanel
+        categories={categories.slice(0, 1)}
+        names={names}
+        selection
+        readyToAssign={0n}
+        format={format}
+        onApply={onApply}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /Assigned last month/ }));
+    expect(onApply).not.toHaveBeenCalled();
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   });
 
   it("applies straight away to selected categories, with singular labels for one", async () => {
@@ -91,8 +236,8 @@ describe("AutoAssignPanel", () => {
         onApply={onApply}
       />,
     );
-    expect(screen.getByRole("button", { name: "Reset Available Amount A0" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /Reset Assigned Amount/ }));
+    expect(screen.getByRole("button", { name: "Reset available amount A0" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Reset assigned amount/ }));
     expect(onApply).toHaveBeenCalledWith("resetAssigned");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
@@ -112,8 +257,8 @@ describe("AutoAssignPanel", () => {
       />,
     );
     expect(screen.getByText("This view has no categories.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Average Spent/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "View All Categories" }));
+    expect(screen.queryByRole("button", { name: /Average spent/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "View all categories" }));
     expect(onViewAll).toHaveBeenCalled();
   });
 
@@ -128,7 +273,7 @@ describe("AutoAssignPanel", () => {
         onApply={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: /^Reset Assigned Amount A/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Reset assigned amount A/ })).toBeInTheDocument();
   });
 
   describe("Underfunded and Reduce Overfunding", () => {
@@ -180,7 +325,7 @@ describe("AutoAssignPanel", () => {
       expect(within(dialog).getByText("+A1500")).toBeInTheDocument();
       expect(within(dialog).getByText(/may need more attention/)).toBeInTheDocument();
       expect(within(dialog).getByText("Visa")).toBeInTheDocument();
-      await user.click(within(dialog).getByRole("button", { name: "Assign Money" }));
+      await user.click(within(dialog).getByRole("button", { name: "Apply changes" }));
       expect(onApply).toHaveBeenCalledWith("underfunded");
     });
 
@@ -196,7 +341,7 @@ describe("AutoAssignPanel", () => {
           onApply={vi.fn()}
         />,
       );
-      expect(screen.queryByRole("button", { name: /Reduce Overfunding/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Reduce overfunding/ })).not.toBeInTheDocument();
       // A single category with nothing short has no Underfunded either.
       expect(screen.queryByRole("button", { name: /Underfunded/ })).not.toBeInTheDocument();
       rerender(
@@ -209,7 +354,80 @@ describe("AutoAssignPanel", () => {
           onApply={vi.fn()}
         />,
       );
-      expect(screen.getByRole("button", { name: "Reduce Overfunding A300" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Reduce overfunding A300" })).toBeInTheDocument();
     });
+
+    it("says on the row when Underfunded can fund only part, or nothing", () => {
+      const { rerender } = render(
+        <AutoAssignPanel
+          categories={plan}
+          names={named}
+          selection={false}
+          readyToAssign={2000n}
+          format={format}
+          onApply={vi.fn()}
+        />,
+      );
+      const underfunded = () => screen.getByRole("button", { name: "Underfunded A6600" });
+      expect(underfunded()).toBeEnabled();
+      expect(underfunded()).toHaveAccessibleDescription("Only A2000 to assign");
+      rerender(
+        <AutoAssignPanel
+          categories={plan}
+          names={named}
+          selection={false}
+          readyToAssign={0n}
+          format={format}
+          onApply={vi.fn()}
+        />,
+      );
+      expect(underfunded()).toBeDisabled();
+      expect(underfunded()).toHaveAccessibleDescription("Nothing ready to assign");
+    });
+
+    it("offers Underfunded to the command palette, through its preview", async () => {
+      let commands: ReturnType<typeof useScreenCommands> = [];
+      function Palette() {
+        commands = useScreenCommands();
+        return null;
+      }
+      render(
+        <CommandRegistryProvider>
+          <Palette />
+          <AutoAssignPanel
+            categories={plan}
+            names={named}
+            selection={false}
+            readyToAssign={2000n}
+            format={format}
+            onApply={vi.fn()}
+          />
+        </CommandRegistryProvider>,
+      );
+      const command = commands.find((c) => c.label === "Assign to underfunded");
+      expect(command?.keywords).toContain("auto-assign");
+      act(() => command?.run());
+      expect(await screen.findByRole("alertdialog")).toHaveTextContent(
+        "Auto-Assign Preview: Underfunded",
+      );
+    });
+  });
+
+  it("disables what would change nothing, and warns on a row that assigns more than you have", () => {
+    render(
+      <AutoAssignPanel
+        categories={categories}
+        names={names}
+        selection={false}
+        readyToAssign={500n}
+        format={format}
+        onApply={vi.fn()}
+      />,
+    );
+    // Rent's assigned amount already meets its target.
+    expect(screen.getByRole("button", { name: "Underfunded A0" })).toBeDisabled();
+    const lastMonth = screen.getByRole("button", { name: "Assigned last month A3000" });
+    expect(lastMonth).toBeEnabled();
+    expect(lastMonth).toHaveAccessibleDescription("A1500 more than you have");
   });
 });

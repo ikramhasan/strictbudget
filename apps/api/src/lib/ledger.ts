@@ -123,6 +123,8 @@ export async function createPaymentCategory(
 }
 
 export interface NewTransaction {
+  /** A deleted transaction's own id, when an undo restores it (`assertRestorableIds`). */
+  id?: string;
   budgetId: string;
   accountId: string;
   date: string;
@@ -157,8 +159,8 @@ export interface NewTransaction {
 }
 
 export async function insertTransaction(db: Db, values: NewTransaction) {
-  const { fx, rate, split, ...row } = values;
-  const id = newId();
+  const { fx, rate, split, id: restoredId, ...row } = values;
+  const id = restoredId ?? newId();
   let base: BaseFields = {
     baseAmount: row.baseAmount ?? row.amount,
     fxRate: row.fxRate ?? null,

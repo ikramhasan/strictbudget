@@ -59,7 +59,7 @@ export function StarButton({
     <Button
       variant="ghost"
       size="icon-sm"
-      aria-label="Toggle Starred"
+      aria-label="Toggle starred"
       aria-pressed={starred}
       title={starred ? "Starred" : "Star this account"}
       disabled={update.isPending || move.isPending}

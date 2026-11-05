@@ -125,10 +125,10 @@ function ManagePayeesDialog({ onClose }: { onClose: () => void }) {
   const matches = (name: string) => name.toLowerCase().includes(search.trim().toLowerCase());
   const groups: { id: GroupId; label: string; items: { id: string; name: string }[] }[] = [
     { id: "payees", label: "Payees", items: payees.filter((p) => !p.hidden && matches(p.name)) },
-    { id: "transfers", label: "Transfer Payees", items: transfers.filter((t) => matches(t.name)) },
+    { id: "transfers", label: "Transfer payees", items: transfers.filter((t) => matches(t.name)) },
     {
       id: "hidden",
-      label: "Hidden Payees",
+      label: "Hidden payees",
       items: payees.filter((p) => p.hidden && matches(p.name)),
     },
   ];
@@ -311,7 +311,7 @@ function ManagePayeesDialog({ onClose }: { onClose: () => void }) {
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="flex h-[min(44rem,90vh)] flex-col gap-0 p-0 sm:max-w-5xl">
         <DialogHeader className="border-b px-4 py-3">
-          <DialogTitle>Manage Payees</DialogTitle>
+          <DialogTitle>Manage payees</DialogTitle>
           <DialogDescription className="sr-only">
             Rename, combine, hide and delete the budget's payees.
           </DialogDescription>
@@ -322,7 +322,7 @@ function ManagePayeesDialog({ onClose }: { onClose: () => void }) {
               <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 aria-label="Search payees"
-                placeholder="Search Payees"
+                placeholder="Search payees"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-8 pl-8"
@@ -562,7 +562,7 @@ function PayeeEditor({
         Show {uses} {uses === 1 ? "Transaction" : "Transactions"}
       </button>
     ) : (
-      single && <p className="text-muted-foreground text-sm">No Transactions</p>
+      single && <p className="text-muted-foreground text-sm">No transactions</p>
     );
 
   return (
@@ -575,7 +575,7 @@ function PayeeEditor({
       {single ? (
         <section className="dimmed grid gap-2 rounded-lg border bg-background p-4">
           <label htmlFor="payee-name" className="font-semibold text-sm">
-            Payee Name
+            Payee name
           </label>
           <Input
             id="payee-name"
@@ -607,7 +607,7 @@ function PayeeEditor({
             <p className="text-muted-foreground text-sm">{picked.map((p) => p.name).join(", ")}</p>
           </div>
           <section className="dimmed grid gap-2 rounded-lg border bg-background p-4">
-            <p className="font-semibold text-sm">Combine and Rename</p>
+            <p className="font-semibold text-sm">Combine and rename</p>
             <p className="text-muted-foreground text-sm">
               Combining these payees will also combine all their renaming rules and categorization
               rules.
@@ -697,7 +697,7 @@ function PayeeEditor({
               disabled={busy}
               onClick={() => void onHide(!allHidden)}
             >
-              {allHidden ? (single ? "Unhide" : "Unhide All") : single ? "Hide" : "Hide All"}
+              {allHidden ? (single ? "Unhide" : "Unhide all") : single ? "Hide" : "Hide all"}
             </Button>
             <Button
               variant="destructive"
@@ -706,7 +706,7 @@ function PayeeEditor({
               // Unused payees go at once; used ones first ask where their transactions go.
               onClick={() => (uses === 0 ? void onDelete(null) : setDeleting(true))}
             >
-              {single ? "Delete" : "Delete All"}
+              {single ? "Delete" : "Delete all"}
             </Button>
           </div>
           {!single && anyRules && (

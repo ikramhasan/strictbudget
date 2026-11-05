@@ -11,6 +11,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { BudgetForm, type BudgetFormValues } from "@/components/budget-form";
+import { OnboardingSteps } from "@/components/onboarding-steps";
+import { PageHeader } from "@/components/page-header";
 import { PageTitle } from "@/components/page-title";
 import { $api } from "@/lib/api";
 import { apiErrorMessage, budgetsQueryOptions, invalidateBudgets } from "@/lib/budgets";
@@ -51,21 +53,26 @@ function NewBudgetPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    // As wide as setup's steps, so the step bar keeps its size from one page to the next.
+    <div className="mx-auto grid w-full max-w-3xl content-start gap-8 pb-10">
       <PageTitle name="New budget" />
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">
-            {isFirst ? "Create your first budget" : "New budget"}
+      <PageHeader title="New budget" />
+      {/* With a template the budget opens straight away, without setup. */}
+      {!template && <OnboardingSteps current={0} />}
+      <Card className="gap-6">
+        <CardHeader className="gap-1.5">
+          <CardTitle className="font-semibold text-xl tracking-tight">
+            {isFirst ? "Create your first budget" : "Create a budget"}
           </CardTitle>
-          <CardDescription>
-            Pick the currency you budget in and how amounts and dates should look. You can change
-            the formats later, but not the currency.
+          <CardDescription className="text-pretty">
+            Name it and choose the currency you budget in. The currency is set for good; everything
+            else can change later.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <BudgetForm
             defaultValues={defaults}
+            collapseFormatting
             submitLabel="Create budget"
             pendingLabel="Creating…"
             onSubmit={handleSubmit}

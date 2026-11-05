@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { categoriesQueryOptions } from "./categories";
 import { monthQueryOptions } from "./months";
 import { netWorthOptions } from "./net-worth";
-import { currentMonth, planColors, type ReportSum, reportActivityOptions } from "./reports";
+import { currentMonth, type ReportSum, reportActivityOptions } from "./reports";
 
 /** Spending per month, positive (Total Spending: minus the months' category nets). */
 export function spentByMonth(rows: readonly ReportSum[]): Map<BudgetMonth, bigint> {
@@ -67,6 +67,9 @@ export function categorySpending(
   });
 }
 
+/** The complete months the runway averages spending over. */
+export const RUNWAY_MONTHS = 6;
+
 /**
  * The average monthly spending over the `count` months before `month`, from the first of them with
  * spending (a budget younger than that isn't averaged with empty months).
@@ -74,7 +77,7 @@ export function categorySpending(
 export function averageSpent(
   spent: ReadonlyMap<BudgetMonth, bigint>,
   month: BudgetMonth,
-  count = 6,
+  count = RUNWAY_MONTHS,
 ) {
   const months = monthsIn({ from: addMonths(month, -count), to: addMonths(month, -1) });
   const first = months.findIndex((m) => (spent.get(m) ?? 0n) !== 0n);
@@ -92,6 +95,20 @@ export function averageSpent(
 export const homeRange = (month: BudgetMonth) => ({ from: addMonths(month, -11), to: month });
 
 /**
+ * `months` from the first with data, so a young budget's charts don't start on a run of empty
+ * months; at least `minimum` of them (the last ones), enough to draw a line.
+ */
+export function monthsWithData(
+  months: readonly BudgetMonth[],
+  hasData: (month: BudgetMonth) => boolean,
+  minimum = 3,
+): BudgetMonth[] {
+  const first = months.findIndex(hasData);
+  const latestStart = Math.max(0, months.length - minimum);
+  return months.slice(first < 0 ? latestStart : Math.min(first, latestStart));
+}
+
+/**
  * Everything the Reports home reads that the reports endpoints already give: monthly spending and
  * income, categories' spending, this month's payees and overspending.
  */
@@ -99,7 +116,14 @@ export function useReportsHomeData(budgetId: string) {
   const month = currentMonth();
   const range = homeRange(month);
   const worth = useQuery(netWorthOptions({ budgetId, range }));
-  const spending = useQuery(reportActivityOptions({ budgetId, range, groupBy: ["month"] }));
+  // From six months earlier: each month on the runway sparkline averages the six before it.
+  const spending = useQuery(
+    reportActivityOptions({
+      budgetId,
+      range: { from: addMonths(range.from, -RUNWAY_MONTHS), to: month },
+      groupBy: ["month"],
+    }),
+  );
   const income = useQuery(
     reportActivityOptions({ budgetId, range, kind: "income", groupBy: ["month"] }),
   );
@@ -202,23 +226,46 @@ export function useReportsHomeData(budgetId: string) {
       })
     : [];
 
-  // Cash in open budget cash accounts (the budget's currency, today's rate) for the runway.
-  const cash = (worth.data?.accounts ?? [])
-    .filter((a) => !a.closed && accountFamily(a.type) === "cash")
-    .reduce((s, a) => s + BigInt(a.balances.at(-1)?.base ?? "0"), 0n);
+  // Cash in open budget cash accounts (the budget's currency, today's rate) for the runway, and
+  // at each month-end for its sparkline.
+  const cashAccounts = (worth.data?.accounts ?? []).filter(
+    (a) => !a.closed && accountFamily(a.type) === "cash",
+  );
+  const cash = cashAccounts.reduce((s, a) => s + BigInt(a.balances.at(-1)?.base ?? "0"), 0n);
+  const cashByMonth = new Map<BudgetMonth, bigint>(
+    (worth.data?.months ?? []).map((m, i) => [
+      m.month as BudgetMonth,
+      cashAccounts.reduce((s, a) => s + BigInt(a.balances[i]?.base ?? "0"), 0n),
+    ]),
+  );
+  const worthByMonth = new Map(
+    (worth.data?.months ?? []).map((m) => [m.month as BudgetMonth, BigInt(m.netWorth)]),
+  );
+  const months = monthsWithData(
+    monthsIn(range),
+    (m) =>
+      (spent.get(m) ?? 0n) !== 0n ||
+      (earned.get(m) ?? 0n) !== 0n ||
+      (worthByMonth.get(m) ?? 0n) !== 0n,
+  );
   return {
     month,
     loading: !ready && !failed,
     failed,
     netWorth: worth.data,
     cash,
-    months: monthsIn(range),
+    cashByMonth,
+    /** The last 12 months, from the first with any money in or out or any balance. */
+    months,
     spent,
     earned,
     categoryNames: names,
-    categoryColors: categories.data
-      ? planColors(categories.data).categories
-      : new Map<string, string>(),
+    /** Each category's group's name. */
+    groupNames: new Map(
+      (categories.data?.groups ?? []).flatMap((g) =>
+        g.categories.map((c) => [c.id, g.name] as const),
+      ),
+    ),
     byCategory: byCategory.data?.rows ?? [],
     observations: notes,
   };

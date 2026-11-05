@@ -55,7 +55,7 @@ export function ReviewCell({
         </PopoverTrigger>
         <PopoverContent align="start" className="grid w-56 gap-2 p-3">
           <Button type="button" size="sm" disabled={pending} onClick={onApprove}>
-            Approve Transaction
+            Approve transaction
           </Button>
           <Button
             type="button"
@@ -64,7 +64,7 @@ export function ReviewCell({
             disabled={pending}
             onClick={onReject}
           >
-            Reject Transaction
+            Reject transaction
           </Button>
         </PopoverContent>
       </Popover>
@@ -116,7 +116,7 @@ function MatchedTransactions({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="grid w-auto max-w-[calc(100vw-2rem)] gap-3 p-3">
-        <p className="font-medium text-sm">Matched Transactions</p>
+        <p className="font-medium text-sm">Matched transactions</p>
         <div className="overflow-x-auto">
           <table className="text-sm">
             <thead>

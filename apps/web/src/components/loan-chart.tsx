@@ -23,10 +23,10 @@ export type LoanSeries = "past" | "original" | "minimum" | "current" | "simulati
  * and filled.
  */
 export const SERIES_LABELS: Record<LoanSeries, string> = {
-  past: "Past Balance",
-  original: "Original Payment Schedule",
-  minimum: "Minimum Payment",
-  current: "Current Track",
+  past: "Past balance",
+  original: "Original payment schedule",
+  minimum: "Minimum payment",
+  current: "Current track",
   simulation: "Simulation",
 };
 

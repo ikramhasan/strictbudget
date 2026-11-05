@@ -95,7 +95,7 @@ export interface CategoryMoveLine {
 
 /**
  * One category's moves in a month, worded and signed: "Assigned $20.00", "Removed -$5.00", "Moved
- * from Rent $5.00", "Moved to Groceries -$5.00", "Auto-Assigned Assigned Last Month $10.00".
+ * from Rent $5.00", "Moved to Groceries -$5.00", "Auto-Assigned Assigned last month $10.00".
  */
 export function categoryMoveLines(
   moves: readonly MoneyMove[],

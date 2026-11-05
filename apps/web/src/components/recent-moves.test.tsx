@@ -74,7 +74,7 @@ function renderList(
   return { onOpenCategory };
 }
 
-describe("Recent Moves", () => {
+describe("Recent moves", () => {
   it("names who made each move and opens a category in its month", async () => {
     const { onOpenCategory } = renderList([
       move({ kind: "moved", fromCategoryId: "c", toCategoryId: "a", amount: "500" }),
@@ -96,7 +96,7 @@ describe("Recent Moves", () => {
     ]);
     expect(screen.getByText("ihni7 auto-assigned")).toBeInTheDocument();
     expect(screen.getByText("$5.00")).toBeInTheDocument();
-    expect(screen.getByText("Method: Average Assigned")).toBeInTheDocument();
+    expect(screen.getByText("Method: Average assigned")).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Details" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Details" }));
     const details = within(screen.getByRole("list", { name: "Details" }));
@@ -114,7 +114,7 @@ describe("Recent Moves", () => {
     ]);
     expect(screen.getByText("ihni7 removed")).toBeInTheDocument();
     expect(screen.getByText("$50.00")).toBeInTheDocument();
-    expect(screen.getByText("Method: Reset Assigned Amounts")).toBeInTheDocument();
+    expect(screen.getByText("Method: Reset assigned amounts")).toBeInTheDocument();
     // One category: named, no method or details.
     expect(screen.getByText("ihni7 auto-assigned")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /x-142 A\s*Oct 2026/ })).toBeInTheDocument();
@@ -153,7 +153,7 @@ describe("Recent Moves", () => {
     expect(screen.getByRole("img", { name: "Pat (removed)" })).toHaveTextContent("P");
     // Their own colour (avatar-three), not the grey inactive one.
     expect(screen.getByRole("img", { name: "Pat (removed)" })).toHaveClass("bg-[#41D298]");
-    expect(screen.getByRole("img", { name: "Inactive Member" })).toHaveTextContent("");
+    expect(screen.getByRole("img", { name: "Inactive member" })).toHaveTextContent("");
   });
 
   it("colours each member: the owner avatar-one, the next to join avatar-two", () => {
@@ -219,7 +219,7 @@ describe("Category moves history", () => {
       .map((r) => r.textContent);
     expect(rows).toEqual([
       "2026-10-14Moved from x-142 C$5.00i",
-      "2026-10-14Auto-AssignedAssigned Last Month$10.00i",
+      "2026-10-14Auto-AssignedAssigned last month$10.00i",
     ]);
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
     await userEvent.click(

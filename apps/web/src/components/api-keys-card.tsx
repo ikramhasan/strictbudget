@@ -110,7 +110,7 @@ export function ApiKeysCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>API Keys</CardTitle>
+        <CardTitle>API keys</CardTitle>
         <CardDescription>
           Let your own scripts and tools use your budgets through the strictbudget API. Each key
           works like your account, limited to what you choose.{" "}
@@ -199,7 +199,7 @@ export function ApiKeysCard() {
                 disabled={revoke.isPending}
                 onClick={() => revokeKey(revoking)}
               >
-                Revoke Key
+                Revoke key
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -310,7 +310,7 @@ function CreateKeyDialog({ onClose }: { onClose: () => void }) {
             <DialogFooter>
               <Button variant="outline" asChild>
                 <a href={DOCS_URL} target="_blank" rel="noreferrer">
-                  API Reference
+                  API reference
                   <ExternalLink aria-hidden />
                 </a>
               </Button>
@@ -466,7 +466,7 @@ function CreateKeyDialog({ onClose }: { onClose: () => void }) {
             </Button>
             <Button type="submit" disabled={create.isPending}>
               {create.isPending && <Spinner />}
-              Create Key
+              Create key
             </Button>
           </DialogFooter>
         </form>

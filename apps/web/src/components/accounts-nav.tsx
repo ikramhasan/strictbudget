@@ -2,7 +2,6 @@ import { move } from "@dnd-kit/helpers";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { formatAmount, money } from "@strictbudget/engine";
-import { Button } from "@strictbudget/ui/components/button";
 import {
   Collapsible,
   CollapsibleContent,
@@ -122,14 +121,13 @@ export function AccountsNav({ budget }: { budget: Budget }) {
 
       {budget.role !== "viewer" && (
         <SidebarGroup>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAdding(true)}
-            className="justify-start"
-          >
-            <Plus /> Add Account
-          </Button>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={() => setAdding(true)} className="text-muted-foreground">
+                <Plus /> Add account
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarGroup>
       )}
 
@@ -158,13 +156,14 @@ function AccountSection({
     <Collapsible defaultOpen={section.id !== "closed"} className="group/collapsible" asChild>
       <SidebarGroup>
         <SidebarGroupLabel asChild>
-          <CollapsibleTrigger>
-            <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
-            <span className="uppercase tracking-wide">{section.title}</span>
+          {/* The chevron sits in the rows' icon column, the title over their names. */}
+          <CollapsibleTrigger className="gap-2.5 font-semibold text-[11px] hover:text-sidebar-foreground">
+            <ChevronRight className="transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+            <span>{section.title}</span>
             {section.id !== "closed" && (
               // Under 220px of sidebar the balances make way for the names.
               <span
-                className="ml-auto tabular-nums [[data-sidebar-narrow]_&]:hidden"
+                className="ml-auto font-medium text-xs tabular-nums [[data-sidebar-narrow]_&]:hidden"
                 title={hint ?? undefined}
               >
                 {section.converted && <span aria-hidden>≈</span>}
@@ -238,7 +237,7 @@ function AccountItem({
           ref={handleRef}
           type="button"
           aria-label={`Reorder ${account.name}`}
-          className="absolute top-1/2 left-1 z-10 grid h-6 w-3 -translate-y-1/2 cursor-grab touch-none place-items-center text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 active:cursor-grabbing group-hover/account:opacity-100 pointer-coarse:hidden"
+          className="absolute top-1/2 left-2 z-10 grid h-6 w-4 -translate-y-1/2 cursor-grab touch-none place-items-center text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 active:cursor-grabbing group-hover/account:opacity-100 pointer-coarse:hidden"
         >
           <GripVertical className="size-3" />
         </button>
@@ -251,23 +250,31 @@ function AccountItem({
           params={{ budgetId, accountId: account.id }}
           activeProps={{ "data-active": true }}
         >
-          {/* The reorder handle shows over this slot on hover, inside the row's highlight. */}
+          {/*
+           * The icon column, as in the links above: the logo the user gave the account, or nothing,
+           * so every name starts where the nav's labels do. A dot marks transactions to review.
+           * The reorder handle shows over it on hover, inside the row's highlight.
+           */}
           <span
             className={cn(
-              "flex w-3 shrink-0 justify-center transition-opacity",
+              "relative flex size-4 shrink-0 items-center justify-center transition-opacity",
               reorderable &&
                 "group-hover/account:opacity-0 group-has-[button:focus-visible]/account:opacity-0",
             )}
           >
+            {account.logo && <AccountLogo name={account.name} logo={account.logo} />}
             {account.toReview > 0 && (
               <span
                 role="img"
                 aria-label={`${account.toReview} to approve or categorize`}
-                className="size-1.5 rounded-full bg-current"
+                className={cn(
+                  "size-1.5 rounded-full bg-primary",
+                  account.logo &&
+                    "absolute -top-0.5 -right-0.5 size-2 ring-2 ring-sidebar group-data-active/menu-button:ring-sidebar-active",
+                )}
               />
             )}
           </span>
-          <AccountLogo name={account.name} logo={account.logo} />
           <span className="min-w-0 flex-1 truncate">{account.name}</span>
           {/*
            * The balance sits in the row rather than in a SidebarMenuBadge: the badge floats over

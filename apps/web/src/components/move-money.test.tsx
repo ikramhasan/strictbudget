@@ -50,7 +50,7 @@ describe("AvailableButton", () => {
     await userEvent.selectOptions(await screen.findByLabelText("Month"), "2026-11");
     await userEvent.click(screen.getByRole("combobox", { name: "Cover overspending from" }));
     await userEvent.click(await screen.findByRole("option", { name: /Food/ }));
-    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cover $2" }));
     expect(moveFrom).toHaveBeenCalledWith("2026-11", "food", "phone", 200n);
     expect(actions.move).not.toHaveBeenCalled();
   });
@@ -93,8 +93,30 @@ describe("AvailableButton", () => {
     // Only places with money are offered.
     expect(screen.queryByRole("option", { name: /Food/ })).not.toBeInTheDocument();
     await userEvent.click(await screen.findByRole("option", { name: /Rent/ }));
-    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cover $50" }));
     expect(actions.move).toHaveBeenCalledWith("rent", "phone", 5000n);
+  });
+
+  it("covers a typed amount, starting from the whole shortfall", async () => {
+    const actions = makeActions();
+    render(
+      <AvailableButton
+        categoryId="phone"
+        categoryName="Phone"
+        amount="-1500"
+        format={format}
+        actions={actions}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Cover Phone: $-15, overspent" }));
+    const amount = screen.getByLabelText("Amount");
+    expect(amount).toHaveValue("15");
+    await userEvent.clear(amount);
+    await userEvent.type(amount, "10");
+    await userEvent.click(screen.getByRole("combobox", { name: "Cover overspending from" }));
+    await userEvent.click(await screen.findByRole("option", { name: /Rent/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Cover $10" }));
+    expect(actions.move).toHaveBeenCalledWith("rent", "phone", 1000n);
   });
 });
 
@@ -102,11 +124,11 @@ describe("FixThisButton", () => {
   it("un-assigns the shortfall from a category", async () => {
     const actions = makeActions();
     render(<FixThisButton readyToAssign="-1200" format={format} actions={actions} />);
-    await userEvent.click(screen.getByRole("button", { name: "Fix This" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fix this" }));
     await userEvent.click(screen.getByRole("combobox", { name: "Un-assign money from" }));
     expect(screen.queryByRole("option", { name: /Ready to Assign/ })).not.toBeInTheDocument();
     await userEvent.click(await screen.findByRole("option", { name: /Rent/ }));
-    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    await userEvent.click(screen.getByRole("button", { name: /^Un-assign / }));
     expect(actions.move).toHaveBeenCalledWith("rent", "rta", 1200n);
   });
 
@@ -135,14 +157,14 @@ describe("FixThisButton", () => {
         }}
       />,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Fix This" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fix this" }));
     const month = await screen.findByLabelText("Month");
     expect(month).toHaveValue("2026-11");
     expect(within(month).getByText("Dec 2026")).toBeDisabled();
     await userEvent.click(screen.getByRole("combobox", { name: "Un-assign money from" }));
     // As much as November holds: $8.00 of the $12.00 shortfall.
     await userEvent.click(await screen.findByRole("option", { name: /Phone/ }));
-    await userEvent.click(screen.getByRole("button", { name: "OK" }));
+    await userEvent.click(screen.getByRole("button", { name: /^Un-assign / }));
     expect(unassign).toHaveBeenCalledWith("2026-11", "phone", 800n);
     expect(actions.move).not.toHaveBeenCalled();
   });

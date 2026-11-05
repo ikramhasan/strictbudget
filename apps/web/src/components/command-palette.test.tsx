@@ -4,6 +4,7 @@ import {
   createRootRoute,
   createRouter,
   RouterProvider,
+  useRouterState,
 } from "@tanstack/react-router";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -12,7 +13,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { accountsQueryOptions } from "@/lib/accounts";
 import type { Budget } from "@/lib/budgets";
 import { categoriesQueryOptions } from "@/lib/categories";
-import { CommandRegistryProvider } from "@/lib/commands";
+import { CommandRegistryProvider, moveTarget, useOpenRequest } from "@/lib/commands";
 import { currentMonth, monthQueryOptions } from "@/lib/months";
 import { useShortcut } from "@/lib/shortcuts";
 import { CommandPalette, filterGroups, type PaletteGroup } from "./command-palette";
@@ -77,12 +78,30 @@ function Screen({ onAdd }: { onAdd: () => void }) {
   return <input aria-label="Page field" />;
 }
 
-async function renderPalette({ aiOn = false, onAdd = vi.fn() } = {}) {
+/** The plan's Rent row, whose Move popover the palette opens. */
+function RentRow({ onMove }: { onMove: () => void }) {
+  useOpenRequest(moveTarget("c1"), onMove);
+  return null;
+}
+
+/**
+ * The palette over a screen: one offering Add transaction everywhere, or (`register`) only once a
+ * register shows, as the app's do.
+ */
+async function renderPalette({
+  aiOn = false,
+  onAdd = vi.fn(),
+  onMove = vi.fn(),
+  register = false,
+} = {}) {
   function Harness() {
     const [open, setOpen] = useState(true);
+    const path = useRouterState({ select: (state) => state.location.pathname });
+    const inRegister = path.includes("/accounts/");
     return (
       <CommandRegistryProvider>
-        <Screen onAdd={onAdd} />
+        {(!register || inRegister) && <Screen onAdd={onAdd} />}
+        {path === "/budgets/b1" && <RentRow onMove={onMove} />}
         <CommandPalette
           open={open}
           onOpenChange={setOpen}
@@ -193,6 +212,59 @@ describe("CommandPalette", () => {
   });
 });
 
+describe("CommandPalette's second steps", () => {
+  it("adds a transaction in an account picked from a list, on its register", async () => {
+    const onAdd = vi.fn();
+    const { router, dialog, input } = await renderPalette({ onAdd, register: true });
+    await userEvent.type(input, "add tr{Enter}");
+    // The list of open accounts, under a chip naming the step.
+    expect(within(dialog).getByText("Add transaction", { selector: "span" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("option", { name: /Checking/ })).toHaveTextContent("$1,250.00");
+    expect(within(dialog).queryByRole("option", { name: /Old Savings/ })).toBeNull();
+    await userEvent.type(within(dialog).getByRole("combobox"), "chk{Enter}");
+    await waitFor(() => expect(router.state.location.pathname).toBe("/budgets/b1/accounts/a1"));
+    await waitFor(() => expect(onAdd).toHaveBeenCalledOnce());
+  });
+
+  it("offers the screen's own Add transaction instead of the list on a register", async () => {
+    const { dialog, input } = await renderPalette();
+    await userEvent.type(input, "add tr");
+    expect(within(dialog).getAllByRole("option", { name: /^Add transaction/ })).toHaveLength(1);
+    expect(within(dialog).queryByRole("option", { name: /Add transaction…/ })).toBeNull();
+  });
+
+  it("moves money from a picked category: the plan with it selected, then its popover", async () => {
+    const onMove = vi.fn();
+    const { router, dialog, input } = await renderPalette({ onMove });
+    await userEvent.type(input, "move{Enter}");
+    await userEvent.type(within(dialog).getByRole("combobox"), "rent{Enter}");
+    await waitFor(() => expect(router.state.location.search).toMatchObject({ category: "c1" }));
+    expect(router.state.location.pathname).toBe("/budgets/b1");
+    await waitFor(() => expect(onMove).toHaveBeenCalledOnce());
+  });
+
+  it("goes back a step with Backspace in an empty search, or Escape", async () => {
+    const { dialog, input } = await renderPalette();
+    await userEvent.type(input, "go to month{Enter}");
+    expect(within(dialog).getByRole("option", { name: "January 2016" })).toBeInTheDocument();
+    await userEvent.keyboard("{Backspace}");
+    expect(within(dialog).getByRole("option", { name: /Move money…/ })).toBeInTheDocument();
+    await userEvent.type(within(dialog).getByRole("combobox"), "move{Enter}");
+    await userEvent.keyboard("{Escape}");
+    expect(screen.getByRole("dialog", { name: "Command palette" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("option", { name: /Move money…/ })).toBeInTheDocument();
+  });
+
+  it("lists every month to go to, the one showing selected", async () => {
+    const { router, dialog, input } = await renderPalette();
+    await userEvent.type(input, "go to month{Enter}");
+    expect(selectedRow(dialog)).toContain("This month");
+    expect(within(dialog).getAllByRole("option").length).toBeGreaterThan(100);
+    await userEvent.type(within(dialog).getByRole("combobox"), "2016-02{Enter}");
+    await waitFor(() => expect(router.state.location.search).toEqual({ month: "2016-02" }));
+  });
+});
+
 describe("filterGroups", () => {
   const item = (id: string, label: string, extra: object = {}) => ({
     id,
@@ -220,5 +292,34 @@ describe("filterGroups", () => {
     const result = filterGroups(groups, "budget");
     expect(result.map((g) => g.items.map((i) => i.id))).toEqual([["budget"], ["c1"]]);
     expect(filterGroups(groups, "fees").map((g) => g.items.map((i) => i.id))).toEqual([["c2"]]);
+  });
+
+  it("ranks a name's start first and finds commands and settings only by how words start", () => {
+    const search: PaletteGroup[] = [
+      {
+        heading: "Settings",
+        items: [
+          item("members", "Members", { keywords: ["sharing", "invite", "partner", "roles"] }),
+          item("rates", "Exchange rates", { keywords: ["currency"] }),
+        ],
+      },
+      {
+        heading: "Categories",
+        loose: true,
+        items: [
+          item("groc", "🛒 Groceries", { searchOnly: true }),
+          item("ingro", "Big grocery run", { searchOnly: true }),
+          item("gas", "Gas & Repairs Overall", { searchOnly: true }),
+        ],
+      },
+    ];
+    const ids = (q: string) => filterGroups(search, q).map((g) => g.items.map((i) => i.id));
+    // "gro" is the start of Groceries, after its emoji, then of a word; Members isn't found by
+    // letters scattered across its keywords, while a category still is.
+    expect(ids("gro")).toEqual([["groc", "ingro", "gas"]]);
+    expect(ids("rates")).toEqual([["rates"]]);
+    // A keyword's start finds a setting.
+    expect(ids("invi")).toEqual([["members"]]);
+    expect(ids("mbrs")).toEqual([]);
   });
 });

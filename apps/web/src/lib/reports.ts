@@ -18,7 +18,7 @@ import { strToU8, zipSync } from "fflate";
 import { z } from "zod";
 import { $api } from "./api";
 import { todayIso } from "./dates";
-import { monthName, monthLabel as shortMonthLabel } from "./months";
+import { monthName, monthLabel as shortMonthLabel, shortMonthName } from "./months";
 
 export type ReportSum = components["schemas"]["ReportSum"];
 export type ReportTransaction = components["schemas"]["ReportTransaction"];
@@ -125,13 +125,13 @@ export function comparisonFor(range: MonthRange, compare: ReportComparison | und
 }
 
 export const PRESET_LABELS: Record<ReportPreset, string> = {
-  this_month: "This Month",
-  last_3_months: "Last 3 Months",
-  last_6_months: "Last 6 Months",
-  last_12_months: "Last 12 Months",
-  year_to_date: "Year To Date",
-  last_year: "Last Year",
-  all_dates: "All Dates",
+  this_month: "This month",
+  last_3_months: "Last 3 months",
+  last_6_months: "Last 6 months",
+  last_12_months: "Last 12 months",
+  year_to_date: "Year to date",
+  last_year: "Last year",
+  all_dates: "All dates",
 };
 
 export const COMPARISON_LABELS: Record<ReportComparison, string> = {
@@ -151,13 +151,83 @@ export function chartNumber(minorUnits: string | bigint, currency: CurrencyCode)
 }
 
 /**
- * The report palette: Okabe–Ito's colour-blind-safe hues (CSS variables defined for both themes in
- * packages/ui's globals.css), handed out by a category's or group's place in the budget so it keeps
- * its colour in every report.
+ * The report palette (packages/ui's theme.css): eight categorical colours, `--report-1` to
+ * `--report-8`, validated so every pair differs for normal colour vision and each neighbouring
+ * pair for every kind of colour vision too. A series keeps one colour across every report: its
+ * place in the plan picks it (distinctColors), so neighbouring categories take neighbouring colours.
  */
-export const REPORT_COLOR_COUNT = 8;
-export const reportColor = (index: number) =>
-  `var(--report-${(((index % REPORT_COLOR_COUNT) + REPORT_COLOR_COUNT) % REPORT_COLOR_COUNT) + 1})`;
+export const REPORT_COLORS = 8;
+/** One of the palette's colours, for charts whose series mean one thing each (debts, savings…). */
+export const reportColor = (slot: number) => `var(--report-${(slot % REPORT_COLORS) + 1})`;
+
+/** Uncategorized, "No payee" and the like: a neutral. */
+export const UNCATEGORIZED_COLOR = "var(--report-uncategorized)";
+/** "Other" (the series a chart folds together): a lighter neutral, apart from Uncategorized. */
+export const OTHER_COLOR = "var(--report-other)";
+/** Money in and money out: blue and orange, never green and red. */
+export const INCOME_COLOR = "var(--report-income)";
+export const SPENDING_COLOR = "var(--report-spending)";
+/** One colour for a ranked list's bars, whose length already tells them apart. */
+export const RANKED_COLOR = "var(--report-1)";
+
+/** Text on a report colour. */
+export const reportInk = (color: string) =>
+  color === UNCATEGORIZED_COLOR ? "var(--report-uncategorized-ink)" : "var(--report-ink)";
+
+export interface ColorRequest {
+  key: string;
+  /** A colour of its own (Uncategorized's neutral, a flag's colour), never handed to another series. */
+  color?: string;
+  /** The series' place in the plan, which picks its palette colour; without one, its key does. */
+  slot?: number;
+}
+
+/** A key's stable place in the palette, for series with no place in the plan (payees, accounts). */
+function keySlot(key: string): number {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (Math.imul(hash, 31) + key.charCodeAt(i)) | 0;
+  return hash >>> 0;
+}
+
+/**
+ * One chart's colours, none repeated. Each series takes its own palette colour (its slot), so a
+ * category is the same colour in every report; when two want the same colour, the one earlier in
+ * the plan keeps it and the other takes the next free one. A series with a colour of its own keeps
+ * it; past `max` named series (at most the palette's eight, counted in `series` order) the rest
+ * get OTHER_COLOR and the chart folds them into "Other".
+ */
+export function distinctColors(
+  series: readonly ColorRequest[],
+  max: number = REPORT_COLORS,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  const limit = Math.min(max, REPORT_COLORS);
+  const named: { key: string; slot: number }[] = [];
+  for (const s of series) {
+    if (s.color) out.set(s.key, s.color);
+    else if (named.length < limit) named.push({ key: s.key, slot: s.slot ?? keySlot(s.key) });
+    else out.set(s.key, OTHER_COLOR);
+  }
+  // Everyone whose colour is free takes it first, so one clash moves only the later series.
+  const byPlan = [...named].sort((a, b) => a.slot - b.slot || (a.key < b.key ? -1 : 1));
+  const taken = new Set<number>();
+  const moved: typeof named = [];
+  for (const s of byPlan) {
+    const want = s.slot % REPORT_COLORS;
+    if (taken.has(want)) moved.push(s);
+    else {
+      taken.add(want);
+      out.set(s.key, reportColor(want));
+    }
+  }
+  for (const { key, slot } of moved) {
+    let i = slot % REPORT_COLORS;
+    while (taken.has(i)) i = (i + 1) % REPORT_COLORS;
+    taken.add(i);
+    out.set(key, reportColor(i));
+  }
+  return new Map(series.map((s) => [s.key, out.get(s.key) ?? OTHER_COLOR]));
+}
 
 /**
  * An axis tick's label: the tick (a chart position) rounded to the minor unit and formatted,
@@ -174,29 +244,6 @@ export function chartTick(
   const text = format(minor);
   return minor % factor === 0n ? text.replace(new RegExp(`\\${decimalMark}\\d+`), "") : text;
 }
-
-/**
- * Each category's and group's colour, the same in every report: Uncategorized grey, then the
- * plan's groups and categories in plan order through the seven hues (grey is kept for
- * Uncategorized and "Other").
- */
-export function planColors(list: {
-  uncategorizedCategoryId: string;
-  groups: readonly { id: string; categories: readonly { id: string }[] }[];
-}) {
-  const hue = (i: number) => reportColor(i % (REPORT_COLOR_COUNT - 1));
-  const categories = new Map<string, string>([[list.uncategorizedCategoryId, UNCATEGORIZED_COLOR]]);
-  const groups = new Map<string, string>();
-  let index = 0;
-  list.groups.forEach((g, groupIndex) => {
-    groups.set(g.id, hue(groupIndex));
-    for (const c of g.categories) categories.set(c.id, hue(index++));
-  });
-  return { categories, groups };
-}
-
-/** Uncategorized and "Other": the palette's grey. */
-export const UNCATEGORIZED_COLOR = reportColor(REPORT_COLOR_COUNT - 1);
 
 export interface ExportFile {
   name: string;
@@ -225,13 +272,14 @@ export function saveBlob(blob: Blob, name: string) {
 }
 
 /**
- * "Oct 2026" (`short`, the range picker), "October 2026" (`long`, table rows) or "10/26" (`axis`,
- * chart ticks).
+ * "Oct 2026" (`short`, the range picker), "October 2026" (`long`, table rows) or "Oct" (`axis`,
+ * chart ticks), where January carries its year ("Jan ’27") so a range across years reads.
  */
 export function monthLabel(month: BudgetMonth, style: "short" | "long" | "axis" = "short") {
   if (style === "short") return shortMonthLabel(month);
   if (style === "long") return `${monthName(month)} ${month.slice(0, 4)}`;
-  return `${month.slice(5, 7)}/${month.slice(2, 4)}`;
+  const name = shortMonthName(month);
+  return month.endsWith("-01") ? `${name} ’${month.slice(2, 4)}` : name;
 }
 
 /** "Aug 2026 – Oct 2026", or "Oct 2026" for one month. */

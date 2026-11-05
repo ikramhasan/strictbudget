@@ -1,8 +1,9 @@
 import { addMonths, type BudgetMonth } from "@strictbudget/engine";
 import { Button } from "@strictbudget/ui/components/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@strictbudget/ui/components/popover";
+import { cn } from "@strictbudget/ui/lib/utils";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { monthLabel } from "@/lib/months";
 
 const MONTH_NAMES = [
@@ -26,7 +27,10 @@ export function MonthNav({
   first,
   last,
   onChange,
+  note,
 }: {
+  /** Under the month's name (its note). */
+  note?: ReactNode;
   month: BudgetMonth;
   current: BudgetMonth;
   first: BudgetMonth;
@@ -58,12 +62,18 @@ export function MonthNav({
           if (o) setYear(Number(month.slice(0, 4)));
         }}
       >
-        <PopoverTrigger asChild>
-          <Button variant="ghost" className="px-2 font-semibold text-xl tracking-tight">
-            {monthLabel(month)}
-            <ChevronDown />
-          </Button>
-        </PopoverTrigger>
+        <div className="grid justify-items-start leading-none">
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              className="h-auto px-2 py-0.5 font-semibold text-lg tabular-nums tracking-tight"
+            >
+              {monthLabel(month)}
+              <ChevronDown />
+            </Button>
+          </PopoverTrigger>
+          {note && <div className="px-2">{note}</div>}
+        </div>
         <PopoverContent align="start" className="w-64">
           <div className="flex items-center justify-between">
             <Button
@@ -119,11 +129,18 @@ export function MonthNav({
       >
         <ChevronRight />
       </Button>
-      {month !== current && (
-        <Button variant="secondary" size="sm" className="ml-1" onClick={() => onChange(current)}>
-          Today
-        </Button>
-      )}
+      {/* Always there, hidden on the current month, so the controls never shift. */}
+      <Button
+        variant="secondary"
+        size="sm"
+        // On a phone's crowded bar it takes no room on the current month.
+        className={cn("ml-1", month === current && "invisible max-md:hidden")}
+        aria-hidden={month === current || undefined}
+        tabIndex={month === current ? -1 : undefined}
+        onClick={() => onChange(current)}
+      >
+        Today
+      </Button>
     </div>
   );
 }

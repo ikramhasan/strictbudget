@@ -49,6 +49,7 @@ export function NewAttachmentCell({
   aiEnabled,
   busy,
   onFill,
+  labelled = false,
   className,
 }: {
   file: File | null;
@@ -57,6 +58,8 @@ export function NewAttachmentCell({
   /** The AI is reading the file, or it's being uploaded with the saved transaction. */
   busy: boolean;
   onFill: (file: File) => void;
+  /** A full-width button saying what it does (a phone's editor), not a bare icon. */
+  labelled?: boolean;
   className?: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -93,7 +96,41 @@ export function NewAttachmentCell({
   );
 
   let cell: ReactNode;
-  if (busy) {
+  if (labelled) {
+    const Icon = busy ? null : file ? (broken ? ImageOff : FileText) : ImagePlus;
+    cell = (
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full justify-start font-normal"
+        disabled={busy}
+        aria-label={file ? `Open the attachment ${file.name}` : undefined}
+        onClick={() => (file ? setViewing(true) : input.current?.click())}
+      >
+        {busy ? (
+          <Spinner className="size-4" />
+        ) : file && preview && !broken ? (
+          <img
+            src={preview}
+            alt=""
+            className="h-5 w-7 rounded-sm bg-muted object-cover"
+            onError={() => setBroken(true)}
+          />
+        ) : (
+          Icon && <Icon className="text-muted-foreground" />
+        )}
+        <span className={cn("truncate", !file && "text-muted-foreground")}>
+          {busy
+            ? "Reading the attachment…"
+            : file
+              ? file.name
+              : aiEnabled
+                ? "Add a receipt, and fill this in from it"
+                : "Add a photo or PDF"}
+        </span>
+      </Button>
+    );
+  } else if (busy) {
     cell = (
       <span className="flex justify-center" role="status" aria-label="Reading the attachment">
         <Spinner className="size-4" />
@@ -130,7 +167,7 @@ export function NewAttachmentCell({
         size="icon-xs"
         className="mx-auto flex text-muted-foreground/60 hover:text-foreground"
         aria-label="Add a photo or PDF"
-        title={aiEnabled ? "Add a receipt" : "Add Attachment"}
+        title={aiEnabled ? "Add a receipt" : "Add attachment"}
         onClick={() => input.current?.click()}
       >
         <ImagePlus />

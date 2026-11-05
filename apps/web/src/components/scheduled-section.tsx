@@ -19,7 +19,7 @@ import {
   Split,
   Trash2,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type MouseEvent, type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import type { Account } from "@/lib/accounts";
 import { $api, apiClient } from "@/lib/api";
@@ -27,6 +27,7 @@ import { useBudget } from "@/lib/budget-context";
 import { apiErrorMessage } from "@/lib/budgets";
 import type { Flag, FlagColor } from "@/lib/flags";
 import { inCurrency } from "@/lib/money-input";
+import { shortDate } from "@/lib/register-dates";
 import {
   draftFromScheduled,
   type ScheduledTransaction,
@@ -35,10 +36,10 @@ import {
 } from "@/lib/scheduled";
 import { type CategoryOption, type Draft, movableAccounts, type Payee } from "@/lib/transactions";
 import { useUndo } from "@/lib/undo";
-import { AccountLogo } from "./accounts-nav";
+import { CategoryLabel } from "./category-label";
 import { FlagMenu } from "./flag-menu";
 import { COLUMN_SPECS, type ColumnId, isEditable, PINNED_BG, pinned } from "./register-columns";
-import { RegisterCell, RegisterRow } from "./register-table";
+import { AccountMark, ICON_CELL, REVEAL_ON_ROW, RegisterCell, RegisterRow } from "./register-table";
 import { ScheduledAttachmentCell } from "./transaction-attachment";
 import { TransactionEditor } from "./transaction-editor";
 
@@ -68,6 +69,9 @@ export function ScheduledSection({
   onChanged,
   selected,
   onSelect,
+  sole,
+  onSelectOnly,
+  accountCompact = false,
 }: {
   rows: readonly ScheduledTransaction[];
   columns: readonly ColumnId[];
@@ -82,6 +86,12 @@ export function ScheduledSection({
   onChanged: () => Promise<void>;
   selected: ReadonlySet<string>;
   onSelect: (id: string, on: boolean, shift: boolean) => void;
+  /** The scheduled row that's the only thing selected, which a click edits. */
+  sole: string | null;
+  /** Selects the row and nothing else (a click on a row that isn't `sole`). */
+  onSelectOnly: (id: string) => void;
+  /** The account column shows each account's name without its logo. */
+  accountCompact?: boolean;
 }) {
   // A viewer sees the schedules but can't change or enter them.
   const { budget, formatAmount, readOnly: viewer } = useBudget();
@@ -161,7 +171,7 @@ export function ScheduledSection({
       let entered = after.enteredTransactionId;
       let current = after.scheduledTransaction ? before.id : null;
       history.record({
-        label: "scheduled transaction edit",
+        label: "edit scheduled transaction",
         undo: async () => {
           // The schedule first: if it can't come back, the entered transaction stays.
           current = await restore(before, current);
@@ -226,7 +236,8 @@ export function ScheduledSection({
       await remove.mutateAsync(path(before.id));
       let current: string | null = null;
       history.record({
-        label: "deleted scheduled transaction",
+        label: "delete scheduled transaction",
+        destructive: true,
         undo: async () => {
           current = await restore(before, null);
           await onChanged();
@@ -239,7 +250,7 @@ export function ScheduledSection({
         },
       });
       await onChanged();
-      toast.success("Scheduled transaction deleted");
+      history.announce("Scheduled transaction deleted", { destructive: true });
     } catch (e) {
       toast.error(apiErrorMessage(e, "Couldn't delete the scheduled transaction."));
     }
@@ -252,7 +263,7 @@ export function ScheduledSection({
     try {
       await send(flag);
       history.record({
-        label: "scheduled transaction flag",
+        label: "flag scheduled transaction",
         undo: async () => {
           await send(old);
           await onChanged();
@@ -274,6 +285,39 @@ export function ScheduledSection({
     setEditing({ id: row.id, draft: draftFromScheduled(row, inCurrency(budget, row.currency)) });
   }
 
+  /**
+   * A click on a row's cell, as on a transaction's: the first selects the row, one on the row
+   * that's the only one selected opens it. Its own controls aren't clicks on the row.
+   */
+  function clickRow(e: MouseEvent<HTMLElement>, row: ScheduledTransaction, edits: boolean) {
+    const target = e.target;
+    if (viewer || !(target instanceof Element) || !e.currentTarget.contains(target)) return;
+    if (target.closest("button, a, input, label, [role=checkbox]")) return;
+    // Shift extends the text selection too, and a double-click selects a word: neither is a drag
+    // to copy text, so they go.
+    if (e.shiftKey || e.detail > 1) window.getSelection()?.removeAllRanges();
+    else if (window.getSelection()?.toString()) return;
+    if (e.shiftKey) return onSelect(row.id, true, true);
+    if (e.metaKey || e.ctrlKey) return onSelect(row.id, !selected.has(row.id), false);
+    if (edits && sole === row.id) return open(row);
+    onSelectOnly(row.id);
+  }
+
+  // Memo has no column of its own in a narrow register: each row's follows its payee.
+  const memoInPayee = !columns.includes("memo");
+  function withMemo(memo: string, payee: ReactNode): ReactNode {
+    if (!memoInPayee || !memo) return payee;
+    return (
+      // One line: a memo without room for a few letters wraps out of sight, not to a sliver.
+      <span className="flex h-5 min-w-0 flex-wrap items-baseline gap-x-2 overflow-hidden">
+        <span className="max-w-full truncate">{payee}</span>
+        <span className="min-w-12 flex-1 basis-0 truncate text-muted-foreground text-xs">
+          {memo}
+        </span>
+      </span>
+    );
+  }
+
   function display(row: ScheduledTransaction, id: ColumnId) {
     const amount = BigInt(row.amount);
     switch (id) {
@@ -292,31 +336,39 @@ export function ScheduledSection({
           />
         );
       case "attachment":
-        return <ScheduledAttachmentCell />;
+        return (
+          <span className={cn("flex justify-center", REVEAL_ON_ROW)}>
+            <ScheduledAttachmentCell />
+          </span>
+        );
       case "flag":
         return row.kind === "splitTransfer" || viewer ? null : (
-          <FlagMenu
-            value={row.flag}
-            flags={flags}
-            onChange={(flag) => void setFlag(row, flag)}
-            onRename={onRenameFlags}
-          />
+          <span className={cn("flex justify-center", !row.flag && REVEAL_ON_ROW)}>
+            <FlagMenu
+              value={row.flag}
+              flags={flags}
+              onChange={(flag) => void setFlag(row, flag)}
+              onRename={onRenameFlags}
+            />
+          </span>
         );
       case "account":
         return (
-          <span className="flex min-w-0 items-center gap-2">
-            <AccountLogo
-              name={row.accountName}
-              logo={accountById.get(row.accountId)?.logo ?? null}
-            />
+          <span className="flex min-w-0 items-center gap-2" title={row.accountName}>
+            {!accountCompact && accounts.some((a) => a.logo) && (
+              <AccountMark logo={accountById.get(row.accountId)?.logo ?? null} />
+            )}
             <span className="truncate">{row.accountName}</span>
           </span>
         );
       case "date": {
         const repeats = row.frequency !== "never" && row.kind !== "splitTransfer";
         return (
-          <span className="flex items-center justify-between gap-1">
-            {formatDate(row.dateNext, budget.dateFormat)}
+          <span
+            className="flex items-center justify-between gap-1"
+            title={formatDate(row.dateNext, budget.dateFormat)}
+          >
+            {shortDate(row.dateNext, budget.dateFormat, today)}
             {repeats && (
               <Repeat
                 className="size-3.5 shrink-0 text-muted-foreground"
@@ -329,13 +381,16 @@ export function ScheduledSection({
         );
       }
       case "payee":
-        return row.transferAccountId ? (
-          <span className="flex min-w-0 items-center gap-1">
-            <ArrowLeftRight className="size-3.5 shrink-0" aria-label="Transfer" />
-            <span className="truncate">{row.payeeName}</span>
-          </span>
-        ) : (
-          row.payeeName
+        return withMemo(
+          row.memo,
+          row.transferAccountId ? (
+            <span className="flex min-w-0 items-center gap-1">
+              <ArrowLeftRight className="size-3.5 shrink-0" aria-label="Transfer" />
+              <span className="truncate">{row.payeeName}</span>
+            </span>
+          ) : (
+            row.payeeName
+          ),
         );
       case "category":
         if (row.subtransactions.length > 0) {
@@ -343,20 +398,33 @@ export function ScheduledSection({
             .size;
           return (
             <span className="flex items-center gap-1.5">
-              <Split className="size-4 shrink-0" />
-              <span className="truncate">
+              <Split className="size-4 shrink-0" aria-hidden />
+              <span className="truncate" aria-hidden>
+                Split · {count}
+              </span>
+              <span className="sr-only">
                 Split ({count} {count === 1 ? "category" : "categories"})
               </span>
             </span>
           );
         }
-        return categorized(row) ? row.categoryName : "";
+        return categorized(row) && row.categoryName ? (
+          <CategoryLabel name={row.categoryName} />
+        ) : (
+          ""
+        );
       case "memo":
         return row.memo;
       case "outflow":
         return amount < 0n ? show(-amount, row.currency) : "";
       case "inflow":
         return amount > 0n ? show(amount, row.currency) : "";
+      case "amount":
+        return (
+          <span className={cn(amount > 0n && "text-success")}>
+            {amount > 0n ? `+${show(amount, row.currency)}` : show(amount, row.currency)}
+          </span>
+        );
       case "actions":
         return viewer ? null : (
           <DropdownMenu>
@@ -396,7 +464,8 @@ export function ScheduledSection({
             className="ml-8 inline-flex items-center gap-1.5 font-medium text-sm"
           >
             <CalendarDays className="size-4 text-muted-foreground" />
-            Scheduled Transactions
+            Scheduled transactions
+            <span className="font-normal text-muted-foreground tabular-nums">{rows.length}</span>
             {collapsed ? (
               <ChevronRight className="size-4" aria-hidden />
             ) : (
@@ -440,27 +509,39 @@ export function ScheduledSection({
                 budget.dateFormat,
               )}`}
               data-selected={selected.has(row.id) || undefined}
-              className={SCHEDULED_ROW}
+              data-sole={sole === row.id || undefined}
+              className={cn("h-9 pointer-coarse:h-11", SCHEDULED_ROW)}
             >
               {columns.map((id) => {
                 const spec = COLUMN_SPECS[id];
-                const editable = !readOnly && !viewer && isEditable(id);
+                const editable = !readOnly && !viewer && (isEditable(id) || id === "amount");
                 const pin = pinned(columns, id);
                 return (
                   <RegisterCell
                     key={id}
+                    title={
+                      id === "payee"
+                        ? [row.payeeName, memoInPayee ? row.memo : ""]
+                            .filter(Boolean)
+                            .join(" · ") || undefined
+                        : id === "category"
+                          ? (row.categoryName ?? undefined)
+                          : id === "memo"
+                            ? row.memo || undefined
+                            : undefined
+                    }
                     style={pin?.style}
                     className={cn(
-                      "truncate",
+                      // The row sets the height, as the transactions' rows do.
+                      "truncate py-0",
                       pin && [pin.className, PINNED_BG.scheduled],
                       spec.align === "right" && "text-right tabular-nums",
-                      spec.align === "center" && "py-1 text-center",
-                      id === "flag" && "px-1",
-                      id === "actions" && "py-1",
+                      spec.align === "center" && "text-center",
+                      ICON_CELL[id],
                       (id === "category" || id === "memo") && "text-muted-foreground",
-                      editable && "cursor-text",
+                      editable && "group-data-[sole]/row:cursor-text",
                     )}
-                    onClick={editable ? () => open(row) : undefined}
+                    onClick={(e) => clickRow(e, row, editable)}
                   >
                     {display(row, id)}
                   </RegisterCell>
@@ -479,18 +560,28 @@ export function ScheduledSection({
                     {line.transferAccountId && (
                       <ArrowLeftRight className="size-3.5 shrink-0" aria-label="Transfer" />
                     )}
-                    <span className="truncate">{line.payeeName}</span>
+                    {withMemo(line.memo, <span className="truncate">{line.payeeName}</span>)}
                   </span>
                 ),
-                category: usesCategory(type, to) ? line.categoryName : "",
+                category:
+                  usesCategory(type, to) && line.categoryName ? (
+                    <CategoryLabel name={line.categoryName} />
+                  ) : (
+                    ""
+                  ),
                 memo: line.memo,
                 outflow: lineAmount < 0n ? show(-lineAmount, row.currency) : "",
                 inflow: lineAmount > 0n ? show(lineAmount, row.currency) : "",
+                amount:
+                  lineAmount > 0n
+                    ? `+${show(lineAmount, row.currency)}`
+                    : show(lineAmount, row.currency),
               };
               return (
                 <RegisterRow
                   key={`${row.id}:${line.id}`}
                   aria-label={`Split line of ${row.payeeName ?? "scheduled transaction"}`}
+                  data-sole={sole === row.id || undefined}
                   className="bg-muted/40 text-muted-foreground text-xs"
                 >
                   {columns.map((id) => (
@@ -504,9 +595,9 @@ export function ScheduledSection({
                           PINNED_BG.scheduled,
                         ],
                         COLUMN_SPECS[id].align === "right" && "text-right tabular-nums",
-                        isEditable(id) && "cursor-text",
+                        isEditable(id) && "group-data-[sole]/row:cursor-text",
                       )}
-                      onClick={isEditable(id) && !viewer ? () => open(row) : undefined}
+                      onClick={(e) => clickRow(e, row, isEditable(id))}
                     >
                       {cells[id] ?? null}
                     </RegisterCell>

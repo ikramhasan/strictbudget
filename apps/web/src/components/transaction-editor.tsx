@@ -18,16 +18,31 @@ import {
 import { Button } from "@strictbudget/ui/components/button";
 import { FieldError } from "@strictbudget/ui/components/field";
 import { Input } from "@strictbudget/ui/components/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@strictbudget/ui/components/input-group";
 import { NativeSelect, NativeSelectOption } from "@strictbudget/ui/components/native-select";
+import { ToggleGroup, ToggleGroupItem } from "@strictbudget/ui/components/toggle-group";
 import { cn } from "@strictbudget/ui/lib/utils";
-import { Circle, CircleCheck, Plus, Split, X } from "lucide-react";
-import { type KeyboardEvent, type ReactNode, useState } from "react";
+import { Minus, Plus, Split, Trash2, X } from "lucide-react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  type Ref,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 import type { Account } from "@/lib/accounts";
 import { applyTransactionDraft, draftTransactionFromFile } from "@/lib/ai";
 import { todayIso } from "@/lib/dates";
 import type { Flag } from "@/lib/flags";
-import { inCurrency, type MoneySettings, parseMoneyInput } from "@/lib/money-input";
+import { inCurrency, type MoneySettings, parseMoneyInput, toMoneyInput } from "@/lib/money-input";
 import {
   type CategoryOption,
   clearedFor,
@@ -37,43 +52,81 @@ import {
   type LineDraft,
   type Payee,
   payeeSuggestionIds,
-  remainingLabel,
   splitMismatch,
   splitRemaining,
   startSplit,
   type TransferDirection,
   transferRateLabel,
+  withRemainder,
   withSplitTotal,
 } from "@/lib/transactions";
 import { FlagMenu } from "./flag-menu";
 import { NewAttachmentCell } from "./new-transaction-attachment";
-import { type ColumnId, PINNED_BG, pinned, pinnedColumns, pinnedWidth } from "./register-columns";
-import { CategoryField, DateField, listOwnsKey, PayeeField } from "./register-fields";
-import { RegisterCell, RegisterRow } from "./register-table";
+import {
+  COLUMN_SPECS,
+  type ColumnId,
+  PINNED_BG,
+  pinned,
+  pinnedColumns,
+  pinnedWidth,
+} from "./register-columns";
+import {
+  CategoryField,
+  DateField,
+  listOwnsKey,
+  type PayeeChoice,
+  PayeeField,
+} from "./register-fields";
+import {
+  ClearedMark,
+  DATE_EDITOR_FIT,
+  EDITOR_CELL,
+  RegisterCell,
+  RegisterRow,
+} from "./register-table";
 
-/** Fields that share a line in the stacked editor. */
-const STACKED_ROWS: ColumnId[][] = [
-  ["account"],
-  ["date"],
-  ["payee"],
-  ["category"],
-  ["memo"],
-  ["outflow", "inflow"],
-  ["flag", "cleared"],
-  ["attachment"],
-];
-const STACKED_LABEL: Partial<Record<ColumnId, string>> = {
-  account: "Account",
-  date: "Date",
-  payee: "Payee",
-  category: "Category",
-  memo: "Memo",
-  outflow: "Outflow",
-  inflow: "Inflow",
-  flag: "Flag",
-  cleared: "Cleared",
-  attachment: "Attachment",
-};
+/**
+ * A typed amount as the budget writes amounts ("50" reads "50.00", "12+3" "15.00"), so the figures
+ * in an editor line up; left as typed when it can't be read (saving says why).
+ */
+function tidyAmount(text: string, settings: MoneySettings) {
+  if (text.trim() === "") return text;
+  const amount = parseMoneyInput(text, settings);
+  return typeof amount === "string" ? text : toMoneyInput(amount, settings);
+}
+
+/** The field an editor opens in: a column of the transaction's row, or of one of its split lines. */
+export interface EditorFocus {
+  column: ColumnId;
+  /** The split line's index; left out for the transaction's own row. */
+  line?: number;
+}
+
+/**
+ * The control to focus for `focus` in a row editor's rows (under `body`): the clicked cell's field.
+ * A split's own category isn't a field, so its first line's is; a memo without a column is the
+ * footer's.
+ */
+function focusTarget(body: ParentNode, { column, line }: EditorFocus) {
+  const row =
+    line !== undefined && line >= 0 ? `[data-editor-line="${line}"]` : "[data-editor-main]";
+  const candidates = [
+    `${row} [data-editor-column="${column}"]`,
+    `[data-editor-line="0"] [data-editor-column="${column}"]`,
+    column === "memo" ? "[data-editor-footer-memo]" : null,
+  ];
+  for (const selector of candidates) {
+    const field = selector
+      ? body
+          .querySelector(selector)
+          ?.querySelector<HTMLElement>(
+            "input:not([type=hidden]), select, textarea, button:not([tabindex='-1'])",
+          )
+      : null;
+    if (field) return field;
+  }
+  return null;
+}
 
 export function TransactionEditor({
   initial,
@@ -91,6 +144,10 @@ export function TransactionEditor({
   scheduled = false,
   openDatePicker = false,
   focusMemo = false,
+  focusSplit = false,
+  focusAmount = false,
+  focusCell,
+  recentPayees = [],
   layout = "row",
   pending,
   error,
@@ -98,6 +155,7 @@ export function TransactionEditor({
   onSave,
   onSaveAndAddAnother,
   onCancel,
+  onDelete,
   attachment,
   newAttachment,
 }: {
@@ -123,6 +181,14 @@ export function TransactionEditor({
   openDatePicker?: boolean;
   /** Start in the memo (the S shortcut's split). */
   focusMemo?: boolean;
+  /** Start in the first split line's amount (a transaction just split from its category). */
+  focusSplit?: boolean;
+  /** Start in the amount, raising a phone's number keyboard (a new transaction in the drawer). */
+  focusAmount?: boolean;
+  /** Start in this field (the row's cell that was clicked to open it). */
+  focusCell?: EditorFocus;
+  /** Payees to offer as one tap each under the stacked editor's payee field. */
+  recentPayees?: readonly string[];
   layout?: "row" | "stacked";
   pending: boolean;
   error: string | null;
@@ -133,6 +199,8 @@ export function TransactionEditor({
   /** A new row's "Save and add another" (also its Enter); the next row keeps the date. */
   onSaveAndAddAnother?: (draft: Draft, file: File | null) => void;
   onCancel: () => void;
+  /** The stacked editor's Delete, under its fields (an existing transaction). */
+  onDelete?: () => void;
   /** An existing transaction's attachment cell, shown as it is while the row is edited. */
   attachment?: ReactNode;
   /**
@@ -172,6 +240,34 @@ export function TransactionEditor({
   const withFee = Boolean(onSaveAndAddAnother && !scheduled && !lines && transferTo && sending);
   const feeSettings = inCurrency(budgetSettings, sending?.currency);
   const canSplit = account ? usesCategory(account.type, null) && !draft.transferAccountId : false;
+  // Splitting moves to the first line's amount, on the side the transaction's amount is on.
+  const firstLineAmount = useRef<HTMLInputElement>(null);
+  const [splitFocus, setSplitFocus] = useState(focusSplit ? 1 : 0);
+  useEffect(() => {
+    if (splitFocus === 0) return;
+    // After the category list closes, which hands focus back to where it opened.
+    // Selected, so typing replaces the whole amount it starts with.
+    const frame = requestAnimationFrame(() => {
+      firstLineAmount.current?.focus();
+      firstLineAmount.current?.select();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [splitFocus]);
+  const direction = typedDirection(draft) === "in" ? "inflow" : "outflow";
+  const mainRow = useRef<HTMLTableRowElement>(null);
+  // Once, as the editor opens.
+  useEffect(() => {
+    if (!focusCell || layout !== "row") return;
+    const frame = requestAnimationFrame(() => {
+      const body = mainRow.current?.parentElement;
+      const field = body ? focusTarget(body, focusCell) : null;
+      if (!field) return;
+      field.focus();
+      // An amount is selected, so typing replaces it.
+      if (field instanceof HTMLInputElement && field.inputMode === "decimal") field.select();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
   // Remounts the payee field focused, after the card's "Payment to <card>" is picked.
   const [payeeFocus, setPayeeFocus] = useState(0);
   // A card's category list has "Payment to <card>" under "Credit Cards". Picking it clears the payee and category and moves to the payee list, to pick the account
@@ -183,6 +279,55 @@ export function TransactionEditor({
           { id: CARD_PAYMENT, name: `Payment to ${account.name}`, group: "Credit Cards" },
         ]
       : categories;
+
+  function chooseAccount(id: string) {
+    const next = accounts.find((a) => a.id === id);
+    // An account can't transfer to itself.
+    const self = draft.transferAccountId === id;
+    set({
+      accountId: id,
+      // On a new row (the one with "Save and add another") the account's starting state is
+      // re-applied, over a manual toggle.
+      ...(onSaveAndAddAnother ? { cleared: clearedFor(next?.type) } : {}),
+      ...(self ? { payeeName: "", transferAccountId: null } : {}),
+      ...(next && !usesCategory(next.type, self ? null : transferTo?.type)
+        ? { categoryId: null, lines: null }
+        : {}),
+    });
+  }
+
+  function choosePayee({ name, transferAccountId, payee }: PayeeChoice) {
+    setDraft((d) => {
+      const to = accounts.find((a) => a.id === transferAccountId);
+      const uses = account ? usesCategory(account.type, to?.type) : true;
+      return {
+        ...d,
+        payeeName: name,
+        transferAccountId,
+        // What another account receives is typed again for a new one.
+        ...(transferAccountId !== d.transferAccountId ? { transferAmount: "" } : {}),
+        ...(!uses ? { categoryId: null } : {}),
+        // Fills in the payee's category, by its Categorization setting.
+        ...(payee?.prefillCategoryId && uses && d.categoryId === null && !d.lines
+          ? { categoryId: payee.prefillCategoryId }
+          : {}),
+      };
+    });
+  }
+
+  /** An amount field's text tidied as it's left ("50" reads "50.00"). */
+  function tidyMain(side: "outflow" | "inflow") {
+    setDraft((d) => ({ ...d, [side]: tidyAmount(d[side], settings) }));
+  }
+  function tidyLine(key: string, side: "outflow" | "inflow") {
+    setDraft((d) => ({
+      ...d,
+      lines:
+        d.lines?.map((l) =>
+          l.key === key ? { ...l, [side]: tidyAmount(l[side], settings) } : l,
+        ) ?? null,
+    }));
+  }
 
   function setLine(key: string, patch: Partial<LineDraft>) {
     setDraft((d) => ({
@@ -196,9 +341,12 @@ export function TransactionEditor({
 
   // Saving a split whose lines miss its total asks first.
   const [mismatch, setMismatch] = useState<ReturnType<typeof splitMismatch>>(null);
+  // A split's "Remaining" turns red only once saving has found it short.
+  const [triedSave, setTriedSave] = useState(false);
   function save(another = false) {
     // Not while the AI is still filling the row in.
     if (filling) return;
+    if (draft.lines) setTriedSave(true);
     const found = splitMismatch(draft, settings);
     if (found) setMismatch(found);
     else if (another && onSaveAndAddAnother) onSaveAndAddAnother(draft, file);
@@ -255,6 +403,7 @@ export function TransactionEditor({
             // Reading it, or uploading it with the saved transaction.
             busy={filling || (pending && file !== null)}
             onFill={(receipt) => void fillFrom(receipt)}
+            labelled={layout === "stacked"}
             className={layout === "stacked" ? "justify-start" : "justify-center"}
           />
         ) : (
@@ -267,30 +416,18 @@ export function TransactionEditor({
             flags={flags}
             onChange={(flag) => set({ flag })}
             onRename={onRenameFlags}
+            labelled={layout === "stacked"}
           />
         );
       case "account":
         return (
           <NativeSelect
             aria-label="Account"
-            // First field of the row (the date is, without an account column).
-            autoFocus
+            // First field of the row (the date is, without an account column). The stacked editor
+            // starts in the amount, or nowhere: focusing a select would open no keyboard.
+            autoFocus={!focusMemo && !focusSplit && !focusCell && layout === "row"}
             value={draft.accountId}
-            onChange={(e) => {
-              const next = accounts.find((a) => a.id === e.target.value);
-              // An account can't transfer to itself.
-              const self = draft.transferAccountId === e.target.value;
-              set({
-                accountId: e.target.value,
-                // On a new row (the one with "Save and add another") the account's starting state
-                // is re-applied, over a manual toggle.
-                ...(onSaveAndAddAnother ? { cleared: clearedFor(next?.type) } : {}),
-                ...(self ? { payeeName: "", transferAccountId: null } : {}),
-                ...(next && !usesCategory(next.type, self ? null : transferTo?.type)
-                  ? { categoryId: null, lines: null }
-                  : {}),
-              });
-            }}
+            onChange={(e) => chooseAccount(e.target.value)}
             className="h-8 w-full"
           >
             {(accountChoices ?? accounts).map((a) => (
@@ -306,8 +443,16 @@ export function TransactionEditor({
             value={draft.date}
             onChange={(date) => set({ date })}
             format={dateFormat}
+            // In a register's row, as its rows show it.
+            short={layout === "row"}
             // A phone's drawer opens without the keyboard; the date is a tap away.
-            autoFocus={!columns.includes("account") && !focusMemo && layout !== "stacked"}
+            autoFocus={
+              !columns.includes("account") &&
+              !focusMemo &&
+              !focusSplit &&
+              !focusCell &&
+              layout !== "stacked"
+            }
             defaultOpen={openDatePicker}
             repeat={
               repeat
@@ -326,32 +471,23 @@ export function TransactionEditor({
             transfers={lines ? [] : transfers}
             own={account && { type: account.type, direction: typedDirection(draft) }}
             transferAccountId={draft.transferAccountId}
-            onChange={({ name, transferAccountId, payee }) =>
-              setDraft((d) => {
-                const to = accounts.find((a) => a.id === transferAccountId);
-                const uses = account ? usesCategory(account.type, to?.type) : true;
-                return {
-                  ...d,
-                  payeeName: name,
-                  transferAccountId,
-                  // What another account receives is typed again for a new one.
-                  ...(transferAccountId !== d.transferAccountId ? { transferAmount: "" } : {}),
-                  ...(!uses ? { categoryId: null } : {}),
-                  // Fills in the payee's category, by its Categorization setting.
-                  ...(payee?.prefillCategoryId && uses && d.categoryId === null && !d.lines
-                    ? { categoryId: payee.prefillCategoryId }
-                    : {}),
-                };
-              })
-            }
+            onChange={choosePayee}
           />
         );
       case "category":
         if (lines) {
           return (
-            <p className="flex items-center gap-1.5 px-2 text-sm">
-              <Split className="size-4 text-muted-foreground" />
-              Split ({lines.length} lines)
+            <p
+              className="flex min-w-0 items-center gap-1.5 px-1.5 text-sm"
+              title={`Split (${lines.length} ${lines.length === 1 ? "line" : "lines"})`}
+            >
+              <Split className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="truncate" aria-hidden>
+                Split · {lines.length}
+              </span>
+              <span className="sr-only">
+                Split into {lines.length} {lines.length === 1 ? "line" : "lines"}
+              </span>
             </p>
           );
         }
@@ -366,7 +502,14 @@ export function TransactionEditor({
               set({ categoryId: null, payeeName: "", transferAccountId: null });
               setPayeeFocus((n) => n + 1);
             }}
-            onSplit={canSplit ? () => setDraft(startSplit) : undefined}
+            onSplit={
+              canSplit
+                ? () => {
+                    setDraft(startSplit);
+                    setSplitFocus((n) => n + 1);
+                  }
+                : undefined
+            }
             // Opens the payee list, keeping the payee and category.
             onPaymentTransfer={() => setPayeeFocus((n) => n + 1)}
             categories={pickable}
@@ -374,7 +517,10 @@ export function TransactionEditor({
             suggestedIds={payeeSuggestionIds(payees, draft)}
           />
         ) : (
-          <p className="truncate px-2 text-muted-foreground text-sm italic">
+          <p
+            className="truncate px-1.5 text-muted-foreground text-sm italic"
+            title={transferCategory?.(draft.accountId, draft.transferAccountId) || undefined}
+          >
             {transferCategory?.(draft.accountId, draft.transferAccountId) || "Category not needed"}
           </p>
         );
@@ -382,21 +528,40 @@ export function TransactionEditor({
         return (
           <Input
             aria-label="Memo"
-            placeholder="Memo"
+            // The stacked editor names the field above it.
+            placeholder={layout === "stacked" ? undefined : "Memo"}
             autoFocus={focusMemo}
             value={draft.memo}
             onChange={(e) => set({ memo: e.target.value })}
             className="h-8"
           />
         );
+      case "amount":
+        return (
+          <AmountField
+            outflow={draft.outflow}
+            inflow={draft.inflow}
+            fallback={linesTotal ? (linesTotal > 0n ? "inflow" : "outflow") : direction}
+            settings={settings}
+            computed={linesTotal ? show(linesTotal < 0n ? -linesTotal : linesTotal) : undefined}
+            onChange={set}
+          />
+        );
       case "outflow":
-      case "inflow":
+      case "inflow": {
+        // A split left without its own amount shows its lines' total, on its side.
+        const computed =
+          linesTotal && (column === "outflow" ? linesTotal < 0n : linesTotal > 0n)
+            ? show(linesTotal < 0n ? -linesTotal : linesTotal)
+            : undefined;
         return (
           <Input
             aria-label={column === "outflow" ? "Outflow" : "Inflow"}
-            placeholder={column === "outflow" ? "Outflow" : "Inflow"}
+            placeholder={computed ?? (column === "outflow" ? "Outflow" : "Inflow")}
+            title={computed ? "The lines' total" : undefined}
             inputMode="decimal"
             value={draft[column]}
+            onBlur={() => tidyMain(column)}
             // One side only: typing an outflow clears the inflow and vice versa.
             onChange={(e) =>
               set(
@@ -405,30 +570,57 @@ export function TransactionEditor({
                   : { inflow: e.target.value, outflow: "" },
               )
             }
-            className="h-8 text-right tabular-nums"
+            className={cn(
+              "h-8 text-right tabular-nums",
+              computed && "placeholder:text-foreground/70",
+            )}
           />
         );
+      }
       case "cleared":
         if (scheduled) return null;
+        if (layout === "stacked") {
+          const cleared = draft.cleared === "cleared";
+          return (
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed={cleared}
+              className="w-full justify-start font-normal"
+              onClick={() => set({ cleared: cleared ? "uncleared" : "cleared" })}
+            >
+              <ClearedMark state={cleared ? "cleared" : "uncleared"} />
+              {cleared ? "Cleared" : "Uncleared"}
+            </Button>
+          );
+        }
         return (
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
+            className="group/cleared"
             aria-label={draft.cleared === "cleared" ? "Cleared" : "Uncleared"}
             aria-pressed={draft.cleared === "cleared"}
             onClick={() => set({ cleared: draft.cleared === "cleared" ? "uncleared" : "cleared" })}
           >
-            {draft.cleared === "cleared" ? (
-              <CircleCheck className="text-primary-text" />
-            ) : (
-              <Circle className="text-muted-foreground" />
-            )}
+            <ClearedMark state={draft.cleared === "cleared" ? "cleared" : "uncleared"} />
           </Button>
         );
       default:
         return null;
     }
+  }
+
+  /** Once every other line has an amount, the one left empty takes the rest. */
+  function fillRemainder(leaving: string) {
+    setDraft((d) => {
+      const empty = (d.lines ?? []).filter(
+        (l) => l.outflow.trim() === "" && l.inflow.trim() === "",
+      );
+      const last = empty.length === 1 ? empty[0] : undefined;
+      return last && last.key !== leaving ? withRemainder(d, last.key, settings) : d;
+    });
   }
 
   function lineCell(line: LineDraft, index: number, column: ColumnId) {
@@ -482,14 +674,32 @@ export function TransactionEditor({
             className="h-8"
           />
         );
+      case "amount":
+        return (
+          <AmountField
+            label={name}
+            outflow={line.outflow}
+            inflow={line.inflow}
+            fallback={direction}
+            settings={settings}
+            inputRef={index === 0 ? firstLineAmount : undefined}
+            onBlur={() => fillRemainder(line.key)}
+            onChange={(patch) => setLine(line.key, patch)}
+          />
+        );
       case "outflow":
       case "inflow":
         return (
           <Input
+            ref={index === 0 && column === direction ? firstLineAmount : undefined}
             aria-label={`${column === "outflow" ? "Outflow" : "Inflow"}, ${name}`}
             placeholder={column === "outflow" ? "Outflow" : "Inflow"}
             inputMode="decimal"
             value={line[column]}
+            onBlur={() => {
+              tidyLine(line.key, column);
+              fillRemainder(line.key);
+            }}
             onChange={(e) =>
               setLine(
                 line.key,
@@ -520,28 +730,86 @@ export function TransactionEditor({
 
   const split = lines ? splitRemaining(draft, settings) : null;
   const remaining = split && "remaining" in split ? split.remaining : null;
+  /** A split whose own amount is left empty totals its lines: shown as they're typed. */
+  const linesTotal =
+    split && "total" in split && draft.outflow.trim() === "" && draft.inflow.trim() === ""
+      ? split.total
+      : null;
+  const splitStatus =
+    remaining === null || !split || "error" in split
+      ? "Check the amounts"
+      : linesTotal !== null
+        ? linesTotal === 0n
+          ? "Enter an amount on each line"
+          : `Total ${show(linesTotal < 0n ? -linesTotal : linesTotal)}${linesTotal > 0n ? " inflow" : ""}`
+        : remaining === 0n
+          ? "Fully split"
+          : remaining > 0n
+            ? `Remaining ${show(remaining)}`
+            : `${show(-remaining)} over the total`;
   const rateLabel = transferRate(draft, settings, account?.currency, crossTo?.currency);
 
-  const footerItems = (
+  // The row editor's memo goes in its footer when the register has no Memo column, and each split
+  // line's in the cells before its payee (which lines leave empty).
+  const memoInFooter = layout === "row" && !columns.includes("memo");
+  const memoLead = memoInFooter
+    ? columns.slice(columns.indexOf("select") + 1, columns.indexOf("payee"))
+    : [];
+  const footerExtras = (
     <>
+      {memoInFooter && (
+        // Lined up with the split lines' memos, which start after the select column.
+        <div
+          data-editor-footer-memo
+          className="mr-auto w-72 max-w-full"
+          style={{
+            marginLeft: `calc(0rem${columns
+              .slice(0, columns.indexOf("select") + 1)
+              .map((c) => ` + ${COLUMN_SPECS[c].width ?? "0rem"}`)
+              .join("")} - 0.25rem)`,
+          }}
+        >
+          <Input
+            aria-label="Memo"
+            placeholder="Memo"
+            autoFocus={focusMemo}
+            value={draft.memo}
+            onChange={(e) => set({ memo: e.target.value })}
+            className="h-8"
+          />
+        </div>
+      )}
       {lines && (
         <>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => set({ lines: [...lines, emptyLine()] })}
+            onClick={() => {
+              const line = emptyLine();
+              setDraft((d) =>
+                withRemainder({ ...d, lines: [...(d.lines ?? []), line] }, line.key, settings),
+              );
+            }}
           >
             <Plus /> Add line
           </Button>
           <p
             className={cn(
               "mr-auto text-sm tabular-nums",
-              remaining !== null && remaining !== 0n ? "text-destructive" : "text-muted-foreground",
+              // Still being typed, what's left is only a count; it's a problem once lines go past
+              // the total, or saving found them short.
+              linesTotal !== null
+                ? "font-medium text-foreground"
+                : remaining === 0n && split && "total" in split && split.total !== 0n
+                  ? "text-success"
+                  : (remaining !== null && remaining < 0n) || (triedSave && remaining !== 0n)
+                    ? "text-destructive"
+                    : "text-muted-foreground",
             )}
             aria-live="polite"
           >
-            {remaining === null ? "Check the amounts" : remainingLabel(remaining, settings)}
+            {splitStatus}
           </p>
         </>
       )}
@@ -611,14 +879,32 @@ export function TransactionEditor({
           <span aria-hidden>{budgetSettings.currency}</span>
         </div>
       )}
-      <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+    </>
+  );
+  // On a new row Enter is "Save and add another", so that's the primary; Save, which closes the
+  // row, is the quieter one beside it.
+  const footerActions = (
+    <>
+      <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
         Cancel
       </Button>
-      <Button type="button" size="sm" onClick={() => save()} disabled={pending || filling}>
+      <Button
+        type="button"
+        variant={onSaveAndAddAnother ? "outline" : "default"}
+        size="sm"
+        onClick={() => save()}
+        disabled={pending || filling}
+      >
         Save
       </Button>
       {onSaveAndAddAnother && (
-        <Button type="button" size="sm" onClick={() => save(true)} disabled={pending || filling}>
+        <Button
+          type="button"
+          size="sm"
+          title="Enter"
+          onClick={() => save(true)}
+          disabled={pending || filling}
+        >
           Save and add another
         </Button>
       )}
@@ -628,7 +914,7 @@ export function TransactionEditor({
     <AlertDialog open={mismatch !== null} onOpenChange={(open) => !open && setMismatch(null)}>
       <AlertDialogContent className="data-[size=default]:sm:max-w-md">
         <AlertDialogHeader>
-          <AlertDialogTitle>Something Doesn't Add Up</AlertDialogTitle>
+          <AlertDialogTitle>Something doesn't add up</AlertDialogTitle>
           <AlertDialogDescription>
             {mismatch &&
               `The total is ${show(mismatch.total)}, but the splits add up to ${show(
@@ -645,69 +931,135 @@ export function TransactionEditor({
                 setDraft((d) => ({ ...d, lines }));
               }}
             >
-              Auto-Distribute
+              Auto-distribute
             </AlertDialogAction>
           )}
           <AlertDialogAction
             variant="outline"
             onClick={() => setDraft((d) => withSplitTotal(d, settings))}
           >
-            Update Total
+            Update total
           </AlertDialogAction>
-          <AlertDialogCancel>Adjust Manually</AlertDialogCancel>
+          <AlertDialogCancel>Adjust manually</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
 
-  // A phone edits in a drawer: the same fields, one under another, with their names.
+  // A phone edits in a drawer, amount first: the figure large at the top with its direction under
+  // it, then who and what for, then the rest, each field named above it.
   if (layout === "stacked") {
-    const stacked = STACKED_ROWS.flat().filter(
-      (c) =>
-        columns.includes(c) ||
-        c === "flag" ||
-        c === "cleared" ||
-        (c === "attachment" && newAttachment !== undefined),
+    const field = (name: string, control: ReactNode, className?: string) => (
+      <div className={cn("grid min-w-0 gap-1.5", className)}>
+        <span className="font-medium text-muted-foreground text-xs">{name}</span>
+        {control}
+      </div>
     );
+    const showChips =
+      recentPayees.length > 0 &&
+      !draft.transferAccountId &&
+      (draft.payeeName === "" || recentPayees.includes(draft.payeeName));
+    const attachmentField = newAttachment ? cell("attachment") : attachment;
     return (
       <form
         aria-label={label}
-        className="grid gap-3"
+        className="grid gap-5 [&_[data-slot=input-group]]:h-11 [&_[data-slot=native-select-wrapper]]:h-11 [&_input]:h-11 [&_select]:h-11"
         onKeyDown={handleKeyDown}
         onSubmit={(e) => {
           e.preventDefault();
           save();
         }}
       >
-        {STACKED_ROWS.map((row) => {
-          const fields = row
-            .filter((column) => stacked.includes(column))
-            .map((column) => ({ column, field: cell(column) }))
-            .filter(({ field }) => field);
-          if (fields.length === 0) return null;
-          return (
-            <div key={row.join()} className="grid auto-cols-fr grid-flow-col gap-3">
-              {fields.map(({ column, field }) => (
-                <div key={column} className="grid gap-1.5 [&_button]:min-h-11 [&_input]:h-11">
-                  <span className="text-muted-foreground text-xs">{STACKED_LABEL[column]}</span>
-                  {field}
-                </div>
-              ))}
+        <HeroAmount
+          outflow={draft.outflow}
+          inflow={draft.inflow}
+          fallback={direction}
+          settings={settings}
+          autoFocus={focusAmount}
+          onChange={set}
+        />
+        <div className="grid gap-1.5">
+          {field(
+            "Payee",
+            // Its own "Payee" placeholder would only repeat the name above it.
+            <div className="[&_input::placeholder]:text-transparent">{cell("payee")}</div>,
+          )}
+          {showChips && (
+            // biome-ignore lint/a11y/useSemanticElements: a group of buttons, not a form section
+            <div
+              role="group"
+              aria-label="Recent payees"
+              className="-mx-4 flex gap-2 overflow-x-auto px-4 pt-0.5 pb-1 [scrollbar-width:none]"
+            >
+              {recentPayees.map((name) => {
+                const chosen = draft.payeeName === name;
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    aria-pressed={chosen}
+                    className={cn(
+                      "h-8 shrink-0 rounded-full border px-3 text-[13px] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                      chosen
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "bg-background hover:bg-accent",
+                    )}
+                    onClick={() =>
+                      choosePayee({
+                        name,
+                        transferAccountId: null,
+                        payee: payees.find((p) => p.name === name),
+                      })
+                    }
+                  >
+                    {name}
+                  </button>
+                );
+              })}
             </div>
-          );
-        })}
+          )}
+        </div>
+        {field("Category", cell("category"))}
+        <div className="grid grid-cols-2 gap-3">
+          {columns.includes("account") && field("Account", cell("account"))}
+          {field("Date", cell("date"), columns.includes("account") ? undefined : "col-span-2")}
+        </div>
+        {field("Memo", cell("memo"))}
+        <div className="grid grid-cols-2 gap-3 [&_button]:h-11">
+          {field("Flag", cell("flag"))}
+          {!scheduled && field("Status", cell("cleared"))}
+        </div>
+        {attachmentField &&
+          field("Receipt or photo", <div className="[&_button]:h-11">{attachmentField}</div>)}
         {lines?.map((line, index) => (
-          <fieldset key={line.key} className="grid gap-2 rounded-lg border p-3 [&_input]:h-11">
-            <legend className="px-1 text-muted-foreground text-xs">Split line {index + 1}</legend>
-            {(["payee", "category", "memo", "outflow", "inflow", "actions"] as const).map(
-              (column) => (
-                <div key={column}>{lineCell(line, index, column)}</div>
-              ),
-            )}
+          <fieldset key={line.key} className="grid gap-3 rounded-xl border p-3 pt-1">
+            <legend className="sr-only">Split line {index + 1}</legend>
+            <div className="flex items-center justify-between">
+              <span aria-hidden className="font-medium text-muted-foreground text-xs">
+                Line {index + 1}
+              </span>
+              {lineCell(line, index, "actions")}
+            </div>
+            {lineCell(line, index, "amount")}
+            {lineCell(line, index, "payee")}
+            {lineCell(line, index, "category")}
+            {lineCell(line, index, "memo")}
           </fieldset>
         ))}
-        <div className="flex flex-wrap items-center justify-end gap-2 [&>button]:min-h-11 [&>button]:flex-1">
-          {footerItems}
+        {onDelete && (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-11 text-destructive"
+            onClick={onDelete}
+          >
+            <Trash2 /> Delete transaction
+          </Button>
+        )}
+        {/* Split totals, rates and errors, then the buttons, kept in reach above the keyboard. */}
+        <div className="sticky bottom-0 -mx-4 grid gap-3 border-t bg-popover px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <div className="flex flex-wrap items-center gap-2 empty:hidden">{footerExtras}</div>
+          <div className="flex gap-2 [&>button]:h-11 [&>button]:flex-1">{footerActions}</div>
         </div>
         {mismatchDialog}
       </form>
@@ -717,7 +1069,9 @@ export function TransactionEditor({
   return (
     <>
       <RegisterRow
+        ref={mainRow}
         still
+        data-editor-main
         aria-label={label}
         className="not-last:*:border-b-0 bg-muted/50"
         onKeyDown={handleKeyDown}
@@ -725,11 +1079,13 @@ export function TransactionEditor({
         {columns.map((column) => (
           <RegisterCell
             key={column}
+            data-editor-column={column}
             style={pinned(columns, column)?.style}
             className={cn(
-              "px-1.5",
+              EDITOR_CELL,
+              column === "date" && DATE_EDITOR_FIT,
               (column === "cleared" || column === "flag" || column === "attachment") &&
-                "text-center",
+                "px-1 text-center",
               pinned(columns, column) && [pinned(columns, column)?.className, PINNED_BG.editor],
             )}
           >
@@ -741,22 +1097,39 @@ export function TransactionEditor({
         <RegisterRow
           still
           key={line.key}
+          data-editor-line={index}
           aria-label={`Split line ${index + 1}`}
           className="not-last:*:border-b-0 bg-muted/50"
           onKeyDown={handleKeyDown}
         >
-          {columns.map((column) => (
-            <RegisterCell
-              key={column}
-              style={pinned(columns, column)?.style}
-              className={cn(
-                "px-1.5 py-1",
-                pinned(columns, column) && [pinned(columns, column)?.className, PINNED_BG.editor],
-              )}
-            >
-              {lineCell(line, index, column)}
-            </RegisterCell>
-          ))}
+          {columns.map((column) =>
+            memoLead.includes(column) ? (
+              // Without a Memo column, a line's memo takes its empty cells before the payee.
+              column === memoLead[0] && (
+                <RegisterCell
+                  key={column}
+                  data-editor-column="memo"
+                  colSpan={memoLead.length}
+                  className={cn(EDITOR_CELL, "py-1")}
+                >
+                  {lineCell(line, index, "memo")}
+                </RegisterCell>
+              )
+            ) : (
+              <RegisterCell
+                key={column}
+                data-editor-column={column}
+                style={pinned(columns, column)?.style}
+                className={cn(
+                  EDITOR_CELL,
+                  "py-1",
+                  pinned(columns, column) && [pinned(columns, column)?.className, PINNED_BG.editor],
+                )}
+              >
+                {lineCell(line, index, column)}
+              </RegisterCell>
+            ),
+          )}
         </RegisterRow>
       ))}
       <RegisterRow still className="bg-muted/50" onKeyDown={handleKeyDown}>
@@ -771,10 +1144,12 @@ export function TransactionEditor({
            * pinned columns (Cleared, Actions), which keep their own cells in this row.
            */}
           <div
-            className="sticky left-1.5 flex max-w-full flex-wrap items-center justify-end gap-2 whitespace-normal"
+            className="sticky left-1.5 flex max-w-full items-center gap-x-4 whitespace-normal"
             style={{ width: `calc(100cqw - 0.75rem - ${pinnedWidth(columns)})` }}
           >
-            {footerItems}
+            {/* Totals, rates and errors wrap; the buttons stay on one line at the right. */}
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{footerExtras}</div>
+            <div className="flex shrink-0 items-center gap-2">{footerActions}</div>
           </div>
           {mismatchDialog}
         </RegisterCell>
@@ -813,4 +1188,180 @@ function typedDirection(amounts: { outflow: string; inflow: string }): TransferD
   if (amounts.inflow.trim()) return "in";
   if (amounts.outflow.trim()) return "out";
   return null;
+}
+
+/**
+ * One amount for a register whose Outflow and Inflow are folded into Amount: the figure, and a
+ * sign button that turns it from an outflow into an inflow and back (as does typing "+" or "-"
+ * first). `fallback` is the side an empty amount starts on.
+ */
+function AmountField({
+  label,
+  outflow,
+  inflow,
+  fallback,
+  settings,
+  computed,
+  inputRef,
+  onBlur,
+  onChange,
+}: {
+  /** "line 1", for a split line's. */
+  label?: string;
+  outflow: string;
+  inflow: string;
+  fallback: "outflow" | "inflow";
+  /** The amount's currency and number format, to tidy what's typed when it's left. */
+  settings: MoneySettings;
+  /** Shown while it's empty: a split's lines' total. */
+  computed?: string;
+  inputRef?: Ref<HTMLInputElement>;
+  onBlur?: () => void;
+  onChange: (amounts: { outflow: string; inflow: string }) => void;
+}) {
+  const [chosen, setChosen] = useState(fallback);
+  const side = inflow.trim() ? "inflow" : outflow.trim() ? "outflow" : chosen;
+  const text = side === "inflow" ? inflow : outflow;
+  const other = side === "inflow" ? "outflow" : "inflow";
+  const name = side === "inflow" ? "Inflow" : "Outflow";
+  function put(to: "outflow" | "inflow", value: string) {
+    setChosen(to);
+    onChange(to === "outflow" ? { outflow: value, inflow: "" } : { outflow: "", inflow: value });
+  }
+  return (
+    <InputGroup className="h-8">
+      <InputGroupAddon align="inline-start" className="pl-[3px]!">
+        <InputGroupButton
+          size="icon-xs"
+          tabIndex={-1}
+          aria-label={`Make it an ${other}`}
+          title={`${name}. Click, or type ${other === "inflow" ? "+" : "-"} first, for an ${other}.`}
+          className={cn("size-5", side === "inflow" ? "text-success" : "text-muted-foreground")}
+          onClick={() => put(other, text)}
+        >
+          {side === "inflow" ? <Plus /> : <Minus />}
+        </InputGroupButton>
+      </InputGroupAddon>
+      <InputGroupInput
+        ref={inputRef}
+        aria-label={label ? `${name}, ${label}` : name}
+        placeholder={computed ?? name}
+        title={computed ? "The lines' total" : undefined}
+        inputMode="decimal"
+        value={text}
+        onBlur={() => {
+          const tidied = tidyAmount(text, settings);
+          if (tidied !== text) put(side, tidied);
+          onBlur?.();
+        }}
+        onChange={(e) => {
+          const value = e.target.value;
+          if (value.startsWith("+")) put("inflow", value.slice(1));
+          else if (value.startsWith("-")) put("outflow", value.slice(1));
+          else put(side, value);
+        }}
+        className={cn(
+          "pr-[5px] text-right tabular-nums",
+          side === "inflow" && "text-success",
+          computed && "placeholder:text-foreground/70",
+        )}
+      />
+    </InputGroup>
+  );
+}
+
+/**
+ * A phone's amount: the figure large and centred with its currency's symbol, and an Outflow/Inflow
+ * switch under it in place of a sign (typing + or - first switches it too).
+ */
+function HeroAmount({
+  outflow,
+  inflow,
+  fallback,
+  settings,
+  autoFocus,
+  onChange,
+}: {
+  outflow: string;
+  inflow: string;
+  fallback: "outflow" | "inflow";
+  settings: MoneySettings;
+  autoFocus: boolean;
+  onChange: (amounts: { outflow: string; inflow: string }) => void;
+}) {
+  const id = useId();
+  const [chosen, setChosen] = useState(fallback);
+  const side = inflow.trim() ? "inflow" : outflow.trim() ? "outflow" : chosen;
+  const text = side === "inflow" ? inflow : outflow;
+  const zero = toMoneyInput(0n, settings);
+  // The symbol alone: the formatted zero without its figures.
+  const symbol =
+    settings.currencySymbolPosition === "none"
+      ? ""
+      : formatAmount(money(0n, settings.currency), settings).replace(/[\d.,'\s\u00a0\u2212-]/g, "");
+  const before = settings.currencySymbolPosition === "before";
+  function put(to: "outflow" | "inflow", value: string) {
+    setChosen(to);
+    onChange(to === "outflow" ? { outflow: value, inflow: "" } : { outflow: "", inflow: value });
+  }
+  const mark = symbol && (
+    <span aria-hidden className="font-medium text-2xl text-muted-foreground">
+      {symbol}
+    </span>
+  );
+  return (
+    <div className="grid justify-items-center gap-4 pt-2">
+      <label
+        htmlFor={id}
+        className={cn(
+          "flex max-w-full items-baseline justify-center gap-1 border-b-2 px-2 transition-colors focus-within:border-primary",
+          side === "inflow" && "text-success",
+        )}
+      >
+        {before && mark}
+        <input
+          id={id}
+          aria-label={side === "inflow" ? "Inflow" : "Outflow"}
+          inputMode="decimal"
+          autoComplete="off"
+          // biome-ignore lint/a11y/noAutofocus: a new transaction on a phone starts with its amount
+          autoFocus={autoFocus}
+          placeholder={zero}
+          value={text}
+          // Sized to its figures, so the symbol stays beside them.
+          style={{ width: `${Math.max((text || zero).length, 1) + 0.25}ch` }}
+          className="h-14! min-w-0 max-w-full bg-transparent text-center font-semibold text-4xl tabular-nums tracking-tight outline-none placeholder:text-muted-foreground/40"
+          onBlur={() => {
+            const tidied = tidyAmount(text, settings);
+            if (tidied !== text) put(side, tidied);
+          }}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value.startsWith("+")) put("inflow", value.slice(1));
+            else if (value.startsWith("-")) put("outflow", value.slice(1));
+            else put(side, value);
+          }}
+        />
+        {!before && mark}
+      </label>
+      <ToggleGroup
+        type="single"
+        spacing={0}
+        size="lg"
+        aria-label="Money in or out"
+        value={side}
+        onValueChange={(value) => {
+          if (value === "outflow" || value === "inflow") put(value, text);
+        }}
+        className="w-full max-w-72"
+      >
+        <ToggleGroupItem value="outflow" className="h-10! flex-1">
+          <Minus aria-hidden /> Outflow
+        </ToggleGroupItem>
+        <ToggleGroupItem value="inflow" className="h-10! flex-1 data-[state=on]:text-success!">
+          <Plus aria-hidden /> Inflow
+        </ToggleGroupItem>
+      </ToggleGroup>
+    </div>
+  );
 }

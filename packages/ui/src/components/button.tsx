@@ -11,6 +11,12 @@ const buttonVariants = cva(
       variant: {
         default:
           "border-[color-mix(in_oklch,var(--primary),black_15%)] bg-linear-to-b from-[color-mix(in_oklch,var(--primary),white_15%)] to-primary text-primary-foreground shadow-[0_1px_2px_rgb(30_60_160/0.28),inset_0_1px_0_rgb(255_255_255/0.22)] hover:brightness-106 aria-expanded:brightness-106 dark:shadow-[0_1px_2px_rgb(0_0_0/0.45),inset_0_1px_0_rgb(255_255_255/0.22)]",
+        // strictbudget: filled like `default` in the plan's colours. A `bg-*` class can't recolour a
+        // gradient button (the gradient is a background image), so colours are variants.
+        success:
+          "border-green-900 bg-linear-to-b from-green-700 to-green-800 text-white shadow-[0_1px_2px_rgb(20_83_45/0.35),inset_0_1px_0_rgb(255_255_255/0.18)] hover:brightness-110 aria-expanded:brightness-110 dark:border-green-950 dark:from-green-600 dark:to-green-700 dark:shadow-[0_1px_2px_rgb(0_0_0/0.45),inset_0_1px_0_rgb(255_255_255/0.18)]",
+        warning:
+          "border-yellow-600/70 bg-linear-to-b from-yellow-300 to-yellow-400 text-yellow-950 shadow-[0_1px_2px_rgb(133_77_14/0.3),inset_0_1px_0_rgb(255_255_255/0.4)] hover:brightness-105 aria-expanded:brightness-105 focus-visible:ring-yellow-600 dark:border-yellow-700 dark:shadow-[0_1px_2px_rgb(0_0_0/0.45),inset_0_1px_0_rgb(255_255_255/0.35)]",
         outline:
           "border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground dark:shadow-[0_1px_2px_rgb(0_0_0/0.4)]",
         secondary:

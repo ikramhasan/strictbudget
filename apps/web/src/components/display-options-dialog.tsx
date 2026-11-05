@@ -43,7 +43,7 @@ export function DisplayOptionsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Display Options</DialogTitle>
+          <DialogTitle>Display options</DialogTitle>
           <DialogDescription className="sr-only">
             How the budget looks in this browser.
           </DialogDescription>
@@ -56,11 +56,11 @@ export function DisplayOptionsDialog({
           options={[
             { value: "light", label: "Default", preview: <ThemePreview kind="light" /> },
             { value: "dark", label: "Dark", preview: <ThemePreview kind="dark" /> },
-            { value: "system", label: "Match System", preview: <ThemePreview kind="system" /> },
+            { value: "system", label: "Match system", preview: <ThemePreview kind="system" /> },
           ]}
         />
         <Section
-          title="Progress Bars"
+          title="Progress bars"
           value={draft.progressBars ? "on" : "off"}
           onChange={(v) => setDraft((d) => ({ ...d, progressBars: v === "on" }))}
           columns={2}
@@ -70,7 +70,7 @@ export function DisplayOptionsDialog({
           ]}
         />
         <Section
-          title="Balance Style"
+          title="Balance style"
           value={draft.strong ? "strong" : "default"}
           onChange={(v) => setDraft((d) => ({ ...d, strong: v === "strong" }))}
           columns={2}
@@ -78,7 +78,7 @@ export function DisplayOptionsDialog({
             { value: "default", label: "Default", preview: <PillsPreview strong={false} /> },
             {
               value: "strong",
-              label: "Differentiate Without Color",
+              label: "Differentiate without color",
               preview: <PillsPreview strong />,
             },
           ]}

@@ -30,7 +30,7 @@ function Sparkline({ values, negative }: { values: number[]; negative: boolean }
         dataKey="v"
         type="linear"
         dot={false}
-        stroke={negative ? "var(--report-4)" : "var(--report-1)"}
+        stroke={negative ? "var(--report-2)" : "var(--report-1)"}
         strokeWidth={2}
         isAnimationActive={false}
       />
@@ -50,7 +50,7 @@ export function NetWorthAccountsTable({
   const accounts = shownAccounts(report);
   if (accounts.length === 0) return null;
   return (
-    <section aria-label="Accounts" className="grid gap-3 rounded-lg border p-4">
+    <section aria-label="Accounts" className="grid gap-3 rounded-lg border bg-card p-4">
       <h2 className="font-semibold">Accounts</h2>
       <div className="overflow-x-auto">
         <Table>

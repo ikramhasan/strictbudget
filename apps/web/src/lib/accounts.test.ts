@@ -38,7 +38,7 @@ function account(id: string, type: Account["type"], working: string, closed = fa
 }
 
 describe("sidebarSections", () => {
-  it("groups accounts for the sidebar, with totals", () => {
+  it("groups accounts by kind for the sidebar, with totals", () => {
     const sections = sidebarSections(
       [
         account("checking", "checking", "150000"),
@@ -50,7 +50,8 @@ describe("sidebarSections", () => {
       "USD",
     );
     expect(sections.map((s) => [s.id, s.accounts.map((a) => a.id), s.total])).toEqual([
-      ["budget", ["checking", "visa"], 112500n],
+      ["cash", ["checking"], 150000n],
+      ["credit", ["visa"], -37500n],
       ["loans", ["mortgage"], -2500000n],
       ["tracking", ["house"], 40000000n],
       ["closed", ["old"], 0n],
@@ -70,14 +71,15 @@ describe("sidebarSections", () => {
     );
     expect(sections.map((s) => [s.id, s.title, s.accounts.map((a) => a.id), s.total])).toEqual([
       ["starred", "Starred", ["visa", "checking"], 700n],
-      ["budget", "Budget", ["checking", "visa", "savings"], 750n],
+      ["cash", "Cash", ["checking", "savings"], 1050n],
+      ["credit", "Credit", ["visa"], -300n],
       ["closed", "Closed", ["closed"], 0n],
     ]);
   });
 
   it("leaves out empty sections", () => {
     expect(sidebarSections([account("cash", "cash", "100")], "USD").map((s) => s.id)).toEqual([
-      "budget",
+      "cash",
     ]);
   });
 });
@@ -98,7 +100,7 @@ describe("sidebarSections with accounts in other currencies", () => {
     expect(
       sections.map((s) => [s.id, s.total, s.excluded.map((a) => a.id), excludedHint(s.excluded)]),
     ).toEqual([
-      ["budget", 1000n, [], null],
+      ["cash", 1000n, [], null],
       ["tracking", 40000000n, ["euro", "yen"], "Excludes 2 accounts in other currencies"],
     ]);
   });
@@ -137,11 +139,13 @@ describe("sidebarSections with converted totals", () => {
     netWorth: total("40016000", true, ["yen"]),
   };
 
+  const usd = (working: string) => ({ currency: "USD", cleared: working, uncleared: "0", working });
+
   it("uses the API's totals, marking converted ones and those missing a rate", () => {
     const sections = sidebarSections(
       [
-        account("checking", "checking", "5000"),
-        { ...account("euro", "savings", "10000"), currency: "EUR" },
+        { ...account("checking", "checking", "5000"), converted: usd("5000") },
+        { ...account("euro", "savings", "10000"), currency: "EUR", converted: usd("11000") },
         account("house", "asset", "40000000"),
         { ...account("yen", "liability", "-50000"), currency: "JPY" },
       ],
@@ -151,7 +155,7 @@ describe("sidebarSections with converted totals", () => {
     expect(
       sections.map((s) => [s.id, s.total, s.currency, s.converted, s.excluded.map((a) => a.id)]),
     ).toEqual([
-      ["budget", 16000n, "USD", true, []],
+      ["cash", 16000n, "USD", true, []],
       ["tracking", 40000000n, "USD", false, ["yen"]],
     ]);
     expect(sections.map(totalHint)).toEqual([
@@ -161,14 +165,32 @@ describe("sidebarSections with converted totals", () => {
   });
 
   it("shows totals in the display currency", () => {
-    const [budget] = sidebarSections([account("checking", "checking", "5000")], "USD", {
-      ...totals,
-      budget: total("4500", true, [], "EUR"),
-    });
-    expect(budget).toMatchObject({ total: 4500n, currency: "EUR", converted: true });
+    const eur = { currency: "EUR", cleared: "4500", uncleared: "0", working: "4500" };
+    const [cash] = sidebarSections(
+      [{ ...account("checking", "checking", "5000"), converted: eur }],
+      "USD",
+      { ...totals, netWorth: total("4500", true, [], "EUR") },
+    );
+    expect(cash).toMatchObject({ total: 4500n, currency: "EUR", converted: true });
     expect(totalHint({ converted: true, currency: "EUR", excluded: [] })).toBe(
       "Converted to EUR at today's rates",
     );
+  });
+
+  it("totals cash and credit apart from their converted balances, leaving out those with no rate", () => {
+    const sections = sidebarSections(
+      [
+        { ...account("checking", "checking", "5000"), converted: usd("5000") },
+        { ...account("visa", "credit_card", "-2000"), converted: usd("-2000") },
+        { ...account("yen card", "credit_card", "-9000"), currency: "JPY", converted: null },
+      ],
+      "USD",
+      totals,
+    );
+    expect(sections.map((s) => [s.id, s.total, s.excluded.map((a) => a.id)])).toEqual([
+      ["cash", 5000n, []],
+      ["credit", -2000n, ["yen card"]],
+    ]);
   });
 
   it("has no hint for a total all in one currency", () => {

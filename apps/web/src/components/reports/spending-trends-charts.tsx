@@ -2,8 +2,8 @@ import {
   type BudgetMonth,
   type CurrencyCode,
   comparedToAverage,
-  currencyExponent,
   money,
+  NUMBER_FORMAT_SPECS,
   percentTenths,
   type TrendMonth,
 } from "@strictbudget/engine";
@@ -17,15 +17,15 @@ import {
   ComposedChart,
   Line,
   LineChart,
-  ReferenceArea,
   ReferenceLine,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { useBudget } from "@/lib/budget-context";
-import { chartNumber, monthLabel } from "@/lib/reports";
+import { chartNumber, chartTick, monthLabel } from "@/lib/reports";
 import type { SeriesInfo } from "@/lib/spending-trends";
+import { CategoryLabel } from "../category-label";
 
 export interface TrendChartData {
   /** The range's months with their series (empty months included), oldest first. */
@@ -57,8 +57,8 @@ function useFormat() {
   const { budget, formatAmount } = useBudget();
   const currency = budget.currency as CurrencyCode;
   const format = (v: bigint) => formatAmount(money(v, currency));
-  /** An axis tick (a chart position, not an amount) labelled as the nearest whole minor unit. */
-  const tick = (v: number) => format(BigInt(Math.round(v * 10 ** currencyExponent(currency))));
+  const decimal = NUMBER_FORMAT_SPECS[budget.numberFormat].decimal;
+  const tick = (v: number) => chartTick(v, currency, format, decimal);
   return { format, tick, currency };
 }
 
@@ -66,7 +66,7 @@ const spentOf = (net: bigint | undefined) => (net === undefined ? 0n : -net);
 
 function TooltipBox({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="grid min-w-48 max-w-72 gap-1 rounded-md border bg-background px-3 py-2 text-xs shadow-sm">
+    <div className="grid min-w-48 max-w-72 gap-1 rounded-md border bg-popover px-3 py-2 text-xs shadow-md text-popover-foreground">
       <span className="font-medium">{title}</span>
       {children}
     </div>
@@ -158,11 +158,11 @@ function MonthTooltip({
     .filter(([, net]) => net !== 0n);
   return (
     <TooltipBox title={monthLabel(month.month)}>
-      <TooltipRow label="Total Spending" value={format(month.total)} strong />
+      <TooltipRow label="Total spending" value={format(month.total)} strong />
       {month.netInflows > 0n && (
         <>
           <TooltipRow label="Spending" value={format(month.spending)} muted />
-          <TooltipRow label="Net Inflows" value={format(-month.netInflows)} muted />
+          <TooltipRow label="Net inflows" value={format(-month.netInflows)} muted />
         </>
       )}
       {change && (
@@ -171,10 +171,12 @@ function MonthTooltip({
           value={<DifferenceText {...change} format={format} />}
         />
       )}
-      <TooltipRow
-        label="Compared to average"
-        value={<DifferenceText {...vsAverage} format={format} />}
-      />
+      {data.months.length > 1 && (
+        <TooltipRow
+          label="Compared to average"
+          value={<DifferenceText {...vsAverage} format={format} />}
+        />
+      )}
       {rolling !== undefined && rolling !== null && (
         <TooltipRow label="3-month average" value={format(rolling)} />
       )}
@@ -194,7 +196,7 @@ function MonthTooltip({
               <>
                 {format(-net)}
                 <span className="ml-1 text-muted-foreground">
-                  {net > 0n ? "Net Inflows" : share !== null && `${share}%`}
+                  {net > 0n ? "Net inflows" : share !== null && `${share}%`}
                 </span>
               </>
             }
@@ -215,7 +217,7 @@ const monthTick = (m: string) => monthLabel(m, "axis");
 const pickedMonth = (mark: unknown) =>
   (mark as { payload?: { month?: string } } | undefined)?.payload?.month as BudgetMonth | undefined;
 
-/** Positive-inflow series stack below zero; months above the average are shaded. */
+/** Positive-inflow series stack below zero. */
 export function TrendBarsChart({
   data,
   charted,
@@ -248,7 +250,6 @@ export function TrendBarsChart({
     if (g !== undefined) row.ghost = chartNumber(g, currency);
     return row;
   });
-  const above = charted.filter((m) => m.total > data.average && m.total > 0n);
   const config = Object.fromEntries(
     data.keys.map((k) => [k, { label: data.info(k).label, color: data.info(k).color }]),
   ) satisfies ChartConfig;
@@ -262,7 +263,13 @@ export function TrendBarsChart({
       >
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
         <XAxis dataKey="month" tickFormatter={monthTick} tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={tick} tickLine={false} axisLine={false} width={84} />
+        <YAxis
+          niceTicks="snap125"
+          tickFormatter={tick}
+          tickLine={false}
+          axisLine={false}
+          width={84}
+        />
         <Tooltip
           cursor={{ fill: "var(--muted)", opacity: 0.5 }}
           content={({ active, label }) => {
@@ -270,16 +277,6 @@ export function TrendBarsChart({
             return m ? <MonthTooltip month={m} data={data} /> : null;
           }}
         />
-        {above.map((m) => (
-          <ReferenceArea
-            key={m.month}
-            x1={m.month}
-            x2={m.month}
-            fill="var(--foreground)"
-            fillOpacity={0.06}
-            className="pointer-events-none"
-          />
-        ))}
         {ghost && (
           <Bar
             dataKey="ghost"
@@ -297,6 +294,9 @@ export function TrendBarsChart({
             name={data.info(key).label}
             stackId="spending"
             fill={data.info(key).color}
+            // A surface hairline between stacked segments.
+            stroke="var(--card)"
+            strokeWidth={1}
             cursor="pointer"
             isAnimationActive={false}
             onClick={(mark) => {
@@ -322,11 +322,11 @@ export function TrendBarsChart({
         )}
         <Line
           dataKey="total"
-          name="Total Spending"
+          name="Total spending"
           type="linear"
           stroke="var(--muted-foreground)"
           strokeWidth={1}
-          dot={{ r: 4, fill: "var(--background)", stroke: "var(--foreground)", strokeWidth: 1.5 }}
+          dot={{ r: 4, fill: "var(--card)", stroke: "var(--foreground)", strokeWidth: 1.5 }}
           activeDot={{
             r: 5,
             cursor: "pointer",
@@ -371,15 +371,28 @@ export function TrendLinesChart({ data, onPick }: { data: TrendChartData; onPick
     <ChartContainer config={config} className="aspect-auto h-72 w-full">
       <LineChart data={rows} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
-        <XAxis dataKey="month" tickFormatter={monthTick} tickLine={false} axisLine={false} />
-        <YAxis tickFormatter={tick} tickLine={false} axisLine={false} width={84} />
+        <XAxis
+          dataKey="month"
+          tickFormatter={monthTick}
+          tickLine={false}
+          axisLine={false}
+          // Room for the first and last months' ticks and dots.
+          padding={{ left: 16, right: 16 }}
+        />
+        <YAxis
+          niceTicks="snap125"
+          tickFormatter={tick}
+          tickLine={false}
+          axisLine={false}
+          width={84}
+        />
         <Tooltip
           content={({ active, label }) => {
             const m = active && typeof label === "string" ? byMonth.get(label) : undefined;
             if (!m) return null;
             return (
               <TooltipBox title={monthLabel(m.month)}>
-                <TooltipRow label="Total Spending" value={format(m.total)} strong />
+                <TooltipRow label="Total spending" value={format(m.total)} strong />
                 {data.keys.map((key) => (
                   <TooltipRow
                     key={key}
@@ -485,6 +498,9 @@ export function TrendShareChart({ data, onPick }: { data: TrendChartData; onPick
             name={data.info(key).label}
             stackId="share"
             fill={data.info(key).color}
+            // A surface hairline between stacked segments.
+            stroke="var(--card)"
+            strokeWidth={1}
             cursor="pointer"
             isAnimationActive={false}
             onClick={(mark) => {
@@ -498,9 +514,12 @@ export function TrendShareChart({ data, onPick }: { data: TrendChartData; onPick
   );
 }
 
-/** One shared scale across series, biggest spenders first. */
+/**
+ * One shared scale across series, biggest spenders first. Each panel is named, so they share one
+ * colour: a hue per panel would repeat across a plan's dozens of categories.
+ */
 export function TrendMultiples({ data, onPick }: { data: TrendChartData; onPick: TrendPick }) {
-  const { format, currency } = useFormat();
+  const { format, tick, currency } = useFormat();
   const totals = new Map(
     data.keys.map((k) => [k, data.months.reduce((s, m) => s + spentOf(m.nets.get(k)), 0n)]),
   );
@@ -519,68 +538,84 @@ export function TrendMultiples({ data, onPick }: { data: TrendChartData; onPick:
     }
   }
   const domain: [number, number] = [min, max || 1];
+  const first = data.months[0]?.month;
+  const last = data.months.at(-1)?.month;
   return (
-    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {keys.map((key) => {
-        const info = data.info(key);
-        const rows = data.months.map((m) => ({
-          month: m.month,
-          value: chartNumber(spentOf(m.nets.get(key)), currency),
-        }));
-        return (
-          <li key={key} className="grid gap-1 rounded-md border p-2">
-            <div className="flex items-baseline justify-between gap-2 text-sm">
-              <span className="flex min-w-0 items-center gap-1.5 font-medium">
-                <span
-                  aria-hidden
-                  className="size-2.5 shrink-0 rounded-[2px]"
-                  style={{ background: info.color }}
-                />
-                <span className="truncate">{info.label}</span>
-              </span>
-              <span className="shrink-0 text-muted-foreground text-xs tabular-nums">
-                {format(totals.get(key) ?? 0n)}
-              </span>
-            </div>
-            <ChartContainer
-              config={{ value: { label: info.label, color: info.color } }}
-              className="aspect-auto h-20 w-full"
-            >
-              <BarChart data={rows} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
-                <XAxis dataKey="month" hide />
-                <YAxis hide domain={domain} />
-                <ReferenceLine y={0} stroke="var(--border)" />
-                <Tooltip
-                  cursor={{ fill: "var(--muted)", opacity: 0.5 }}
-                  content={({ active, label }) => {
-                    if (!active || typeof label !== "string") return null;
-                    const m = data.months.find((x) => x.month === label);
-                    return m ? (
-                      <TooltipBox title={`${info.label} · ${monthLabel(m.month)}`}>
-                        <TooltipRow label="Spending" value={format(spentOf(m.nets.get(key)))} />
-                      </TooltipBox>
-                    ) : null;
-                  }}
-                />
-                <Bar
-                  dataKey="value"
-                  fill={info.color}
-                  cursor="pointer"
-                  isAnimationActive={false}
-                  onClick={(mark) => {
-                    const month = pickedMonth(mark);
-                    if (month) onPick(month, key);
-                  }}
-                />
-              </BarChart>
-            </ChartContainer>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="grid gap-2">
+      <p className="text-muted-foreground text-xs">
+        Monthly spending, every panel on the same scale (the tallest bar is {tick(max)}).
+      </p>
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {keys.map((key) => {
+          const info = data.info(key);
+          const rows = data.months.map((m) => ({
+            month: m.month,
+            value: chartNumber(spentOf(m.nets.get(key)), currency),
+          }));
+          return (
+            <li key={key} className="grid gap-1 rounded-md border p-3">
+              <div className="flex items-baseline justify-between gap-2 text-sm">
+                <CategoryLabel name={info.label} className="font-medium" />
+                <span className="shrink-0 text-muted-foreground text-xs tabular-nums">
+                  {format(totals.get(key) ?? 0n)}
+                </span>
+              </div>
+              <ChartContainer
+                config={{ value: { label: info.label, color: MULTIPLES_COLOR } }}
+                className="aspect-auto h-24 w-full"
+              >
+                <BarChart data={rows} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+                  <XAxis
+                    dataKey="month"
+                    ticks={first && last && first !== last ? [first, last] : first ? [first] : []}
+                    tickFormatter={monthTick}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    fontSize={10}
+                    height={16}
+                  />
+                  <YAxis hide domain={domain} />
+                  <ReferenceLine y={0} stroke="var(--border)" />
+                  <Tooltip
+                    cursor={{ fill: "var(--muted)", opacity: 0.5 }}
+                    content={({ active, label }) => {
+                      if (!active || typeof label !== "string") return null;
+                      const m = data.months.find((x) => x.month === label);
+                      return m ? (
+                        <TooltipBox title={`${info.label} · ${monthLabel(m.month)}`}>
+                          <TooltipRow label="Spending" value={format(spentOf(m.nets.get(key)))} />
+                        </TooltipBox>
+                      ) : null;
+                    }}
+                  />
+                  <Bar
+                    dataKey="value"
+                    fill={MULTIPLES_COLOR}
+                    radius={[2, 2, 0, 0]}
+                    cursor="pointer"
+                    isAnimationActive={false}
+                    onClick={(mark) => {
+                      const month = pickedMonth(mark);
+                      if (month) onPick(month, key);
+                    }}
+                  />
+                </BarChart>
+              </ChartContainer>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
+const MULTIPLES_COLOR = "var(--report-1)";
+
+/**
+ * The series' swatches. Categories from several groups are listed under their group's name;
+ * groups, Uncategorized and Other stand alone.
+ */
 export function TrendLegend({
   data,
   onPick,
@@ -588,36 +623,61 @@ export function TrendLegend({
   data: TrendChartData;
   onPick?: (key: string) => void;
 }) {
+  const item = (key: string) => {
+    const info = data.info(key);
+    const body = (
+      <>
+        <span
+          aria-hidden
+          className="size-2.5 shrink-0 rounded-[2px]"
+          style={{ background: info.color }}
+        />
+        <CategoryLabel name={info.label} />
+      </>
+    );
+    return (
+      <li key={key}>
+        {onPick ? (
+          <button
+            type="button"
+            className="flex items-center gap-1.5 rounded-sm transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => onPick(key)}
+          >
+            {body}
+          </button>
+        ) : (
+          <span className="flex items-center gap-1.5">{body}</span>
+        )}
+      </li>
+    );
+  };
+  const families: { family: string | undefined; name: string; keys: string[] }[] = [];
+  for (const key of data.keys) {
+    const info = data.info(key);
+    const found = info.family ? families.find((f) => f.family === info.family) : undefined;
+    if (found) found.keys.push(key);
+    else families.push({ family: info.family, name: info.groupName, keys: [key] });
+  }
+  const grouped = families.filter((f) => f.family).length > 1;
+  if (!grouped) {
+    return (
+      <ul className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground text-xs">
+        {data.keys.map(item)}
+      </ul>
+    );
+  }
   return (
-    <ul className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground text-xs">
-      {data.keys.map((key) => {
-        const info = data.info(key);
-        const body = (
-          <>
-            <span
-              aria-hidden
-              className="size-2.5 shrink-0 rounded-[2px]"
-              style={{ background: info.color }}
-            />
-            {info.label}
-          </>
-        );
-        return (
-          <li key={key}>
-            {onPick ? (
-              <button
-                type="button"
-                className="flex items-center gap-1.5 hover:text-foreground"
-                onClick={() => onPick(key)}
-              >
-                {body}
-              </button>
-            ) : (
-              <span className="flex items-center gap-1.5">{body}</span>
-            )}
+    <ul className="flex flex-wrap gap-x-5 gap-y-1.5 text-muted-foreground text-xs">
+      {families.map((f) =>
+        f.family ? (
+          <li key={f.family} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="font-medium text-foreground/80">{f.name}</span>
+            <ul className="contents">{f.keys.map(item)}</ul>
           </li>
-        );
-      })}
+        ) : (
+          f.keys.map(item)
+        ),
+      )}
     </ul>
   );
 }
@@ -630,19 +690,12 @@ export function TrendBarsKey({
   overlays: TrendOverlays;
 }) {
   const { format } = useFormat();
-  const hasAbove = data.months.some((m) => m.total > data.average && m.total > 0n);
   return (
     <ul className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground text-xs">
       <li className="flex items-center gap-1.5">
         <span aria-hidden className="size-2.5 rounded-full border-[1.5px] border-foreground" />
-        Total Spending
+        Total spending
       </li>
-      {hasAbove && (
-        <li className="flex items-center gap-1.5">
-          <span aria-hidden className="h-3 w-2.5 rounded-[2px] bg-foreground/10" />
-          Above the average
-        </li>
-      )}
       {overlays.average && (
         <li className="flex items-center gap-1.5">
           <span aria-hidden className="w-4 border-foreground/60 border-t border-dashed" />

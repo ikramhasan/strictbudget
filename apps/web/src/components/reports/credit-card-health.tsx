@@ -22,7 +22,7 @@ import {
 import { chartNumber, chartTick, monthLabel } from "@/lib/reports";
 
 const config = {
-  spending: { label: "Spending", color: "var(--report-6)" },
+  spending: { label: "Spending", color: "var(--report-2)" },
   payments: { label: "Payments and returns", color: "var(--report-1)" },
   balance: { label: "Balance owed", color: "var(--foreground)" },
 } satisfies ChartConfig;
@@ -67,7 +67,7 @@ export function CardChart({ card }: { card: HealthCard }) {
             const point = payload?.[0]?.payload as (typeof data)[number] | undefined;
             if (!active || !point) return null;
             return (
-              <div className="grid gap-0.5 rounded-md border bg-background px-3 py-2 text-xs shadow-sm">
+              <div className="grid gap-0.5 rounded-md border bg-popover px-3 py-2 text-xs shadow-md text-popover-foreground">
                 <span className="text-muted-foreground">
                   {monthLabel(point.month as BudgetMonth, "long")}
                 </span>

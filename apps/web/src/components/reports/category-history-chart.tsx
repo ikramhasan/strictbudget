@@ -33,10 +33,10 @@ import {
 import { chartNumber, chartTick, monthLabel } from "@/lib/reports";
 
 const config = {
-  assigned: { label: "Assigned", color: "var(--report-3)" },
+  assigned: { label: "Assigned", color: "var(--report-7)" },
   spent: { label: "Spent", color: "var(--report-2)" },
   available: { label: "Available", color: "var(--foreground)" },
-  target: { label: "Target", color: "var(--report-6)" },
+  target: { label: "Target", color: "var(--report-8)" },
 } satisfies ChartConfig;
 
 /** The plan's overspending colours: red for cash, yellow for credit (as the plan's pills). */
@@ -61,20 +61,24 @@ function useFormat() {
  * Per month: Assigned and Spent (−Activity) side by side, Available as a line, what the target
  * asked as a step line, overspent months shaded in the plan's cash or credit colour, and a dot
  * under months with money moved in or out (the tooltip lists the moves). Bar heights are
- * positions only; every amount shown is the exact one.
+ * positions only; every amount shown is the exact one. The compact version keeps just the two
+ * bars and their legend; its tooltip still has the rest.
  */
 export function CategoryHistoryChart({
   history,
   names,
   compact = false,
+  yMax,
   onPick,
   className,
 }: {
   history: CategoryHistory;
   /** Category names by id, for the moves' other sides. */
   names: Map<string, string>;
-  /** The inspector's small version: no value axis or legend. */
+  /** The inspector's small version: Assigned and Spent only, the value axis' top marked. */
   compact?: boolean;
+  /** The value axis' top (the compact chart keeps it steady as amounts change). */
+  yMax?: number;
   onPick?: (month: BudgetMonth) => void;
   className?: string;
 }) {
@@ -106,30 +110,57 @@ export function CategoryHistoryChart({
           barCategoryGap={compact ? "15%" : "20%"}
         >
           {!compact && <CartesianGrid vertical={false} strokeDasharray="3 3" />}
-          {history.months.map((m) => {
-            const kind = overspentKind(m);
-            return kind ? (
-              <ReferenceArea
-                key={m.month}
-                x1={m.month}
-                x2={m.month}
-                fill={OVERSPENT_FILL[kind]}
-                fillOpacity={0.12}
-                ifOverflow="extendDomain"
-                className="pointer-events-none"
-              />
-            ) : null;
-          })}
+          {!compact &&
+            history.months.map((m) => {
+              const kind = overspentKind(m);
+              return kind ? (
+                <ReferenceArea
+                  key={m.month}
+                  x1={m.month}
+                  x2={m.month}
+                  fill={OVERSPENT_FILL[kind]}
+                  fillOpacity={0.12}
+                  ifOverflow="extendDomain"
+                  className="pointer-events-none"
+                />
+              ) : null;
+            })}
           <XAxis
             dataKey="month"
             tickFormatter={(m: string) => monthLabel(m as BudgetMonth, "axis")}
             tickLine={false}
             axisLine={false}
             fontSize={compact ? 10 : undefined}
-            minTickGap={compact ? 12 : 4}
+            tick={compact ? { fill: "var(--muted-foreground)" } : undefined}
+            interval={compact ? "preserveStartEnd" : undefined}
+            minTickGap={compact ? 8 : 4}
           />
-          <YAxis hide={compact} tickFormatter={tick} tickLine={false} axisLine={false} width={80} />
-          <YAxis yAxisId="moves" hide domain={[0, 1]} />
+          {compact ? (
+            <YAxis
+              domain={[(min: number) => Math.min(0, min), yMax ?? "auto"]}
+              ticks={yMax === undefined ? undefined : [yMax]}
+              interval={0}
+              allowDataOverflow
+              tickFormatter={tick}
+              tickLine={false}
+              axisLine={false}
+              fontSize={10}
+              tick={{ fill: "var(--muted-foreground)" }}
+              width={44}
+            />
+          ) : (
+            <YAxis
+              niceTicks="snap125"
+              tickFormatter={tick}
+              tickLine={false}
+              axisLine={false}
+              width={80}
+            />
+          )}
+          {compact && yMax !== undefined && (
+            <ReferenceLine y={yMax} stroke="var(--border)" strokeDasharray="3 3" />
+          )}
+          {!compact && <YAxis yAxisId="moves" hide domain={[0, 1]} />}
           <ReferenceLine y={0} stroke="var(--border)" />
           <Tooltip
             cursor={{ fill: "var(--muted)", opacity: 0.5 }}
@@ -156,20 +187,18 @@ export function CategoryHistoryChart({
             className={onPick && "cursor-pointer"}
             onClick={pick}
           />
-          <Scatter
-            yAxisId="moves"
-            dataKey="moved"
-            fill={MOVE_COLOR}
-            isAnimationActive={false}
-            shape={(p: { cx?: number; cy?: number; payload?: { moved: number | null } }) =>
-              p.payload?.moved ? (
-                <circle cx={p.cx} cy={p.cy} r={compact ? 2 : 3} fill={MOVE_COLOR} />
-              ) : (
-                <g />
-              )
-            }
-          />
-          {hasTarget && (
+          {!compact && (
+            <Scatter
+              yAxisId="moves"
+              dataKey="moved"
+              fill={MOVE_COLOR}
+              isAnimationActive={false}
+              shape={(p: { cx?: number; cy?: number; payload?: { moved: number | null } }) =>
+                p.payload?.moved ? <circle cx={p.cx} cy={p.cy} r={3} fill={MOVE_COLOR} /> : <g />
+              }
+            />
+          )}
+          {!compact && hasTarget && (
             <Line
               dataKey="target"
               type="step"
@@ -181,35 +210,70 @@ export function CategoryHistoryChart({
               isAnimationActive={false}
             />
           )}
-          <Line
-            dataKey="available"
-            type="linear"
-            stroke="var(--color-available)"
-            strokeWidth={compact ? 1.5 : 2}
-            isAnimationActive={false}
-            dot={(props: { cx?: number; cy?: number; index?: number }) => {
-              const m = history.months[props.index ?? -1];
-              // A group can hold an overspent category while its total stays above zero.
-              const kind = m && BigInt(m.available) < 0n ? overspentKind(m) : null;
-              return (
-                <circle
-                  key={props.index}
-                  cx={props.cx}
-                  cy={props.cy}
-                  r={compact ? 2 : 3}
-                  fill={kind ? OVERSPENT_FILL[kind] : "var(--color-available)"}
-                />
-              );
-            }}
-          />
+          {!compact && (
+            <Line
+              dataKey="available"
+              type="linear"
+              stroke="var(--color-available)"
+              strokeWidth={2}
+              isAnimationActive={false}
+              dot={(props: { cx?: number; cy?: number; index?: number }) => {
+                const m = history.months[props.index ?? -1];
+                // A group can hold an overspent category while its total stays above zero.
+                const kind = m && BigInt(m.available) < 0n ? overspentKind(m) : null;
+                return (
+                  <circle
+                    key={props.index}
+                    cx={props.cx}
+                    cy={props.cy}
+                    r={3}
+                    fill={kind ? OVERSPENT_FILL[kind] : "var(--color-available)"}
+                  />
+                );
+              }}
+            />
+          )}
         </ComposedChart>
       </ChartContainer>
-      {!compact && <Legend target={hasTarget} />}
+      {compact ? (
+        <CompactLegend />
+      ) : (
+        <Legend
+          target={hasTarget}
+          moved={history.months.some((m) => m.moves.length > 0)}
+          cash={history.months.some((m) => overspentKind(m) === "cash")}
+          credit={history.months.some((m) => overspentKind(m) === "credit")}
+        />
+      )}
     </div>
   );
 }
 
-function Legend({ target }: { target: boolean }) {
+function CompactLegend() {
+  return (
+    <ul className="flex gap-3 text-[11px] text-muted-foreground leading-none">
+      {[config.assigned, config.spent].map((s) => (
+        <li key={s.label} className="flex items-center gap-1.5">
+          <span aria-hidden className="size-2 rounded-[2px]" style={{ background: s.color }} />
+          {s.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Only the marks the chart has. */
+function Legend({
+  target,
+  moved,
+  cash,
+  credit,
+}: {
+  target: boolean;
+  moved: boolean;
+  cash: boolean;
+  credit: boolean;
+}) {
   const item = "flex items-center gap-1.5";
   return (
     <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-muted-foreground text-xs">
@@ -243,18 +307,24 @@ function Legend({ target }: { target: boolean }) {
           Target
         </li>
       )}
-      <li className={item}>
-        <span aria-hidden className="size-2 rounded-full" style={{ background: MOVE_COLOR }} />
-        Money moved
-      </li>
-      <li className={item}>
-        <span aria-hidden className="size-2.5 rounded-xs bg-destructive/25" />
-        Overspent (cash)
-      </li>
-      <li className={item}>
-        <span aria-hidden className="size-2.5 rounded-xs bg-yellow-500/25" />
-        Overspent (credit)
-      </li>
+      {moved && (
+        <li className={item}>
+          <span aria-hidden className="size-2 rounded-full" style={{ background: MOVE_COLOR }} />
+          Money moved
+        </li>
+      )}
+      {cash && (
+        <li className={item}>
+          <span aria-hidden className="size-2.5 rounded-xs bg-destructive/25" />
+          Overspent (cash)
+        </li>
+      )}
+      {credit && (
+        <li className={item}>
+          <span aria-hidden className="size-2.5 rounded-xs bg-yellow-500/25" />
+          Overspent (credit)
+        </li>
+      )}
     </ul>
   );
 }
@@ -276,7 +346,7 @@ function MonthTooltip({
     </p>
   );
   return (
-    <div className="grid min-w-52 max-w-72 gap-1 rounded-lg border bg-background px-3 py-2 text-xs shadow-md">
+    <div className="grid min-w-52 max-w-72 gap-1 rounded-lg border bg-popover px-3 py-2 text-xs shadow-md text-popover-foreground">
       <p className="font-medium">{monthLabel(m.month as BudgetMonth, "long")}</p>
       {row("Assigned", format(m.assigned), config.assigned.color)}
       {row("Spent", format(-BigInt(m.activity)), config.spent.color)}

@@ -1,7 +1,11 @@
 import { type CurrencyCode, formatAmount, money } from "@strictbudget/engine";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { accountsQueryOptions } from "@/lib/accounts";
+import { BudgetProvider } from "@/lib/budget-context";
+import type { Budget } from "@/lib/budgets";
 import { inCurrency, type MoneySettings, parseMoneyInput, toMoneyInput } from "@/lib/money-input";
 import type { CategoryTarget, TargetNeed } from "@/lib/targets";
 import {
@@ -51,10 +55,29 @@ const need: TargetNeed = {
   beforeOpening: false,
 };
 
+const budget = { id: "b1", name: "Home", role: "owner", ...usd } as unknown as Budget;
+
+/** The plan's accounts, all in USD unless `otherCurrency` adds a EUR one. */
+function withAccounts(otherCurrency: boolean) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { staleTime: Number.POSITIVE_INFINITY, retry: false } },
+  });
+  const account = (currency: string) => ({ currency, closed: false });
+  queryClient.setQueryData(accountsQueryOptions(budget.id).queryKey, {
+    accounts: [account("USD"), ...(otherCurrency ? [account("EUR")] : [])],
+  } as never);
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <BudgetProvider budget={budget}>{children}</BudgetProvider>
+    </QueryClientProvider>
+  );
+}
+
 function renderSection(
   target: CategoryTarget | null,
   targetNeed: TargetNeed | null,
   currency: Partial<TargetCurrency> = {},
+  { otherCurrency = true } = {},
 ) {
   const onSave = vi.fn().mockResolvedValue(true);
   const usdIO = moneyIn("USD");
@@ -75,6 +98,7 @@ function renderSection(
         ...currency,
       }}
     />,
+    { wrapper: withAccounts(otherCurrency) },
   );
   return { onSave };
 }
@@ -82,41 +106,58 @@ function renderSection(
 describe("TargetSection with a target in its own currency", () => {
   it("shows the target in its currency and what it needs in the budget's", () => {
     renderSection(eurTarget, need, { conversion: { amountInBase: "162630", rate: "1.0842" } });
-    expect(screen.getByText("Set Aside Another €1,500.00 Each Month")).toBeInTheDocument();
+    expect(screen.getByText("Set aside another €1,500.00 each month")).toBeInTheDocument();
     expect(screen.getByText("≈ $1,626.30 at today's rate")).toBeInTheDocument();
-    expect(screen.getByText("Amount to Assign This Month").nextSibling).toHaveTextContent(
+    expect(screen.getByText("Amount to assign this month").nextSibling).toHaveTextContent(
       "$1,626.30",
     );
   });
 
   it("says when no rate is known instead of offering a new target", () => {
     renderSection(eurTarget, null, { rateMissing: true });
-    expect(screen.getByText("Set Aside Another €1,500.00 Each Month")).toBeInTheDocument();
+    expect(screen.getByText("Set aside another €1,500.00 each month")).toBeInTheDocument();
     expect(screen.getByText(/No EUR to USD exchange rate is available yet/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Create Target" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create target" })).not.toBeInTheDocument();
   });
 
   it("creates a target in the budget's currency by default", async () => {
     const { onSave } = renderSection(null, null);
-    await userEvent.click(screen.getByRole("button", { name: "Create Target" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create target" }));
     expect(screen.getByLabelText("Currency")).toHaveTextContent("USD");
     await userEvent.type(screen.getByLabelText("I need"), "100");
-    await userEvent.click(screen.getByRole("button", { name: "Save Target" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save target" }));
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({ amount: "10000", currency: "USD" }),
     );
+  });
+
+  it("doesn't ask for a currency when every account is in the budget's", async () => {
+    const { onSave } = renderSection(null, null, {}, { otherCurrency: false });
+    await userEvent.click(screen.getByRole("button", { name: "Create target" }));
+    expect(screen.queryByLabelText("Currency")).not.toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("I need"), "100");
+    await userEvent.click(screen.getByRole("button", { name: "Save target" }));
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: "10000", currency: "USD" }),
+    );
+  });
+
+  it("still shows the currency of a target kept in another one", async () => {
+    renderSection(eurTarget, need, {}, { otherCurrency: false });
+    await userEvent.click(screen.getByRole("button", { name: "Edit target" }));
+    expect(screen.getByLabelText("Currency")).toHaveTextContent("EUR");
   });
 
   it("reads the amount in the picked currency's minor units", async () => {
     // cmdk scrolls the picked currency into view, which jsdom doesn't implement.
     Element.prototype.scrollIntoView = vi.fn();
     const { onSave } = renderSection(null, null);
-    await userEvent.click(screen.getByRole("button", { name: "Create Target" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create target" }));
     await userEvent.click(screen.getByLabelText("Currency"));
     await userEvent.click(await screen.findByRole("option", { name: /JPY/ }));
     expect(screen.getByLabelText("Currency")).toHaveTextContent("JPY");
     await userEvent.type(screen.getByLabelText("I need"), "150,000");
-    await userEvent.click(screen.getByRole("button", { name: "Save Target" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save target" }));
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({ cadence: "monthly", amount: "150000", currency: "JPY" }),
     );
@@ -127,10 +168,10 @@ describe("TargetSection with a target in its own currency", () => {
     const { onSave } = renderSection(eurTarget, need, {
       conversion: { amountInBase: "162630", rate: "1.0842" },
     });
-    await userEvent.click(screen.getByRole("button", { name: "Edit Target" }));
+    await userEvent.click(screen.getByRole("button", { name: "Edit target" }));
     expect(screen.getByLabelText("Currency")).toHaveTextContent("EUR");
     expect(screen.getByLabelText("I need")).toHaveValue("1,500.00");
-    await userEvent.click(screen.getByRole("button", { name: "Save Target" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save target" }));
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({ amount: "150000", currency: "EUR" }),
     );
@@ -144,11 +185,11 @@ describe("ReadOnlyTarget for a viewer", () => {
   it("shows the target's details with nothing to change", () => {
     render(<ReadOnlyTarget target={usdTarget} need={need} format={usdIO.format} />);
     expect(screen.getByRole("region", { name: "Target" })).toBeInTheDocument();
-    expect(screen.getByText("Set Aside Another $150.00 Each Month")).toBeInTheDocument();
-    expect(screen.getByText("Amount to Assign This Month").nextSibling).toHaveTextContent(
+    expect(screen.getByText("Set aside another $150.00 each month")).toBeInTheDocument();
+    expect(screen.getByText("Amount to assign this month").nextSibling).toHaveTextContent(
       "$1,626.30",
     );
-    for (const name of ["Edit Target", "Create Target", "Assign"]) {
+    for (const name of ["Edit target", "Create target", "Assign"]) {
       expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
     }
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
@@ -163,7 +204,7 @@ describe("ReadOnlyTarget for a viewer", () => {
 
   it("titles a debt payment target", () => {
     render(<ReadOnlyTarget target={usdTarget} need={need} format={usdIO.format} debt />);
-    expect(screen.getByRole("region", { name: "Debt Payment Target" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Debt payment target" })).toBeInTheDocument();
   });
 
   it("says when no rate is known, without an Edit button", () => {
@@ -175,7 +216,7 @@ describe("ReadOnlyTarget for a viewer", () => {
         currency={{ budgetCurrency: "USD", moneyIn, conversion: null, rateMissing: true }}
       />,
     );
-    expect(screen.getByText("Set Aside Another €1,500.00 Each Month")).toBeInTheDocument();
+    expect(screen.getByText("Set aside another €1,500.00 each month")).toBeInTheDocument();
     expect(screen.getByText(/No EUR to USD exchange rate is available yet/)).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });

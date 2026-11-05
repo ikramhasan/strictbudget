@@ -36,7 +36,7 @@ import { useLoanRefresh } from "./loan-page";
 import { PayoffMonthPicker } from "./payoff-simulator";
 
 const EVERY_OPTIONS = [
-  { value: "last", label: "Last Day of Month" },
+  { value: "last", label: "Last day of month" },
   ...Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: ordinal(i + 1) })),
 ];
 
@@ -57,7 +57,7 @@ export function DebtTargetEditor({
 }: {
   target: CategoryTarget | null;
   plan: LoanPlan | null;
-  /** A category whose loan was unpaired or closed but kept its debt target: offers "Pair with a Loan". */
+  /** A category whose loan was unpaired or closed but kept its debt target: offers "Pair with a loan". */
   unpairedCategoryId?: string;
   format: (minorUnits: string) => string;
   parse: (text: string) => bigint | string;
@@ -105,21 +105,21 @@ export function DebtTargetEditor({
       diff === 0n
         ? [
             "Paying the minimum every month",
-            [money(byPayment.interest), "Interest Remaining"],
-            [formatDuration(byPayment.months), "Time Remaining"],
+            [money(byPayment.interest), "Interest remaining"],
+            [formatDuration(byPayment.months), "Time remaining"],
             "neutral",
           ]
         : diff > 0n
           ? [
               `Paying +${money(diff)} extra every month`,
-              [money(byMinimum.interest - byPayment.interest), "Interest Savings"],
-              [formatDuration(Math.max(0, byMinimum.months - byPayment.months)), "Time Savings"],
+              [money(byMinimum.interest - byPayment.interest), "Interest savings"],
+              [formatDuration(Math.max(0, byMinimum.months - byPayment.months)), "Time savings"],
               "extra",
             ]
           : [
               `Paying -${money(-diff)} less than minimum every month`,
-              [money(byPayment.interest - byMinimum.interest), "Additional Interest"],
-              [formatDuration(Math.max(0, byPayment.months - byMinimum.months)), "Additional Time"],
+              [money(byPayment.interest - byMinimum.interest), "Additional interest"],
+              [formatDuration(Math.max(0, byPayment.months - byMinimum.months)), "Additional time"],
               "less",
             ];
     box = (
@@ -165,16 +165,16 @@ export function DebtTargetEditor({
 
   return (
     <section
-      aria-label="Debt Payment Target"
+      aria-label="Debt payment target"
       className="grid grid-cols-[minmax(0,1fr)] gap-3 border-t pt-3"
     >
-      <h3 className="font-semibold text-sm">Debt Payment Target</h3>
+      <h3 className="font-semibold text-sm">Debt payment target</h3>
       <form onSubmit={submit} className="grid grid-cols-[minmax(0,1fr)] gap-3">
         {box}
         <div className={cn("grid gap-2", !unpairedCategoryId && "grid-cols-2")}>
           <div className="grid gap-1 text-sm">
             <label htmlFor="debt-target-amount" className="font-medium">
-              {unpairedCategoryId ? "Amount to Pay" : "Monthly Payment"}
+              {unpairedCategoryId ? "Amount to pay" : "Monthly payment"}
             </label>
             <Input
               id="debt-target-amount"
@@ -187,9 +187,9 @@ export function DebtTargetEditor({
           </div>
           {plan && (
             <div className="grid gap-1 text-sm">
-              <span className="font-medium">Payoff Date</span>
+              <span className="font-medium">Payoff date</span>
               <PayoffMonthPicker
-                label="Payoff Date"
+                label="Payoff date"
                 value={payoffMonth}
                 min={addMonths(plan.current, 1)}
                 onChange={pickMonth}
@@ -218,14 +218,14 @@ export function DebtTargetEditor({
         {plan && byPayment && (
           <dl className="grid gap-1 text-sm">
             <p className="font-semibold">Summary</p>
-            <SummaryRow label="Minimum Payment" value={minimum !== null ? money(minimum) : "--"} />
+            <SummaryRow label="Minimum payment" value={minimum !== null ? money(minimum) : "--"} />
             {/* The Summary counts a month less than the box above: 57 payments read "4 yrs, 9 mos"
                 there and "4 yrs, 8 mos" here. */}
             <SummaryRow
-              label="Time Remaining"
+              label="Time remaining"
               value={formatDuration(Math.max(0, byPayment.months - 1))}
             />
-            <SummaryRow label="Remaining to Pay" value={money(owed + byPayment.interest)} />
+            <SummaryRow label="Remaining to pay" value={money(owed + byPayment.interest)} />
             <SummaryRow label="Principal" value={money(owed)} indent />
             <SummaryRow
               label={`Interest (${plan.rate !== null ? formatRate(plan.rate) : "--"}%)`}
@@ -250,7 +250,7 @@ export function DebtTargetEditor({
             Cancel
           </Button>
           <Button type="submit" disabled={busy}>
-            Save Target
+            Save target
           </Button>
         </div>
       </form>
@@ -300,7 +300,7 @@ function PairWithLoan({ categoryId, onPaired }: { categoryId: string; onPaired: 
         className="flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 p-3 text-left text-sm"
       >
         <span className="grid flex-1 gap-0.5">
-          <span className="font-medium text-primary-text">Pair with a Loan</span>
+          <span className="font-medium text-primary-text">Pair with a loan</span>
           <span>See your payoff progress, interest payments, and payoff date</span>
         </span>
         <ChevronRight className="size-4 shrink-0 text-primary-text" aria-hidden />
@@ -308,7 +308,7 @@ function PairWithLoan({ categoryId, onPaired }: { categoryId: string; onPaired: 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Pair with a Loan</DialogTitle>
+            <DialogTitle>Pair with a loan</DialogTitle>
             <DialogDescription>Select an existing loan or add a new one</DialogDescription>
           </DialogHeader>
           <div className="grid gap-2">
@@ -335,7 +335,7 @@ function PairWithLoan({ categoryId, onPaired }: { categoryId: string; onPaired: 
                 setAdding(true);
               }}
             >
-              Add a New Loan
+              Add a new loan
             </Button>
           </div>
         </DialogContent>

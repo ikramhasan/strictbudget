@@ -14,9 +14,9 @@ describe("ReviewCell", () => {
   it("offers Approve Transaction and Reject Transaction on an unapproved row", async () => {
     const { onApprove, onReject } = cell({ approved: false, needsCategory: true });
     await userEvent.click(screen.getByRole("button", { name: "This transaction needs approval" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Approve Transaction" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Approve transaction" }));
     expect(onApprove).toHaveBeenCalledOnce();
-    await userEvent.click(screen.getByRole("button", { name: "Reject Transaction" }));
+    await userEvent.click(screen.getByRole("button", { name: "Reject transaction" }));
     expect(onReject).toHaveBeenCalledOnce();
   });
 
@@ -75,7 +75,7 @@ describe("matched transactions", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "This transaction has a matched transaction" }),
     );
-    expect(await screen.findByText("Matched Transactions")).toBeInTheDocument();
+    expect(await screen.findByText("Matched transactions")).toBeInTheDocument();
     expect(screen.getByText("BANK A")).toBeInTheDocument();
     expect(screen.getByText("Mine A")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Unmatch" }));

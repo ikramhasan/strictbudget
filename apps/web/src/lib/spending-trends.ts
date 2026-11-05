@@ -16,13 +16,17 @@ import { z } from "zod";
 import type { CategoryList } from "./categories";
 import { COLOR_LABEL } from "./flags";
 import {
+  distinctColors,
   monthLabel,
-  planColors,
+  OTHER_COLOR,
+  RANKED_COLOR,
+  REPORT_COLORS,
   type ReportSum,
   type ReportTransaction,
   reportSearchSchema,
   UNCATEGORIZED_COLOR,
 } from "./reports";
+import type { ColorSlots } from "./reports-colors";
 
 /**
  * How Spending Trends draws its months: stacked bars, lines per category (top N + Other), 100%
@@ -54,13 +58,22 @@ export type TrendsSearch = z.infer<typeof trendsSearchSchema>;
 export const OTHER_KEY = "other";
 /** Series shown by name in the lines and share modes; the rest are "Other". */
 export const TOP_SERIES = 5;
+/** Series shown by name in the stacked bars, one per palette colour; the rest are "Other". */
+export const BAR_SERIES = REPORT_COLORS;
 
 export interface SeriesInfo {
   key: string;
   label: string;
+  /** The series' colour on its own; a chart picks its series' colours with seriesColors. */
   color: string;
+  /** Whether a chart hands it a palette colour; Uncategorized and Other keep their neutrals. */
+  palette?: true;
+  /** A category's group, which the legend lists it under; none for a group. */
+  family?: string;
   /** Place in the plan (stack order). */
   order: number;
+  /** Place in the palette (ColorSlots), the same in every report; `order` without. */
+  slot?: number;
   /** The category's group (a group's own id); null for Uncategorized and Other. */
   groupId: string | null;
   groupName: string;
@@ -75,8 +88,7 @@ export interface Catalog {
 
 const UNCATEGORIZED_LABEL = "Uncategorized";
 
-export function catalogOf(list: CategoryList): Catalog {
-  const colors = planColors(list);
+export function catalogOf(list: CategoryList, slots?: ColorSlots): Catalog {
   const categories = new Map<string, SeriesInfo>();
   const groups = new Map<string, SeriesInfo>();
   // Uncategorized first, as the category filter lists it.
@@ -93,8 +105,10 @@ export function catalogOf(list: CategoryList): Catalog {
     groups.set(g.id, {
       key: g.id,
       label: g.name,
-      color: colors.groups.get(g.id) ?? UNCATEGORIZED_COLOR,
+      color: RANKED_COLOR,
+      palette: true,
       order: groupIndex,
+      slot: slots?.groups.get(g.id) ?? groupIndex,
       groupId: g.id,
       groupName: g.name,
     });
@@ -102,8 +116,11 @@ export function catalogOf(list: CategoryList): Catalog {
       categories.set(c.id, {
         key: c.id,
         label: c.name,
-        color: colors.categories.get(c.id) ?? UNCATEGORIZED_COLOR,
+        color: RANKED_COLOR,
+        palette: true,
+        family: g.id,
         order: index,
+        slot: slots?.categories.get(c.id) ?? index,
         groupId: g.id,
         groupName: g.name,
       });
@@ -116,7 +133,7 @@ export function catalogOf(list: CategoryList): Catalog {
 const OTHER_INFO: SeriesInfo = {
   key: OTHER_KEY,
   label: "Other",
-  color: "var(--muted-foreground)",
+  color: OTHER_COLOR,
   order: Number.MAX_SAFE_INTEGER,
   groupId: null,
   groupName: "",
@@ -131,7 +148,7 @@ export function seriesInfo(catalog: Catalog, level: TrendLevel, key: string): Se
       category ?? {
         key,
         label: "Unknown category",
-        color: "var(--report-8)",
+        color: UNCATEGORIZED_COLOR,
         order: Number.MAX_SAFE_INTEGER - 1,
         groupId: null,
         groupName: "",
@@ -142,7 +159,7 @@ export function seriesInfo(catalog: Catalog, level: TrendLevel, key: string): Se
     catalog.groups.get(key) ?? {
       key,
       label: "Unknown group",
-      color: "var(--report-8)",
+      color: UNCATEGORIZED_COLOR,
       order: Number.MAX_SAFE_INTEGER - 1,
       groupId: key,
       groupName: "",
@@ -193,14 +210,18 @@ export function seriesKeys(
 }
 
 /**
- * The months with the top `n` spenders kept and everything else summed into "Other" (the lines
- * and share modes), so a plan with dozens of categories still reads.
+ * The months with the top `n` spenders kept and everything else summed into "Other", so a plan
+ * with dozens of categories still reads. A lone series left over keeps its name (an "Other" of one
+ * hides it for nothing) while the palette still has a colour for it.
  */
 export function withOther(
   months: readonly TrendMonth<string>[],
   n: number,
 ): { keys: string[]; months: TrendMonth<string>[] } {
   const top = topSpenders(months, n);
+  const rest = new Set<string>();
+  for (const m of months) for (const key of m.nets.keys()) if (!top.includes(key)) rest.add(key);
+  if (rest.size === 1 && top.length < REPORT_COLORS) top.push(...rest);
   const keep = new Set(top);
   let other = false;
   const folded = months.map((m) => {
@@ -213,6 +234,35 @@ export function withOther(
     return { ...m, nets };
   });
   return { keys: other ? [...top, OTHER_KEY] : top, months: folded };
+}
+
+/**
+ * Each series' colour in one chart, none repeated (distinctColors): its place in the plan picks it,
+ * so a category is the same colour in every report; Uncategorized and Other keep their neutrals.
+ */
+export function seriesColors(
+  keys: readonly string[],
+  info: (key: string) => SeriesInfo,
+): Map<string, string> {
+  return distinctColors(
+    keys.map((key) => {
+      const i = info(key);
+      return i.palette ? { key, slot: i.slot ?? i.order } : { key, color: i.color };
+    }),
+  );
+}
+
+/**
+ * The range's months from the budget's first transaction (`first`, null when unknown): months
+ * before it aren't months of zero spending, so the average and the charts leave them out. A range
+ * wholly before it keeps its months.
+ */
+export function sinceFirstMonth<T extends { month: BudgetMonth }>(
+  months: readonly T[],
+  first: BudgetMonth | null,
+): T[] {
+  const since = first ? months.filter((m) => m.month >= first) : [...months];
+  return since.length > 0 ? since : [...months];
 }
 
 /** The bar chart's months: only months with transactions. */
@@ -230,6 +280,7 @@ export function summaryExportRows({
   rows,
   catalog,
   range,
+  first,
   average,
   currency,
   numberFormat,
@@ -237,11 +288,17 @@ export function summaryExportRows({
   rows: readonly ReportSum[];
   catalog: Catalog;
   range: MonthRange;
+  /** The budget's first month with transactions: the Average counts months from it (`sinceFirstMonth`). */
+  first: BudgetMonth | null;
   average: (total: bigint, months: number) => bigint;
   currency: CurrencyCode;
   numberFormat: BudgetFormatSettings["numberFormat"];
 }): DelimitedCell[][] {
   const months = monthsIn(range);
+  const counted = sinceFirstMonth(
+    months.map((month) => ({ month })),
+    first,
+  ).length;
   const nets = new Map<string, Map<string, bigint>>();
   for (const r of rows) {
     if (!r.month) continue;
@@ -266,7 +323,7 @@ export function summaryExportRows({
         info.groupName,
         info.label,
         ...values.map(amount),
-        amount(average(total, months.length)),
+        amount(average(total, counted)),
         amount(total),
       ];
     }),

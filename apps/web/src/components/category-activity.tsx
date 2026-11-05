@@ -258,12 +258,12 @@ function CardActivitySummary({
       <div className="grid gap-1">
         {row("Spending", c.spending)}
         {row("Returns", c.returns)}
-        {row("Total Spending", c.spending + c.returns, true)}
+        {row("Total spending", c.spending + c.returns, true)}
       </div>
       <div className="grid gap-1">
-        {row("Funded Spending", c.funded)}
-        {row("Payments & Returns", c.paymentsAndReturns)}
-        {row("Total Activity", c.funded + c.paymentsAndReturns, true)}
+        {row("Funded spending", c.funded)}
+        {row("Payments & returns", c.paymentsAndReturns)}
+        {row("Total activity", c.funded + c.paymentsAndReturns, true)}
       </div>
     </dl>
   );
