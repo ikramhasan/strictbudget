@@ -365,7 +365,8 @@ export function layoutColumns(
   let left = Math.max(free - flexible.reduce((sum, id) => sum + floor(id), 0), 0);
   for (const id of columns) {
     const comfort = editorComfort(id, dateFormat);
-    if (comfort === undefined || dragged[id] !== undefined) continue;
+    // Not while Payee and Category are still short of comfortable (the narrowest layout).
+    if (fit === "min" || comfort === undefined || dragged[id] !== undefined) continue;
     const given = Math.min(left, Math.max(0, comfort - (widths[id] ?? 0)));
     widths[id] = (widths[id] ?? 0) + given;
     left -= given;

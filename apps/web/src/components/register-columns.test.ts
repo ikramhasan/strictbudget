@@ -143,6 +143,25 @@ describe("layoutColumns", () => {
     expect(tight.widths.outflow).toBe(86);
     expect(tight.widths.payee).toBe(132);
     expect(tight.widths.category).toBe(140);
+    // In the narrowest layout, Payee gets back to comfortable before the date and amount take any
+    // room, and the date doesn't narrow as the register widens.
+    const squeezed = (available: number) =>
+      layoutColumns(account, {
+        dragged: {},
+        available,
+        dateFormat: "MM/DD/YYYY",
+        content: { date: 36, outflow: 66, inflow: 66, balance: 70, payee: 150, category: 210 },
+      }).widths;
+    expect(squeezed(590).date).toBe(72);
+    expect(squeezed(590).payee).toBe(96);
+    expect(squeezed(640).payee).toBe(132);
+    let date = 0;
+    for (let available = 560; available < 700; available += 10) {
+      expect(squeezed(available).balance).toBeUndefined();
+      const width = squeezed(available).date ?? 0;
+      expect(width).toBeGreaterThanOrEqual(date);
+      date = width;
+    }
   });
 
   it("gives Category and Memo room to read before Payee, and this year's dates no year", () => {
