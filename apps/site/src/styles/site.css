@@ -26,18 +26,13 @@
   --color-bar-border: oklch(0.91 0.006 95);
   --color-bar-funded: oklch(0.615 0.145 156);
   --color-bar-underfunded: oklch(0.8 0.16 79);
-  /* Soft tints for the landing page's tiles and cards, one per money state, after the pastel
-     calendar tiles of daybridge.com that the page's look is modelled on. */
+  /* Soft washes behind the landing page's cards, one per money state, after the pastel palette
+     of daybridge.com that the page's look is modelled on. */
   --color-tint-cobalt: oklch(95.5% 0.03 265);
-  --color-tint-cobalt-edge: oklch(70% 0.13 265);
   --color-tint-violet: oklch(95.5% 0.035 300);
-  --color-tint-violet-edge: oklch(68% 0.14 300);
   --color-tint-green: oklch(96% 0.04 160);
-  --color-tint-green-edge: oklch(68% 0.13 160);
   --color-tint-yellow: oklch(97% 0.05 90);
-  --color-tint-yellow-edge: oklch(78% 0.15 80);
   --color-tint-rose: oklch(96% 0.03 15);
-  --color-tint-rose-edge: oklch(66% 0.17 18);
   --color-tint-peach: oklch(96.5% 0.03 55);
 }
 
