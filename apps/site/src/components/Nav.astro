@@ -8,15 +8,17 @@ interface Props {
 const { current } = Astro.props;
 ---
 
-<header class="sticky top-0 z-50 px-4 pt-4">
-  <nav
-    aria-label="Main"
-    class="mx-auto flex max-w-[1120px] items-center gap-8 rounded-2xl border bg-background/80 p-2 shadow-[0_4px_16px_rgb(0_0_0/0.04)] backdrop-blur-lg lg:w-fit"
-  >
-    <a href="/" class="rounded-lg px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+<!-- A plain bar over the page, as on daybridge.com: logo left, links centred, actions right. Once
+     the page scrolls it picks up a frosted background and a hairline (data-scrolled). -->
+<header
+  id="site-header"
+  class="group/header sticky top-0 z-50 border-b border-transparent transition-[background-color,border-color,backdrop-filter] duration-300 ease-site data-scrolled:border-border/70 data-scrolled:bg-background/75 data-scrolled:backdrop-blur-lg"
+>
+  <nav aria-label="Main" class="mx-auto grid h-16 max-w-[1200px] grid-cols-[1fr_auto] items-center gap-8 px-6 lg:h-[4.5rem] lg:grid-cols-[1fr_auto_1fr]">
+    <a href="/" class="w-fit rounded-lg py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring">
       <img src="/logo.svg" alt="strictbudget home" width="117" height="24" class="h-6 w-auto" />
     </a>
-    <ul class="hidden items-center gap-6 lg:flex">
+    <ul class="hidden items-center gap-7 lg:flex">
       {
         navLinks.map((link) => (
           <li>
@@ -24,8 +26,8 @@ const { current } = Astro.props;
               href={link.href}
               aria-current={link.label === current ? "page" : undefined}
               class={cn(
-                "rounded-md text-sm font-medium text-muted-foreground transition-colors duration-300 ease-site outline-none hover:text-heading focus-visible:ring-2 focus-visible:ring-ring",
-                link.label === current && "font-semibold text-heading",
+                "rounded-md text-[0.9375rem] text-muted-foreground transition-colors duration-300 ease-site outline-none hover:text-heading focus-visible:ring-2 focus-visible:ring-ring",
+                link.label === current && "font-medium text-heading",
               )}
             >
               {link.label}
@@ -34,9 +36,9 @@ const { current } = Astro.props;
         ))
       }
     </ul>
-    <div class="ml-auto flex items-center gap-1">
-      <a href={links.signIn} class={buttonClass("ghost", "small", "hidden lg:inline-flex")}>Sign in</a>
-      <a href={links.signUp} class={buttonClass("default", "small", "hidden sm:inline-flex")}>
+    <div class="flex items-center justify-end gap-2">
+      <a href={links.signIn} class={buttonClass("ghost", "small", "hidden font-medium text-muted-foreground hover:text-heading lg:inline-flex")}>Sign in</a>
+      <a href={links.signUp} class={buttonClass("default", "small", "btn-glow hidden sm:inline-flex")}>
         Start your budget
       </a>
       <button
@@ -64,7 +66,7 @@ const { current } = Astro.props;
   id="mobile-menu"
   class="group/menu invisible fixed inset-0 z-40 bg-background/95 opacity-0 backdrop-blur-xl transition-[opacity,visibility] duration-300 ease-site data-open:visible data-open:opacity-100 lg:hidden"
 >
-  <div class="flex h-full flex-col gap-8 overflow-y-auto px-6 pt-28 pb-10">
+  <div class="flex h-full flex-col gap-8 overflow-y-auto px-6 pt-24 pb-10">
     <ul class="flex flex-col gap-2">
       {
         navLinks.map((link, i) => (
@@ -90,13 +92,20 @@ const { current } = Astro.props;
     <div
       class="mt-auto flex translate-y-6 flex-col gap-3 opacity-0 transition-[opacity,transform] delay-[340ms] duration-500 ease-site group-data-open/menu:translate-y-0 group-data-open/menu:opacity-100 motion-reduce:translate-y-0"
     >
-      <a href={links.signUp} class={buttonClass("default", "main", "w-full")}>Start your budget</a>
+      <a href={links.signUp} class={buttonClass("default", "main", "btn-glow w-full")}>Start your budget</a>
       <a href={links.signIn} class={buttonClass("outline", "main", "w-full")}>Sign in</a>
     </div>
   </div>
 </div>
 
 <script>
+  const header = document.getElementById("site-header");
+  if (header) {
+    const onScroll = () => header.toggleAttribute("data-scrolled", window.scrollY > 8);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  }
+
   const toggle = document.getElementById("menu-toggle");
   const menu = document.getElementById("mobile-menu");
   if (toggle && menu) {

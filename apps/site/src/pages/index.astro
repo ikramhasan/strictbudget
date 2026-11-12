@@ -4,60 +4,164 @@ import {
   ArrowRightIcon,
   ArrowsLeftRightIcon,
   BankIcon,
+  BookOpenTextIcon,
+  ChartBarIcon,
   CheckCircleIcon,
   CheckIcon,
+  ClockCountdownIcon,
   CoinsIcon,
+  CurrencyCircleDollarIcon,
+  DeviceMobileIcon,
+  EyeIcon,
+  FileCsvIcon,
   GithubLogoIcon,
+  GlobeIcon,
+  HardDrivesIcon,
+  LightbulbIcon,
+  MinusIcon,
+  PathIcon,
+  QuestionIcon,
   QuotesIcon,
   ReceiptIcon,
+  RobotIcon,
+  SealCheckIcon,
+  SquaresFourIcon,
+  TagIcon,
   UsersThreeIcon,
-  XCircleIcon,
+  WarningCircleIcon,
 } from "@phosphor-icons/react/ssr";
 import BlogCard from "../components/BlogCard.astro";
 import { Faq } from "../components/Faq";
+import AvailablePill from "../components/vignettes/AvailablePill.astro";
 import BudgetMini from "../components/vignettes/BudgetMini.astro";
 import DataExport from "../components/vignettes/DataExport.astro";
+import ProgressBar from "../components/vignettes/ProgressBar.astro";
 import Register from "../components/vignettes/Register.astro";
 import Sharing from "../components/vignettes/Sharing.astro";
-import Targets from "../components/vignettes/Targets.astro";
 import Base from "../layouts/Base.astro";
 import { faq } from "../lib/faq";
 import { byDate } from "../lib/posts";
 import { links, price, site } from "../lib/site";
-import { badgeClass, buttonClass, cn } from "../lib/ui";
+import { buttonClass, cn } from "../lib/ui";
+
+// The page's look follows daybridge.com: a soft colour wash over a ruled grid, centred headings in
+// medium weight, small outlined pills over each section, tinted cards and product shots on a
+// painted backdrop.
 
 const posts = byDate(await getCollection("blog")).slice(0, 3);
 
 const wrap = "mx-auto w-full max-w-[1168px] px-6";
-const eyebrow = "text-sm font-semibold text-primary-ink";
-const h2 = "text-3xl font-semibold tracking-tight text-heading sm:text-4xl";
-const card = "flex flex-col rounded-2xl border bg-background p-2";
-const panel = "flex items-center justify-center rounded-lg bg-secondary p-4 sm:p-6";
+const h2 =
+  "text-3xl font-medium tracking-[-0.025em] text-heading sm:text-[2.5rem] sm:leading-[1.15]";
+const lead = "text-lg text-muted-foreground";
+const cta = buttonClass("default", "main", "btn-glow h-11 px-4");
 
-const benefits = [
+/**
+ * Budget categories floating in the hero's grid, where a calendar would have its events. `wide`
+ * tiles sit in the inner columns and only show on wide screens.
+ */
+const tiles = [
   {
+    cell: "col-start-1 row-start-2",
+    tint: "bg-tint-violet border-tint-violet-edge",
+    name: "💸 Paycheck",
+    detail: "+$3,240.00 to assign",
+  },
+  {
+    cell: "col-start-1 row-start-4 row-span-2",
+    tint: "bg-tint-green border-tint-green-edge",
+    name: "🏠 Rent",
+    detail: "$1,450.00 · Funded",
+    tall: true,
+  },
+  {
+    cell: "col-start-2 row-start-5",
+    wide: true,
+    tint: "bg-tint-cobalt border-tint-cobalt-edge",
+    name: "⚡ Utilities",
+    detail: "$102.00 · Due Nov 18",
+  },
+  {
+    cell: "col-start-7 row-start-2 row-span-2",
+    tint: "bg-tint-cobalt border-tint-cobalt-edge",
+    name: "🛒 Groceries",
+    detail: "$612.40 left this month",
+    tall: true,
+  },
+  {
+    cell: "col-start-7 row-start-5",
+    tint: "bg-tint-yellow border-tint-yellow-edge",
+    name: "✈️ Flights to Lisbon",
+    detail: "$820.00 more by May 1",
+  },
+  {
+    cell: "col-start-6 row-start-5",
+    wide: true,
+    tint: "bg-tint-rose border-tint-rose-edge",
+    name: "🍽️ Dining out",
+    detail: "−$12.40 overspent",
+  },
+];
+
+const runsOn = [
+  { Icon: GlobeIcon, label: "Web" },
+  { Icon: DeviceMobileIcon, label: "Phone" },
+  { Icon: HardDrivesIcon, label: "Your server" },
+];
+const worksWith = [
+  { Icon: FileCsvIcon, label: "Bank files" },
+  { Icon: ArrowsLeftRightIcon, label: "150 currencies" },
+  { Icon: RobotIcon, label: "AI agents" },
+];
+
+const features = [
+  {
+    Icon: CoinsIcon,
+    title: "Decide before you spend",
+    body: "New income waits in Ready to Assign until you give it a job. Assign until it reads zero and every dollar has a plan.",
+  },
+  {
+    Icon: UsersThreeIcon,
     title: "One budget for the whole household",
     body: "Invite up to five people as editors or viewers. Changes appear live, and the history names who made each one.",
-    vignette: Sharing,
   },
   {
-    title: "See bills coming before they land",
+    Icon: TagIcon,
+    title: "Targets for every bill and goal",
     body: "Weekly, monthly, yearly and dated targets show what is underfunded while there is still time to move money.",
-    vignette: Targets,
-  },
-  {
-    title: "Your data stays yours",
-    body: "Download a full backup or a CSV whenever you like, and restore it on your own server if you ever leave.",
-    vignette: DataExport,
   },
 ];
 
-const tagline = [
-  ["Every", "cent", "that", "comes", "in"],
-  ["waits", "for", "its", "job."],
-  ["You", "choose", "the", "job"],
-  ["before", "the", "month", "does."],
-];
+const states = [
+  {
+    key: "ready",
+    Icon: CoinsIcon,
+    title: "Ready to Assign",
+    body: "Income waits here until you give it a job. Keep assigning until it reads $0.00.",
+    wash: "from-tint-violet",
+  },
+  {
+    key: "funded",
+    Icon: CheckCircleIcon,
+    title: "Funded",
+    body: "The category holds what its target asks for, so spend from it without a second thought.",
+    wash: "from-tint-green",
+  },
+  {
+    key: "underfunded",
+    Icon: ClockCountdownIcon,
+    title: "Underfunded",
+    body: "A target wants more before its date. You see it while there is still time to move money.",
+    wash: "from-tint-yellow",
+  },
+  {
+    key: "overspent",
+    Icon: WarningCircleIcon,
+    title: "Overspent",
+    body: "Spending ran past what was there. Cover it from another category and the month adds up again.",
+    wash: "from-tint-rose",
+  },
+] as const;
 
 const steps = [
   {
@@ -80,6 +184,14 @@ const steps = [
 const quotes = [
   {
     quote:
+      "We used to split costs in a spreadsheet and argue about it every Sunday. Now we see the same categories, and the history settles who moved what.",
+    initials: "PR",
+    color: "bg-[#4a6fd1]",
+    name: "Priya Raman and Tomás Herrera",
+    role: "Sharing one budget in Toronto",
+  },
+  {
+    quote:
       "I'm paid in euros and send money home in pesos. It's the first budget that doesn't make me convert anything by hand.",
     initials: "LF",
     color: "bg-[#2e9478]",
@@ -93,6 +205,36 @@ const quotes = [
     color: "bg-[#d9922e]",
     name: "Kwame Osei",
     role: "Nurse in Leeds",
+  },
+];
+
+/** The plan comparison under the pricing cards: true is included, a string is a qualified yes. */
+const compare: { group: string; rows: [string, boolean | string, boolean | string][] }[] = [
+  {
+    group: "Budgeting",
+    rows: [
+      ["Zero based budget with targets and Auto Assign", true, true],
+      ["Share with up to 5 people", true, true],
+      ["150 currencies with daily rates", true, true],
+      ["Bank file import with duplicate matching", true, true],
+      ["8 reports with CSV export", true, true],
+    ],
+  },
+  {
+    group: "Running it",
+    rows: [
+      ["We handle updates and backups", true, false],
+      ["Email summaries and password reset", true, "Optional"],
+      ["Runs on your own server with Docker Compose", false, true],
+      ["REST API and MCP server for AI agents", true, true],
+    ],
+  },
+  {
+    group: "Your data",
+    rows: [
+      ["Full JSON backup and CSV export", true, true],
+      ["Open source under AGPL 3.0", true, true],
+    ],
   },
 ];
 
@@ -166,179 +308,244 @@ const jsonLd = [
 ---
 
 <Base jsonLd={jsonLd}>
-  <!-- Hero -->
-  <section class="px-6 pt-16 pb-16 sm:pt-20 sm:pb-24">
+  <!-- Hero: the colour wash and grid run up under the navigation bar. -->
+  <section class="relative isolate -mt-16 overflow-hidden px-6 pt-36 pb-16 lg:-mt-[4.5rem] lg:pt-48 lg:pb-20">
+    <div aria-hidden="true" class="canvas-wash absolute inset-0 -z-10"></div>
+    <div
+      aria-hidden="true"
+      class="absolute inset-x-0 top-0 -z-10 mx-auto h-[624px] max-w-[1320px] [mask-image:radial-gradient(ellipse_85%_100%_at_50%_10%,black_60%,transparent_100%)]"
+    >
+      <div class="canvas-grid absolute inset-0"></div>
+      <div class="absolute inset-0 hidden grid-cols-7 grid-rows-[repeat(6,104px)] lg:grid">
+        {
+          tiles.map((tile, i) => (
+            <div class={cn("p-2", tile.cell, tile.wide && "hidden xl:block")}>
+              <div
+                data-float
+                style={`animation-delay: ${-i * 1.3}s`}
+                class={cn(
+                  "flex flex-col gap-0.5 rounded-md border-l-[3px] px-2.5 py-2 text-xs shadow-[0_1px_2px_rgb(0_0_0/0.04)]",
+                  tile.tint,
+                  tile.tall && "h-full",
+                )}
+              >
+                <span class="truncate font-medium text-heading/85">{tile.name}</span>
+                <span class="truncate text-heading/60 tabular-nums">{tile.detail}</span>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+
     <div class="mx-auto flex max-w-[680px] flex-col items-center gap-6 text-center">
-      <span class={badgeClass()}><GithubLogoIcon aria-hidden="true" /> Open source, and yours to keep</span>
       <h1
-        class="text-gradient pb-1 text-4xl font-semibold tracking-[-0.03em] sm:text-5xl sm:leading-none lg:text-6xl"
+        class="text-gradient pb-1 text-[2.5rem] leading-[1.08] font-medium tracking-[-0.035em] sm:text-[3.5rem] lg:text-[4rem]"
       >
         Give every cent a job <br class="hidden sm:block" />before you spend it
       </h1>
-      <p class="text-lg text-muted-foreground">
+      <p class="max-w-[34rem] text-lg text-muted-foreground sm:text-xl sm:leading-8">
         A zero based budget you can share with up to five people. Assign the money you actually have to
         the bills and goals ahead, in any of 150 currencies.
       </p>
       <div class="flex flex-col items-center gap-3 pt-2">
-        <a href={links.signUp} class={buttonClass("default", "main")}>
+        <a href={links.signUp} class={cta}>
           Start your budget
           <ArrowRightIcon size={16} aria-hidden="true" />
         </a>
         <p class="text-sm text-muted-foreground">{site.riskNote}</p>
       </div>
-      <ul
-        class="flex flex-col items-center gap-3 pt-4 text-sm font-medium sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-6"
-      >
-        <li class="flex items-center gap-2"><GithubLogoIcon size={16} aria-hidden="true" /> Open source on GitHub</li>
-        <li class="flex items-center gap-2">
-          <ArrowsLeftRightIcon size={16} aria-hidden="true" /> 150 currencies, rates updated daily
-        </li>
-        <li class="flex items-center gap-2"><UsersThreeIcon size={16} aria-hidden="true" /> Up to 6 people per budget</li>
-      </ul>
     </div>
+
     <div
-      class="mx-auto mt-12 max-w-[1120px] rounded-2xl border bg-secondary p-2 shadow-[0_24px_64px_rgb(26_26_26/0.08)] sm:mt-16"
-      data-reveal
+      class="mx-auto mt-20 flex max-w-[1120px] flex-col items-center gap-6 text-[0.9375rem] text-heading/80 lg:mt-28 lg:flex-row lg:justify-center lg:gap-8"
     >
-      <!-- On a phone the whole screen is too small to read, so it shows the left part, larger. -->
-      <div class="aspect-[4/3] overflow-hidden rounded-lg border sm:aspect-auto">
-      <img
-        src="/screenshots/budget-1440.webp"
-        srcset="/screenshots/budget-960.webp 960w, /screenshots/budget-1440.webp 1440w, /screenshots/budget-2880.webp 2880w"
-        sizes="(min-width: 1168px) 1104px, (min-width: 640px) calc(100vw - 64px), 180vw"
-        width="2880"
-        height="1800"
-        alt="The budget screen: categories grouped into Bills, Needs and Wants with Assigned, Activity and Available, and All Money Assigned at the top right"
-        fetchpriority="high"
-        class="block h-auto w-[180%] max-w-none sm:w-full"
-      />
+      {
+        [
+          { label: "Runs on", items: runsOn },
+          { label: "Works with", items: worksWith },
+        ].map((group, g) => (
+          <div class={cn("flex flex-col items-center gap-3 sm:flex-row sm:gap-6", g === 1 && "lg:border-l lg:pl-8")}>
+            <span class="text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase">{group.label}</span>
+            <ul class="flex flex-wrap justify-center gap-x-5 gap-y-2">
+              {group.items.map(({ Icon, label }) => (
+                <li class="flex items-center gap-2">
+                  <span class="grid size-7 place-items-center rounded-full border bg-background text-heading/70 shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
+                    <Icon size={14} aria-hidden="true" />
+                  </span>
+                  {label}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <!-- Features: copy on the left, the budget on a painted backdrop running off the right edge. -->
+  <section id="features" class="overflow-x-clip py-16 sm:py-24">
+    <div class={cn(wrap, "grid items-center gap-12 lg:grid-cols-[400px_1fr] lg:gap-16")}>
+      <div class="flex flex-col gap-10" data-reveal>
+        <div class="flex flex-col gap-4">
+          <span class="pill"><SquaresFourIcon size={14} aria-hidden="true" /> Everything in one place</span>
+          <h2 class={h2}>Built for the way your money actually moves</h2>
+        </div>
+        <ul class="flex flex-col gap-8">
+          {
+            features.map(({ Icon, title, body }) => (
+              <li class="flex gap-4">
+                <Icon size={22} className="mt-0.5 shrink-0 text-heading/70" aria-hidden="true" />
+                <div class="flex flex-col gap-2">
+                  <div class="flex items-center gap-3">
+                    <h3 class="text-lg font-medium text-heading">{title}</h3>
+                    <span aria-hidden="true" class="hidden h-px flex-1 bg-gradient-to-r from-border to-transparent lg:block" />
+                  </div>
+                  <p class="text-base text-muted-foreground">{body}</p>
+                </div>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+      <div
+        class="wallpaper relative h-[360px] overflow-hidden rounded-2xl sm:h-[480px] lg:mr-[min(-1.5rem,calc((1120px-100vw)/2))] lg:h-[600px] lg:rounded-r-none"
+        data-reveal
+      >
+        <div
+          class="absolute top-8 left-6 w-[1100px] overflow-hidden rounded-tl-xl border border-white/40 bg-background shadow-[0_24px_64px_rgb(20_30_80/0.25)] sm:top-12 sm:left-12 lg:w-[1180px]"
+        >
+          <img
+            src="/screenshots/budget-1440.webp"
+            srcset="/screenshots/budget-960.webp 960w, /screenshots/budget-1440.webp 1440w, /screenshots/budget-2880.webp 2880w"
+            sizes="(min-width: 1024px) 1180px, 1100px"
+            width="2880"
+            height="1800"
+            alt="The budget screen: categories grouped into Bills, Needs and Wants with Assigned, Activity and Available, and All Money Assigned at the top right"
+            fetchpriority="high"
+            class="block h-auto w-full"
+          />
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- Problem to solution -->
-  <section class={cn(wrap, "grid gap-8 pb-16 sm:pb-24 lg:grid-cols-2 lg:gap-16")} data-reveal>
-    <div class="flex flex-col gap-4">
-      <p class={eyebrow}>Why it works</p>
-      <h2 class={h2}>
-        Most money apps tell you <br class="hidden lg:block" />where it went. This one asks{" "}
-        <br class="hidden lg:block" />where it should go.
-      </h2>
-    </div>
-    <div class="flex flex-col gap-6 lg:pt-12">
-      <p class="text-base text-muted-foreground">
-        Tracking shows you last month's damage. A zero based budget plans the next one: income waits in
-        Ready to Assign until you give each dollar a category, and you spend only what a category has.
+  <!-- Money states: four tinted cards, one per colour the budget uses. -->
+  <section class={cn(wrap, "flex flex-col gap-12 py-16 sm:py-24")}>
+    <div class="mx-auto flex max-w-[640px] flex-col items-center gap-4 text-center" data-reveal>
+      <span class="pill"><EyeIcon size={14} aria-hidden="true" /> See where you stand</span>
+      <h2 class={h2}>Every category says where it stands</h2>
+      <p class={lead}>
+        Colour means the same thing everywhere in the app, so one look at the budget tells you what is covered
+        and what needs you.
       </p>
-      <ul class="flex flex-col gap-4 text-sm">
-        <li class="flex gap-3">
-          <XCircleIcon size={20} className="shrink-0 text-muted-foreground" aria-hidden="true" />
-          <span class="flex flex-col gap-1">
-            <span class="font-semibold text-heading">Tracking</span>
-            <span class="text-muted-foreground">In March you learn February's groceries ate the car insurance.</span>
-          </span>
-        </li>
-        <li class="flex gap-3">
-          <CheckCircleIcon size={20} className="shrink-0 text-primary" aria-hidden="true" />
-          <span class="flex flex-col gap-1">
-            <span class="font-semibold text-heading">Budgeting with strictbudget</span>
-            <span class="text-muted-foreground">
-              The insurance had $142.38 set aside in January, so groceries ran out of room instead.
-            </span>
-          </span>
-        </li>
-      </ul>
     </div>
-  </section>
-
-  <!-- Benefits -->
-  <section id="features" class={cn(wrap, "flex flex-col gap-12 pb-16 sm:pb-24")}>
-    <div class="flex flex-col gap-4" data-reveal>
-      <p class={eyebrow}>Features</p>
-      <h2 class={h2}>Built for the way your money <br class="hidden sm:block" />actually moves</h2>
-    </div>
-    <div class="flex flex-col gap-4">
-    <div class="grid gap-4 lg:grid-cols-[1fr_368px]" data-reveal>
-      <article class={card}>
-        <div class={cn(panel, "lg:h-[348px]")}><Register /></div>
-        <div class="flex flex-col gap-2 p-4">
-          <h3 class="text-lg font-semibold text-heading">Budget in every currency you hold</h3>
-          <p class="text-base text-muted-foreground">
-            A euro savings account, a dollar salary, a card in yen. Each account keeps its own currency and the
-            budget converts it at locked daily rates, so your categories always add up.
-          </p>
-        </div>
-      </article>
-      <article class={card}>
-        <div class={cn(panel, "lg:h-[348px]")}><BudgetMini state="assigned" class="max-w-90" /></div>
-        <div class="flex flex-col gap-2 p-4">
-          <h3 class="text-lg font-semibold text-heading">Decide before you spend</h3>
-          <p class="text-base text-muted-foreground">
-            New income waits in Ready to Assign until you give it a job. Assign until it reads zero and every
-            dollar has a plan.
-          </p>
-        </div>
-      </article>
-    </div>
-    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-reveal>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" data-reveal>
       {
-        benefits.map(({ title, body, vignette: Vignette }, i) => (
-          <article class={cn(card, i === 2 && "md:col-span-2 lg:col-span-1")}>
-            <div class={cn(panel, "lg:h-[296px] lg:px-4")}>
-              <div class="w-full max-w-90">
-                <Vignette />
+        states.map(({ key, Icon, title, body, wash }) => (
+          <article class="flex flex-col overflow-hidden rounded-2xl border bg-background shadow-[0_1px_2px_rgb(0_0_0/0.03)]">
+            <div class={cn("flex h-40 items-center bg-gradient-to-b to-background px-4", wash)}>
+              <div class="w-full rounded-lg border bg-background p-3 shadow-[0_4px_12px_rgb(0_0_0/0.06)]">
+                {key === "ready" && (
+                  <div class="flex items-center justify-between gap-2 rounded-md bg-green-200 px-3 py-2 text-green-950">
+                    <span class="grid">
+                      <span class="text-lg font-semibold tabular-nums">$4,812.37</span>
+                      <span class="text-xs">Ready to Assign</span>
+                    </span>
+                    <span class={buttonClass("default", "small", "pointer-events-none h-7 px-2 text-xs")}>Assign</span>
+                  </div>
+                )}
+                {key === "funded" && (
+                  <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between gap-2 text-sm">
+                      <span class="truncate">🚗 Car insurance</span>
+                      <AvailablePill amount="$142.38" tone="positive" mark="met" />
+                    </div>
+                    <ProgressBar percent={100} tone="funded" />
+                    <p class="text-xs text-muted-foreground"><span class="font-medium text-foreground">Funded</span></p>
+                  </div>
+                )}
+                {key === "underfunded" && (
+                  <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between gap-2 text-sm">
+                      <span class="truncate">✈️ Flights</span>
+                      <AvailablePill amount="$380.00" tone="caution" mark="pie" funded={32} />
+                    </div>
+                    <ProgressBar percent={32} tone="underfunded" />
+                    <p class="text-xs text-muted-foreground">
+                      <span class="font-medium text-foreground">$820.00 more</span> by May 1
+                    </p>
+                  </div>
+                )}
+                {key === "overspent" && (
+                  <div class="flex flex-col gap-2">
+                    <div class="flex items-center justify-between gap-2 text-sm">
+                      <span class="truncate">🍽️ Dining out</span>
+                      <AvailablePill amount="−$12.40" tone="negative" />
+                    </div>
+                    <div class="h-1 rounded-full bg-red-500"></div>
+                    <p class="text-xs text-muted-foreground">
+                      <span class="font-medium text-foreground">Spent $162.40</span> of $150.00
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
-            <div class="flex flex-col gap-2 p-4">
-              <h3 class="text-lg font-semibold text-heading">{title}</h3>
-              <p class="text-base text-muted-foreground">{body}</p>
+            <div class="flex flex-col gap-2 p-5 pt-3">
+              <h3 class="flex items-center gap-2 text-base font-medium text-heading">
+                <Icon size={18} className="text-heading/70" aria-hidden="true" />
+                {title}
+              </h3>
+              <p class="text-[0.9375rem] text-muted-foreground">{body}</p>
             </div>
           </article>
         ))
       }
     </div>
-    </div>
   </section>
 
-  <!-- Tagline -->
-  <section class="bg-secondary px-6 py-16 sm:py-24" aria-label="What strictbudget is for">
-    <p
-      data-tagline
-      class="mx-auto max-w-[680px] text-center text-3xl font-semibold tracking-tight text-heading sm:text-5xl sm:leading-tight"
-    >
-      {
-        tagline.map((line) => (
-          <span class="sm:block">
-            {line.map((word) => (
-              <>
-                <span data-word>{word}</span>{" "}
-              </>
-            ))}
-          </span>
-        ))
-      }
-    </p>
-  </section>
-
-  <!-- How it works -->
+  <!-- How it works: the budget before and after assigning, on the backdrop, then the three steps. -->
   <section id="how-it-works" class={cn(wrap, "flex flex-col gap-12 py-16 sm:py-24")}>
-    <div class="flex flex-col gap-4" data-reveal>
-      <p class={eyebrow}>How it works</p>
+    <div class="mx-auto flex max-w-[640px] flex-col items-center gap-4 text-center" data-reveal>
+      <span class="pill"><PathIcon size={14} aria-hidden="true" /> How it works</span>
       <h2 class={h2}>Three steps, then a monthly habit</h2>
+      <p class={lead}>Set it up in an evening. After that it is a few minutes whenever money comes in.</p>
     </div>
-    <ol class="grid gap-12 md:grid-cols-3 md:gap-8" data-reveal>
+    <div class="wallpaper overflow-hidden rounded-2xl px-4 pt-8 sm:px-10 sm:pt-12" data-reveal>
+      <div
+        class="mx-auto grid max-w-[880px] items-start gap-4 [mask-image:linear-gradient(to_bottom,black_70%,transparent)] md:grid-cols-[1fr_auto_1fr] md:gap-6"
+      >
+        <div class="flex flex-col gap-3 pb-10">
+          <span class="w-fit rounded-full bg-white/70 px-2.5 py-1 text-xs font-medium text-heading backdrop-blur">
+            Payday
+          </span>
+          <BudgetMini state="start" class="shadow-[0_24px_48px_rgb(20_30_80/0.2)]" />
+        </div>
+        <span
+          aria-hidden="true"
+          class="hidden size-10 place-items-center self-center rounded-full bg-white/80 text-heading shadow-sm backdrop-blur md:grid"
+        >
+          <ArrowRightIcon size={18} />
+        </span>
+        <div class="flex flex-col gap-3 pb-10">
+          <span class="w-fit rounded-full bg-white/70 px-2.5 py-1 text-xs font-medium text-heading backdrop-blur">
+            Ten minutes later
+          </span>
+          <BudgetMini state="assigned" class="shadow-[0_24px_48px_rgb(20_30_80/0.2)]" />
+        </div>
+      </div>
+    </div>
+    <ol class="grid gap-10 md:grid-cols-3 md:gap-8" data-reveal>
       {
         steps.map(({ Icon, title, body }, i) => (
-          <li class="flex flex-col gap-6">
-            <div class="flex items-center gap-4">
-              <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary-ink">
-                <Icon size={20} aria-hidden="true" />
-              </span>
-              <span class="h-px flex-1 bg-border" />
-              <span class="text-sm font-medium text-muted-foreground">{String(i + 1).padStart(2, "0")}</span>
-            </div>
-            <div class="flex flex-col gap-2">
-              <h3 class="text-xl font-semibold text-heading">{title}</h3>
+          <li class="flex gap-4">
+            <span class="grid size-9 shrink-0 place-items-center rounded-lg border bg-background text-heading/70 shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
+              <Icon size={18} aria-hidden="true" />
+            </span>
+            <div class="flex flex-col gap-1.5">
+              <h3 class="text-lg font-medium text-heading">
+                <span class="text-muted-foreground tabular-nums">{i + 1}.</span> {title}
+              </h3>
               <p class="text-base text-muted-foreground">{body}</p>
             </div>
           </li>
@@ -347,151 +554,290 @@ const jsonLd = [
     </ol>
   </section>
 
-  <!-- Social proof -->
-  <section class="bg-ink px-6 py-16 sm:py-24">
-    <div class="mx-auto flex max-w-[1120px] flex-col gap-12">
-      <div class="flex flex-col gap-4" data-reveal>
-        <p class="text-sm font-semibold text-primary-glow">From people who budget with it</p>
-        <h2 class="text-3xl font-semibold tracking-tight text-ink-foreground sm:text-4xl">
-          Fewer Sunday money talks, <br class="hidden sm:block" />more months that add up
-        </h2>
-      </div>
-      <div class="grid gap-4 lg:grid-cols-[1fr_432px]" data-reveal>
-        <figure
-          class="flex flex-col justify-between gap-8 rounded-2xl border border-ink-border bg-ink-card p-6 sm:p-10"
-        >
-          <div class="flex flex-col gap-6">
-            <QuotesIcon size={32} className="text-primary-glow" aria-hidden="true" />
-            <blockquote class="text-xl font-medium tracking-tight text-ink-foreground sm:text-2xl">
-              We used to split costs in a spreadsheet and argue about it every Sunday. Now we see the same
-              categories, and the history settles who moved what.
-            </blockquote>
-          </div>
-          <figcaption class="flex items-center gap-3 text-sm">
-            <span class="grid size-10 shrink-0 place-items-center rounded-full bg-[#4a6fd1] font-semibold text-white">
-              PR
-            </span>
-            <span class="flex flex-col">
-              <span class="font-semibold text-ink-foreground">Priya Raman and Tomás Herrera</span>
-              <span class="text-ink-muted">Sharing one budget in Toronto since March</span>
-            </span>
-          </figcaption>
-        </figure>
-        <div class="flex flex-col gap-4">
-          {
-            quotes.map((q) => (
-              <figure class="flex flex-1 flex-col justify-between gap-6 rounded-2xl border border-ink-border bg-ink-card p-6">
-                <blockquote class="text-base text-ink-foreground">{q.quote}</blockquote>
-                <figcaption class="flex items-center gap-3 text-sm">
-                  <span
-                    class={cn("grid size-10 shrink-0 place-items-center rounded-full font-semibold text-white", q.color)}
-                  >
-                    {q.initials}
-                  </span>
-                  <span class="flex flex-col">
-                    <span class="font-semibold text-ink-foreground">{q.name}</span>
-                    <span class="text-ink-muted">{q.role}</span>
-                  </span>
-                </figcaption>
-              </figure>
-            ))
-          }
-        </div>
-      </div>
+  <!-- Why it works: a two-tone heading over three tinted cards. -->
+  <section class={cn(wrap, "flex flex-col gap-12 py-16 sm:py-24")}>
+    <div class="mx-auto flex max-w-[760px] flex-col items-center gap-4 text-center" data-reveal>
+      <span class="pill"><LightbulbIcon size={14} aria-hidden="true" /> Why it works</span>
+      <h2 class={h2}>
+        Most money apps tell you where it went. <span class="text-muted-foreground">This one asks where it should go.</span>
+      </h2>
+      <p class={lead}>
+        Tracking shows you last month's damage. A zero based budget plans the next one, so in March the car
+        insurance already has its $142.38 and groceries run out of room instead.
+      </p>
     </div>
-  </section>
-
-  <!-- Pricing -->
-  <section id="pricing" class={cn(wrap, "flex flex-col gap-12 py-16 sm:py-24")}>
-    <div class="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end" data-reveal>
-      <div class="flex flex-col gap-4">
-        <p class={eyebrow}>Pricing</p>
-        <h2 class={h2}>One plan with every feature, <br class="hidden sm:block" />or run it yourself for free</h2>
-      </div>
-      <div
-        role="group"
-        aria-label="Billing period"
-        class="flex shrink-0 gap-1 rounded-lg border bg-secondary p-1"
-        data-billing
-      >
-        <button
-          type="button"
-          aria-pressed="true"
-          data-period="monthly"
-          class="rounded-md px-3 py-1 text-sm font-medium text-muted-foreground transition-colors duration-300 ease-site outline-none hover:text-heading focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-background aria-pressed:font-semibold aria-pressed:text-heading aria-pressed:shadow-[0_1px_2px_rgb(0_0_0/0.1)]"
-        >
-          Monthly
-        </button>
-        <button
-          type="button"
-          aria-pressed="false"
-          data-period="yearly"
-          class="flex items-center gap-2 rounded-md px-3 py-1 text-sm font-medium text-muted-foreground transition-colors duration-300 ease-site outline-none hover:text-heading focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-background aria-pressed:font-semibold aria-pressed:text-heading aria-pressed:shadow-[0_1px_2px_rgb(0_0_0/0.1)]"
-        >
-          Yearly <span class={badgeClass()}>Save ${price.monthly * 12 - price.yearly}</span>
-        </button>
-      </div>
-    </div>
-    <div class="grid gap-4 md:grid-cols-2" data-reveal>
+    <div class="grid gap-4 md:grid-cols-3" data-reveal>
       {
-        plans.map((plan) => (
-          <article
-            class={cn(
-              "flex flex-col gap-8 rounded-2xl bg-background p-6 sm:p-8",
-              plan.featured ? "border-2 border-primary shadow-[0_16px_48px_rgb(62_106_225/0.12)]" : "border",
-            )}
-          >
-            <div class="flex flex-col gap-2">
-              <h3 class="text-lg font-semibold text-heading">{plan.name}</h3>
-              <p class="text-base text-muted-foreground">{plan.tagline}</p>
+        [
+          {
+            Icon: UsersThreeIcon,
+            title: "Budget together",
+            body: "Owners, editors and viewers share one budget, and every change is named in its history.",
+            tint: "from-tint-peach via-tint-peach/60 border-[oklch(88%_0.05_55)]",
+            vignette: "sharing",
+          },
+          {
+            Icon: ChartBarIcon,
+            title: "Reports that answer one question",
+            body: "Spending, net worth, age of money and credit card health, each with a CSV export.",
+            tint: "from-tint-violet via-tint-violet/60 border-[oklch(88%_0.05_300)]",
+            vignette: "report",
+          },
+          {
+            Icon: SealCheckIcon,
+            title: "Your data stays yours",
+            body: "Download a full backup or a CSV whenever you like, and restore it on your own server.",
+            tint: "from-tint-cobalt via-tint-cobalt/60 border-[oklch(88%_0.04_265)]",
+            vignette: "export",
+          },
+        ].map(({ Icon, title, body, tint, vignette }) => (
+          <article class={cn("flex flex-col overflow-hidden rounded-2xl border bg-gradient-to-b to-background", tint)}>
+            <div class="flex h-64 items-end justify-center px-5 pt-6">
+              {vignette === "sharing" && (
+                <div class="w-full self-center">
+                  <Sharing />
+                </div>
+              )}
+              {vignette === "export" && (
+                <div class="w-full self-center">
+                  <DataExport />
+                </div>
+              )}
+              {vignette === "report" && (
+                <div class="h-full w-full overflow-hidden rounded-t-lg border border-b-0 bg-background shadow-[0_8px_24px_rgb(0_0_0/0.06)]">
+                  {/* Zoomed to the top left: the totals and the first card's verdict. */}
+                  <img
+                    src="/screenshots/credit-card-health-960.webp"
+                    width="960"
+                    height="917"
+                    alt="The Credit Card Health report: what is owed on all cards, what is set aside, and a card that is ready to be paid in full"
+                    loading="lazy"
+                    class="block h-auto w-[170%] max-w-none"
+                  />
+                </div>
+              )}
             </div>
-            <div class="flex flex-col gap-1">
-              <p class="flex items-end gap-2">
-                <span class="text-5xl font-semibold tracking-tight text-heading" data-price={plan.featured ? "amount" : undefined}>
-                  {plan.featured ? `$${price.monthly}` : "$0"}
-                </span>
-                <span class="pb-1 text-base text-muted-foreground" data-price={plan.featured ? "per" : undefined}>
-                  {plan.featured ? "per month" : "forever"}
-                </span>
-              </p>
-              <p class="text-sm text-muted-foreground" data-price={plan.featured ? "note" : undefined}>
-                {plan.featured ? `or $${price.yearly} a year, billed once` : "Open source under the AGPL 3.0 license"}
-              </p>
+            <div class="flex flex-col gap-2 border-t bg-background p-5">
+              <h3 class="flex items-center gap-2 text-base font-medium text-heading">
+                <Icon size={18} className="text-heading/70" aria-hidden="true" />
+                {title}
+              </h3>
+              <p class="text-[0.9375rem] text-muted-foreground">{body}</p>
             </div>
-            <div class="flex flex-col gap-3">
-              <a
-                href={plan.cta.href}
-                class={buttonClass(plan.featured ? "default" : "outline", "main", "w-full")}
-              >
-                {plan.cta.label}
-                {!plan.featured && <GithubLogoIcon size={16} aria-hidden="true" />}
-              </a>
-              <p class="text-center text-sm text-muted-foreground">{plan.risk}</p>
-            </div>
-            <ul class="flex flex-col gap-3 border-t pt-8 text-sm">
-              {plan.features.map((feature) => (
-                <li class="flex items-center gap-2">
-                  <CheckIcon size={16} className="shrink-0 text-primary" aria-hidden="true" />
-                  {feature}
-                </li>
-              ))}
-            </ul>
           </article>
         ))
       }
     </div>
   </section>
 
+  <!-- Currencies: a warm band, copy on the left and the euro register on the right. -->
+  <section class="relative isolate overflow-hidden border-y py-16 sm:py-24">
+    <div
+      aria-hidden="true"
+      class="absolute inset-0 -z-10 bg-[radial-gradient(50%_80%_at_0%_50%,var(--color-tint-peach),transparent_70%),radial-gradient(40%_80%_at_100%_50%,var(--color-tint-cobalt),transparent_70%)]"
+    >
+    </div>
+    <div class={cn(wrap, "grid items-center gap-12 lg:grid-cols-2 lg:gap-16")}>
+      <div class="flex flex-col gap-4" data-reveal>
+        <span class="pill"><CurrencyCircleDollarIcon size={14} aria-hidden="true" /> Multi-currency</span>
+        <h2 class={h2}>Budget in every currency you hold</h2>
+        <p class={lead}>
+          A euro savings account, a dollar salary, a card in yen. Each account keeps its own currency and the
+          budget converts it at locked daily rates, so your categories always add up.
+        </p>
+      </div>
+      <div class="relative" data-reveal>
+        <div
+          class="absolute -top-5 right-4 z-10 flex items-center gap-2 rounded-xl border bg-background/90 px-3 py-2 text-sm shadow-[0_8px_24px_rgb(0_0_0/0.08)] backdrop-blur sm:right-8"
+        >
+          <ArrowsLeftRightIcon size={16} className="text-heading/70" aria-hidden="true" />
+          <span class="grid">
+            <span class="font-medium text-heading tabular-nums">1 EUR = 1.1193 USD</span>
+            <span class="text-xs text-muted-foreground">Today's rate, locked per transaction</span>
+          </span>
+        </div>
+        <div class="shadow-[0_24px_48px_rgb(20_30_80/0.08)]">
+          <Register />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Social proof -->
+  <section class={cn(wrap, "flex flex-col gap-12 py-16 sm:py-24")}>
+    <div class="mx-auto flex max-w-[640px] flex-col items-center gap-4 text-center" data-reveal>
+      <span class="pill"><QuotesIcon size={14} aria-hidden="true" /> From people who budget with it</span>
+      <h2 class={h2}>Fewer Sunday money talks, more months that add up</h2>
+    </div>
+    <div class="grid gap-4 md:grid-cols-3" data-reveal>
+      {
+        quotes.map((q) => (
+          <figure class="flex flex-col justify-between gap-8 rounded-2xl border bg-background p-6 shadow-[0_1px_2px_rgb(0_0_0/0.03)]">
+            <blockquote class="text-[1.0625rem] leading-7 text-heading">“{q.quote}”</blockquote>
+            <figcaption class="flex items-center gap-3 text-sm">
+              <span
+                class={cn("grid size-9 shrink-0 place-items-center rounded-full text-xs font-semibold text-white", q.color)}
+              >
+                {q.initials}
+              </span>
+              <span class="flex flex-col">
+                <span class="font-medium text-heading">{q.name}</span>
+                <span class="text-muted-foreground">{q.role}</span>
+              </span>
+            </figcaption>
+          </figure>
+        ))
+      }
+    </div>
+  </section>
+
+  <!-- Pricing: two plans, then what each includes. -->
+  <section id="pricing" class="border-t bg-[oklch(98.8%_0.003_265)] py-16 sm:py-24">
+    <div class={cn(wrap, "flex flex-col gap-12")}>
+      <div class="mx-auto flex max-w-[640px] flex-col items-center gap-4 text-center" data-reveal>
+        <span class="pill"><TagIcon size={14} aria-hidden="true" /> Pricing</span>
+        <h2 class={h2}>One plan with every feature, or run it yourself for free</h2>
+        <p class={lead}>The hosted app and the self hosted one are the same code. The difference is who runs it.</p>
+      </div>
+      <div class="mx-auto grid w-full max-w-[880px] gap-4 md:grid-cols-[1.15fr_1fr]" data-reveal>
+        {
+          plans.map((plan) => (
+            <article
+              class={cn(
+                "flex flex-col gap-6 rounded-2xl border bg-background p-6 sm:p-8",
+                plan.featured && "shadow-[0_16px_48px_rgb(62_106_225/0.1)]",
+              )}
+            >
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex flex-col gap-1">
+                  <h3 class="text-lg font-medium text-heading">{plan.name}</h3>
+                  <p class="text-sm text-muted-foreground">{plan.tagline}</p>
+                </div>
+                {plan.featured && (
+                  <div
+                    role="group"
+                    aria-label="Billing period"
+                    class="flex shrink-0 gap-0.5 rounded-lg border bg-secondary p-0.5"
+                    data-billing
+                  >
+                    {["monthly", "yearly"].map((period) => (
+                      <button
+                        type="button"
+                        aria-pressed={period === "monthly" ? "true" : "false"}
+                        data-period={period}
+                        class="rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors duration-300 ease-site outline-none hover:text-heading focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-background aria-pressed:text-heading aria-pressed:shadow-[0_1px_2px_rgb(0_0_0/0.1)]"
+                      >
+                        {period === "monthly" ? "Monthly" : "Yearly"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div class="flex flex-col gap-1">
+                <p class="flex items-end gap-2">
+                  <span
+                    class="text-5xl font-medium tracking-tight text-heading"
+                    data-price={plan.featured ? "amount" : undefined}
+                  >
+                    {plan.featured ? `$${price.monthly}` : "$0"}
+                  </span>
+                  <span class="pb-1 text-base text-muted-foreground" data-price={plan.featured ? "per" : undefined}>
+                    {plan.featured ? "per month" : "forever"}
+                  </span>
+                </p>
+                <p class="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <span data-price={plan.featured ? "note" : undefined}>
+                    {plan.featured ? `or $${price.yearly} a year, billed once` : "Open source under the AGPL 3.0 license"}
+                  </span>
+                  {plan.featured && (
+                    <span class="rounded-full bg-tint-cobalt px-2 py-0.5 text-xs font-medium text-primary-ink">
+                      Save ${price.monthly * 12 - price.yearly} yearly
+                    </span>
+                  )}
+                </p>
+              </div>
+              <ul class="flex flex-1 flex-col gap-2.5 text-[0.9375rem]">
+                {plan.features.map((feature) => (
+                  <li class="flex items-start gap-2.5">
+                    <CheckIcon size={16} className="mt-1 shrink-0 text-heading/70" aria-hidden="true" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <div class="flex flex-col gap-2">
+                <a
+                  href={plan.cta.href}
+                  class={cn(plan.featured ? cta : buttonClass("outline", "main", "h-11 px-4"), "w-fit")}
+                >
+                  {plan.cta.label}
+                  {plan.featured ? (
+                    <ArrowRightIcon size={16} aria-hidden="true" />
+                  ) : (
+                    <GithubLogoIcon size={16} aria-hidden="true" />
+                  )}
+                </a>
+                <p class="text-sm text-muted-foreground">{plan.risk}</p>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+      <div class="mx-auto w-full max-w-[880px]" data-reveal>
+        <table class="w-full text-left text-sm sm:text-[0.9375rem]">
+          <caption class="sr-only">What each plan includes</caption>
+          <thead>
+            <tr>
+              <td></td>
+              <th scope="col" class="w-20 pb-2 text-center text-sm font-medium text-heading sm:w-28">Hosted</th>
+              <th scope="col" class="w-20 pb-2 text-center text-sm font-medium text-heading sm:w-28">Self hosted</th>
+            </tr>
+          </thead>
+          {
+            compare.map((group) => (
+              <tbody>
+                <tr>
+                  <th
+                    scope="colgroup"
+                    colspan="3"
+                    class="pt-8 pb-2 text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase"
+                  >
+                    {group.group}
+                  </th>
+                </tr>
+                {group.rows.map(([label, hosted, self]) => (
+                  <tr class="border-t">
+                    <th scope="row" class="py-3 pr-4 font-normal text-heading">{label}</th>
+                    {[hosted, self].map((value) => (
+                      <td class="py-3 text-center">
+                        {value === true ? (
+                          <CheckIcon size={16} className="mx-auto text-heading" aria-label="Included" />
+                        ) : value === false ? (
+                          <MinusIcon size={16} className="mx-auto text-muted-foreground/60" aria-label="Not included" />
+                        ) : (
+                          <span class="text-sm text-muted-foreground">{value}</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            ))
+          }
+        </table>
+      </div>
+    </div>
+  </section>
+
   <!-- FAQ -->
-  <section id="faq" class={cn(wrap, "grid gap-8 pb-16 sm:pb-24 lg:grid-cols-[1fr_640px] lg:gap-16")}>
+  <section id="faq" class={cn(wrap, "grid gap-8 py-16 sm:py-24 lg:grid-cols-[1fr_640px] lg:gap-16")}>
     <div class="flex flex-col gap-4" data-reveal>
-      <p class={eyebrow}>FAQ</p>
-      <h2 class={h2}>Questions before <br class="hidden lg:block" />you commit</h2>
-      <p class="text-base text-muted-foreground">
-        Something missing here? Ask in <a
+      <span class="pill"><QuestionIcon size={14} aria-hidden="true" /> FAQ</span>
+      <h2 class={h2}>Good to know.</h2>
+      <p class="max-w-80 text-base text-muted-foreground">
+        Questions people ask before they commit. Something missing? Ask in <a
           href={links.discussions}
           class="text-primary-ink underline underline-offset-3 hover:text-heading">GitHub Discussions</a
-        > and read the answers others already got.
+        >.
       </p>
     </div>
     <div data-reveal>
@@ -503,7 +849,7 @@ const jsonLd = [
   <section class={cn(wrap, "flex flex-col gap-12 pb-16 sm:pb-24")}>
     <div class="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-end" data-reveal>
       <div class="flex flex-col gap-4">
-        <p class={eyebrow}>Blog</p>
+        <span class="pill"><BookOpenTextIcon size={14} aria-hidden="true" /> Blog</span>
         <h2 class={h2}>Notes on budgeting on purpose</h2>
       </div>
       <a href="/blog" class={buttonClass("outline", "small", "shrink-0")}>
@@ -515,26 +861,27 @@ const jsonLd = [
     </div>
   </section>
 
-  <!-- Final CTA -->
-  <section class={cn(wrap, "pb-16 sm:pb-24")}>
+  <!-- Final call: the hero's wash and grid again, rising from the bottom. -->
+  <section class="relative isolate overflow-hidden px-6 pt-20 pb-24 sm:pt-28 sm:pb-32">
+    <div aria-hidden="true" class="canvas-wash-bottom absolute inset-0 -z-10"></div>
     <div
-      class="flex flex-col items-center gap-6 rounded-2xl border bg-secondary px-6 py-16 text-center sm:px-16 sm:py-20"
-      data-reveal
-    >
-      <img src="/favicon.svg" alt="" width="48" height="48" class="size-12 rounded-lg" />
-      <h2 class="text-gradient max-w-[680px] pb-1 text-4xl font-semibold tracking-tight sm:text-5xl sm:leading-none">
-        Give every cent a job <br class="hidden sm:block" />before you spend it
+      aria-hidden="true"
+      class="canvas-grid absolute inset-x-0 top-0 bottom-0 -z-10 mx-auto max-w-[1320px] [mask-image:linear-gradient(to_bottom,transparent,black_60%)]"
+    ></div>
+    <div class="mx-auto flex max-w-[760px] flex-col items-center gap-8 text-center" data-reveal>
+      <h2 class="text-3xl font-medium tracking-[-0.03em] text-heading sm:text-[2.75rem] sm:leading-[1.15]">
+        Give every cent a job before you spend it. <span class="text-muted-foreground">Start tonight.</span>
       </h2>
-      <p class="max-w-120 text-lg text-muted-foreground">
-        Set up your accounts tonight and start next month with a plan for every dollar.
-      </p>
-      <div class="flex flex-col items-center gap-3 pt-2">
-        <a href={links.signUp} class={buttonClass("default", "main")}>
+      <div class="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
+        <a href={links.signUp} class={cta}>
           Start your budget
           <ArrowRightIcon size={16} aria-hidden="true" />
         </a>
-        <p class="text-sm text-muted-foreground">{site.riskNote}</p>
+        <a href={links.selfHosting} class={buttonClass("ghost", "main", "h-11 px-4 font-medium text-heading/80")}>
+          Read the self hosting guide
+        </a>
       </div>
+      <p class="-mt-4 text-sm text-muted-foreground">{site.riskNote}</p>
     </div>
   </section>
 </Base>
