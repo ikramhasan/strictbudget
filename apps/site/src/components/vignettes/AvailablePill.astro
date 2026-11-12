@@ -4,14 +4,15 @@ import { cn } from "../../lib/ui";
 
 // The app's AvailablePill (apps/web/src/components/move-money.tsx): green with money, yellow while
 // a target asks for more, red when overspent, grey at zero. `funded` is the share of the target
-// for the pie.
+// for the pie. `size="sm"` is the compact pill for small cards.
 interface Props {
   amount: string;
   tone: "positive" | "caution" | "negative" | "zero";
   mark?: "met" | "pie";
   funded?: number;
+  size?: "default" | "sm";
 }
-const { amount, tone, mark, funded = 0 } = Astro.props;
+const { amount, tone, mark, funded = 0, size = "default" } = Astro.props;
 const angle = (Math.min(Math.max(funded, 0), 99.9) / 100) * 2 * Math.PI;
 const x = (8 + 6 * Math.sin(angle)).toFixed(3);
 const y = (8 - 6 * Math.cos(angle)).toFixed(3);
@@ -19,17 +20,18 @@ const y = (8 - 6 * Math.cos(angle)).toFixed(3);
 
 <span
   class={cn(
-    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm font-medium whitespace-nowrap tabular-nums",
+    "inline-flex items-center gap-1 rounded-full font-medium whitespace-nowrap tabular-nums",
+    size === "sm" ? "px-1.5 py-px text-xs" : "px-2 py-0.5 text-sm",
     tone === "positive" && "bg-green-100 text-green-900",
     tone === "caution" && "bg-yellow-100 text-yellow-900",
     tone === "negative" && "bg-red-600 text-white",
     tone === "zero" && "bg-muted text-muted-foreground",
   )}
 >
-  {mark === "met" && <CheckCircleIcon size={14} aria-label="Target met" />}
+  {mark === "met" && <CheckCircleIcon size={size === "sm" ? 12 : 14} aria-label="Target met" />}
   {
     mark === "pie" && (
-      <svg viewBox="0 0 16 16" class="size-3.5 shrink-0" role="img" aria-label={`Target ${funded}% funded`}>
+      <svg viewBox="0 0 16 16" class={cn("shrink-0", size === "sm" ? "size-3" : "size-3.5")} role="img" aria-label={`Target ${funded}% funded`}>
         <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5" />
         {funded > 0 && (
           <path d={`M8 8 L8 2 A6 6 0 ${angle > Math.PI ? 1 : 0} 1 ${x} ${y} Z`} fill="currentColor" />
